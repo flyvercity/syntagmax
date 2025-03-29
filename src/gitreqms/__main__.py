@@ -1,11 +1,10 @@
 ''' Requirement Management System (RMS) tool. '''
 
 import logging as lg
-from typing import TypedDict
+from typing import cast, Sequence
 from pathlib import Path
 
 import click
-from git import Repo
 import rich
 
 from gitreqms.config import Config, Params
@@ -22,16 +21,7 @@ EXTRACTORS = {
     'obsidian': ObsidianExtractor
 }
 
-
-def process(params: Params, config: Config):
-    artifacts: list[Artifact] = []
-
-    for record in config.input_records():
-        lg.debug(f'Processing record: {record["record_base"]} ({record["driver"]})')
-        repo = Repo(record['record_base'])
-        extractor = EXTRACTORS[record['driver']](params, repo, record)
-        artifacts.extend(extractor.extract())
-
+def print_artifacts(artifacts: list[Artifact]):
     console = rich.get_console()
     for artifact in artifacts:
         console.print(
@@ -41,6 +31,16 @@ def process(params: Params, config: Config):
             f' {artifact.metastring()}'
         )
 
+
+def process(params: Params, config: Config):
+    artifacts: list[Artifact] = []
+
+    for record in config.input_records():
+        lg.debug(f'Processing record: {record["record_base"]} ({record["driver"]})')
+        extractor = EXTRACTORS[record['driver']](params)
+        artifacts.extend(extractor.extract(record))
+
+    print_artifacts(artifacts)
 
 @click.group(help='Requirements Management System (RMS) tool')
 @click.pass_context
@@ -60,9 +60,12 @@ def analyze(obj: Params, config: Path):
 
 @rms.command(help="Analyze specific file")
 @click.pass_obj
+@click.argument('driver', type=click.Choice(cast(Sequence[str], EXTRACTORS.keys())))
 @click.argument('file', type=click.Path(exists=True))
-def analyze_file(obj: Params, file: Path):
-    process(obj['params'], obj['config'])
+def single(obj: Params, driver: str, file: Path):
+    extractor = EXTRACTORS[driver](obj)
+    artifacts = extractor.extract_from_file(Path(file))
+    print_artifacts(artifacts)
 
 
 if __name__ == '__main__':

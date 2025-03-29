@@ -1,11 +1,11 @@
 import logging as lg
-
-from git import Repo
+from pathlib import Path
+from typing import Sequence
 
 from gitreqms.config import Params, InputRecord
 from gitreqms.errors import InvalidArtifactIdentifier, InvalidArtifactType
 from gitreqms.artifact import Artifact
-
+from gitreqms.extractors.extractor import Extractor
 
 class FilenameArtifact(Artifact):
     def __init__(self, atype: str, aid: str, description: str):
@@ -19,49 +19,50 @@ class FilenameArtifact(Artifact):
         return f'{self.description}'
 
 
-class FilenameExtractor:
-    def __init__(self, params: Params, repo: Repo, record: InputRecord):
-        lg.debug(f'FilenameExtractor initialized {record["record_base"].name}')
+class FilenameExtractor(Extractor):
+    def __init__(self, params: Params):
         self._params = params
-        self._repo = repo
-        self._record = record
 
     def loglabel(self) -> str:
         return 'FILENAME'
 
-    def extract(self) -> list[FilenameArtifact]:
+    def extract_from_file(self, filepath: Path) -> Sequence[FilenameArtifact]:
         model = self._params['model']
-        artifacts: list[FilenameArtifact] = []
+        lg.debug(f'Processing blob file: {filepath}')
 
-        for filepath in self._record['filepaths']:
-            lg.debug(f'Processing blob file: {filepath}')
+        filename = filepath.stem
+        filename_split = filename.split(' ', 1)
 
-            filename = filepath.stem
-            filename_split = filename.split(' ', 1)
+        if len(filename_split) < 1:
+            raise InvalidArtifactIdentifier(
+                f'{self.loglabel()} :: Invalid identifier: {filename}'
+            )
 
-            if len(filename_split) < 1:
-                raise InvalidArtifactIdentifier(
-                    f'{self.loglabel()} :: Invalid identifier: {filename}'
-                )
+        handle = filename_split[0].strip()
+        description = filename_split[1].strip() if len(filename_split) > 1 else ''
 
-            handle = filename_split[0].strip()
-            description = filename_split[1].strip() if len(filename_split) > 1 else ''
+        handle_split = handle.split('-')
 
-            handle_split = handle.split('-')
+        if len(handle_split) < 2:
+            raise InvalidArtifactIdentifier(
+                f'{self.loglabel()} :: Invalid identifier: {filename}'
+            )
 
-            if len(handle_split) < 2:
-                raise InvalidArtifactIdentifier(
-                    f'{self.loglabel()} :: Invalid identifier: {filename}'
-                )
+        atype = handle_split[0]
+        aid = '-'.join(handle_split[1:])
 
-            atype = handle_split[0]
-            aid = '-'.join(handle_split[1:])
+        if not model.isValidAType(atype):
+            raise InvalidArtifactType(
+                f'{self.loglabel()} :: Invalid artifact type: {atype}'
+            )
 
-            if not model.isValidAType(atype):
-                raise InvalidArtifactType(
-                    f'{self.loglabel()} :: Invalid artifact type: {atype}'
-                )
+        return [FilenameArtifact(atype, aid, description)]
+        
 
-            artifacts.append(FilenameArtifact(atype, aid, description))
+    def extract(self, record: InputRecord) -> Sequence[Artifact]:
+        artifacts: list[Artifact] = []
+
+        for filepath in record['filepaths']:
+            artifacts.extend(self.extract_from_file(filepath))
 
         return artifacts
