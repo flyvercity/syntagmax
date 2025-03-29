@@ -1,6 +1,6 @@
 import logging as lg
 from pathlib import Path
-from typing import Sequence, TypedDict
+from typing import Sequence
 
 from pyparsing import (
     Literal,
@@ -34,25 +34,55 @@ class TextArtifact(Artifact):
     def metastring(self) -> str:
         return ''
 
-class HeaderDef(TypedDict):
-    aid: str
+class Ref:
     atype: str
-    pids: list[str]
+    aid: str
+
+    def __init__(self, atype: str, aid: str):
+        self.atype = atype
+        self.aid = aid
+
+class IdRef(Ref):
+    pass
+
+class PidRef(Ref):
+    revision: str
+
+    def __init__(self, atype: str, aid: str, revision: str):
+        super().__init__(atype, aid)
+        self.revision = revision
 
 
 Begin = Suppress(Literal('[<'))
 BodyStart = Suppress(Literal('>>>'))
 End = Suppress(Literal('>]'))
 Equal = Suppress(Literal('='))
-AID = Literal('ID') + Equal + Word(alphanums + '-')
-PID = Literal('PID') + Equal + Word(alphanums + '-@')
-Header = OneOrMore(AID | PID).set_parse_action(
-    lambda t: HeaderDef(aid=t[0], atype='', pids=[]) # type: ignore
+AType = Word(alphanums)
+AId = Word(alphanums + '-')
+Hyphen = Suppress(Literal('-'))
+At = Suppress(Literal('@'))
+IdKeyword = Suppress(Literal('ID'))
+PidKeyword = Suppress(Literal('PID'))
+Revision = Word(alphanums)
+
+IdDirective = (IdKeyword + Equal + AType + Hyphen + AId).set_parse_action(
+    lambda t: IdRef(atype=t[0], aid=t[1])  # type: ignore
+)
+
+PidDirective = (PidKeyword + Equal + AType + Hyphen + AId + At + Revision).set_parse_action(
+    lambda t: PidRef(atype=t[0], aid=t[1], revision=t[2])  # type: ignore
+)
+
+Header = OneOrMore(IdDirective | PidDirective).set_parse_action(
+    lambda t: t
 )
 
 HeaderSkip = ZeroOrMore(~Begin + ~End + ~BodyStart + Suppress(Regex('.')))
 BodySkip = ZeroOrMore(~Begin + ~End + ~BodyStart + Suppress(Regex('.')))
-Section = Begin + Header + HeaderSkip + BodyStart + BodySkip + End
+
+Section = (Begin + Header + HeaderSkip + BodyStart + BodySkip + End).set_parse_action(
+    lambda t: t
+)
 
 class TextExtractor(Extractor):
     def __init__(self, params: Params):
@@ -65,11 +95,13 @@ class TextExtractor(Extractor):
         for match in matches:
             start_location = match[1]
             remaining_string = text[start_location:]
+            section_start_string = remaining_string.split('\n', 1)[0]
+            lg.debug(f'Found section, parsing: {section_start_string}')
             
             try:
                 section = Section.parse_string(remaining_string)
             except ParseException as e:
-                raise TextParseError(str(e))
+                raise TextParseError(f'{str(e)}: at {section_start_string}')
 
             print(section)
 
