@@ -9,7 +9,6 @@ import click
 from gitreqms.model import IModel
 
 class Params(TypedDict):
-    config: Path
     verbose: bool
     model: IModel
 
@@ -20,28 +19,24 @@ class InputRecord(TypedDict):
     driver: str
 
 class Config:
-    def __init__(self, params: dict[str, str]):
+    def __init__(self, params: Params, config_filename: Path):
         self._input_records: list[InputRecord] = []
 
         try:
-            config_file = Path(params['config']).resolve()
-
+            config_file = Path(config_filename).resolve()
             lg.info(f'Using configuration file: {config_file}')
 
             root_dir = config_file.parent
             config = tomllib.loads(config_file.read_text())
 
-            if params.get('verbose'):
+            if params['verbose']:
                 lg.debug(f'Configuration file content: {config}')
                 click.echo(json.dumps(config, indent=4))
-
-            if config.get('version') != 1:
-                raise UserWarning('Unknown configuration file version (expected 1)')
 
             base = config.get('base')
 
             if not base:
-                raise UserWarning('Missing base_dir parameter')
+                raise UserWarning('Missing `base` parameter')
 
             self._base_dir = Path(root_dir, base).resolve()
             lg.debug(f'Base directory: {self._base_dir}')
@@ -56,7 +51,7 @@ class Config:
                 record_base = Path(self._base_dir, path)
 
                 if not path:
-                    raise UserWarning('Missing input.path parameter')
+                    raise UserWarning('Missing `input.path` parameter')
 
                 subdir = input_record.get('subdir')
 
@@ -68,7 +63,7 @@ class Config:
                 driver = input_record.get('driver')
 
                 if not driver:
-                    raise UserWarning('Missing input.driver parameter')
+                    raise UserWarning('Missing `input.driver` parameter')
 
                 filter = input_record.get('filter')
                 glob = filter or '**/*'

@@ -7,5 +7,5 @@ class ObsidianArtifact(FilenameArtifact):
 
 
 class ObsidianExtractor(FilenameExtractor):
-    def extractor(self) -> str:
+    def loglabel(self) -> str:
         return 'OBSIDIAN'

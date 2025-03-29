@@ -1,9 +1,10 @@
 ''' Requirement Management System (RMS) tool. '''
 
 import logging as lg
+from typing import TypedDict
+from pathlib import Path
 
 import click
-from pathlib import Path
 from git import Repo
 import rich
 
@@ -40,15 +41,28 @@ def process(params: Params, config: Config):
             f' {artifact.metastring()}'
         )
 
-@click.command(help='Requirements Management System (RMS) tool')
+
+@click.group(help='Requirements Management System (RMS) tool')
 @click.pass_context
 @click.option('--verbose', is_flag=True, help='Verbose output')
-@click.argument('config', type=click.Path(exists=True))
-def rms(ctx: click.Context, config: Path, verbose: bool):
-    ctx.obj = Params(config=config, verbose=verbose, model=StandardModel())
+def rms(ctx: click.Context, verbose: bool):
+    ctx.obj = Params(verbose=verbose, model=StandardModel())
     lg.basicConfig(level=lg.DEBUG if verbose else lg.INFO)
-    configurator = Config(ctx.obj)
-    process(ctx.obj, configurator)
+
+
+@rms.command(help='Full analysis of the project')
+@click.pass_obj
+@click.argument('config', type=click.Path(exists=True))
+def analyze(obj: Params, config: Path):
+    configurator = Config(obj, config)
+    process(obj, configurator)
+
+
+@rms.command(help="Analyze specific file")
+@click.pass_obj
+@click.argument('file', type=click.Path(exists=True))
+def analyze_file(obj: Params, file: Path):
+    process(obj['params'], obj['config'])
 
 
 if __name__ == '__main__':
