@@ -2,9 +2,13 @@ from pathlib import Path
 import tomllib
 import logging as lg
 from typing import TypedDict
+import json
+
+import click
 
 class InputRecord(TypedDict):
     record_base: Path
+    record_subdir: Path
     filepaths: list[Path]
     driver: str
 
@@ -14,12 +18,15 @@ class Config:
 
         try:
             config_file = Path(params['config']).resolve()
-            lg.debug(f'Using configuration file: {config_file}')
+
+            lg.info(f'Using configuration file: {config_file}')
+
             root_dir = config_file.parent
             config = tomllib.loads(config_file.read_text())
 
             if params.get('verbose'):
                 lg.debug(f'Configuration file content: {config}')
+                click.echo(json.dumps(config, indent=4))
 
             if config.get('version') != 1:
                 raise UserWarning('Unknown configuration file version (expected 1)')
@@ -44,6 +51,13 @@ class Config:
                 if not path:
                     raise UserWarning('Missing input.path parameter')
 
+                subdir = input_record.get('subdir')
+
+                if subdir:
+                    record_subdir = Path(record_base, subdir)
+                else:
+                    record_subdir = record_base
+
                 driver = input_record.get('driver')
 
                 if not driver:
@@ -56,12 +70,13 @@ class Config:
                     lg.info(f'Using default filter (**/*.md) for {path}')
                     glob = '**/*.md'
 
-                lg.debug(f'Adding input files from {path} with filter {glob}')
-                filepaths = Path(base, Path(path)).glob(glob)
+                lg.debug(f'Adding input files from {record_subdir} with filter {glob}')
+                filepaths = Path(record_subdir, Path(record_subdir)).glob(glob)
 
                 self._input_records.append(
                     InputRecord(
                         record_base=record_base,
+                        record_subdir=record_subdir,
                         filepaths=list(filepaths),
                         driver=driver
                     )
@@ -72,7 +87,7 @@ class Config:
             raise UserWarning('Bad configuration file')
 
         for input_record in self._input_records:
-            lg.info(f'Input record: {input_record["record_base"]}')
+            lg.info(f'Input record: {input_record["record_subdir"]}')
             lg.debug(f'Input files: {len(input_record["filepaths"])}')
 
     def base_dir(self):

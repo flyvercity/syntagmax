@@ -3,8 +3,19 @@
 import logging as lg
 
 import click
+from git import Repo
 
 from gitreqms.config import Config
+from gitreqms.extractors.text import TextExtractor
+from gitreqms.extractors.filename import FilenameExtractor
+from gitreqms.extractors.obsidian import ObsidianExtractor
+
+
+EXTRACTORS = {
+    'text': TextExtractor,
+    'filename': FilenameExtractor,
+    'obsidian': ObsidianExtractor
+}
 
 
 @click.command(help='Requirements Management System (RMS) tool')
@@ -20,9 +31,9 @@ def rms(ctx, config, verbose):
 
     for record in config.input_records():
         lg.debug(f'Processing record: {record["record_base"]} ({record["driver"]})')
-
-        for filepath in record['filepaths']:
-            lg.debug(f'Processing file: {filepath}')
+        repo = Repo(record['record_base'])
+        extractor = EXTRACTORS[record['driver']](repo, record)
+        extractor.extract()
 
 
 if __name__ == '__main__':
