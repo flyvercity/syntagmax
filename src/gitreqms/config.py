@@ -1,14 +1,12 @@
 from pathlib import Path
 import tomllib
 import logging as lg
+from typing import TypedDict
 
-
-class InputRecord:
-    def __init__(self, record_base, filepaths, driver):
-        self._record_base = record_base
-        self._filepaths = filepaths
-        self._driver = driver
-
+class InputRecord(TypedDict):
+    record_base: Path
+    filepaths: list[Path]
+    driver: str
 
 class Config:
     def __init__(self, params):
@@ -62,7 +60,11 @@ class Config:
                 filepaths = Path(base, Path(path)).glob(glob)
 
                 self._input_records.append(
-                    InputRecord(record_base, filepaths, driver)
+                    InputRecord(
+                        record_base=record_base,
+                        filepaths=list(filepaths),
+                        driver=driver
+                    )
                 )
 
         except Exception as exc:
@@ -70,8 +72,8 @@ class Config:
             raise UserWarning('Bad configuration file')
 
         for input_record in self._input_records:
-            lg.info(f'Input record: {input_record._record_base}')
-            lg.debug(f'Input files: {len(list(input_record._filepaths))}')
+            lg.info(f'Input record: {input_record["record_base"]}')
+            lg.debug(f'Input files: {len(input_record["filepaths"])}')
 
     def base_dir(self):
         return self._base_dir
