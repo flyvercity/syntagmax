@@ -5,7 +5,6 @@ from typing import Sequence, TypedDict
 from pyparsing import (
     Literal,
     Suppress,
-    SkipTo,
     ParseException,
     ZeroOrMore,
     Regex,
