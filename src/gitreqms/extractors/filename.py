@@ -26,6 +26,9 @@ class FilenameExtractor:
         self._repo = repo
         self._record = record
 
+    def extractor(self) -> str:
+        return 'FILENAME'
+
     def extract(self) -> list[FilenameArtifact]:
         model = self._params['model']
         artifacts: list[FilenameArtifact] = []
@@ -37,7 +40,9 @@ class FilenameExtractor:
             filename_split = filename.split(' ', 1)
 
             if len(filename_split) < 1:
-                raise InvalidArtifactIdentifier(f'FILENAME :: Invalid identifier: {filename}')
+                raise InvalidArtifactIdentifier(
+                    f'{self.extractor()} :: Invalid identifier: {filename}'
+                )
 
             handle = filename_split[0].strip()
             description = filename_split[1].strip() if len(filename_split) > 1 else ''
@@ -45,13 +50,17 @@ class FilenameExtractor:
             handle_split = handle.split('-')
 
             if len(handle_split) < 2:
-                raise InvalidArtifactIdentifier(f'FILENAME :: Invalid identifier: {filename}')
-            
+                raise InvalidArtifactIdentifier(
+                    f'{self.extractor()} :: Invalid identifier: {filename}'
+                )
+
             atype = handle_split[0]
             aid = '-'.join(handle_split[1:])
 
             if not model.isValidAType(atype):
-                raise InvalidArtifactType(f'FILENAME :: Invalid artifact type: {atype}')
+                raise InvalidArtifactType(
+                    f'{self.extractor()} :: Invalid artifact type: {atype}'
+                )
 
             artifacts.append(FilenameArtifact(atype, aid, description))
 
