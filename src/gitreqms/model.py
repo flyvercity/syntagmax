@@ -1,6 +1,7 @@
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 
-class IModel:
+
+class IModel(ABC):
     @abstractmethod
     def isValidAType(self, atype: str) -> bool:
         pass

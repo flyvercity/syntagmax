@@ -5,6 +5,7 @@ import logging as lg
 import click
 from pathlib import Path
 from git import Repo
+import rich
 
 from gitreqms.config import Config, Params
 from gitreqms.extractors.text import TextExtractor
@@ -30,9 +31,14 @@ def process(params: Params, config: Config):
         extractor = EXTRACTORS[record['driver']](params, repo, record)
         artifacts.extend(extractor.extract())
 
+    console = rich.get_console()
     for artifact in artifacts:
-        click.echo(f'{artifact.atype} :: {artifact.aid}')
-
+        console.print(
+            f'[magenta]{artifact.driver()}[/magenta] :: '
+            f'[cyan]{artifact.atype}[/cyan] :: '
+            f'[green]{artifact.aid}[/green]'
+            f' {artifact.metastring()}'
+        )
 
 @click.command(help='Requirements Management System (RMS) tool')
 @click.pass_context

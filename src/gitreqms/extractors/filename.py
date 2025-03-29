@@ -7,9 +7,16 @@ from gitreqms.errors import InvalidArtifactIdentifier, InvalidArtifactType
 from gitreqms.artifact import Artifact
 
 
-class BlobArtifact(Artifact):
-    def __init__(self, atype: str, aid: str):
+class FilenameArtifact(Artifact):
+    def __init__(self, atype: str, aid: str, description: str):
         super().__init__(atype, aid)
+        self.description = description
+
+    def driver(self) -> str:
+        return 'filename'
+
+    def metastring(self) -> str:
+        return f'{self.description}'
 
 
 class FilenameExtractor:
@@ -19,26 +26,33 @@ class FilenameExtractor:
         self._repo = repo
         self._record = record
 
-    def extract(self) -> list[BlobArtifact]:
+    def extract(self) -> list[FilenameArtifact]:
         model = self._params['model']
-        artifacts: list[BlobArtifact] = []
+        artifacts: list[FilenameArtifact] = []
 
         for filepath in self._record['filepaths']:
             lg.debug(f'Processing blob file: {filepath}')
+
             filename = filepath.stem
+            filename_split = filename.split(' ', 1)
 
-            split = filename.split('-')
+            if len(filename_split) < 1:
+                raise InvalidArtifactIdentifier(f'FILENAME :: Invalid identifier: {filename}')
 
-            if len(split) < 2:
+            handle = filename_split[0].strip()
+            description = filename_split[1].strip() if len(filename_split) > 1 else ''
+
+            handle_split = handle.split('-')
+
+            if len(handle_split) < 2:
                 raise InvalidArtifactIdentifier(f'FILENAME :: Invalid identifier: {filename}')
             
-            atype = split[0]
-            aid = '-'.join(split[1:])
+            atype = handle_split[0]
+            aid = '-'.join(handle_split[1:])
 
             if not model.isValidAType(atype):
                 raise InvalidArtifactType(f'FILENAME :: Invalid artifact type: {atype}')
 
-            artifacts.append(BlobArtifact(atype, aid))
+            artifacts.append(FilenameArtifact(atype, aid, description))
 
         return artifacts
-            
