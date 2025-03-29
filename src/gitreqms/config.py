@@ -6,6 +6,13 @@ import json
 
 import click
 
+from gitreqms.model import IModel
+
+class Params(TypedDict):
+    config: Path
+    verbose: bool
+    model: IModel
+
 class InputRecord(TypedDict):
     record_base: Path
     record_subdir: Path
@@ -13,8 +20,8 @@ class InputRecord(TypedDict):
     driver: str
 
 class Config:
-    def __init__(self, params):
-        self._input_records = []
+    def __init__(self, params: dict[str, str]):
+        self._input_records: list[InputRecord] = []
 
         try:
             config_file = Path(params['config']).resolve()
@@ -93,5 +100,5 @@ class Config:
     def base_dir(self):
         return self._base_dir
 
-    def input_records(self):
+    def input_records(self) -> list[InputRecord]:
         return self._input_records

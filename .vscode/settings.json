@@ -1,0 +1,4 @@
+{
+    "python.analysis.inlayHints.callArgumentNames": "off",
+    "python.analysis.typeCheckingMode": "strict"
+}
