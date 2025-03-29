@@ -21,7 +21,7 @@ EXTRACTORS = {
     'obsidian': ObsidianExtractor
 }
 
-def print_artifacts(artifacts: list[Artifact]):
+def print_artifacts(artifacts: Sequence[Artifact]):
     console = rich.get_console()
     for artifact in artifacts:
         console.print(
@@ -33,7 +33,7 @@ def print_artifacts(artifacts: list[Artifact]):
 
 
 def process(params: Params, config: Config):
-    artifacts: list[Artifact] = []
+    artifacts: Sequence[Artifact] = []
 
     for record in config.input_records():
         lg.debug(f'Processing record: {record["record_base"]} ({record["driver"]})')
