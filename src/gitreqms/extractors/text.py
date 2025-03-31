@@ -10,18 +10,13 @@ from pyparsing import (
     Regex,
     OneOrMore,
     Word,
-    alphanums
+    alphanums,
+    lineno
 )
 
-from gitreqms.config import Params, InputRecord
+from gitreqms.config import Params
 from gitreqms.artifact import Artifact
 from gitreqms.extractors.extractor import Extractor
-from gitreqms.errors import RMSException
-
-
-class TextParseError(RMSException):
-    def __init__(self, message: str):
-        super().__init__(f'Text Extractor Error: {message}')
 
 
 class TextArtifact(Artifact):
@@ -88,7 +83,8 @@ class TextExtractor(Extractor):
     def __init__(self, params: Params):
         self._params = params
 
-    def extract_from_file(self, filepath: Path) -> Sequence[Artifact]:
+    def extract_from_file(self, filepath: Path) -> tuple[Sequence[Artifact], list[str]]:
+        errors : list[str] = []
         text = filepath.read_text()
         matches = Begin.scanString(text)
 
@@ -100,18 +96,17 @@ class TextExtractor(Extractor):
             
             try:
                 section = Section.parse_string(remaining_string)
+                print(section)
+
             except ParseException as e:
-                raise TextParseError(f'{str(e)}: at {section_start_string}')
+                short_location = Path(filepath).relative_to(Path.cwd(), walk_up=True)
+                line = lineno(start_location, text)
 
-            print(section)
+                error = f'''Driver "text": Parse Error in {short_location}@{line}
+                While parsing {section_start_string}
+                Reason: {str(e)}
+                '''
 
-        return []
+                errors.append(error)
 
-    def extract(self, record: InputRecord) -> Sequence[Artifact]:
-        artifacts: list[Artifact] = []
-
-        for filepath in record['filepaths']:
-            lg.debug(f'Processing text file: {filepath}')
-            artifacts.extend(self.extract_from_file(filepath))
-
-        return artifacts
+        return [], errors

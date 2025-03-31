@@ -2,7 +2,7 @@ import logging as lg
 from pathlib import Path
 from typing import Sequence
 
-from gitreqms.config import Params, InputRecord
+from gitreqms.config import Params
 from gitreqms.errors import InvalidArtifactIdentifier, InvalidArtifactType
 from gitreqms.artifact import Artifact
 from gitreqms.extractors.extractor import Extractor
@@ -26,7 +26,7 @@ class FilenameExtractor(Extractor):
     def loglabel(self) -> str:
         return 'FILENAME'
 
-    def extract_from_file(self, filepath: Path) -> Sequence[FilenameArtifact]:
+    def extract_from_file(self, filepath: Path) -> tuple[Sequence[FilenameArtifact], list[str]]:
         model = self._params['model']
         lg.debug(f'Processing blob file: {filepath}')
 
@@ -56,13 +56,4 @@ class FilenameExtractor(Extractor):
                 f'{self.loglabel()} :: Invalid artifact type: {atype}'
             )
 
-        return [FilenameArtifact(atype, aid, description)]
-        
-
-    def extract(self, record: InputRecord) -> Sequence[Artifact]:
-        artifacts: list[Artifact] = []
-
-        for filepath in record['filepaths']:
-            artifacts.extend(self.extract_from_file(filepath))
-
-        return artifacts
+        return [FilenameArtifact(atype, aid, description)], []

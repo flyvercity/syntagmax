@@ -21,4 +21,9 @@ packages = ["src/gitreqms"]
 [dependency-groups]
 dev = [
     "flake8>=7.1.2",
+    "flake8-pyproject>=1.2.3",
 ]
+
+[tool.flake8]
+max-line-length = 160
+ignore = 731
