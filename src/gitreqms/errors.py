@@ -12,5 +12,6 @@ class InvalidArtifactType(RMSException):
     pass
 
 class NonFatalError(RMSException):
-    def __init__(self):
+    def __init__(self, errors: list[str]):
+        self.errors = errors
         super().__init__('Errors were reported')

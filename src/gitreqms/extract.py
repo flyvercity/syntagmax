@@ -44,14 +44,12 @@ def extract(params: Params, config: Config):
         artifacts.extend(record_artifacts)
         errors.extend(record_errors)
 
-    for error in errors:
-        pprint(f'[red]{error}[/red]')
+    if params['verbose']:
+        lg.debug('Listing raw artifacts:')
+        print_artifacts(artifacts)
 
     if errors:
-        raise NonFatalError()
-    else:
-        if params['verbose']:
-            print_artifacts(artifacts)
+        raise NonFatalError(errors)
 
     return artifacts
     
@@ -61,8 +59,5 @@ def extract_single(obj: Params, driver: str, file: Path):
 
     print_artifacts(artifacts)
 
-    for error in errors:
-        pprint(f'[red]{error}[/red]')
-
     if errors:
-        raise NonFatalError()
+        raise NonFatalError(errors)

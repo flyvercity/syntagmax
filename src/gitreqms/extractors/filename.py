@@ -13,8 +13,8 @@ from gitreqms.artifact import Artifact
 from gitreqms.extractors.extractor import Extractor
 
 class FilenameArtifact(Artifact):
-    def __init__(self, atype: str, aid: str, description: str):
-        super().__init__(atype, aid)
+    def __init__(self, location: str, atype: str, aid: str, description: str):
+        super().__init__(location, atype, aid)
         self.description = description
 
     def driver(self) -> str:
@@ -31,8 +31,8 @@ class FilenameExtractor(Extractor):
     def loglabel(self) -> str:
         return 'FILENAME'
 
-    def create_artifact(self, atype: str, aid: str, description: str) -> FilenameArtifact:
-        return FilenameArtifact(atype, aid, description)
+    def create_artifact(self, location: str, atype: str, aid: str, description: str) -> FilenameArtifact:
+        return FilenameArtifact(location, atype, aid, description)
     
     def extract_from_file(self, filepath: Path) -> tuple[Sequence[FilenameArtifact], list[str]]:
         model = self._params['model']
@@ -64,4 +64,4 @@ class FilenameExtractor(Extractor):
                 f'{self.loglabel()} :: Invalid artifact type: {atype}'
             )
 
-        return [self.create_artifact(atype, aid, description)], []
+        return [self.create_artifact(str(filepath), atype, aid, description)], []

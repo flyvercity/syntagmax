@@ -28,8 +28,8 @@ class ValidationError(RMSException):
     pass
 
 class TextArtifact(base.Artifact):
-    def __init__(self, atype: str, aid: str, pids: list[base.ARef] = []):
-        super().__init__(atype, aid, pids)
+    def __init__(self, location: str, atype: str, aid: str, pids: list[base.ARef] = []):
+        super().__init__(location, atype, aid, pids)
 
     def driver(self) -> str:
         return 'text'
@@ -115,7 +115,7 @@ class ArtifactBuilder:
         if self.aid is None:
             raise ValidationError(self._build_error('AID is required'))
 
-        return TextArtifact(str(self.atype), str(self.aid), self.pids)
+        return TextArtifact(self.location, str(self.atype), str(self.aid), self.pids)
 
 
 class TextExtractor(Extractor):
