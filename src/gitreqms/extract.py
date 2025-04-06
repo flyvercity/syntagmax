@@ -33,7 +33,7 @@ def print_artifacts(artifacts: Sequence[Artifact]):
             f' {artifact.metastring()}'
         )
 
-def extract(params: Params, config: Config):
+def extract(params: Params, config: Config) -> tuple[Sequence[Artifact], list[str]]:
     artifacts: Sequence[Artifact] = []
     errors: Sequence[str] = []
 
@@ -48,10 +48,7 @@ def extract(params: Params, config: Config):
         lg.debug('Listing raw artifacts:')
         print_artifacts(artifacts)
 
-    if errors:
-        raise NonFatalError(errors)
-
-    return artifacts
+    return artifacts, errors
     
 def extract_single(obj: Params, driver: str, file: Path):
     extractor = EXTRACTORS[driver](obj)

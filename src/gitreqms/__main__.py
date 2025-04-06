@@ -8,6 +8,7 @@ import logging as lg
 import sys
 from pathlib import Path
 import traceback
+from typing import Sequence
 
 import click
 
@@ -17,10 +18,20 @@ from gitreqms.model import StandardModel
 from gitreqms.errors import RMSException, NonFatalError
 from gitreqms.extract import extract, get_available_extractors, extract_single
 from gitreqms.tree import build_tree
+from gitreqms.artifact import Artifact
 
 def process(params: Params, config: Config):
-    artifacts = extract(params, config)
-    artifacts = build_tree(artifacts, params['model'])
+    artifacts: Sequence[Artifact] = []
+    errors: list[str] = []
+    ex_artifacts, ex_errors = extract(params, config)
+    artifacts.extend(ex_artifacts)
+    errors.extend(ex_errors)
+    b_artifacts, b_errors = build_tree(params, artifacts)
+    artifacts.extend(b_artifacts)
+    errors.extend(b_errors)
+
+    if errors:
+        raise NonFatalError(errors)
     
     u.pprint('Top Level Artifacts:')
     for a in artifacts:
