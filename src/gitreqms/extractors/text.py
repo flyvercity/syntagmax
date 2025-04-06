@@ -162,8 +162,8 @@ class TextExtractor(Extractor):
         return artifacts, errors
 
     def _format_error(
-            self, error_type: str, location: str, line: int, 
-            section_start_string: str, message: str
+        self, error_type: str, location: str, line: int, 
+        section_start_string: str, message: str
     ) -> str:
         return f'''Driver "text": {error_type} in {location}@{line}
         While analyzing {section_start_string}
