@@ -10,18 +10,21 @@ from pyparsing import (
     Regex,
     OneOrMore,
     Word,
-    alphanums,
-    lineno
+    lineno,
+    alphanums
 )
 
 from gitreqms.config import Params
-from gitreqms.artifact import Artifact
+import gitreqms.artifact as base
 from gitreqms.extractors.extractor import Extractor
+from gitreqms.errors import RMSException
 
+class ValidationError(RMSException):
+    pass
 
-class TextArtifact(Artifact):
-    def __init__(self, atype: str, aid: str):
-        super().__init__(atype, aid)
+class TextArtifact(base.Artifact):
+    def __init__(self, atype: str, aid: str, pids: list[base.ARef] = []):
+        super().__init__(atype, aid, pids)
 
     def driver(self) -> str:
         return 'text'
@@ -46,7 +49,6 @@ class PidRef(Ref):
     def __init__(self, atype: str, aid: str, revision: str):
         super().__init__(atype, aid)
         self.revision = revision
-
 
 Begin = Suppress(Literal('[<'))
 BodyStart = Suppress(Literal('>>>'))
@@ -79,11 +81,44 @@ Section = (Begin + Header + HeaderSkip + BodyStart + BodySkip + End).set_parse_a
     lambda t: t
 )
 
+class ArtifactBuilder:
+    def __init__(self, location: str):
+        self.location: str = location
+        self.aid: str | None = None
+        self.atype: str | None = None
+        self.pids: list[base.ARef] = []
+
+    def add_pid(self, pid: str, ptype: str):
+        self.pids.append(base.ARef(ptype, pid))
+        return self
+
+    def add_id(self, aid: str, atype: str):
+        if self.aid is not None:
+            raise ValidationError(self._build_error('Duplicate AID'))
+
+        self.aid = aid
+        self.atype = atype
+        return self
+
+    def _build_error(self, message: str) -> str:
+        return f'Driver "text": {self.location}: {message}'
+
+    def build(self) -> base.Artifact:
+        if self.atype is None:
+            raise ValidationError(self._build_error('AType is required'))
+
+        if self.aid is None:
+            raise ValidationError(self._build_error('AID is required'))
+
+        return TextArtifact(str(self.atype), str(self.aid), self.pids)
+
+
 class TextExtractor(Extractor):
     def __init__(self, params: Params):
         self._params = params
 
-    def extract_from_file(self, filepath: Path) -> tuple[Sequence[Artifact], list[str]]:
+    def extract_from_file(self, filepath: Path) -> tuple[Sequence[base.Artifact], list[str]]:
+        artifacts: Sequence[base.Artifact] = []
         errors : list[str] = []
         text = filepath.read_text()
         matches = Begin.scanString(text)
@@ -92,21 +127,55 @@ class TextExtractor(Extractor):
             start_location = match[1]
             remaining_string = text[start_location:]
             section_start_string = remaining_string.split('\n', 1)[0]
+            line = lineno(start_location, text)
+            location = self._format_location(filepath, line)
             lg.debug(f'Found section, parsing: {section_start_string}')
             
             try:
-                section = Section.parse_string(remaining_string)
-                print(section)
+                section: list[IdRef | PidRef] = Section.parse_string(remaining_string)  # type: ignore
+                builder = ArtifactBuilder(location)
+
+                for item in section:
+                    if isinstance(item, IdRef):
+                        builder.add_id(item.aid, item.atype)
+
+                    if isinstance(item, PidRef):
+                        builder.add_pid(item.aid, item.atype)
+
+                artifact = builder.build()
+                artifacts.append(artifact)
 
             except ParseException as e:
-                short_location = Path(filepath).relative_to(Path.cwd(), walk_up=True)
-                line = lineno(start_location, text)
-
-                error = f'''Driver "text": Parse Error in {short_location}@{line}
-                While parsing {section_start_string}
-                Reason: {str(e)}
-                '''
+                error = self._format_error(
+                    'Parse Error', location, line, section_start_string, str(e)
+                )
 
                 errors.append(error)
 
-        return [], errors
+            except ValidationError as e:
+                error = self._format_error(
+                    'Malformed artifact', location, line, section_start_string, str(e)
+                )
+
+                errors.append(error)
+
+        return artifacts, errors
+
+    def _format_error(
+            self, error_type: str, location: str, line: int, 
+            section_start_string: str, message: str
+    ) -> str:
+        return f'''Driver "text": {error_type} in {location}@{line}
+        While analyzing {section_start_string}
+        Reason: {message}
+        '''
+
+    def _format_location(self, filepath: Path, line: int) -> str:
+        absolute_path = filepath.absolute()
+        cmd = Path.cwd()
+
+        if absolute_path.anchor != cmd.anchor:
+            return str(absolute_path)
+
+        relpath = str(absolute_path.relative_to(cmd, walk_up=True))
+        return f'{relpath}:{line}'

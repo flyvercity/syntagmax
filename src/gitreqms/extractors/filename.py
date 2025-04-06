@@ -26,6 +26,9 @@ class FilenameExtractor(Extractor):
     def loglabel(self) -> str:
         return 'FILENAME'
 
+    def create_artifact(self, atype: str, aid: str, description: str) -> FilenameArtifact:
+        return FilenameArtifact(atype, aid, description)
+    
     def extract_from_file(self, filepath: Path) -> tuple[Sequence[FilenameArtifact], list[str]]:
         model = self._params['model']
         lg.debug(f'Processing blob file: {filepath}')
@@ -56,4 +59,4 @@ class FilenameExtractor(Extractor):
                 f'{self.loglabel()} :: Invalid artifact type: {atype}'
             )
 
-        return [FilenameArtifact(atype, aid, description)], []
+        return [self.create_artifact(atype, aid, description)], []
