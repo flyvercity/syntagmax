@@ -24,14 +24,14 @@ EXTRACTORS = {
 def get_available_extractors() -> Sequence[str]:
     return list(EXTRACTORS.keys())
 
-def print_artifacts(artifacts: Sequence[Artifact]):
-    for artifact in artifacts:
-        pprint(
-            f'[magenta]{artifact.driver()}[/magenta] :: '
-            f'[cyan]{artifact.atype}[/cyan] :: '
-            f'[green]{artifact.aid}[/green]'
-            f' {artifact.metastring()}'
-        )
+def print_artifact(artifact: Artifact):
+    pprint(
+        f'[magenta]{artifact.driver()}[/magenta] :: '
+        f'[cyan]{artifact.atype}[/cyan] :: '
+        f'[green]{artifact.aid}[/green]'
+        f' {artifact.metastring()}'
+        f' parents: {len(artifact.pids)}'
+    )
 
 def extract(params: Params, config: Config) -> tuple[Sequence[Artifact], list[str]]:
     artifacts: Sequence[Artifact] = []
@@ -46,7 +46,9 @@ def extract(params: Params, config: Config) -> tuple[Sequence[Artifact], list[st
 
     if params['verbose']:
         lg.debug('Listing raw artifacts:')
-        print_artifacts(artifacts)
+
+        for artifact in artifacts:
+            print_artifact(artifact)
 
     return artifacts, errors
     
@@ -54,7 +56,8 @@ def extract_single(obj: Params, driver: str, file: Path):
     extractor = EXTRACTORS[driver](obj)
     artifacts, errors = extractor.extract_from_file(Path(file))
 
-    print_artifacts(artifacts)
+    for artifact in artifacts:
+        print_artifact(artifact)
 
     if errors:
         raise NonFatalError(errors)

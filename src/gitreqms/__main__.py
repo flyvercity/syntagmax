@@ -20,22 +20,26 @@ from gitreqms.extract import extract, get_available_extractors, extract_single
 from gitreqms.tree import build_tree
 from gitreqms.artifact import Artifact
 
+def print_artifact(artifact: Artifact, level: int):
+    indent = ' ' * level * 2
+    u.pprint(f'{indent}[cyan]{artifact.atype}[/cyan]: [green]{artifact.aid}[/green]')
+
+    for child in artifact.children.values():
+        print_artifact(child, level + 1)
+
 def process(params: Params, config: Config):
-    artifacts: Sequence[Artifact] = []
     errors: list[str] = []
     ex_artifacts, ex_errors = extract(params, config)
-    artifacts.extend(ex_artifacts)
     errors.extend(ex_errors)
-    b_artifacts, b_errors = build_tree(params, artifacts)
-    artifacts.extend(b_artifacts)
+    b_artifacts, b_errors = build_tree(params, ex_artifacts)
     errors.extend(b_errors)
 
     if errors:
         raise NonFatalError(errors)
     
     u.pprint('Top Level Artifacts:')
-    for a in artifacts:
-        u.pprint(f'[cyan]{a.atype}[/cyan]: [green]{a.aid}[/green]')
+    for a in b_artifacts:
+        print_artifact(a, 0)
 
 @click.group(help='RMS Entry Point')
 @click.pass_context

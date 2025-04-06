@@ -29,6 +29,7 @@ def build_tree(params: Params, artifacts: Sequence[Artifact]) -> tuple[Sequence[
 
         for ref, a in art_map.items():
             for pid in a.pids:
+                # TODO: Check if pid is in ansestors
                 if pid in current_level:
                     parent = current_level[pid]
                     parent.children[ref] = a
@@ -48,29 +49,5 @@ def build_tree(params: Params, artifacts: Sequence[Artifact]) -> tuple[Sequence[
         for pid in a.pids:
             if pid not in ansestors:
                 errors.append(f'Orphaned artifact: {a}')
-
-
-    while True:
-        found = False
-        print('.')
-
-        for a in artifacts:
-            for c in a.children.values():
-                if a.ref() not in c.ansestors:
-                    c.ansestors.add(a.ref())
-                    c.ansestors.update(a.ansestors)
-                    found = True
-
-                for ansester in a.ansestors:
-                    if ansester not in c.ansestors:
-                        c.ansestors.add(ansester)
-                        found = True
-
-        if not found:
-            break
-
-    for a in artifacts:
-        if a.ref() in a.ansestors:
-            errors.append(f'Circular reference: {a}')
 
     return list(top_level.values()), errors
