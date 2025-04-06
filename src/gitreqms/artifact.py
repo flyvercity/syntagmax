@@ -1,3 +1,8 @@
+# SPDX-License-Identifier: MIT
+
+# Author: Boris Resnick
+# Created: 2025-03-29
+
 class ARef:
     def __init__(self, atype: str, aid: str):
         self.atype: str = atype

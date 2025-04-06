@@ -1,3 +1,8 @@
+# SPDX-License-Identifier: MIT
+
+# Author: Boris Resnick
+# Created: 2025-03-29
+
 import logging as lg
 from pathlib import Path
 from typing import Sequence

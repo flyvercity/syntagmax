@@ -1,3 +1,8 @@
+# SPDX-License-Identifier: MIT
+
+# Author: Boris Resnick
+# Created: 2025-04-06
+
 import logging as lg
 from pathlib import Path
 
@@ -16,10 +21,8 @@ EXTRACTORS = {
     'obsidian': ObsidianExtractor
 }
 
-
 def get_available_extractors() -> Sequence[str]:
     return list(EXTRACTORS.keys())
-
 
 def print_artifacts(artifacts: Sequence[Artifact]):
     for artifact in artifacts:
@@ -29,7 +32,6 @@ def print_artifacts(artifacts: Sequence[Artifact]):
             f'[green]{artifact.aid}[/green]'
             f' {artifact.metastring()}'
         )
-
 
 def extract(params: Params, config: Config):
     artifacts: Sequence[Artifact] = []
@@ -53,7 +55,6 @@ def extract(params: Params, config: Config):
 
     return artifacts
     
-
 def extract_single(obj: Params, driver: str, file: Path):
     extractor = EXTRACTORS[driver](obj)
     artifacts, errors = extractor.extract_from_file(Path(file))

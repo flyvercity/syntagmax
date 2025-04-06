@@ -1,4 +1,8 @@
-''' Requirement Management System (RMS) CLI tool. '''
+# SPDX-License-Identifier: MIT
+
+# Author: Boris Resnick
+# Created: 2025-03-29
+# Description: Requirement Management System (RMS) CLI tool.
 
 import logging as lg
 import sys
