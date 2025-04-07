@@ -17,39 +17,21 @@ from gitreqms.model import StandardModel
 from gitreqms.errors import RMSException, NonFatalError
 from gitreqms.extract import extract, get_available_extractors, extract_single
 from gitreqms.tree import build_tree
-from gitreqms.artifact import ArtifactMap, ARef
-
-CONST_I_CHAR = '│'
-CONST_T_CHAR = '├─'
-CONST_L_CHAR = '└─'
-
-def print_artifact(artifacts: ArtifactMap, ref: ARef, indent: str ="", last: bool = True, top: bool = True):
-    artifact = artifacts[ref]
-    this_indent = indent + (CONST_L_CHAR if last else CONST_T_CHAR) if not top else ' '
-    u.pprint(f'{this_indent}[cyan]{artifact.atype}[/cyan]: [green]{artifact.aid}[/green]')
-
-    children = list(sorted(artifact.children, key=lambda c: c.aid))
-    indent += (CONST_I_CHAR if not last else ' ') + ' '
-
-    for child in children[:-1]:
-        print_artifact(artifacts, child, indent, False, False)
-
-    if children:
-        print_artifact(artifacts, children[-1], indent, True, False)
+from gitreqms.artifact import ARef
+from gitreqms.render import print_arttree
 
 def process(params: Params, config: Config):
     errors: list[str] = []
-    artifacts, ex_errors = extract(params, config)
-    errors.extend(ex_errors)
-    root, b_errors = build_tree(params, artifacts)
-    artifacts[root.ref()] = root
-    errors.extend(b_errors)
+    artifacts, e_errors = extract(params, config)
+    errors.extend(e_errors)
+    t_errors = build_tree(artifacts)
+    errors.extend(t_errors)
 
     if errors:
         raise NonFatalError(errors)
     
     u.pprint('Top Level Artifacts:')
-    print_artifact(artifacts, root.ref())
+    print_arttree(artifacts, ARef.root())
 
 @click.group(help='RMS Entry Point')
 @click.pass_context

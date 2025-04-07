@@ -23,6 +23,10 @@ class ARef:
 
     def __hash__(self) -> int:
         return hash((self.atype, self.aid))
+    
+    @staticmethod
+    def root() -> 'ARef':
+        return ARef('ROOT', 'ROOT')
 
 class Artifact:
     def __init__(self, location: str, atype: str, aid: str, pids: list[ARef] = []):

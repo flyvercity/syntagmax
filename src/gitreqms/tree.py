@@ -4,17 +4,26 @@
 # Created: 2025-04-06
 # Description: Builds a tree of artifacts.
 
-from gitreqms.artifact import ArtifactMap, Artifact
-from gitreqms.config import Params
+from gitreqms.artifact import ArtifactMap, Artifact, ARef
 
+MAX_TREE_DEPTH = 20
 
 class RootArtifact(Artifact):
     def __init__(self):
         super().__init__(atype='ROOT', aid='ROOT', location='ROOT')
         self.children = set()
 
+def gather_ansestors(artifacts: ArtifactMap, ref: ARef, depth: int = 0) -> str | None:
+    if depth > MAX_TREE_DEPTH:
+        return f'Circular reference detected with {artifacts[ref].aid}'
 
-def build_tree(params: Params, artifacts: ArtifactMap) -> tuple[RootArtifact, list[str]]:
+    for child in artifacts[ref].children:
+        artifacts[child].ansestors.add(ref)
+        return gather_ansestors(artifacts, child, depth + 1)
+
+    return None
+
+def build_tree(artifacts: ArtifactMap) -> list[str]:
     full_set  = set(artifacts.keys())
     errors: list[str] = []
 
@@ -31,4 +40,13 @@ def build_tree(params: Params, artifacts: ArtifactMap) -> tuple[RootArtifact, li
     for a in top_level.values():
         root.children.add(a.ref())
 
-    return root, errors
+    artifacts[root.ref()] = root
+
+    for ref in artifacts.keys():
+        err = gather_ansestors(artifacts, ref)
+
+        if err:
+            errors.append(err)
+            break
+
+    return errors

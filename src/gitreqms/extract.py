@@ -30,7 +30,7 @@ def print_artifact(artifact: Artifact):
         f'[cyan]{artifact.atype}[/cyan] :: '
         f'[green]{artifact.aid}[/green]'
         f' {artifact.metastring()}'
-        f' parents: {len(artifact.pids)}'
+        f' (parents: {len(artifact.pids)})'
     )
 
 def extract(params: Params, config: Config) -> tuple[dict[ARef, Artifact], list[str]]:
