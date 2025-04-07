@@ -19,6 +19,7 @@ from gitreqms.extract import extract, get_available_extractors, extract_single
 from gitreqms.tree import build_tree
 from gitreqms.artifact import ARef
 from gitreqms.render import print_arttree
+from gitreqms.analyse import analyse_tree
 
 def process(params: Params, config: Config):
     errors: list[str] = []
@@ -26,6 +27,8 @@ def process(params: Params, config: Config):
     errors.extend(e_errors)
     t_errors = build_tree(artifacts)
     errors.extend(t_errors)
+    a_errors = analyse_tree(params, artifacts)
+    errors.extend(a_errors)
 
     if errors:
         raise NonFatalError(errors)

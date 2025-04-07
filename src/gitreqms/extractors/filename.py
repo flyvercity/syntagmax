@@ -59,7 +59,7 @@ class FilenameExtractor(Extractor):
         atype = handle_split[0]
         aid = '-'.join(handle_split[1:])
 
-        if not model.isValidAType(atype):
+        if not model.is_valid_atype(atype):
             raise InvalidArtifactType(
                 f'{self.loglabel()} :: Invalid artifact type: {atype}'
             )
