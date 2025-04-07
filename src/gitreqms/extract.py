@@ -9,7 +9,7 @@ from pathlib import Path
 from gitreqms.extractors.text import TextExtractor
 from gitreqms.extractors.filename import FilenameExtractor
 from gitreqms.extractors.obsidian import ObsidianExtractor
-from gitreqms.artifact import Artifact
+from gitreqms.artifact import Artifact, ARef
 from gitreqms.config import Params, Config
 from gitreqms.utils import pprint
 from gitreqms.errors import NonFatalError
@@ -33,7 +33,7 @@ def print_artifact(artifact: Artifact):
         f' parents: {len(artifact.pids)}'
     )
 
-def extract(params: Params, config: Config) -> tuple[Sequence[Artifact], list[str]]:
+def extract(params: Params, config: Config) -> tuple[dict[ARef, Artifact], list[str]]:
     artifacts: Sequence[Artifact] = []
     errors: Sequence[str] = []
 
@@ -50,7 +50,8 @@ def extract(params: Params, config: Config) -> tuple[Sequence[Artifact], list[st
         for artifact in artifacts:
             print_artifact(artifact)
 
-    return artifacts, errors
+    artifact_map: dict[ARef, Artifact] = {a.ref(): a for a in artifacts}
+    return artifact_map, errors
     
 def extract_single(obj: Params, driver: str, file: Path):
     extractor = EXTRACTORS[driver](obj)

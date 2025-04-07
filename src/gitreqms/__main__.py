@@ -8,7 +8,6 @@ import logging as lg
 import sys
 from pathlib import Path
 import traceback
-from typing import Sequence
 
 import click
 
@@ -18,28 +17,39 @@ from gitreqms.model import StandardModel
 from gitreqms.errors import RMSException, NonFatalError
 from gitreqms.extract import extract, get_available_extractors, extract_single
 from gitreqms.tree import build_tree
-from gitreqms.artifact import Artifact
+from gitreqms.artifact import ArtifactMap, ARef
 
-def print_artifact(artifact: Artifact, level: int):
-    indent = ' ' * level * 2
-    u.pprint(f'{indent}[cyan]{artifact.atype}[/cyan]: [green]{artifact.aid}[/green]')
+CONST_I_CHAR = '│'
+CONST_T_CHAR = '├─'
+CONST_L_CHAR = '└─'
 
-    for child in artifact.children.values():
-        print_artifact(child, level + 1)
+def print_artifact(artifacts: ArtifactMap, ref: ARef, indent: str ="", last: bool = True, top: bool = True):
+    artifact = artifacts[ref]
+    this_indent = indent + (CONST_L_CHAR if last else CONST_T_CHAR) if not top else ' '
+    u.pprint(f'{this_indent}[cyan]{artifact.atype}[/cyan]: [green]{artifact.aid}[/green]')
+
+    children = list(sorted(artifact.children, key=lambda c: c.aid))
+    indent += (CONST_I_CHAR if not last else ' ') + ' '
+
+    for child in children[:-1]:
+        print_artifact(artifacts, child, indent, False, False)
+
+    if children:
+        print_artifact(artifacts, children[-1], indent, True, False)
 
 def process(params: Params, config: Config):
     errors: list[str] = []
-    ex_artifacts, ex_errors = extract(params, config)
+    artifacts, ex_errors = extract(params, config)
     errors.extend(ex_errors)
-    b_artifacts, b_errors = build_tree(params, ex_artifacts)
+    root, b_errors = build_tree(params, artifacts)
+    artifacts[root.ref()] = root
     errors.extend(b_errors)
 
     if errors:
         raise NonFatalError(errors)
     
     u.pprint('Top Level Artifacts:')
-    for a in b_artifacts:
-        print_artifact(a, 0)
+    print_artifact(artifacts, root.ref())
 
 @click.group(help='RMS Entry Point')
 @click.pass_context

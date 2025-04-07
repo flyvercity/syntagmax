@@ -4,50 +4,31 @@
 # Created: 2025-04-06
 # Description: Builds a tree of artifacts.
 
-import logging as lg
-from typing import Sequence
-
-from gitreqms.artifact import Artifact, ARef
+from gitreqms.artifact import ArtifactMap, Artifact
 from gitreqms.config import Params
 
-def build_tree(params: Params, artifacts: Sequence[Artifact]) -> tuple[Sequence[Artifact], list[str]]:
+
+class RootArtifact(Artifact):
+    def __init__(self):
+        super().__init__(atype='ROOT', aid='ROOT', location='ROOT')
+        self.children = set()
+
+
+def build_tree(params: Params, artifacts: ArtifactMap) -> tuple[RootArtifact, list[str]]:
+    full_set  = set(artifacts.keys())
     errors: list[str] = []
-    art_map: dict[ARef, Artifact] = {a.ref(): a for a in artifacts}
-    top_level = {a.ref(): a for a in artifacts if a.pids == []}
-    current_level = top_level
-    ansestors: set[ARef] = set()
 
-    while True:
-        found = False
-
-        lg.debug(f'Tree level with {len(current_level)} artifacts (all {len(art_map)} artifacts)')
-        for ref in current_level.keys():
-            ansestors.add(ref)
-            art_map.pop(ref)
-
-        next_level: dict[ARef, Artifact] = {}
-
-        for ref, a in art_map.items():
-            for pid in a.pids:
-                # TODO: Check if pid is in ansestors
-                if pid in current_level:
-                    parent = current_level[pid]
-                    parent.children[ref] = a
-                    next_level[ref] = a
-                    found = True
-
-        lg.debug(f'Next level with {len(next_level)} artifacts')
-        current_level = next_level
-
-        if not found:
-            break
-
-    if art_map:
-        errors.extend(list(f'Orphaned artifact: {a}' for a in art_map.values()))
-
-    for a in artifacts:
+    for a in artifacts.values():
         for pid in a.pids:
-            if pid not in ansestors:
-                errors.append(f'Orphaned artifact: {a}')
+            if pid not in full_set:
+                errors.append(f'Missing parent: {pid}')
+            else:
+                artifacts[pid].children.add(a.ref())
 
-    return list(top_level.values()), errors
+    top_level = {a.ref(): a for a in artifacts.values() if a.pids == []}
+    root = RootArtifact()
+
+    for a in top_level.values():
+        root.children.add(a.ref())
+
+    return root, errors

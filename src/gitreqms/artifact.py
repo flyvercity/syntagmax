@@ -30,7 +30,7 @@ class Artifact:
         self.atype: str = atype
         self.aid: str = aid
         self.pids: list[ARef] = pids
-        self.children: dict[ARef, Artifact] = {}
+        self.children: set[ARef] = set()
         self.ansestors: set[ARef] = set()
 
     def ref(self) -> ARef:
@@ -43,3 +43,5 @@ class Artifact:
 
     def __str__(self) -> str:
         return f'{self.atype}:{self.aid}@{self.location}'
+
+type ArtifactMap = dict[ARef, Artifact]
