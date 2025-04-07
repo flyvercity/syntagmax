@@ -39,9 +39,10 @@ def process(params: Params, config: Config):
 @click.group(help='RMS Entry Point')
 @click.pass_context
 @click.option('--verbose', is_flag=True, help='Verbose output')
-def rms(ctx: click.Context, verbose: bool):
-    ctx.obj = Params(verbose=verbose, model=StandardModel())
-    lg.basicConfig(level=lg.DEBUG if verbose else lg.INFO)
+@click.option('--suppress-required-children', is_flag=True, help='Suppress required children errors')
+def rms(ctx: click.Context, **kwargs):  # type: ignore
+    ctx.obj = Params(model=StandardModel(), **kwargs)  # type: ignore
+    lg.basicConfig(level=lg.DEBUG if kwargs['verbose'] else lg.INFO)
 
 @rms.command(help='Run full analysis of the project')
 @click.pass_obj

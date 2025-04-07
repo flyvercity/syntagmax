@@ -16,6 +16,7 @@ from gitreqms.model import IModel
 class Params(TypedDict):
     verbose: bool
     model: IModel
+    suppress_required_children: bool
 
 class InputRecord(TypedDict):
     record_base: Path
