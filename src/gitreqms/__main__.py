@@ -62,10 +62,10 @@ if __name__ == '__main__':
         rms()
 
     except NonFatalError as e:
-        u.pprint('[light red]Non-Fatal Errors Encountered[/light red]')
-
         for error in e.errors:
             u.pprint(f'[red]{error}[/red]')
+
+        u.pprint(f'[light red]Non-Fatal Errors Encountered: {len(e.errors)}[/light red]')
 
         sys.exit(1)
 

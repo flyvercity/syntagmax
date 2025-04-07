@@ -46,6 +46,6 @@ class Artifact:
         return ''
 
     def __str__(self) -> str:
-        return f'{self.atype}:{self.aid}@{self.location}'
+        return f'{self.atype}-{self.aid}@{self.location}'
 
 type ArtifactMap = dict[ARef, Artifact]
