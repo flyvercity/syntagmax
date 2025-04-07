@@ -26,10 +26,11 @@ def analyse_tree(params: Params, artifacts: ArtifactMap) -> list[str]:
         errors.append('Must have exactly one root artifact')
 
     # Check for allowed children
-    for a in artifacts.values():
-        for c in a.children:
-            if not model.allowed_child(a.atype, c.atype):
-                errors.append(f'Invalid child {c.atype} for {a} at {artifacts[c]}')
+    if not params['suppress_unexpected_children']:
+        for a in artifacts.values():
+            for c in a.children:
+                if not model.allowed_child(a.atype, c.atype):
+                    errors.append(f'Invalid child {c.atype} for {a} at {artifacts[c]}')
 
     # Check for required children
     if not params['suppress_required_children']:

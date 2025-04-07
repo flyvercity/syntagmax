@@ -33,7 +33,7 @@ def build_tree(artifacts: ArtifactMap) -> list[str]:
     for a in artifacts.values():
         for pid in a.pids:
             if pid not in full_set:
-                errors.append(f'Missing parent: {pid}')
+                errors.append(f'Missing parent: {pid} at {a}')
             else:
                 artifacts[pid].children.add(a.ref())
 
