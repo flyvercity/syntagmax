@@ -2,13 +2,12 @@
 
 # Author: Boris Resnick
 # Created: 2025-03-29
+# Description: Error classes for gitreqms.
+
 class RMSException(Exception):
     pass
 
 class InvalidArtifactIdentifier(RMSException):
-    pass
-
-class InvalidArtifactType(RMSException):
     pass
 
 class NonFatalError(RMSException):

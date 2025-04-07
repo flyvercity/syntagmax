@@ -11,11 +11,10 @@ import json
 
 import click
 
-from gitreqms.model import IModel
+from gitreqms.model import IModel, StandardModel
 
 class Params(TypedDict):
     verbose: bool
-    model: IModel
     suppress_unexpected_children: bool
     suppress_required_children: bool
 
@@ -27,7 +26,9 @@ class InputRecord(TypedDict):
 
 class Config:
     def __init__(self, params: Params, config_filename: Path):
+        self.params = params
         self._input_records: list[InputRecord] = []
+        self.model: IModel = StandardModel()
 
         try:
             config_file = Path(config_filename).resolve()

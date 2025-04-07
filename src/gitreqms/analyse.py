@@ -5,11 +5,11 @@
 # Description: Analyse a tree of artifacts.
 
 from gitreqms.artifact import ArtifactMap
-from gitreqms.config import Params
+from gitreqms.config import Config
 
-def analyse_tree(params: Params, artifacts: ArtifactMap) -> list[str]:
+def analyse_tree(config: Config, artifacts: ArtifactMap) -> list[str]:
     errors: list[str] = []
-    model = params['model']
+    model = config.model
 
     # Check for legit types
     for a in artifacts.values():
@@ -26,14 +26,14 @@ def analyse_tree(params: Params, artifacts: ArtifactMap) -> list[str]:
         errors.append('Must have exactly one root artifact')
 
     # Check for allowed children
-    if not params['suppress_unexpected_children']:
+    if not config.params['suppress_unexpected_children']:
         for a in artifacts.values():
             for c in a.children:
                 if not model.allowed_child(a.atype, c.atype):
                     errors.append(f'Invalid child {c.atype} for {a} at {artifacts[c]}')
 
     # Check for required children
-    if not params['suppress_required_children']:
+    if not config.params['suppress_required_children']:
         for a in artifacts.values():
             for c in model.required_children(a.atype):
                 if c not in map(lambda c: c.atype, a.children):

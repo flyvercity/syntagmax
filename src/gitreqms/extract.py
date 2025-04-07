@@ -10,10 +10,11 @@ from gitreqms.extractors.text import TextExtractor
 from gitreqms.extractors.filename import FilenameExtractor
 from gitreqms.extractors.obsidian import ObsidianExtractor
 from gitreqms.artifact import Artifact, ARef
-from gitreqms.config import Params, Config
+from gitreqms.config import Config
 from gitreqms.utils import pprint
 from gitreqms.errors import NonFatalError
 from typing import Sequence
+from gitreqms.config import Params
 
 EXTRACTORS = {
     'text': TextExtractor,
@@ -33,18 +34,18 @@ def print_artifact(artifact: Artifact):
         f' (parents: {len(artifact.pids)})'
     )
 
-def extract(params: Params, config: Config) -> tuple[dict[ARef, Artifact], list[str]]:
+def extract(config: Config) -> tuple[dict[ARef, Artifact], list[str]]:
     artifacts: Sequence[Artifact] = []
     errors: Sequence[str] = []
 
     for record in config.input_records():
         lg.debug(f'Processing record: {record["record_base"]} ({record["driver"]})')
-        extractor = EXTRACTORS[record['driver']](params)
+        extractor = EXTRACTORS[record['driver']](config.params)
         record_artifacts, record_errors = extractor.extract(record)
         artifacts.extend(record_artifacts)
         errors.extend(record_errors)
 
-    if params['verbose']:
+    if config.params['verbose']:
         lg.debug('Listing raw artifacts:')
 
         for artifact in artifacts:
@@ -53,8 +54,8 @@ def extract(params: Params, config: Config) -> tuple[dict[ARef, Artifact], list[
     artifact_map: dict[ARef, Artifact] = {a.ref(): a for a in artifacts}
     return artifact_map, errors
     
-def extract_single(obj: Params, driver: str, file: Path):
-    extractor = EXTRACTORS[driver](obj)
+def extract_single(params: Params, driver: str, file: Path):
+    extractor = EXTRACTORS[driver](params)
     artifacts, errors = extractor.extract_from_file(Path(file))
 
     for artifact in artifacts:

@@ -13,7 +13,6 @@ import click
 
 import gitreqms.utils as u
 from gitreqms.config import Config, Params
-from gitreqms.model import StandardModel
 from gitreqms.errors import RMSException, NonFatalError
 from gitreqms.extract import extract, get_available_extractors, extract_single
 from gitreqms.tree import build_tree
@@ -21,13 +20,13 @@ from gitreqms.artifact import ARef
 from gitreqms.render import print_arttree
 from gitreqms.analyse import analyse_tree
 
-def process(params: Params, config: Config):
+def process(config: Config):
     errors: list[str] = []
-    artifacts, e_errors = extract(params, config)
+    artifacts, e_errors = extract(config)
     errors.extend(e_errors)
     t_errors = build_tree(artifacts)
     errors.extend(t_errors)
-    a_errors = analyse_tree(params, artifacts)
+    a_errors = analyse_tree(config, artifacts)
     errors.extend(a_errors)
 
     if errors:
@@ -42,7 +41,7 @@ def process(params: Params, config: Config):
 @click.option('--suppress-unexpected-children', is_flag=True, help='Suppress unexpected children type errors')
 @click.option('--suppress-required-children', is_flag=True, help='Suppress required children errors')
 def rms(ctx: click.Context, **kwargs):  # type: ignore
-    ctx.obj = Params(model=StandardModel(), **kwargs)  # type: ignore
+    ctx.obj = Params(**kwargs)  # type: ignore
     lg.basicConfig(level=lg.DEBUG if kwargs['verbose'] else lg.INFO)
 
 @rms.command(help='Run full analysis of the project')
@@ -50,7 +49,7 @@ def rms(ctx: click.Context, **kwargs):  # type: ignore
 @click.argument('config', type=click.Path(exists=True))
 def analyze(obj: Params, config: Path):
     configurator = Config(obj, config)
-    process(obj, configurator)
+    process(configurator)
 
 @rms.command(help="Analyze a specific file")
 @click.pass_obj
