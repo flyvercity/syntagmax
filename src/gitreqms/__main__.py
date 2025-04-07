@@ -32,14 +32,17 @@ def process(config: Config):
     if errors:
         raise NonFatalError(errors)
     
-    u.pprint('Top Level Artifacts:')
     print_arttree(artifacts, ARef.root())
 
 @click.group(help='RMS Entry Point')
 @click.pass_context
 @click.option('--verbose', is_flag=True, help='Verbose output')
-@click.option('--suppress-unexpected-children', is_flag=True, help='Suppress unexpected children type errors')
-@click.option('--suppress-required-children', is_flag=True, help='Suppress required children errors')
+@click.option(
+    '--suppress-unexpected-children', is_flag=True, help='Suppress unexpected children type errors'
+)
+@click.option(
+    '--suppress-required-children', is_flag=True, help='Suppress required children errors'
+)
 def rms(ctx: click.Context, **kwargs):  # type: ignore
     ctx.obj = Params(**kwargs)  # type: ignore
     lg.basicConfig(level=lg.DEBUG if kwargs['verbose'] else lg.INFO)
