@@ -176,11 +176,4 @@ class TextExtractor(Extractor):
         '''
 
     def _format_location(self, filepath: Path, line: int) -> str:
-        absolute_path = filepath.absolute()
-        cmd = Path.cwd()
-
-        if absolute_path.anchor != cmd.anchor:
-            return str(absolute_path)
-
-        relpath = str(absolute_path.relative_to(cmd, walk_up=True))
-        return f'{relpath}:{line}'
+        return f'{self._format_file_location(filepath)}:{line}'

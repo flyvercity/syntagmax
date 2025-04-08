@@ -33,3 +33,17 @@ class Extractor(ABC):
                 lg.debug(f'Successfully processed file: {filepath}')
 
         return artifacts, errors
+
+    def _format_file_location(self, filepath: Path) -> str:
+        names: list[str] = ['...']
+        parents = filepath.parents
+
+        if len(parents) >= 2:
+            names.append(parents[1].name)
+
+        if len(parents) >= 1:
+            names.append(parents[0].name)
+
+        names.append(filepath.name)
+
+        return '/'.join(names)

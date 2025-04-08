@@ -13,7 +13,7 @@ class ARef:
         self.aid: str = aid
 
     def __str__(self) -> str:
-        return f'{self.atype}:{self.aid}'
+        return f'{self.atype}-{self.aid}'
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, ARef):

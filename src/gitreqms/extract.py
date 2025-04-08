@@ -55,7 +55,7 @@ def extract(config: Config) -> tuple[dict[ARef, Artifact], list[str]]:
 
     for a in artifacts:
         if a.ref() in artifact_map:
-            errors.append(f'Duplicate artifact: {a}')
+            errors.append(f'Duplicate artifact: {a} replaces {artifact_map[a.ref()]}')
         else:
             artifact_map[a.ref()] = a
 

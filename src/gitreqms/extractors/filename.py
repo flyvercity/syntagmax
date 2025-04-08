@@ -58,4 +58,5 @@ class FilenameExtractor(Extractor):
         atype = handle_split[0]
         aid = '-'.join(handle_split[1:])
 
-        return [self.create_artifact(str(filepath), atype, aid, description)], []
+        location = self._format_file_location(filepath)
+        return [self.create_artifact(location, atype, aid, description)], []
