@@ -51,7 +51,14 @@ def extract(config: Config) -> tuple[dict[ARef, Artifact], list[str]]:
         for artifact in artifacts:
             print_artifact(artifact)
 
-    artifact_map: dict[ARef, Artifact] = {a.ref(): a for a in artifacts}
+    artifact_map: dict[ARef, Artifact] = {}
+
+    for a in artifacts:
+        if a.ref() in artifact_map:
+            errors.append(f'Duplicate artifact: {a}')
+        else:
+            artifact_map[a.ref()] = a
+
     return artifact_map, errors
     
 def extract_single(params: Params, driver: str, file: Path):
