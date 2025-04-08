@@ -27,6 +27,7 @@ from gitreqms.errors import RMSException
 class ValidationError(RMSException):
     pass
 
+# TODO: Remove artifact subclassing
 class TextArtifact(base.Artifact):
     def __init__(self, location: str, atype: str, aid: str, pids: list[base.ARef] = []):
         super().__init__(location, atype, aid, pids)

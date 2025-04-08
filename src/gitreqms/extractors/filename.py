@@ -38,7 +38,7 @@ class FilenameExtractor(Extractor):
         lg.debug(f'Processing blob file: {filepath}')
 
         filename = filepath.stem
-        filename_split = filename.split(' ', 1)
+        filename_split = filename.split(' ')
 
         if len(filename_split) < 1:
             raise InvalidArtifactIdentifier(

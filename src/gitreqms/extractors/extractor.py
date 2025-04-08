@@ -3,7 +3,6 @@
 # Author: Boris Resnick
 # Created: 2025-03-29
 
-from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Sequence
 import logging as lg
@@ -11,11 +10,8 @@ import logging as lg
 from gitreqms.config import InputRecord
 from gitreqms.artifact import Artifact
 
-
-class Extractor(ABC):
-    @abstractmethod
-    def extract_from_file(self, filepath: Path) -> tuple[Sequence[Artifact], list[str]]:
-        pass
+class Extractor:
+    def extract_from_file(self, filepath: Path) -> tuple[Sequence[Artifact], list[str]]: ...
 
     def extract(self, record: InputRecord) -> tuple[Sequence[Artifact], list[str]]:
         errors : list[str] = []
