@@ -6,17 +6,13 @@
 from pathlib import Path
 import tomllib
 import logging as lg
-from typing import TypedDict
+from typing import TypedDict, Any
 import json
 
 import click
 
-from gitreqms.model import IModel, StandardModel
-
-class Params(TypedDict):
-    verbose: bool
-    suppress_unexpected_children: bool
-    suppress_required_children: bool
+from gitreqms.params import Params
+from gitreqms.model import IModel, build_model
 
 class InputRecord(TypedDict):
     record_base: Path
@@ -28,8 +24,10 @@ class Config:
     def __init__(self, params: Params, config_filename: Path):
         self.params = params
         self._input_records: list[InputRecord] = []
-        self.model: IModel = StandardModel()
+        self._read_config(config_filename)
+        self.model: IModel = build_model(self.params)
 
+    def _read_config(self, config_filename: Path):
         try:
             config_file = Path(config_filename).resolve()
             lg.info(f'Using configuration file: {config_file}')
@@ -37,7 +35,7 @@ class Config:
             root_dir = config_file.parent
             config = tomllib.loads(config_file.read_text())
 
-            if params['verbose']:
+            if self.params['verbose']:
                 lg.debug(f'Configuration file content: {config}')
                 click.echo(json.dumps(config, indent=4))
 
@@ -48,53 +46,55 @@ class Config:
 
             self._base_dir = Path(root_dir, base).resolve()
             lg.debug(f'Base directory: {self._base_dir}')
-
-            input = config.get('input')
-
-            if not input:
-                raise UserWarning('Missing input section')
-
-            for input_record in input:
-                path = input_record.get('path')
-                record_base = Path(self._base_dir, path)
-
-                if not path:
-                    raise UserWarning('Missing `input.path` parameter')
-
-                subdir = input_record.get('subdir')
-
-                if subdir:
-                    record_subdir = Path(record_base, subdir)
-                else:
-                    record_subdir = record_base
-
-                driver = input_record.get('driver')
-
-                if not driver:
-                    raise UserWarning('Missing `input.driver` parameter')
-
-                filter = input_record.get('filter')
-                glob = filter or '**/*'
-
-                if not filter and driver == 'obsidian':
-                    lg.info(f'Using default filter (**/*.md) for {path}')
-                    glob = '**/*.md'
-
-                lg.debug(f'Adding input files from {record_subdir} with filter {glob}')
-                filepaths = Path(record_subdir, Path(record_subdir)).glob(glob)
-
-                self._input_records.append(
-                    InputRecord(
-                        record_base=record_base,
-                        record_subdir=record_subdir,
-                        filepaths=list(filepaths),
-                        driver=driver
-                    )
-                )
+            self._read_input_records(config)
 
         except Exception as exc:
             lg.error(f'Error during configuration: {exc}')
             raise UserWarning('Bad configuration file')
+            
+    def _read_input_records(self, config: dict[str, Any]):
+        input = config.get('input')
+
+        if not input:
+            raise UserWarning('Missing input section')
+
+        for input_record in input:
+            path = input_record.get('path')
+            record_base = Path(self._base_dir, path)
+
+            if not path:
+                raise UserWarning('Missing `input.path` parameter')
+
+            subdir = input_record.get('subdir')
+
+            if subdir:
+                record_subdir = Path(record_base, subdir)
+            else:
+                record_subdir = record_base
+
+            driver = input_record.get('driver')
+
+            if not driver:
+                raise UserWarning('Missing `input.driver` parameter')
+
+            filter = input_record.get('filter')
+            glob = filter or '**/*'
+
+            if not filter and driver == 'obsidian':
+                lg.info(f'Using default filter (**/*.md) for {path}')
+                glob = '**/*.md'
+
+            lg.debug(f'Adding input files from {record_subdir} with filter {glob}')
+            filepaths = Path(record_subdir, Path(record_subdir)).glob(glob)
+
+            self._input_records.append(
+                InputRecord(
+                    record_base=record_base,
+                    record_subdir=record_subdir,
+                    filepaths=list(filepaths),
+                    driver=driver
+                )
+            )
 
         for input_record in self._input_records:
             lg.info(f'Input record: {input_record["record_subdir"]}')

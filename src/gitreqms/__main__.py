@@ -43,6 +43,9 @@ def process(config: Config):
 @click.option(
     '--suppress-required-children', is_flag=True, help='Suppress required children errors'
 )
+@click.option(
+    '--allow-top-level-arch', is_flag=True, help='Allow top level ARCH artifacts'
+)
 def rms(ctx: click.Context, **kwargs):  # type: ignore
     ctx.obj = Params(**kwargs)  # type: ignore
     lg.basicConfig(level=lg.DEBUG if kwargs['verbose'] else lg.INFO)

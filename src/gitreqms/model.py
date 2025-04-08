@@ -4,6 +4,7 @@
 # Created: 2025-04-06
 # Description: Interface and a simple software-oriented model for requirements tree.
 
+from gitreqms.params import Params
 class IModel():
     def is_valid_atype(self, atype: str) -> bool: ...
     def is_top_level_atype(self, atype: str) -> bool: ...
@@ -12,23 +13,25 @@ class IModel():
 
 class StandardModel(IModel): 
     '''This is the simplest software-only model.'''
-    STANDARD_ATYPES = ['ROOT', 'REQ', 'ARCH', 'VALID', 'SRC', 'TEST']
-    TOP_LEVEL_ATYPES = ['REQ']
+
+    def __init__(self):
+        self.standard_atypes = ['ROOT', 'REQ', 'ARCH', 'VALID', 'SRC', 'TEST']
+        self.top_level_atypes = ['REQ']
 
     def is_valid_atype(self, atype: str) -> bool:
-        return atype in StandardModel.STANDARD_ATYPES
+        return atype in self.standard_atypes
 
     def is_top_level_atype(self, atype: str) -> bool:
-        return atype in StandardModel.TOP_LEVEL_ATYPES
+        return atype in self.top_level_atypes
 
     def allowed_child(self, atype: str, child_atype: str) -> bool:
         match atype:
             case 'ROOT':
-                allowed_children = StandardModel.TOP_LEVEL_ATYPES
+                allowed_children = self.top_level_atypes
             case 'REQ':
-                allowed_children = ['ARCH', 'SRC', 'TEST', 'VALID']
+                allowed_children = ['ARCH', 'SRC', 'VALID']
             case 'ARCH':
-                allowed_children = ['SRC', 'TEST']
+                allowed_children = ['SRC']
             case 'VALID':
                 allowed_children = ['TEST']
             case 'SRC':
@@ -50,3 +53,12 @@ class StandardModel(IModel):
                 return ['TEST']
             case _:
                 return []
+
+
+def build_model(params: Params) -> IModel:
+    model = StandardModel()
+
+    if params['allow_top_level_arch']:
+        model.top_level_atypes.append('ARCH')
+
+    return model
