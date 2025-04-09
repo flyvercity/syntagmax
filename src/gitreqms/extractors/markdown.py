@@ -7,7 +7,6 @@
 import yaml
 from typing import Generator
 from pathlib import Path
-from typing import Sequence
 
 from gitreqms.extractors.extractor import Extractor, ExtractorResult
 from gitreqms.config import Params
@@ -15,15 +14,19 @@ from gitreqms.artifact import ArtifactBuilder, Artifact
 
 class MarkdownExtractor(Extractor):
     def __init__(self, params: Params):
-        self._params = params
+        self._params: Params = params
 
     def driver(self) -> str:
         return 'markdown'
 
-    def extract_from_file(self, filepath: Path) -> tuple[Sequence[Artifact], list[str]]:
-        markdown = filepath.read_text()
-        location = self._format_file_location(filepath)
-        return self._extract_from_markdown(location, markdown)
+    def extract_from_file(self, filepath: Path) -> ExtractorResult:
+        try:
+            markdown = filepath.read_text()
+            location = self._format_file_location(filepath)
+            return self._extract_from_markdown(location, markdown)
+        except Exception as e:
+            message = f'Error extracting from {filepath}: {e}'
+            return [], [message]
 
     def _extract_from_markdown(self, location: str, markdown: str) -> ExtractorResult:
         artifacts: list[Artifact] = []
@@ -62,7 +65,7 @@ class MarkdownExtractor(Extractor):
         return artifacts, errors
 
     def _next_code_block(self, lines: list[str]) -> Generator[list[str]]:
-        block: list[str] = []
+        block: list[str] | None = None
         capture = False
 
         for line in lines:
@@ -72,8 +75,14 @@ class MarkdownExtractor(Extractor):
                 
             if line.startswith('```'):
                 capture = False
-                yield block
-                block = []
+
+                if block:
+                    yield block
+
+                block = None
 
             if capture:
+                if block is None:
+                    block = []
+
                 block.append(line)

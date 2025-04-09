@@ -9,6 +9,8 @@ from pathlib import Path
 from gitreqms.extractors.text import TextExtractor
 from gitreqms.extractors.filename import FilenameExtractor
 from gitreqms.extractors.obsidian import ObsidianExtractor
+from gitreqms.extractors.markdown import MarkdownExtractor
+from gitreqms.extractors.ipynb import IPynbExtractor
 from gitreqms.artifact import Artifact, ARef
 from gitreqms.config import Config
 from gitreqms.utils import pprint
@@ -19,7 +21,9 @@ from gitreqms.config import Params
 EXTRACTORS = {
     'text': TextExtractor,
     'filename': FilenameExtractor,
-    'obsidian': ObsidianExtractor
+    'obsidian': ObsidianExtractor,
+    'markdown': MarkdownExtractor,
+    'ipynb': IPynbExtractor
 }
 
 def get_available_extractors() -> Sequence[str]:

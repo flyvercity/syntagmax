@@ -20,6 +20,13 @@ class InputRecord(TypedDict):
     filepaths: list[Path]
     driver: str
 
+
+DEFAULT_FILTERS = {
+    'obsidian': '**/*.md',
+    'ipynb': '**/*.ipynb',
+    'markdown': '**/*.md'
+} 
+
 class Config:
     def __init__(self, params: Params, config_filename: Path):
         self.params = params
@@ -80,9 +87,9 @@ class Config:
             filter = input_record.get('filter')
             glob = filter or '**/*'
 
-            if not filter and driver == 'obsidian':
-                lg.info(f'Using default filter (**/*.md) for {path}')
-                glob = '**/*.md'
+            if not filter and driver in DEFAULT_FILTERS:
+                lg.info(f'Using default filter ({DEFAULT_FILTERS[driver]}) for {path}')
+                glob = DEFAULT_FILTERS[driver]
 
             lg.debug(f'Adding input files from {record_subdir} with filter {glob}')
             filepaths = Path(record_subdir, Path(record_subdir)).glob(glob)
