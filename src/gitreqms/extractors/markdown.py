@@ -42,25 +42,40 @@ class MarkdownExtractor(Extractor):
             if not metadata:
                 continue
 
-            if artifacts:
-                errors.append(f'Multiple artifacts found at {location}')
-                continue
+            try:
+                if artifacts:
+                    errors.append(f'Multiple artifacts found at {location}')
+                    continue
 
-            builder = ArtifactBuilder(driver=self.driver(), location=location)
+                builder = ArtifactBuilder(driver=self.driver(), location=location)
+                
+                if handle := metadata.get('id'):
+                    if not isinstance(handle, str):
+                        errors.append(f'Invalid handle: {handle}')
+                        continue
 
-            if handle := metadata.get('id'):
-                [atype, aid] = self._split_handle(handle)
-                builder.add_id(aid, atype)
+                    [atype, aid] = self._split_handle(handle)
+                    builder.add_id(aid, atype)
 
-            if pids := metadata.get('pid'):
-                for pid in pids:
-                    [atype, aid] = self._split_handle(pid)
-                    builder.add_pid(aid, atype)
+                if pids := metadata.get('pid'):
+                    if not isinstance(pids, list):
+                        errors.append(f'Invalid PIDs: {pids}')
+                        continue
 
-            if desc := metadata.get('desc'):
-                builder.add_desc(desc)
+                    for pid in pids:  # type: ignore
+                        if not isinstance(pid, str):
+                            errors.append(f'Invalid PID: {pid}')
+                            continue
 
-            artifacts.append(builder.build())
+                        [atype, aid] = self._split_handle(pid)
+                        builder.add_pid(aid, atype)
+
+                if desc := metadata.get('desc'):
+                    builder.add_desc(desc)
+
+                artifacts.append(builder.build())
+            except Exception as e:
+                errors.append(f'Error extracting from {location}: {e}')
 
         return artifacts, errors
 

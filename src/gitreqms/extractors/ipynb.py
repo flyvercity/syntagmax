@@ -33,15 +33,16 @@ class IPynbExtractor(MarkdownExtractor):
                 if cell['cell_type'] == 'markdown':
                     markdown = ''.join(cell['source'])
                     cell_artifacts, cell_errors = self._extract_from_markdown(location, markdown)
-                        
-                    # NB: allowing only one artifact per file
-                    if not artifacts:
-                        artifacts.extend(cell_artifacts)
-                    else:
-                        error = f'Multiple artifacts found in {location}'
-                        errors.append(error)
-
                     errors.extend(cell_errors)
+
+                    if cell_artifacts:
+                        # NB: allowing only one artifact per file
+                        if not artifacts:
+                            artifacts.extend(cell_artifacts)
+                        else:
+                            error = f'Multiple artifacts found in {location}'
+                            errors.append(error)
+
 
             return artifacts, errors
 
