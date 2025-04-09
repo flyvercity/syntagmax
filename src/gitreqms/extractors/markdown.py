@@ -1,3 +1,9 @@
+# SPDX-License-Identifier: MIT
+
+# Author: Boris Resnick
+# Created: 2025-04-06
+# Description: Extracts artifacts from markdown files.
+
 import yaml
 from typing import Generator
 

@@ -10,7 +10,10 @@ MAX_TREE_DEPTH = 20
 
 class RootArtifact(Artifact):
     def __init__(self):
-        super().__init__(atype='ROOT', aid='ROOT', location='ROOT')
+        super().__init__()
+        self.atype = 'ROOT'
+        self.aid = 'ROOT'
+        self.location = 'ROOT'
         self.children = set()
 
 def gather_ansestors(artifacts: ArtifactMap, ref: ARef, depth: int = 0) -> str | None:

@@ -27,7 +27,7 @@ def get_available_extractors() -> Sequence[str]:
 
 def print_artifact(artifact: Artifact):
     pprint(
-        f'[magenta]{artifact.driver()}[/magenta] :: '
+        f'[magenta]{artifact.driver}[/magenta] :: '
         f'[cyan]{artifact.atype}[/cyan] :: '
         f'[green]{artifact.aid}[/green]'
         f' {artifact.metastring()}'

@@ -11,6 +11,8 @@ from gitreqms.config import InputRecord
 from gitreqms.artifact import Artifact
 
 class Extractor:
+    def driver(self) -> str: ...
+
     def extract_from_file(self, filepath: Path) -> tuple[Sequence[Artifact], list[str]]: ...
 
     def extract(self, record: InputRecord) -> tuple[Sequence[Artifact], list[str]]:

@@ -2,6 +2,7 @@
 
 # Author: Boris Resnick
 # Created: 2025-04-06
+# Description: Extracts artifacts from text files (primarily, source code).
 
 import logging as lg
 from pathlib import Path
@@ -20,23 +21,8 @@ from pyparsing import (
 )
 
 from gitreqms.config import Params
-import gitreqms.artifact as base
+from gitreqms.artifact import ArtifactBuilder, Artifact, ValidationError
 from gitreqms.extractors.extractor import Extractor
-from gitreqms.errors import RMSException
-
-class ValidationError(RMSException):
-    pass
-
-# TODO: Remove artifact subclassing
-class TextArtifact(base.Artifact):
-    def __init__(self, location: str, atype: str, aid: str, pids: list[base.ARef] = []):
-        super().__init__(location, atype, aid, pids)
-
-    def driver(self) -> str:
-        return 'text'
-
-    def metastring(self) -> str:
-        return ''
 
 class Ref:
     atype: str
@@ -87,44 +73,15 @@ Section = (Begin + Header + HeaderSkip + BodyStart + BodySkip + End).set_parse_a
     lambda t: t
 )
 
-class ArtifactBuilder:
-    def __init__(self, location: str):
-        self.location: str = location
-        self.aid: str | None = None
-        self.atype: str | None = None
-        self.pids: list[base.ARef] = []
-
-    def add_pid(self, pid: str, ptype: str):
-        self.pids.append(base.ARef(ptype, pid))
-        return self
-
-    def add_id(self, aid: str, atype: str):
-        if self.aid is not None:
-            raise ValidationError(self._build_error('Duplicate AID'))
-
-        self.aid = aid
-        self.atype = atype
-        return self
-
-    def _build_error(self, message: str) -> str:
-        return f'Driver "text": {self.location}: {message}'
-
-    def build(self) -> base.Artifact:
-        if self.atype is None:
-            raise ValidationError(self._build_error('AType is required'))
-
-        if self.aid is None:
-            raise ValidationError(self._build_error('AID is required'))
-
-        return TextArtifact(self.location, str(self.atype), str(self.aid), self.pids)
-
-
 class TextExtractor(Extractor):
     def __init__(self, params: Params):
         self._params = params
 
-    def extract_from_file(self, filepath: Path) -> tuple[Sequence[base.Artifact], list[str]]:
-        artifacts: Sequence[base.Artifact] = []
+    def driver(self) -> str:
+        return 'text'
+
+    def extract_from_file(self, filepath: Path) -> tuple[Sequence[Artifact], list[str]]:
+        artifacts: Sequence[Artifact] = []
         errors : list[str] = []
         text = filepath.read_text()
         matches = Begin.scanString(text)
@@ -139,7 +96,7 @@ class TextExtractor(Extractor):
             
             try:
                 section: list[IdRef | PidRef] = Section.parse_string(remaining_string)  # type: ignore
-                builder = ArtifactBuilder(location)
+                builder = ArtifactBuilder('text', location)
 
                 for item in section:
                     if isinstance(item, IdRef):
