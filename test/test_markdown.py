@@ -1,4 +1,4 @@
-from gitreqms.extractors.markdown import extract_from_markdown
+from gitreqms.extractors.markdown import MarkdownExtractor
 
 MARKDOWN = '''
 
@@ -14,7 +14,9 @@ Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor i
 ```yaml
 gitreqms:
   id: VALID-REQ-KC-002
-  pid: REQ-KC-002
+  pid:
+    - REQ-KC-002
+    - REQ-KC-003
   desc: TKM-list validation
 ```
 
@@ -31,6 +33,16 @@ someotheryaml:
 
 
 def test_extract_from_markdown():
-    artifact = extract_from_markdown(MARKDOWN)
-    print(artifact)
-    assert False
+    extractor = MarkdownExtractor({})  # type: ignore
+    artifacts, errors = extractor._extract_from_markdown('test', MARKDOWN)  # type: ignore
+    print(artifacts)
+    print(errors)
+    assert len(artifacts) == 1
+    assert len(errors) == 0
+    artifact = artifacts[0]
+    assert artifact.atype == 'VALID'
+    assert artifact.aid == 'REQ-KC-002'
+    assert artifact.desc == 'TKM-list validation'
+    assert len(artifact.pids) == 2
+    assert artifact.pids[0].aid == 'KC-002'
+    assert artifact.pids[1].aid == 'KC-003'

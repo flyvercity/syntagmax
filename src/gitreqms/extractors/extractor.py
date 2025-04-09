@@ -45,3 +45,8 @@ class Extractor:
         names.append(filepath.name)
 
         return '/'.join(names)
+
+    def _split_handle(self, handle: str) -> list[str]:
+        return handle.split('-', 1)
+
+type ExtractorResult = tuple[Sequence[Artifact], list[str]]

@@ -22,7 +22,7 @@ from pyparsing import (
 
 from gitreqms.config import Params
 from gitreqms.artifact import ArtifactBuilder, Artifact, ValidationError
-from gitreqms.extractors.extractor import Extractor
+from gitreqms.extractors.extractor import Extractor, ExtractorResult
 
 class Ref:
     atype: str
@@ -80,7 +80,7 @@ class TextExtractor(Extractor):
     def driver(self) -> str:
         return 'text'
 
-    def extract_from_file(self, filepath: Path) -> tuple[Sequence[Artifact], list[str]]:
+    def extract_from_file(self, filepath: Path) -> ExtractorResult:
         artifacts: Sequence[Artifact] = []
         errors : list[str] = []
         text = filepath.read_text()
