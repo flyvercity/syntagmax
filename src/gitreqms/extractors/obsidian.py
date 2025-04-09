@@ -2,9 +2,10 @@
 
 # Author: Boris Resnick
 # Created: 2025-04-06
+# Description: Extracts artifacts from Obsidian files
 
-from gitreqms.extractors.filename import FilenameExtractor
+from gitreqms.extractors.markdown import MarkdownExtractor
 
-class ObsidianExtractor(FilenameExtractor):
+class ObsidianExtractor(MarkdownExtractor):
     def driver(self) -> str:
         return 'obsidian'
