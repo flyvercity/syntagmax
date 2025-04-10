@@ -11,10 +11,12 @@ import logging as lg
 from gitreqms.config import InputRecord
 from gitreqms.artifact import Artifact
 
+type ExtractorResult = tuple[Sequence[Artifact], list[str]]
+
 class Extractor:
     def driver(self) -> str: ...
 
-    def extract_from_file(self, filepath: Path) -> tuple[Sequence[Artifact], list[str]]: ...
+    def extract_from_file(self, filepath: Path) -> ExtractorResult: ...
 
     def extract(self, record: InputRecord) -> tuple[Sequence[Artifact], list[str]]:
         errors : list[str] = []
@@ -49,5 +51,3 @@ class Extractor:
 
     def _split_handle(self, handle: str) -> list[str]:
         return handle.split('-', 1)
-
-type ExtractorResult = tuple[Sequence[Artifact], list[str]]

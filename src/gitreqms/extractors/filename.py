@@ -11,7 +11,6 @@ from gitreqms.config import Params
 from gitreqms.artifact import ArtifactBuilder
 from gitreqms.extractors.extractor import Extractor, ExtractorResult
 
-
 class FilenameExtractor(Extractor):
     def __init__(self, params: Params):
         self._params = params
