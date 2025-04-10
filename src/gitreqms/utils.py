@@ -2,6 +2,7 @@
 
 # Author: Boris Resnick
 # Created: 2025-04-06
+# Description: Utility functions for the RMS.
 
 from rich.console import Console
 

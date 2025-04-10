@@ -2,6 +2,7 @@
 
 # Author: Boris Resnick
 # Created: 2025-03-29
+# Description: Extracts artifacts from filename only.
 
 import logging as lg
 from pathlib import Path

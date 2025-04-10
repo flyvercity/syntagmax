@@ -2,6 +2,7 @@
 
 # Author: Boris Resnick
 # Created: 2025-03-29
+# Description: Configuration for the RMS.
 
 from pathlib import Path
 import tomllib

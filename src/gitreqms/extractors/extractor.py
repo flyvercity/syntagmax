@@ -2,6 +2,7 @@
 
 # Author: Boris Resnick
 # Created: 2025-03-29
+# Description: Base class for all extractors.
 
 from pathlib import Path
 from typing import Sequence

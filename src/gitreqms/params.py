@@ -1,3 +1,9 @@
+# SPDX-License-Identifier: MIT
+
+# Author: Boris Resnick
+# Created: 2025-04-06
+# Description: CLI parameters for the RMS.
+
 from typing import TypedDict
 
 class Params(TypedDict):
