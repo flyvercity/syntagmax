@@ -4,8 +4,9 @@
 # Created: 2025-04-06
 # Description: Extracts artifacts from markdown files.
 
+import logging as lg
 import yaml
-from typing import Generator
+from typing import Generator, Any
 from pathlib import Path
 
 from gitreqms.extractors.extractor import Extractor, ExtractorResult
@@ -36,6 +37,7 @@ class MarkdownExtractor(Extractor):
 
         for block in self._next_code_block(lines):
             block_yaml = yaml.safe_load('\n'.join(block))
+            lg.debug(f'YAML block found: {block_yaml}')
             
             metadata = block_yaml.get('gitreqms', {})
 
@@ -58,17 +60,7 @@ class MarkdownExtractor(Extractor):
                     builder.add_id(aid, atype)
 
                 if pids := metadata.get('pid'):
-                    if not isinstance(pids, list):
-                        errors.append(f'Invalid PIDs: {pids}')
-                        continue
-
-                    for pid in pids:  # type: ignore
-                        if not isinstance(pid, str):
-                            errors.append(f'Invalid PID: {pid}')
-                            continue
-
-                        [atype, aid] = self._split_handle(pid)
-                        builder.add_pid(aid, atype)
+                    self._extract_pid(pids, builder, errors)
 
                 if desc := metadata.get('desc'):
                     builder.add_desc(desc)
@@ -78,6 +70,22 @@ class MarkdownExtractor(Extractor):
                 errors.append(f'Error extracting from {location}: {e}')
 
         return artifacts, errors
+
+    def _extract_pid(self, pids: Any, builder: ArtifactBuilder, errors: list[str]) -> None:
+        if pids == 'None':
+            return
+
+        if not isinstance(pids, list):
+            errors.append(f'Invalid PIDs: {pids}')
+            return
+
+        for pid in pids:  # type: ignore
+            if not isinstance(pid, str):
+                errors.append(f'Invalid PID: {pid}')
+                continue
+
+            [atype, aid] = self._split_handle(pid)
+            builder.add_pid(aid, atype)
 
     def _next_code_block(self, lines: list[str]) -> Generator[list[str]]:
         block: list[str] | None = None

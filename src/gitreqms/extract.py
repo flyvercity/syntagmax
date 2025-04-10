@@ -66,6 +66,7 @@ def extract(config: Config) -> tuple[dict[ARef, Artifact], list[str]]:
     return artifact_map, errors
     
 def extract_single(params: Params, driver: str, file: Path):
+    lg.debug(f'Extracting from {file} ({driver})')
     extractor = EXTRACTORS[driver](params)
     artifacts, errors = extractor.extract_from_file(Path(file))
 
