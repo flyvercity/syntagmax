@@ -24,7 +24,7 @@ class IPynbExtractor(MarkdownExtractor):
 
     def extract_from_file(self, filepath: Path) -> ExtractorResult:
         try:
-            notebook = json.loads(filepath.read_text())
+            notebook = json.loads(filepath.read_text(encoding='utf-8'))
             location = self._format_file_location(filepath)
             artifacts: list[Artifact] = []
             errors: list[str] = []

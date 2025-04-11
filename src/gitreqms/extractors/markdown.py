@@ -5,6 +5,7 @@
 # Description: Extracts artifacts from markdown files.
 
 import logging as lg
+import traceback
 import yaml
 from typing import Generator, Any
 from pathlib import Path
@@ -22,10 +23,13 @@ class MarkdownExtractor(Extractor):
 
     def extract_from_file(self, filepath: Path) -> ExtractorResult:
         try:
-            markdown = filepath.read_text()
+            markdown = filepath.read_text(encoding='utf-8')
             location = self._format_file_location(filepath)
             return self._extract_from_markdown(location, markdown)
         except Exception as e:
+            if self._params['verbose']:
+                lg.error(f'Error extracting from {filepath}: {e}, {traceback.format_exc()}')
+
             message = f'Error extracting from {filepath}: {e}'
             return [], [message]
 

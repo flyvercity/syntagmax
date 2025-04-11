@@ -41,7 +41,7 @@ class Config:
             lg.info(f'Using configuration file: {config_file}')
 
             root_dir = config_file.parent
-            config = tomllib.loads(config_file.read_text())
+            config = tomllib.loads(config_file.read_text(encoding='utf-8'))
 
             if self.params['verbose']:
                 lg.debug(f'Configuration file content: {config}')

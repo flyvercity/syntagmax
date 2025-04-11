@@ -83,7 +83,7 @@ class TextExtractor(Extractor):
     def extract_from_file(self, filepath: Path) -> ExtractorResult:
         artifacts: Sequence[Artifact] = []
         errors : list[str] = []
-        text = filepath.read_text()
+        text = filepath.read_text(encoding='utf-8')
         matches = Begin.scanString(text)
 
         for match in matches:
