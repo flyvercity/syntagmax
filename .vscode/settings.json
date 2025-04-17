@@ -1,6 +1,4 @@
 {
     "python.analysis.inlayHints.callArgumentNames": "off",
     "python.analysis.typeCheckingMode": "strict",
-    "flake8.enabled": true,
-    "flake8.args": ["--config", "pyproject.toml"]
 }
