@@ -20,6 +20,7 @@ from gitreqms.artifact import ARef
 from gitreqms.render import print_arttree
 from gitreqms.analyse import analyse_tree
 
+
 def process(config: Config):
     errors: list[str] = []
     artifacts, e_errors = extract(config)
@@ -31,8 +32,9 @@ def process(config: Config):
 
     if errors:
         raise NonFatalError(errors)
-    
+
     print_arttree(artifacts, ARef.root())
+
 
 @click.group(help='RMS Entry Point')
 @click.pass_context
@@ -50,12 +52,14 @@ def rms(ctx: click.Context, **kwargs):  # type: ignore
     ctx.obj = Params(**kwargs)  # type: ignore
     lg.basicConfig(level=lg.DEBUG if kwargs['verbose'] else lg.INFO)
 
+
 @rms.command(help='Run full analysis of the project')
 @click.pass_obj
 @click.argument('config', type=click.Path(exists=True))
 def analyze(obj: Params, config: Path):
     configurator = Config(obj, config)
     process(configurator)
+
 
 @rms.command(help="Analyze a specific file")
 @click.pass_obj
@@ -64,7 +68,8 @@ def analyze(obj: Params, config: Path):
 def single(obj: Params, driver: str, file: Path):
     extract_single(obj, driver, file)
 
-if __name__ == '__main__':
+
+def main():
     try:
         rms()
 
@@ -84,3 +89,7 @@ if __name__ == '__main__':
         u.pprint(f'[red]Failed: {e}[/red]')
         traceback.print_exc()
         sys.exit(3)
+
+
+if __name__ == '__main__':
+    main()
