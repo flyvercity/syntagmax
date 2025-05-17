@@ -20,6 +20,8 @@ from gitreqms.artifact import ARef
 from gitreqms.render import print_arttree
 from gitreqms.analyse import analyse_tree
 
+from gitreqms.mcp.server import mcp_cmd
+
 
 def process(config: Config):
     errors: list[str] = []
@@ -71,6 +73,7 @@ def single(obj: Params, driver: str, file: Path):
 
 def main():
     try:
+        rms.add_command(mcp_cmd)
         rms()
 
     except NonFatalError as e:
