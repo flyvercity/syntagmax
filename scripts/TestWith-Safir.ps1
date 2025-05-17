@@ -1,5 +1,5 @@
 $cmd_args = @(
-    'uv run python -m gitreqms',
+    'uv run gitreqms',
     '--verbose',
     '--suppress-required-children',
     '--allow-top-level-arch',
