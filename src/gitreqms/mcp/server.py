@@ -1,11 +1,10 @@
+import logging as lg
 import os
 import json
 from datetime import datetime
-from typing import Any, Coroutine
 
 import click
 from mcp.server.fastmcp import FastMCP
-from mcp.types import Resource as MCPResource
 
 
 def notify_mcp(message: str):
@@ -31,29 +30,24 @@ def notify_mcp(message: str):
 class Connector():
     def load(self):
         self.config_descriptor = os.getenv('GITREQMS_MCP_DESCRIPTOR')
-        notify_mcp(f'Listing resources from {self.config_descriptor}')
-
-
-class Server(FastMCP):
-    def __init__(self, connector: Connector):
-        super().__init__('Software Requirements Source')
-        self.connector = connector
-
-    def list_resources(self) -> Coroutine[Any, Any, list[MCPResource]]:
-        self.connector.load()
-        return super().list_resources()
+        notify_mcp(f'Using config descriptor: {self.config_descriptor}')
 
 
 connector = Connector()
-mcp = Server(connector)
+mcp = FastMCP('System Requirements Source')
 
 
-@mcp.resource('requirement://{rid}')
-def get_requirement(rid: str) -> str:
-    notify_mcp(f'Getting requirement {rid}')
-    return 'test'
+@mcp.tool()
+def get_requirement(requirement_id: str) -> str:
+    '''Get a system requirement by ID.'''
+    return f'Requirement {requirement_id}'
 
 
 @click.command(name='mcp')
 def mcp_cmd():
+    lg.info('Starting MCP server')
+    mcp.run()
+
+
+if __name__ == '__main__':
     mcp.run()
