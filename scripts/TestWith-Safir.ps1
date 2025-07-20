@@ -1,5 +1,5 @@
 $cmd = @(
-    "uv run syntagmax",
+    "uv run stmx",
     "--verbose",
     "--suppress-required-children",
     "--allow-top-level-arch",
