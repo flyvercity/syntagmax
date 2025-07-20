@@ -10,10 +10,10 @@ import json
 import traceback
 import logging as lg
 
-from gitreqms.config import Params
-from gitreqms.extractors.markdown import MarkdownExtractor
-from gitreqms.extractors.extractor import ExtractorResult
-from gitreqms.artifact import Artifact
+from syntagmax.config import Params
+from syntagmax.extractors.markdown import MarkdownExtractor
+from syntagmax.extractors.extractor import ExtractorResult
+from syntagmax.artifact import Artifact
 
 class IPynbExtractor(MarkdownExtractor):
     def __init__(self, params: Params):

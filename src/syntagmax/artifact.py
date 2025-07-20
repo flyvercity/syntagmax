@@ -4,7 +4,7 @@
 # Created: 2025-03-29
 # Description: Artifacts are the basic units of the Requirement Management System (RMS).
 
-from gitreqms.errors import RMSException
+from syntagmax.errors import RMSException
 
 class ValidationError(RMSException):
     pass

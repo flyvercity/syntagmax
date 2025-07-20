@@ -8,8 +8,8 @@ from pathlib import Path
 from typing import Sequence
 import logging as lg
 
-from gitreqms.config import InputRecord
-from gitreqms.artifact import Artifact
+from syntagmax.config import InputRecord
+from syntagmax.artifact import Artifact
 
 type ExtractorResult = tuple[Sequence[Artifact], list[str]]
 

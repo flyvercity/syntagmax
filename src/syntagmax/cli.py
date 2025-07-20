@@ -11,14 +11,14 @@ import traceback
 
 import click
 
-import gitreqms.utils as u
-from gitreqms.config import Config, Params
-from gitreqms.errors import RMSException, NonFatalError
-from gitreqms.extract import extract, get_available_extractors, extract_single
-from gitreqms.tree import build_tree
-from gitreqms.artifact import ARef
-from gitreqms.render import print_arttree
-from gitreqms.analyse import analyse_tree
+import syntagmax.utils as u
+from syntagmax.config import Config, Params
+from syntagmax.errors import RMSException, NonFatalError
+from syntagmax.extract import extract, get_available_extractors, extract_single
+from syntagmax.tree import build_tree
+from syntagmax.artifact import ARef
+from syntagmax.render import print_arttree
+from syntagmax.analyse import analyse_tree
 
 
 def process(config: Config):

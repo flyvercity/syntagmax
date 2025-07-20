@@ -10,9 +10,9 @@ import yaml
 from typing import Generator, Any
 from pathlib import Path
 
-from gitreqms.extractors.extractor import Extractor, ExtractorResult
-from gitreqms.config import Params
-from gitreqms.artifact import ArtifactBuilder, Artifact
+from syntagmax.extractors.extractor import Extractor, ExtractorResult
+from syntagmax.config import Params
+from syntagmax.artifact import ArtifactBuilder, Artifact
 
 class MarkdownExtractor(Extractor):
     def __init__(self, params: Params):
@@ -43,7 +43,7 @@ class MarkdownExtractor(Extractor):
             block_yaml = yaml.safe_load('\n'.join(block))
             lg.debug(f'YAML block found: {block_yaml}')
             
-            metadata = block_yaml.get('gitreqms', {})
+            metadata = block_yaml.get('syntagmax', {})
 
             if not metadata:
                 continue

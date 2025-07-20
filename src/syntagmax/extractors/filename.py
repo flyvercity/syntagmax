@@ -7,9 +7,9 @@
 import logging as lg
 from pathlib import Path
 
-from gitreqms.config import Params
-from gitreqms.artifact import ArtifactBuilder
-from gitreqms.extractors.extractor import Extractor, ExtractorResult
+from syntagmax.config import Params
+from syntagmax.artifact import ArtifactBuilder
+from syntagmax.extractors.extractor import Extractor, ExtractorResult
 
 class FilenameExtractor(Extractor):
     def __init__(self, params: Params):

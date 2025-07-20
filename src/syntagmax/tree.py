@@ -4,7 +4,7 @@
 # Created: 2025-04-06
 # Description: Builds a tree of artifacts.
 
-from gitreqms.artifact import ArtifactMap, Artifact, ARef
+from syntagmax.artifact import ArtifactMap, Artifact, ARef
 
 MAX_TREE_DEPTH = 20
 

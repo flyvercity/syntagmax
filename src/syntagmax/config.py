@@ -12,8 +12,8 @@ import json
 
 import click
 
-from gitreqms.params import Params
-from gitreqms.model import IModel, build_model
+from syntagmax.params import Params
+from syntagmax.model import IModel, build_model
 
 class InputRecord(TypedDict):
     record_base: Path

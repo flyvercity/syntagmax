@@ -2,7 +2,7 @@
 
 # Author: Boris Resnick
 # Created: 2025-03-29
-# Description: Error classes for gitreqms.
+# Description: Error classes for syntagmax.
 
 class RMSException(Exception):
     pass

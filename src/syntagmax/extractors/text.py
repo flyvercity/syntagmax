@@ -20,9 +20,9 @@ from pyparsing import (
     alphanums
 )
 
-from gitreqms.config import Params
-from gitreqms.artifact import ArtifactBuilder, Artifact, ValidationError
-from gitreqms.extractors.extractor import Extractor, ExtractorResult
+from syntagmax.config import Params
+from syntagmax.artifact import ArtifactBuilder, Artifact, ValidationError
+from syntagmax.extractors.extractor import Extractor, ExtractorResult
 
 class Ref:
     atype: str

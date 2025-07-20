@@ -4,7 +4,7 @@
 # Created: 2025-04-06
 # Description: Interface and a simple software-oriented model for requirements tree.
 
-from gitreqms.params import Params
+from syntagmax.params import Params
 class IModel():
     def is_valid_atype(self, atype: str) -> bool: ...
     def is_top_level_atype(self, atype: str) -> bool: ...

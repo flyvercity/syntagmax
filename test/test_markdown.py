@@ -1,4 +1,4 @@
-from gitreqms.extractors.markdown import MarkdownExtractor
+from syntagmax.extractors.markdown import MarkdownExtractor
 
 MARKDOWN = '''
 
@@ -12,7 +12,7 @@ Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor i
 
 
 ```yaml
-gitreqms:
+syntagmax:
   id: VALID-REQ-KC-002
   pid:
     - REQ-KC-002

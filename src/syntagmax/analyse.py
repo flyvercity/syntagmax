@@ -4,8 +4,8 @@
 # Created: 2025-04-07
 # Description: Analyse a tree of artifacts.
 
-from gitreqms.artifact import ArtifactMap
-from gitreqms.config import Config
+from syntagmax.artifact import ArtifactMap
+from syntagmax.config import Config
 
 def analyse_tree(config: Config, artifacts: ArtifactMap) -> list[str]:
     errors: list[str] = []

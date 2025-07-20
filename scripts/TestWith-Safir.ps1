@@ -1,5 +1,5 @@
 $cmd = @(
-    "uv run gitreqms",
+    "uv run syntagmax",
     "--verbose",
     "--suppress-required-children",
     "--allow-top-level-arch",

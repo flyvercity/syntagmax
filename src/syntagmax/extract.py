@@ -7,17 +7,17 @@
 import logging as lg
 from pathlib import Path
 
-from gitreqms.extractors.text import TextExtractor
-from gitreqms.extractors.filename import FilenameExtractor
-from gitreqms.extractors.obsidian import ObsidianExtractor
-from gitreqms.extractors.markdown import MarkdownExtractor
-from gitreqms.extractors.ipynb import IPynbExtractor
-from gitreqms.artifact import Artifact, ARef
-from gitreqms.config import Config
-from gitreqms.utils import pprint
-from gitreqms.errors import NonFatalError
+from syntagmax.extractors.text import TextExtractor
+from syntagmax.extractors.filename import FilenameExtractor
+from syntagmax.extractors.obsidian import ObsidianExtractor
+from syntagmax.extractors.markdown import MarkdownExtractor
+from syntagmax.extractors.ipynb import IPynbExtractor
+from syntagmax.artifact import Artifact, ARef
+from syntagmax.config import Config
+from syntagmax.utils import pprint
+from syntagmax.errors import NonFatalError
 from typing import Sequence
-from gitreqms.config import Params
+from syntagmax.config import Params
 
 EXTRACTORS = {
     'text': TextExtractor,

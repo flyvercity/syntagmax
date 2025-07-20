@@ -4,8 +4,8 @@
 # Created: 2025-04-07
 # Description: Prints a tree of artifacts.
 
-from gitreqms.artifact import Artifact, ArtifactMap, ARef
-import gitreqms.utils as u
+from syntagmax.artifact import Artifact, ArtifactMap, ARef
+import syntagmax.utils as u
 
 CONST_I_CHAR = '│'
 CONST_T_CHAR = '├─'

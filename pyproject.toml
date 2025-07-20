@@ -1,5 +1,5 @@
 [project]
-name = "gitreqms"
+name = "syntagmax"
 version = "0.0.1"
 description = "Add your description here"
 readme = "README.md"
@@ -14,14 +14,14 @@ dependencies = [
 
 
 [project.scripts]
-gitreqms = "gitreqms.cli:main"
+syntagmax = "syntagmax.cli:main"
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/gitreqms"]
+packages = ["src/syntagmax"]
 
 [dependency-groups]
 dev = [

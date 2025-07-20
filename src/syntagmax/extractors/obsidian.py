@@ -4,7 +4,7 @@
 # Created: 2025-04-06
 # Description: Extracts artifacts from Obsidian files
 
-from gitreqms.extractors.markdown import MarkdownExtractor
+from syntagmax.extractors.markdown import MarkdownExtractor
 
 class ObsidianExtractor(MarkdownExtractor):
     def driver(self) -> str:
