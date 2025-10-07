@@ -29,13 +29,28 @@ class SyntagmaxMCP(FastMCP):
 mcp = SyntagmaxMCP()
 
 
-@mcp.tool()
-def fetch_requirement(requirement_id: str) -> str:
-    '''Get a system requirement by ID.'''
+def _fetch_requirement(requirement_id: str) -> str:
     return f'Requirement {requirement_id}'
 
 
-@click.command(name='mcp')
-def mcp_cmd():
+@mcp.tool()
+def fetch_requirement(requirement_id: str) -> str:
+    '''Get a system requirement by its ID.'''
+    return _fetch_requirement(requirement_id)
+
+
+@click.group(name='mcp')
+def mcp_group():
+    pass
+
+
+@mcp_group.command(name='run')
+def run_mcp():
     lg.info('Starting MCP server')
     mcp.run()
+
+
+@mcp_group.command(name='fetch-requirement')
+@click.argument('requirement_id', type=str)
+def fetch_requirement_cmd(requirement_id: str):
+    click.echo(_fetch_requirement(requirement_id))

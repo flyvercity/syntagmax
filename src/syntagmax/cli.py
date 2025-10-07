@@ -23,7 +23,7 @@ from syntagmax.tree import build_tree
 from syntagmax.artifact import ARef
 from syntagmax.render import print_arttree
 from syntagmax.analyse import analyse_tree
-from syntagmax.mcp.server import mcp_cmd
+from syntagmax.mcp.server import mcp_group
 
 
 def process(config: Config):
@@ -81,7 +81,7 @@ def single(obj: Params, driver: str, file: Path):
 
 def main():
     try:
-        rms.add_command(mcp_cmd)
+        rms.add_command(mcp_group)
         rms()
 
     except NonFatalError as e:
