@@ -113,5 +113,9 @@ class Config:
     def base_dir(self):
         return self._base_dir
 
+    def derive_path(self, path: Path) -> Path:
+        rel_path = path.absolute().relative_to(self._base_dir.absolute())
+        return rel_path.as_posix()
+
     def input_records(self) -> list[InputRecord]:
         return self._input_records

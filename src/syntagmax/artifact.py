@@ -5,6 +5,7 @@
 # Description: Artifacts are the basic units of the Requirement Management System (RMS).
 
 from syntagmax.errors import RMSException
+from syntagmax.config import Config
 
 
 class ValidationError(RMSException):
@@ -35,9 +36,15 @@ class ARef:
     def root() -> 'ARef':
         return ARef('ROOT', 'ROOT')
 
+    @staticmethod
+    def coerce(ref: str) -> 'ARef':
+        atype, aid = ref.split('-', 1)
+        return ARef(atype, aid)
+
 
 class Artifact:
-    def __init__(self):
+    def __init__(self, config: Config):
+        self._config = config
         self.location: str = ''
         self.driver: str = ''
         self.atype: str = ''
@@ -53,13 +60,21 @@ class Artifact:
     def metastring(self) -> str:
         return self.desc
 
+    def contents(self) -> str: ...
+
     def __str__(self) -> str:
         return f'{self.atype}-{self.aid}@{self.location}'
 
 
 class ArtifactBuilder:
-    def __init__(self, driver: str, location: str):
-        self.artifact = Artifact()
+    def __init__(
+        self,
+        config: Config,
+        ArtifactClass: type[Artifact],
+        driver: str,
+        location: str
+    ):
+        self.artifact = ArtifactClass(config)
         self.artifact.driver = driver
         self.artifact.location = location
 

@@ -48,7 +48,7 @@ def extract(config: Config) -> tuple[dict[ARef, Artifact], list[str]]:
 
     for record in config.input_records():
         lg.debug(f'Processing record: {record["record_base"]} ({record["driver"]})')
-        extractor = EXTRACTORS[record['driver']](config.params)
+        extractor = EXTRACTORS[record['driver']](config)
         record_artifacts, record_errors = extractor.extract(record)
         artifacts.extend(record_artifacts)
         errors.extend(record_errors)

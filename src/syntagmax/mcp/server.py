@@ -4,6 +4,7 @@ from pathlib import Path
 import click
 from mcp.server.fastmcp import FastMCP
 
+from syntagmax.artifact import ARef
 from syntagmax.config import Config, Params
 from syntagmax.extract import extract
 
@@ -23,20 +24,28 @@ class SyntagmaxMCP(FastMCP):
         )
 
         self._config = Config(params, CONFIG_FILENAME)
-        self._artifacts = extract(self._config)
+        artifacts, _ = extract(self._config)
+        self._artifacts = artifacts
+
+    def get_requirement(self, artifact_id: str) -> str:
+        artifact_id = ARef.coerce(artifact_id)
+
+        lg.info(f'Getting requirement {artifact_id}')
+
+        if artifact := self._artifacts.get(artifact_id):
+            lg.info(f'Artifact location: {artifact.location}')
+            return artifact.contents()
+        else:
+            return 'Theres no requirement with this ID.'
 
 
 mcp = SyntagmaxMCP()
 
 
-def _fetch_requirement(requirement_id: str) -> str:
-    return f'Requirement {requirement_id}'
-
-
 @mcp.tool()
 def fetch_requirement(requirement_id: str) -> str:
     '''Get a system requirement by its ID.'''
-    return _fetch_requirement(requirement_id)
+    return mcp.get_requirement(requirement_id)
 
 
 @click.group(name='mcp')
@@ -53,4 +62,4 @@ def run_mcp():
 @mcp_group.command(name='fetch-requirement')
 @click.argument('requirement_id', type=str)
 def fetch_requirement_cmd(requirement_id: str):
-    click.echo(_fetch_requirement(requirement_id))
+    click.echo(mcp.get_requirement(requirement_id))

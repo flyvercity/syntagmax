@@ -7,6 +7,7 @@
 import logging as lg
 from pathlib import Path
 from typing import Sequence
+from urllib.parse import urlparse
 
 from pyparsing import (
     Literal,
@@ -20,7 +21,7 @@ from pyparsing import (
     alphanums
 )
 
-from syntagmax.config import Params
+from syntagmax.config import Config
 from syntagmax.artifact import ArtifactBuilder, Artifact, ValidationError
 from syntagmax.extractors.extractor import Extractor, ExtractorResult
 
@@ -78,9 +79,20 @@ Section = (Begin + Header + HeaderSkip + BodyStart + BodySkip + End).set_parse_a
 )
 
 
+class TextArtifact(Artifact):
+    def contents(self) -> str:
+        uri = urlparse(self.location)
+        assert uri.scheme == 'line'
+        filepath_str = f'{uri.netloc}/{uri.path}'
+        line = uri.fragment
+        filepath = self._config.base_dir() / filepath_str
+        text = filepath.read_text(encoding='utf-8')
+        return text.split('\n')[int(line) - 1]
+
+
 class TextExtractor(Extractor):
-    def __init__(self, params: Params):
-        self._params = params
+    def __init__(self, config: Config):
+        self._config = config
 
     def driver(self) -> str:
         return 'text'
@@ -96,12 +108,19 @@ class TextExtractor(Extractor):
             remaining_string = text[start_location:]
             section_start_string = remaining_string.split('\n', 1)[0]
             line = lineno(start_location, text)
-            location = self._format_location(filepath, line)
+            file_location = self._config.derive_path(filepath)
+            location = f'line://{file_location}#{line}'
             lg.debug(f'Found section, parsing: {section_start_string}')
 
             try:
-                section: list[IdRef | PidRef] = Section.parse_string(remaining_string)  # type: ignore
-                builder = ArtifactBuilder('text', location)
+                section = Section.parse_string(remaining_string)
+
+                builder = ArtifactBuilder(
+                    self._config,
+                    TextArtifact,
+                    'text',
+                    location
+                )
 
                 for item in section:
                     if isinstance(item, IdRef):
@@ -133,10 +152,7 @@ class TextExtractor(Extractor):
         self, error_type: str, location: str, line: int,
         section_start_string: str, message: str
     ) -> str:
-        return f'''Driver "text": {error_type} in {location}@{line}
+        return f'''Driver "text": {error_type} in {location}#{line}
         While analyzing {section_start_string}
         Reason: {message}
         '''
-
-    def _format_location(self, filepath: Path, line: int) -> str:
-        return f'{self._format_file_location(filepath)}:{line}'

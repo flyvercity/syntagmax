@@ -30,7 +30,7 @@ def process(config: Config):
     errors: list[str] = []
     artifacts, e_errors = extract(config)
     errors.extend(e_errors)
-    t_errors = build_tree(artifacts)
+    t_errors = build_tree(config, artifacts)
     errors.extend(t_errors)
     a_errors = analyse_tree(config, artifacts)
     errors.extend(a_errors)
