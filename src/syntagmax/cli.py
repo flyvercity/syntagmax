@@ -8,6 +8,7 @@ import logging as lg
 import sys
 from pathlib import Path
 import traceback
+from typing import Any
 
 import click
 
@@ -15,15 +16,11 @@ import syntagmax.utils as u
 from syntagmax.config import Config, Params
 from syntagmax.errors import RMSException, NonFatalError
 
-from syntagmax.extract import (
-    extract, get_available_extractors, extract_single
-)
-
+from syntagmax.extract import extract
 from syntagmax.tree import build_tree
 from syntagmax.artifact import ARef
 from syntagmax.render import print_arttree
 from syntagmax.analyse import analyse_tree
-from syntagmax.mcp.server import mcp_group
 
 
 def process(config: Config):
@@ -58,9 +55,13 @@ def process(config: Config):
     '--allow-top-level-arch', is_flag=True,
     help='Allow top level ARCH artifacts'
 )
-def rms(ctx: click.Context, **kwargs):  # type: ignore
-    ctx.obj = Params(**kwargs)  # type: ignore
-    lg.basicConfig(level=lg.DEBUG if kwargs['verbose'] else lg.INFO)
+def rms(ctx: click.Context, **kwargs: dict[str, Any]):
+    verbose = kwargs['verbose']
+    lg.basicConfig(level=lg.DEBUG if verbose else lg.INFO)
+    # ctx.obj = Params(**kwargs)  # type: ignore
+    lg.info(f'Verbose: {verbose}')
+    lg.debug(f'Param: {kwargs}')
+    sys.exit(0)
 
 
 @rms.command(help='Run full analysis of the project')
@@ -71,17 +72,8 @@ def analyze(obj: Params, config: Path):
     process(configurator)
 
 
-@rms.command(help="Analyze a specific file")
-@click.pass_obj
-@click.argument('driver', type=click.Choice(get_available_extractors()))
-@click.argument('file', type=click.Path(exists=True))
-def single(obj: Params, driver: str, file: Path):
-    extract_single(obj, driver, file)
-
-
 def main():
     try:
-        rms.add_command(mcp_group)
         rms()
 
     except NonFatalError as e:

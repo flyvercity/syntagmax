@@ -113,7 +113,7 @@ class Config:
     def base_dir(self):
         return self._base_dir
 
-    def derive_path(self, path: Path) -> Path:
+    def derive_path(self, path: Path) -> str:
         rel_path = path.absolute().relative_to(self._base_dir.absolute())
         return rel_path.as_posix()
 

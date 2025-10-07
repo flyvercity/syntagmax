@@ -16,6 +16,7 @@ dependencies = [
 
 [project.scripts]
 stmx = "syntagmax.cli:main"
+stmx-mcp = "syntagmax.mcp.server:main"
 
 [build-system]
 requires = ["hatchling"]

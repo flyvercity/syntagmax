@@ -6,6 +6,7 @@
 
 import logging as lg
 from pathlib import Path
+from typing import Sequence
 
 from syntagmax.extractors.text import TextExtractor
 from syntagmax.extractors.filename import FilenameExtractor
@@ -16,8 +17,6 @@ from syntagmax.artifact import Artifact, ARef
 from syntagmax.config import Config
 from syntagmax.utils import pprint
 from syntagmax.errors import NonFatalError
-from typing import Sequence
-from syntagmax.config import Params
 
 EXTRACTORS = {
     'text': TextExtractor,
@@ -70,9 +69,9 @@ def extract(config: Config) -> tuple[dict[ARef, Artifact], list[str]]:
     return artifact_map, errors
 
 
-def extract_single(params: Params, driver: str, file: Path):
+def extract_single(config: Config, driver: str, file: Path):
     lg.debug(f'Extracting from {file} ({driver})')
-    extractor = EXTRACTORS[driver](params)
+    extractor = EXTRACTORS[driver](config)
     artifacts, errors = extractor.extract_from_file(Path(file))
 
     for artifact in artifacts:

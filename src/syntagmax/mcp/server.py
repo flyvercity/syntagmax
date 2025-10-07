@@ -16,6 +16,7 @@ class SyntagmaxMCP(FastMCP):
     def __init__(self):
         super().__init__('System Requirements Source')
 
+    def configure(self):
         params = Params(
             verbose=False,
             suppress_unexpected_children=False,
@@ -28,11 +29,11 @@ class SyntagmaxMCP(FastMCP):
         self._artifacts = artifacts
 
     def get_requirement(self, artifact_id: str) -> str:
-        artifact_id = ARef.coerce(artifact_id)
+        ref = ARef.coerce(artifact_id)
 
-        lg.info(f'Getting requirement {artifact_id}')
+        lg.info(f'Getting requirement {ref}')
 
-        if artifact := self._artifacts.get(artifact_id):
+        if artifact := self._artifacts.get(ref):
             lg.info(f'Artifact location: {artifact.location}')
             return '\n'.join(artifact.contents())
         else:
@@ -52,6 +53,7 @@ def fetch_requirement(requirement_id: str) -> str:
 
 @click.group(name='mcp')
 def mcp_group():
+    mcp.configure()
     pass
 
 
@@ -65,3 +67,12 @@ def run_mcp():
 @click.argument('requirement_id', type=str)
 def fetch_requirement_cmd(requirement_id: str):
     click.echo(mcp.get_requirement(requirement_id))
+
+
+def main():
+    lg.basicConfig(level=lg.INFO)
+    mcp_group()
+
+
+if __name__ == '__main__':
+    main()
