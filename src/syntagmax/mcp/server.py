@@ -34,7 +34,7 @@ class SyntagmaxMCP(FastMCP):
 
         if artifact := self._artifacts.get(artifact_id):
             lg.info(f'Artifact location: {artifact.location}')
-            return artifact.contents()
+            return '\n'.join(artifact.contents())
         else:
             return 'Theres no requirement with this ID.'
 

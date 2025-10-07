@@ -47,9 +47,17 @@ class PidRef(Ref):
         self.revision = revision
 
 
-Begin = Suppress(Literal('[<'))
+def capture_begin_position(s, loc, tokens):
+    return {'type': 'begin', 'line': lineno(loc, s)}
+
+
+def capture_end_position(s, loc, tokens):
+    return {'type': 'end', 'line': lineno(loc, s)}
+
+
+Begin = Literal('[<').set_parse_action(capture_begin_position)
 BodyStart = Suppress(Literal('>>>'))
-End = Suppress(Literal('>]'))
+End = Literal('>]').set_parse_action(capture_end_position)
 Equal = Suppress(Literal('='))
 AType = Word(alphanums)
 AId = Word(alphanums + '-')
@@ -74,7 +82,9 @@ Header = OneOrMore(IdDirective | PidDirective).set_parse_action(
 HeaderSkip = ZeroOrMore(~Begin + ~End + ~BodyStart + Suppress(Regex('.')))
 BodySkip = ZeroOrMore(~Begin + ~End + ~BodyStart + Suppress(Regex('.')))
 
-Section = (Begin + Header + HeaderSkip + BodyStart + BodySkip + End).set_parse_action(
+Section = (
+    Begin + Header + HeaderSkip + BodyStart + BodySkip + End
+).set_parse_action(
     lambda t: t
 )
 
@@ -87,7 +97,8 @@ class TextArtifact(Artifact):
         line = uri.fragment
         filepath = self._config.base_dir() / filepath_str
         text = filepath.read_text(encoding='utf-8')
-        return text.split('\n')[int(line) - 1]
+        begin, end = line.split('-')
+        return text.split('\n')[int(begin) - 1:int(end) - 2]
 
 
 class TextExtractor(Extractor):
@@ -107,13 +118,28 @@ class TextExtractor(Extractor):
             start_location = match[1]
             remaining_string = text[start_location:]
             section_start_string = remaining_string.split('\n', 1)[0]
-            line = lineno(start_location, text)
+            start_line = lineno(start_location, text)
             file_location = self._config.derive_path(filepath)
-            location = f'line://{file_location}#{line}'
+            location = f'line://{file_location}#{start_line}'
+
             lg.debug(f'Found section, parsing: {section_start_string}')
 
             try:
                 section = Section.parse_string(remaining_string)
+
+                # Extract line numbers from Begin and End tokens
+                begin = start_line
+                end = start_line
+
+                for item in section:
+                    if isinstance(item, dict):
+                        if item.get('type') == 'begin':
+                            begin += item.get('line')
+                        elif item.get('type') == 'end':
+                            end += item.get('line')
+
+                # Refine position
+                location = f'line://{file_location}#{begin}-{end}'
 
                 builder = ArtifactBuilder(
                     self._config,
@@ -125,23 +151,25 @@ class TextExtractor(Extractor):
                 for item in section:
                     if isinstance(item, IdRef):
                         builder.add_id(item.aid, item.atype)
-
-                    if isinstance(item, PidRef):
+                    elif isinstance(item, PidRef):
                         builder.add_pid(item.aid, item.atype)
+                    # Skip Begin and End token dictionaries - they're just for line number tracking
 
                 artifact = builder.build()
                 artifacts.append(artifact)
 
             except ParseException as e:
                 error = self._format_error(
-                    'Parse Error', location, line, section_start_string, str(e)
+                    'Parse Error', location, section_start_string, str(e)
                 )
 
                 errors.append(error)
 
             except ValidationError as e:
                 error = self._format_error(
-                    'Malformed artifact', location, line, section_start_string, str(e)
+                    'Malformed artifact',
+                    location,
+                    section_start_string, str(e)
                 )
 
                 errors.append(error)
@@ -149,10 +177,10 @@ class TextExtractor(Extractor):
         return artifacts, errors
 
     def _format_error(
-        self, error_type: str, location: str, line: int,
+        self, error_type: str, location: str,
         section_start_string: str, message: str
     ) -> str:
-        return f'''Driver "text": {error_type} in {location}#{line}
+        return f'''Driver "text": {error_type} in {location}
         While analyzing {section_start_string}
         Reason: {message}
         '''

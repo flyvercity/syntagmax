@@ -60,7 +60,7 @@ class Artifact:
     def metastring(self) -> str:
         return self.desc
 
-    def contents(self) -> str: ...
+    def contents(self) -> list[str]: ...
 
     def __str__(self) -> str:
         return f'{self.atype}-{self.aid}@{self.location}'
