@@ -2,7 +2,7 @@
 
 # Author: Boris Resnick
 # Created: 2025-03-29
-# Description: Requirement Management System (RMS) CLI Tool.
+# Description: Syntagmax Requirement Management System (RMS) CLI Tool.
 
 import logging as lg
 import sys
@@ -14,13 +14,16 @@ import click
 import syntagmax.utils as u
 from syntagmax.config import Config, Params
 from syntagmax.errors import RMSException, NonFatalError
-from syntagmax.extract import extract, get_available_extractors, extract_single
+
+from syntagmax.extract import (
+    extract, get_available_extractors, extract_single
+)
+
 from syntagmax.tree import build_tree
 from syntagmax.artifact import ARef
 from syntagmax.render import print_arttree
 from syntagmax.analyse import analyse_tree
-
-from gitreqms.mcp.server import mcp_cmd
+from syntagmax.mcp.server import mcp_cmd
 
 
 def process(config: Config):
@@ -40,15 +43,20 @@ def process(config: Config):
 
 @click.group(help='RMS Entry Point')
 @click.pass_context
-@click.option('--verbose', is_flag=True, help='Verbose output')
 @click.option(
-    '--suppress-unexpected-children', is_flag=True, help='Suppress unexpected children type errors'
+    '--verbose', is_flag=True, help='Verbose output'
 )
 @click.option(
-    '--suppress-required-children', is_flag=True, help='Suppress required children errors'
+    '--suppress-unexpected-children', is_flag=True,
+    help='Suppress unexpected children type errors'
 )
 @click.option(
-    '--allow-top-level-arch', is_flag=True, help='Allow top level ARCH artifacts'
+    '--suppress-required-children', is_flag=True,
+    help='Suppress required children errors'
+)
+@click.option(
+    '--allow-top-level-arch', is_flag=True,
+    help='Allow top level ARCH artifacts'
 )
 def rms(ctx: click.Context, **kwargs):  # type: ignore
     ctx.obj = Params(**kwargs)  # type: ignore
@@ -80,7 +88,11 @@ def main():
         for error in e.errors:
             u.pprint(f'[red]{error}[/red]')
 
-        u.pprint(f'[light red]Non-Fatal Errors Encountered: {len(e.errors)}[/light red]')
+        u.pprint(
+            '[light red]'
+            f'Non-Fatal Errors Encountered: {len(e.errors)}'
+            '[/light red]'
+        )
 
         sys.exit(1)
 

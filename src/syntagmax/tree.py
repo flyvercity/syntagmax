@@ -8,6 +8,7 @@ from syntagmax.artifact import ArtifactMap, Artifact, ARef
 
 MAX_TREE_DEPTH = 20
 
+
 class RootArtifact(Artifact):
     def __init__(self):
         super().__init__()
@@ -16,7 +17,10 @@ class RootArtifact(Artifact):
         self.location = 'ROOT'
         self.children = set()
 
-def gather_ansestors(artifacts: ArtifactMap, ref: ARef, depth: int = 0) -> str | None:
+
+def gather_ansestors(
+    artifacts: ArtifactMap, ref: ARef, depth: int = 0
+) -> str | None:
     if depth > MAX_TREE_DEPTH:
         return f'Circular reference detected with {artifacts[ref].aid}'
 
@@ -29,8 +33,9 @@ def gather_ansestors(artifacts: ArtifactMap, ref: ARef, depth: int = 0) -> str |
 
     return None
 
+
 def build_tree(artifacts: ArtifactMap) -> list[str]:
-    full_set  = set(artifacts.keys())
+    full_set = set(artifacts.keys())
     errors: list[str] = []
 
     for a in artifacts.values():

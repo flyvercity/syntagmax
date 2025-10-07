@@ -2,7 +2,7 @@
 
 # Author: Boris Resnick
 # Created: 2025-03-29
-# Description: Configuration for the RMS.
+# Description: Configuration for the Syntagmax RMS.
 
 from pathlib import Path
 import tomllib
@@ -15,6 +15,7 @@ import click
 from syntagmax.params import Params
 from syntagmax.model import IModel, build_model
 
+
 class InputRecord(TypedDict):
     record_base: Path
     record_subdir: Path
@@ -26,7 +27,8 @@ DEFAULT_FILTERS = {
     'obsidian': '**/*.md',
     'ipynb': '**/*.ipynb',
     'markdown': '**/*.md'
-} 
+}
+
 
 class Config:
     def __init__(self, params: Params, config_filename: Path):
@@ -59,7 +61,7 @@ class Config:
         except Exception as exc:
             lg.error(f'Error during configuration: {exc}')
             raise UserWarning('Bad configuration file')
-            
+
     def _read_input_records(self, config: dict[str, Any]):
         input = config.get('input')
 

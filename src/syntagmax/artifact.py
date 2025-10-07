@@ -6,8 +6,10 @@
 
 from syntagmax.errors import RMSException
 
+
 class ValidationError(RMSException):
     pass
+
 
 class ARef:
     atype: str
@@ -28,7 +30,7 @@ class ARef:
 
     def __hash__(self) -> int:
         return hash((self.atype, self.aid))
-    
+
     @staticmethod
     def root() -> 'ARef':
         return ARef('ROOT', 'ROOT')
