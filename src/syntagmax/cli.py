@@ -58,10 +58,8 @@ def process(config: Config):
 def rms(ctx: click.Context, **kwargs: dict[str, Any]):
     verbose = kwargs['verbose']
     lg.basicConfig(level=lg.DEBUG if verbose else lg.INFO)
-    # ctx.obj = Params(**kwargs)  # type: ignore
+    ctx.obj = Params(**kwargs)  # type: ignore
     lg.info(f'Verbose: {verbose}')
-    lg.debug(f'Param: {kwargs}')
-    sys.exit(0)
 
 
 @rms.command(help='Run full analysis of the project')
