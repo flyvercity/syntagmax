@@ -1,4 +1,3 @@
-
 # SPDX-License-Identifier: MIT
 
 # Author: Boris Resnick
@@ -14,6 +13,7 @@ from syntagmax.config import Params
 from syntagmax.extractors.markdown import MarkdownExtractor
 from syntagmax.extractors.extractor import ExtractorResult
 from syntagmax.artifact import Artifact
+
 
 class IPynbExtractor(MarkdownExtractor):
     def __init__(self, params: Params):
@@ -42,7 +42,6 @@ class IPynbExtractor(MarkdownExtractor):
                         else:
                             error = f'Multiple artifacts found in {location}'
                             errors.append(error)
-
 
             return artifacts, errors
 

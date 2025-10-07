@@ -5,13 +5,16 @@
 # Description: Interface and a simple software-oriented model for requirements tree.
 
 from syntagmax.params import Params
+
+
 class IModel():
     def is_valid_atype(self, atype: str) -> bool: ...
     def is_top_level_atype(self, atype: str) -> bool: ...
     def allowed_child(self, atype: str, child_atype: str) -> bool: ...
     def required_children(self, atype: str) -> list[str]: ...
 
-class StandardModel(IModel): 
+
+class StandardModel(IModel):
     '''This is the simplest software-only model.'''
 
     def __init__(self):

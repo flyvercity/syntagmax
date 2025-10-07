@@ -24,6 +24,7 @@ from syntagmax.config import Params
 from syntagmax.artifact import ArtifactBuilder, Artifact, ValidationError
 from syntagmax.extractors.extractor import Extractor, ExtractorResult
 
+
 class Ref:
     atype: str
     aid: str
@@ -32,8 +33,10 @@ class Ref:
         self.atype = atype
         self.aid = aid
 
+
 class IdRef(Ref):
     pass
+
 
 class PidRef(Ref):
     revision: str
@@ -41,6 +44,7 @@ class PidRef(Ref):
     def __init__(self, atype: str, aid: str, revision: str):
         super().__init__(atype, aid)
         self.revision = revision
+
 
 Begin = Suppress(Literal('[<'))
 BodyStart = Suppress(Literal('>>>'))
@@ -73,6 +77,7 @@ Section = (Begin + Header + HeaderSkip + BodyStart + BodySkip + End).set_parse_a
     lambda t: t
 )
 
+
 class TextExtractor(Extractor):
     def __init__(self, params: Params):
         self._params = params
@@ -82,7 +87,7 @@ class TextExtractor(Extractor):
 
     def extract_from_file(self, filepath: Path) -> ExtractorResult:
         artifacts: Sequence[Artifact] = []
-        errors : list[str] = []
+        errors: list[str] = []
         text = filepath.read_text(encoding='utf-8')
         matches = Begin.scanString(text)
 
@@ -93,7 +98,7 @@ class TextExtractor(Extractor):
             line = lineno(start_location, text)
             location = self._format_location(filepath, line)
             lg.debug(f'Found section, parsing: {section_start_string}')
-            
+
             try:
                 section: list[IdRef | PidRef] = Section.parse_string(remaining_string)  # type: ignore
                 builder = ArtifactBuilder('text', location)
@@ -125,7 +130,7 @@ class TextExtractor(Extractor):
         return artifacts, errors
 
     def _format_error(
-        self, error_type: str, location: str, line: int, 
+        self, error_type: str, location: str, line: int,
         section_start_string: str, message: str
     ) -> str:
         return f'''Driver "text": {error_type} in {location}@{line}

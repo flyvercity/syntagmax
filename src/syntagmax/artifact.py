@@ -35,6 +35,7 @@ class ARef:
     def root() -> 'ARef':
         return ARef('ROOT', 'ROOT')
 
+
 class Artifact:
     def __init__(self):
         self.location: str = ''
@@ -54,6 +55,7 @@ class Artifact:
 
     def __str__(self) -> str:
         return f'{self.atype}-{self.aid}@{self.location}'
+
 
 class ArtifactBuilder:
     def __init__(self, driver: str, location: str):
@@ -91,5 +93,6 @@ class ArtifactBuilder:
             raise ValidationError(self._build_error('AID is required'))
 
         return self.artifact
+
 
 type ArtifactMap = dict[ARef, Artifact]

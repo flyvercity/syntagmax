@@ -27,8 +27,10 @@ EXTRACTORS = {
     'ipynb': IPynbExtractor
 }
 
+
 def get_available_extractors() -> Sequence[str]:
     return list(EXTRACTORS.keys())
+
 
 def print_artifact(artifact: Artifact):
     pprint(
@@ -38,6 +40,7 @@ def print_artifact(artifact: Artifact):
         f' {artifact.metastring()}'
         f' (parents: {len(artifact.pids)})'
     )
+
 
 def extract(config: Config) -> tuple[dict[ARef, Artifact], list[str]]:
     artifacts: Sequence[Artifact] = []
@@ -65,7 +68,8 @@ def extract(config: Config) -> tuple[dict[ARef, Artifact], list[str]]:
             artifact_map[a.ref()] = a
 
     return artifact_map, errors
-    
+
+
 def extract_single(params: Params, driver: str, file: Path):
     lg.debug(f'Extracting from {file} ({driver})')
     extractor = EXTRACTORS[driver](params)

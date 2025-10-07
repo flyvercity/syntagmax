@@ -11,6 +11,7 @@ from syntagmax.config import Params
 from syntagmax.artifact import ArtifactBuilder
 from syntagmax.extractors.extractor import Extractor, ExtractorResult
 
+
 class FilenameExtractor(Extractor):
     def __init__(self, params: Params):
         self._params = params

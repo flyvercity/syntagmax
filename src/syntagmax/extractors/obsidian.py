@@ -6,6 +6,7 @@
 
 from syntagmax.extractors.markdown import MarkdownExtractor
 
+
 class ObsidianExtractor(MarkdownExtractor):
     def driver(self) -> str:
         return 'obsidian'

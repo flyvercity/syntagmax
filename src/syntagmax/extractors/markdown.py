@@ -14,6 +14,7 @@ from syntagmax.extractors.extractor import Extractor, ExtractorResult
 from syntagmax.config import Params
 from syntagmax.artifact import ArtifactBuilder, Artifact
 
+
 class MarkdownExtractor(Extractor):
     def __init__(self, params: Params):
         self._params: Params = params
@@ -42,7 +43,7 @@ class MarkdownExtractor(Extractor):
         for block in self._next_code_block(lines):
             block_yaml = yaml.safe_load('\n'.join(block))
             lg.debug(f'YAML block found: {block_yaml}')
-            
+
             metadata = block_yaml.get('syntagmax', {})
 
             if not metadata:
@@ -54,7 +55,7 @@ class MarkdownExtractor(Extractor):
                     continue
 
                 builder = ArtifactBuilder(driver=self.driver(), location=location)
-                
+
                 if handle := metadata.get('id'):
                     if not isinstance(handle, str):
                         errors.append(f'Invalid handle: {handle}')
@@ -99,7 +100,7 @@ class MarkdownExtractor(Extractor):
             if line.startswith('```yaml'):
                 capture = True
                 continue
-                
+
             if line.startswith('```'):
                 capture = False
 
