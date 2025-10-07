@@ -42,9 +42,11 @@ class SyntagmaxMCP(FastMCP):
 mcp = SyntagmaxMCP()
 
 
-@mcp.tool()
+@mcp.tool(
+    name='fetch-requirement',
+    description='Get a system requirement by its ID.'
+)
 def fetch_requirement(requirement_id: str) -> str:
-    '''Get a system requirement by its ID.'''
     return mcp.get_requirement(requirement_id)
 
 
