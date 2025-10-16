@@ -49,10 +49,6 @@ class MarkdownExtractor(Extractor):
                 continue
 
             try:
-                if artifacts:
-                    errors.append(f'Multiple artifacts found at {location}')
-                    continue
-
                 builder = ArtifactBuilder(driver=self.driver(), location=location)
                 
                 if handle := metadata.get('id'):
