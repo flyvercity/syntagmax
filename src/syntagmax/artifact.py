@@ -48,13 +48,13 @@ class Location:
     pass
 
 
-class LineLocation:
+class LineLocation(Location):
     def __init__(self, loc_file: Path, loc_lines: tuple[int, int]):
         self.loc_file = loc_file
         self.loc_lines = loc_lines
 
     def __str__(self) -> str:
-        return f'{self.loc_file}:{self.loc_lines[0]}-{self.loc_lines[1]}'
+        return f'{self.loc_file.name}:{self.loc_lines[0]}-{self.loc_lines[1]}'
 
 
 class Artifact:
@@ -107,6 +107,10 @@ class ArtifactBuilder:
             raise ValidationError(self._build_error('Duplicate field'))
 
         self.artifact.fields[field] = value
+        return self
+
+    def add_fields(self, fields: dict[str, str]):
+        self.artifact.fields.update(fields)
         return self
 
     def _build_error(self, message: str) -> str:

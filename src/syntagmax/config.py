@@ -21,6 +21,7 @@ class InputRecord(TypedDict):
     record_subdir: Path
     filepaths: list[Path]
     driver: str
+    default_atype: str
 
 
 DEFAULT_FILTERS = {
@@ -104,12 +105,19 @@ class Config:
             lg.debug(f'Adding input files from {record_subdir} with filter {glob}')
             filepaths = Path(record_subdir, Path(record_subdir)).glob(glob)
 
+            default_atype = input_record.get('atype')
+
+            if not default_atype:
+                default_atype = 'REQ'
+                lg.warning(f'Using default AType: {default_atype}')
+
             self._input_records.append(
                 InputRecord(
                     record_base=record_base,
                     record_subdir=record_subdir,
                     filepaths=list(filepaths),
-                    driver=driver
+                    driver=driver,
+                    default_atype=default_atype
                 )
             )
 

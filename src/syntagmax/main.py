@@ -18,9 +18,9 @@ from syntagmax.analyse import analyse_tree
 def process(config: Config):
     errors: list[str] = []
     artifacts, e_errors = extract(config)
-    # errors.extend(e_errors)
-    # t_errors = build_tree(config, artifacts)
-    # errors.extend(t_errors)
+    errors.extend(e_errors)
+    t_errors = build_tree(config, artifacts)
+    errors.extend(t_errors)
     # a_errors = analyse_tree(config, artifacts)
     # errors.extend(a_errors)
 
@@ -31,4 +31,4 @@ def process(config: Config):
         lg.warning('No artifacts found')
         return
 
-    print_arttree(artifacts, ARef.root())
+    print_arttree(artifacts, ARef.root(), verbose=config.params['verbose'])
