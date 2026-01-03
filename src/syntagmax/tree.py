@@ -4,19 +4,24 @@
 # Created: 2025-04-06
 # Description: Builds a tree of artifacts.
 
+from syntagmax.config import Config
 from syntagmax.artifact import ArtifactMap, Artifact, ARef
 
 MAX_TREE_DEPTH = 20
 
+
 class RootArtifact(Artifact):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, config: Config):
+        super().__init__(config)
         self.atype = 'ROOT'
         self.aid = 'ROOT'
         self.location = 'ROOT'
         self.children = set()
 
-def gather_ansestors(artifacts: ArtifactMap, ref: ARef, depth: int = 0) -> str | None:
+
+def gather_ansestors(
+    artifacts: ArtifactMap, ref: ARef, depth: int = 0
+) -> str | None:
     if depth > MAX_TREE_DEPTH:
         return f'Circular reference detected with {artifacts[ref].aid}'
 
@@ -29,8 +34,9 @@ def gather_ansestors(artifacts: ArtifactMap, ref: ARef, depth: int = 0) -> str |
 
     return None
 
-def build_tree(artifacts: ArtifactMap) -> list[str]:
-    full_set  = set(artifacts.keys())
+
+def build_tree(config: Config, artifacts: ArtifactMap) -> list[str]:
+    full_set = set(artifacts.keys())
     errors: list[str] = []
 
     for a in artifacts.values():
@@ -41,7 +47,7 @@ def build_tree(artifacts: ArtifactMap) -> list[str]:
                 artifacts[pid].children.add(a.ref())
 
     top_level = {a.ref(): a for a in artifacts.values() if a.pids == []}
-    root = RootArtifact()
+    root = RootArtifact(config)
 
     for a in top_level.values():
         root.children.add(a.ref())

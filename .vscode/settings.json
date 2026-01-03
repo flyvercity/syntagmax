@@ -1,4 +1,6 @@
 {
     "python.analysis.inlayHints.callArgumentNames": "off",
     "python.analysis.typeCheckingMode": "strict",
+    "cursorpyright.analysis.inlayHints.callArgumentNames": "off",
+    "cursorpyright.analysis.typeCheckingMode": "strict",
 }

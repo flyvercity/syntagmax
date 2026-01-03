@@ -7,6 +7,7 @@
 from syntagmax.artifact import ArtifactMap
 from syntagmax.config import Config
 
+
 def analyse_tree(config: Config, artifacts: ArtifactMap) -> list[str]:
     errors: list[str] = []
     model = config.model
@@ -38,5 +39,5 @@ def analyse_tree(config: Config, artifacts: ArtifactMap) -> list[str]:
             for c in model.required_children(a.atype):
                 if c not in map(lambda c: c.atype, a.children):
                     errors.append(f'Required child {c} not found for {a}')
-        
+
     return errors

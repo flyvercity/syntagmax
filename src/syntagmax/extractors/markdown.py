@@ -11,12 +11,13 @@ from typing import Generator, Any
 from pathlib import Path
 
 from syntagmax.extractors.extractor import Extractor, ExtractorResult
-from syntagmax.config import Params
+from syntagmax.config import Config
 from syntagmax.artifact import ArtifactBuilder, Artifact
 
+
 class MarkdownExtractor(Extractor):
-    def __init__(self, params: Params):
-        self._params: Params = params
+    def __init__(self, config: Config):
+        self._config = config
 
     def driver(self) -> str:
         return 'markdown'
@@ -24,10 +25,12 @@ class MarkdownExtractor(Extractor):
     def extract_from_file(self, filepath: Path) -> ExtractorResult:
         try:
             markdown = filepath.read_text(encoding='utf-8')
-            location = self._format_file_location(filepath)
+            base_dir = self._config.base_dir()
+            location = f'file://{filepath.relative_to(base_dir)}'
             return self._extract_from_markdown(location, markdown)
+
         except Exception as e:
-            if self._params['verbose']:
+            if self._config.params['verbose']:
                 lg.error(f'Error extracting from {filepath}: {e}, {traceback.format_exc()}')
 
             message = f'Error extracting from {filepath}: {e}'
@@ -42,7 +45,7 @@ class MarkdownExtractor(Extractor):
         for block in self._next_code_block(lines):
             block_yaml = yaml.safe_load('\n'.join(block))
             lg.debug(f'YAML block found: {block_yaml}')
-            
+
             metadata = block_yaml.get('syntagmax', {})
 
             if not metadata:
@@ -53,8 +56,13 @@ class MarkdownExtractor(Extractor):
                     errors.append(f'Multiple artifacts found at {location}')
                     continue
 
-                builder = ArtifactBuilder(driver=self.driver(), location=location)
-                
+                builder = ArtifactBuilder(
+                    config=self._config,
+                    ArtifactClass=Artifact,
+                    driver=self.driver(),
+                    location=location
+                )
+
                 if handle := metadata.get('id'):
                     if not isinstance(handle, str):
                         errors.append(f'Invalid handle: {handle}')
@@ -99,7 +107,7 @@ class MarkdownExtractor(Extractor):
             if line.startswith('```yaml'):
                 capture = True
                 continue
-                
+
             if line.startswith('```'):
                 capture = False
 

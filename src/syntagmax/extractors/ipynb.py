@@ -1,4 +1,3 @@
-
 # SPDX-License-Identifier: MIT
 
 # Author: Boris Resnick
@@ -10,14 +9,15 @@ import json
 import traceback
 import logging as lg
 
-from syntagmax.config import Params
+from syntagmax.config import Config
 from syntagmax.extractors.markdown import MarkdownExtractor
 from syntagmax.extractors.extractor import ExtractorResult
 from syntagmax.artifact import Artifact
 
+
 class IPynbExtractor(MarkdownExtractor):
-    def __init__(self, params: Params):
-        super().__init__(params)
+    def __init__(self, config: Config):
+        super().__init__(config)
 
     def driver(self) -> str:
         return 'ipynb'
@@ -25,7 +25,8 @@ class IPynbExtractor(MarkdownExtractor):
     def extract_from_file(self, filepath: Path) -> ExtractorResult:
         try:
             notebook = json.loads(filepath.read_text(encoding='utf-8'))
-            location = self._format_file_location(filepath)
+            base_dir = self._config.base_dir()
+            location = f'file://{filepath.relative_to(base_dir)}'
             artifacts: list[Artifact] = []
             errors: list[str] = []
 
@@ -43,11 +44,10 @@ class IPynbExtractor(MarkdownExtractor):
                             error = f'Multiple artifacts found in {location}'
                             errors.append(error)
 
-
             return artifacts, errors
 
         except Exception as e:
-            if self._params['verbose']:
+            if self._config.params['verbose']:
                 lg.error(f'Error extracting from {filepath}: {e}, {traceback.format_exc()}')
 
             message = f'Error extracting from {filepath}: {e}'

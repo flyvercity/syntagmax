@@ -7,6 +7,7 @@ requires-python = ">=3.13"
 dependencies = [
     "click>=8.1.8",
     "gitpython>=3.1.44",
+    "mcp[cli]>=1.16.0",
     "pyparsing>=3.2.3",
     "pyyaml>=6.0.2",
     "rich>=13.9.4",
@@ -15,6 +16,7 @@ dependencies = [
 
 [project.scripts]
 stmx = "syntagmax.cli:main"
+stmx-mcp = "syntagmax.mcp.server:main"
 
 [build-system]
 requires = ["hatchling"]
@@ -29,3 +31,9 @@ dev = [
     "ptpython>=3.0.29",
     "pytest>=8.3.5",
 ]
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.format]
+quote-style = "single"

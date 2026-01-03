@@ -18,7 +18,9 @@ class Extractor:
     def driver(self) -> str: ...
     def extract_from_file(self, filepath: Path) -> ExtractorResult: ...
 
-    def extract(self, record: InputRecord) -> tuple[Sequence[Artifact], list[str]]:
+    def extract(
+        self, record: InputRecord
+    ) -> tuple[Sequence[Artifact], list[str]]:
         errors: list[str] = []
         artifacts: list[Artifact] = []
 

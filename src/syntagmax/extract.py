@@ -6,6 +6,7 @@
 
 import logging as lg
 from pathlib import Path
+from typing import Sequence
 
 from syntagmax.extractors.text import TextExtractor
 from syntagmax.extractors.filename import FilenameExtractor
@@ -16,8 +17,6 @@ from syntagmax.artifact import Artifact, ARef
 from syntagmax.config import Config
 from syntagmax.utils import pprint
 from syntagmax.errors import NonFatalError
-from typing import Sequence
-from syntagmax.config import Params
 
 EXTRACTORS = {
     'text': TextExtractor,
@@ -27,8 +26,10 @@ EXTRACTORS = {
     'ipynb': IPynbExtractor
 }
 
+
 def get_available_extractors() -> Sequence[str]:
     return list(EXTRACTORS.keys())
+
 
 def print_artifact(artifact: Artifact):
     pprint(
@@ -39,13 +40,14 @@ def print_artifact(artifact: Artifact):
         f' (parents: {len(artifact.pids)})'
     )
 
+
 def extract(config: Config) -> tuple[dict[ARef, Artifact], list[str]]:
     artifacts: Sequence[Artifact] = []
     errors: Sequence[str] = []
 
     for record in config.input_records():
         lg.debug(f'Processing record: {record["record_base"]} ({record["driver"]})')
-        extractor = EXTRACTORS[record['driver']](config.params)
+        extractor = EXTRACTORS[record['driver']](config)
         record_artifacts, record_errors = extractor.extract(record)
         artifacts.extend(record_artifacts)
         errors.extend(record_errors)
@@ -65,10 +67,11 @@ def extract(config: Config) -> tuple[dict[ARef, Artifact], list[str]]:
             artifact_map[a.ref()] = a
 
     return artifact_map, errors
-    
-def extract_single(params: Params, driver: str, file: Path):
+
+
+def extract_single(config: Config, driver: str, file: Path):
     lg.debug(f'Extracting from {file} ({driver})')
-    extractor = EXTRACTORS[driver](params)
+    extractor = EXTRACTORS[driver](config)
     artifacts, errors = extractor.extract_from_file(Path(file))
 
     for artifact in artifacts:

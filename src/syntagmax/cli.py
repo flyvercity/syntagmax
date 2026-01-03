@@ -2,19 +2,21 @@
 
 # Author: Boris Resnick
 # Created: 2025-03-29
-# Description: Requirement Management System (RMS) CLI Tool.
+# Description: Syntagmax Requirement Management System (RMS) CLI Tool.
 
 import logging as lg
 import sys
 from pathlib import Path
 import traceback
+from typing import Any
 
 import click
 
 import syntagmax.utils as u
 from syntagmax.config import Config, Params
 from syntagmax.errors import RMSException, NonFatalError
-from syntagmax.extract import extract, get_available_extractors, extract_single
+
+from syntagmax.extract import extract
 from syntagmax.tree import build_tree
 from syntagmax.artifact import ARef
 from syntagmax.render import print_arttree
@@ -25,7 +27,7 @@ def process(config: Config):
     errors: list[str] = []
     artifacts, e_errors = extract(config)
     errors.extend(e_errors)
-    t_errors = build_tree(artifacts)
+    t_errors = build_tree(config, artifacts)
     errors.extend(t_errors)
     a_errors = analyse_tree(config, artifacts)
     errors.extend(a_errors)
@@ -38,19 +40,26 @@ def process(config: Config):
 
 @click.group(help='RMS Entry Point')
 @click.pass_context
-@click.option('--verbose', is_flag=True, help='Verbose output')
 @click.option(
-    '--suppress-unexpected-children', is_flag=True, help='Suppress unexpected children type errors'
+    '--verbose', is_flag=True, help='Verbose output'
 )
 @click.option(
-    '--suppress-required-children', is_flag=True, help='Suppress required children errors'
+    '--suppress-unexpected-children', is_flag=True,
+    help='Suppress unexpected children type errors'
 )
 @click.option(
-    '--allow-top-level-arch', is_flag=True, help='Allow top level ARCH artifacts'
+    '--suppress-required-children', is_flag=True,
+    help='Suppress required children errors'
 )
-def rms(ctx: click.Context, **kwargs):  # type: ignore
+@click.option(
+    '--allow-top-level-arch', is_flag=True,
+    help='Allow top level ARCH artifacts'
+)
+def rms(ctx: click.Context, **kwargs: dict[str, Any]):
+    verbose = kwargs['verbose']
+    lg.basicConfig(level=lg.DEBUG if verbose else lg.INFO)
     ctx.obj = Params(**kwargs)  # type: ignore
-    lg.basicConfig(level=lg.DEBUG if kwargs['verbose'] else lg.INFO)
+    lg.info(f'Verbose: {verbose}')
 
 
 @rms.command(help='Run full analysis of the project')
@@ -61,14 +70,6 @@ def analyze(obj: Params, config: Path):
     process(configurator)
 
 
-@rms.command(help="Analyze a specific file")
-@click.pass_obj
-@click.argument('driver', type=click.Choice(get_available_extractors()))
-@click.argument('file', type=click.Path(exists=True))
-def single(obj: Params, driver: str, file: Path):
-    extract_single(obj, driver, file)
-
-
 def main():
     try:
         rms()
@@ -77,7 +78,11 @@ def main():
         for error in e.errors:
             u.pprint(f'[red]{error}[/red]')
 
-        u.pprint(f'[light red]Non-Fatal Errors Encountered: {len(e.errors)}[/light red]')
+        u.pprint(
+            '[light red]'
+            f'Non-Fatal Errors Encountered: {len(e.errors)}'
+            '[/light red]'
+        )
 
         sys.exit(1)
 
