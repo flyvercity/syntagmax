@@ -8,23 +8,28 @@ from pathlib import Path
 from typing import Sequence
 import logging as lg
 
-from syntagmax.config import InputRecord
+from syntagmax.config import InputRecord, Config
 from syntagmax.artifact import Artifact
 
 type ExtractorResult = tuple[Sequence[Artifact], list[str]]
 
 
 class Extractor:
-    def driver(self) -> str: ...
-    def extract_from_file(self, filepath: Path) -> ExtractorResult: ...
+    def __init__(self, config: Config, record: InputRecord):
+        self._config = config
+        self._record = record
 
-    def extract(
-        self, record: InputRecord
-    ) -> tuple[Sequence[Artifact], list[str]]:
+    def driver(self) -> str: ...
+
+    def extract_from_file(
+        self, filepath: Path
+    ) -> ExtractorResult: ...
+
+    def extract(self) -> ExtractorResult:
         errors: list[str] = []
         artifacts: list[Artifact] = []
 
-        for filepath in record['filepaths']:
+        for filepath in self._record['filepaths']:
             lg.debug(f'Processing file: {filepath}')
             file_artifacts, file_errors = self.extract_from_file(filepath)
             artifacts.extend(file_artifacts)
@@ -50,6 +55,3 @@ class Extractor:
         names.append(filepath.name)
 
         return '/'.join(names)
-
-    def _split_handle(self, handle: str) -> list[str]:
-        return handle.split('-', 1)

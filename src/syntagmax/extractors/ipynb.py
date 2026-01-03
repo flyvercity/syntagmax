@@ -9,15 +9,15 @@ import json
 import traceback
 import logging as lg
 
-from syntagmax.config import Config
-from syntagmax.extractors.markdown import MarkdownExtractor
+from syntagmax.config import Config, InputRecord
+from syntagmax.extractors.obsidian import ObsidianExtractor
 from syntagmax.extractors.extractor import ExtractorResult
 from syntagmax.artifact import Artifact
 
 
-class IPynbExtractor(MarkdownExtractor):
-    def __init__(self, config: Config):
-        super().__init__(config)
+class IPynbExtractor(ObsidianExtractor):
+    def __init__(self, config: Config, record: InputRecord):
+        super().__init__(config, record)
 
     def driver(self) -> str:
         return 'ipynb'

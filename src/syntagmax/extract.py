@@ -5,24 +5,21 @@
 # Description: Extracts artifacts from a given file using the appropriate extractor
 
 import logging as lg
-from pathlib import Path
 from typing import Sequence
 
 from syntagmax.extractors.text import TextExtractor
 from syntagmax.extractors.filename import FilenameExtractor
 from syntagmax.extractors.obsidian import ObsidianExtractor
-from syntagmax.extractors.markdown import MarkdownExtractor
 from syntagmax.extractors.ipynb import IPynbExtractor
 from syntagmax.artifact import Artifact, ARef
 from syntagmax.config import Config
 from syntagmax.utils import pprint
-from syntagmax.errors import NonFatalError
+
 
 EXTRACTORS = {
     'text': TextExtractor,
     'filename': FilenameExtractor,
     'obsidian': ObsidianExtractor,
-    'markdown': MarkdownExtractor,
     'ipynb': IPynbExtractor
 }
 
@@ -36,7 +33,6 @@ def print_artifact(artifact: Artifact):
         f'[magenta]{artifact.driver}[/magenta] :: '
         f'[cyan]{artifact.atype}[/cyan] :: '
         f'[green]{artifact.aid}[/green]'
-        f' {artifact.metastring()}'
         f' (parents: {len(artifact.pids)})'
     )
 
@@ -47,8 +43,8 @@ def extract(config: Config) -> tuple[dict[ARef, Artifact], list[str]]:
 
     for record in config.input_records():
         lg.debug(f'Processing record: {record["record_base"]} ({record["driver"]})')
-        extractor = EXTRACTORS[record['driver']](config)
-        record_artifacts, record_errors = extractor.extract(record)
+        extractor = EXTRACTORS[record['driver']](config, record)
+        record_artifacts, record_errors = extractor.extract()
         artifacts.extend(record_artifacts)
         errors.extend(record_errors)
 
@@ -67,15 +63,3 @@ def extract(config: Config) -> tuple[dict[ARef, Artifact], list[str]]:
             artifact_map[a.ref()] = a
 
     return artifact_map, errors
-
-
-def extract_single(config: Config, driver: str, file: Path):
-    lg.debug(f'Extracting from {file} ({driver})')
-    extractor = EXTRACTORS[driver](config)
-    artifacts, errors = extractor.extract_from_file(Path(file))
-
-    for artifact in artifacts:
-        print_artifact(artifact)
-
-    if errors:
-        raise NonFatalError(errors)

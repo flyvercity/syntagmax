@@ -21,7 +21,7 @@ from pyparsing import (
     alphanums
 )
 
-from syntagmax.config import Config
+from syntagmax.config import Config, InputRecord
 from syntagmax.artifact import ArtifactBuilder, Artifact, ValidationError
 from syntagmax.extractors.extractor import Extractor, ExtractorResult
 
@@ -102,8 +102,8 @@ class TextArtifact(Artifact):
 
 
 class TextExtractor(Extractor):
-    def __init__(self, config: Config):
-        self._config = config
+    def __init__(self, config: Config, record: InputRecord):
+        super().__init__(config, record)
 
     def driver(self) -> str:
         return 'text'

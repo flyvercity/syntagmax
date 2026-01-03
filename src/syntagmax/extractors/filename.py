@@ -7,14 +7,14 @@
 import logging as lg
 from pathlib import Path
 
-from syntagmax.config import Config
+from syntagmax.config import Config, InputRecord
 from syntagmax.artifact import ArtifactBuilder, Artifact
 from syntagmax.extractors.extractor import Extractor, ExtractorResult
 
 
 class FilenameExtractor(Extractor):
-    def __init__(self, config: Config):
-        self._config = config
+    def __init__(self, config: Config, record: InputRecord):
+        super().__init__(config, record)
 
     def driver(self) -> str:
         return 'filename'
@@ -43,5 +43,8 @@ class FilenameExtractor(Extractor):
         )
 
         builder.add_id(aid, atype)
-        builder.add_desc(description)
+        builder.add_field('description', description)
         return [builder.build()], []
+
+    def _split_handle(self, handle: str) -> list[str]:
+        return handle.split('-', 1)

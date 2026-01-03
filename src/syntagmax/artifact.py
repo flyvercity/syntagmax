@@ -17,8 +17,8 @@ class ARef:
     aid: str
 
     def __init__(self, atype: str, aid: str):
-        self.atype: str = atype
-        self.aid: str = aid
+        self.atype = atype
+        self.aid = aid
 
     def __str__(self) -> str:
         return f'{self.atype}-{self.aid}'
@@ -49,16 +49,13 @@ class Artifact:
         self.driver: str = ''
         self.atype: str = ''
         self.aid: str = ''
-        self.desc: str = ''
         self.pids: list[ARef] = []
         self.children: set[ARef] = set()
         self.ansestors: set[ARef] = set()
+        self.fields: dict[str, str] = {}
 
     def ref(self) -> ARef:
         return ARef(self.atype, self.aid)
-
-    def metastring(self) -> str:
-        return self.desc
 
     def contents(self) -> list[str]: ...
 
@@ -90,11 +87,11 @@ class ArtifactBuilder:
         self.artifact.atype = atype
         return self
 
-    def add_desc(self, desc: str):
-        if self.artifact.desc:
-            raise ValidationError(self._build_error('Duplicate description'))
+    def add_field(self, field: str, value: str):
+        if field in self.artifact.fields:
+            raise ValidationError(self._build_error('Duplicate field'))
 
-        self.artifact.desc = desc
+        self.artifact.fields[field] = value
         return self
 
     def _build_error(self, message: str) -> str:

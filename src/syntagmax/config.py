@@ -52,7 +52,9 @@ class Config:
             base = config.get('base')
 
             if not base:
-                raise UserWarning('Missing `base` parameter')
+                raise UserWarning('Config: Missing `base` parameter')
+
+            lg.debug(f'Root directory: {root_dir}. Base directory: {base}')
 
             self._base_dir = Path(root_dir, base).resolve()
             lg.debug(f'Base directory: {self._base_dir}')
@@ -69,17 +71,20 @@ class Config:
             raise UserWarning('Missing input section')
 
         for input_record in input:
-            path = input_record.get('path')
-            record_base = Path(self._base_dir, path)
+            repo = input_record.get('repo')
 
-            if not path:
-                raise UserWarning('Missing `input.path` parameter')
+            if not repo:
+                raise UserWarning('Missing `input.repo` parameter')
+
+            record_base = Path(self._base_dir, repo)
 
             subdir = input_record.get('subdir')
 
             if subdir:
+                lg.debug(f'Using subdirectory: {subdir}')
                 record_subdir = Path(record_base, subdir)
             else:
+                lg.debug(f'Using base directory as subdirectory: {record_base}')
                 record_subdir = record_base
 
             driver = input_record.get('driver')
@@ -91,7 +96,9 @@ class Config:
             glob = filter or '**/*'
 
             if not filter and driver in DEFAULT_FILTERS:
-                lg.info(f'Using default filter ({DEFAULT_FILTERS[driver]}) for {path}')
+                lg.info(
+                    f'Using default filter ({DEFAULT_FILTERS[driver]}) for {record_subdir}'
+                )
                 glob = DEFAULT_FILTERS[driver]
 
             lg.debug(f'Adding input files from {record_subdir} with filter {glob}')
