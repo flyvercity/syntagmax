@@ -4,6 +4,8 @@
 # Created: 2025-03-29
 # Description: Artifacts are the basic units of the Requirement Management System (RMS).
 
+from pathlib import Path
+
 from syntagmax.errors import RMSException
 from syntagmax.config import Config
 
@@ -42,10 +44,23 @@ class ARef:
         return ARef(atype, aid)
 
 
+class Location:
+    pass
+
+
+class LineLocation:
+    def __init__(self, loc_file: Path, loc_lines: tuple[int, int]):
+        self.loc_file = loc_file
+        self.loc_lines = loc_lines
+
+    def __str__(self) -> str:
+        return f'{self.loc_file}:{self.loc_lines[0]}-{self.loc_lines[1]}'
+
+
 class Artifact:
     def __init__(self, config: Config):
         self._config = config
-        self.location: str = ''
+        self.location: Location | None = None
         self.driver: str = ''
         self.atype: str = ''
         self.aid: str = ''
@@ -69,7 +84,7 @@ class ArtifactBuilder:
         config: Config,
         ArtifactClass: type[Artifact],
         driver: str,
-        location: str
+        location: Location
     ):
         self.artifact = ArtifactClass(config)
         self.artifact.driver = driver
@@ -98,6 +113,9 @@ class ArtifactBuilder:
         return f'Driver "{self.artifact.driver}": {self.artifact.location}: {message}'
 
     def build(self) -> Artifact:
+        if not self.artifact.location:
+            raise ValidationError(self._build_error('Location is required'))
+
         if not self.artifact.atype:
             raise ValidationError(self._build_error('AType is required'))
 
