@@ -3,10 +3,8 @@
 # Author: Boris Resnick
 # Created: 2026-01-03
 # Description: Syntagmax Requirement Management System (RMS) Main Analysis.
-import logging as lg
 
-import rich
-from rich.table import Table
+import logging as lg
 
 from syntagmax.config import Config
 from syntagmax.errors import NonFatalError
@@ -16,7 +14,7 @@ from syntagmax.tree import build_tree
 from syntagmax.artifact import ARef
 from syntagmax.render import print_arttree
 from syntagmax.analyse import analyse_tree
-from syntagmax.metrics import calculate_metrics
+from syntagmax.metrics import render_metrics
 
 
 def process(config: Config):
@@ -35,15 +33,8 @@ def process(config: Config):
         lg.warning('No artifacts found')
         return
 
-    print_arttree(artifacts, ARef.root(), verbose=config.params['verbose'])
-    metrics = calculate_metrics(config, artifacts)
+    if config.params['render_tree']:
+        print_arttree(artifacts, ARef.root(), verbose=config.params['verbose'])
 
-    table = Table(title="Artifact Metrics")
-
-    table.add_column("Metric", style="cyan", no_wrap=True)
-    table.add_column("Value", style="magenta")
-
-    for k, v in metrics.items():
-        table.add_row(str(k), str(v))
-
-    rich.print(table)
+    if config.metrics.enabled:
+        render_metrics(config, artifacts)

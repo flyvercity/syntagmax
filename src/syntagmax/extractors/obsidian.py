@@ -114,7 +114,7 @@ class ObsidianExtractor(Extractor):
                 errors.append(error)
                 continue
 
-            atype = attrs.get('atype') or self._record['default_atype']
+            atype = attrs.get('atype') or self._record.default_atype
             builder.add_id(id, atype)
             builder.add_fields(attrs)
             artifacts.append(builder.build())

@@ -36,21 +36,30 @@ class InputConfig(BaseModel):
     name: str = Field(..., description='Input source name')
     dir: str = Field(..., description='Subdirectory relative to base directory')
     driver: str = Field(..., description='Driver type for processing')
-    atype: str | None = Field(None, description='Default artifact type')
-    filter: str | None = Field(None, description='File filter pattern')
+    filter: str | None = Field(default=None, description='File filter pattern')
+    atype: str = Field('REQ', description='Default artifact type')
+
+
+class MetricsConfig(BaseModel):
+    enabled: bool = Field(default=False, description='Enable metrics collection')
 
 
 class ConfigFile(BaseModel):
     base: str = Field(..., description='Base directory path')
     input: list[InputConfig] = Field(..., description='Input configuration records')
+    metrics: MetricsConfig = Field(MetricsConfig(), description='Metrics configuration')
 
 
 class Config:
+    params: Params
+    metrics: MetricsConfig
+    model: IModel
+
     def __init__(self, params: Params, config_filename: Path):
         self.params = params
         self._input_records: list[InputRecord] = []
         self._read_config(config_filename)
-        self.model: IModel = build_model(self.params)
+        self.model = build_model(self.params)
 
     def _read_config(self, config_filename: Path):
         try:
@@ -72,6 +81,11 @@ class Config:
             lg.debug(f'Base directory: {self._base_dir}')
             self._read_input_records(config_model.input)
 
+            self.metrics = config_model.metrics
+
+            if not config_model.metrics.enabled:
+                lg.warning('Metrics collection is disabled')
+
         except Exception as exc:
             lg.error(f'Error during configuration: {exc}')
             raise UserWarning('Bad configuration file')
@@ -91,18 +105,13 @@ class Config:
             lg.debug(f'Adding input files from {name} with filter {glob}')
             filepaths = Path(record_base).glob(glob)
 
-            default_atype = input_config.atype or 'REQ'
-
-            if not input_config.atype:
-                lg.warning(f'Using default AType: {default_atype} for {name}')
-
             self._input_records.append(
                 InputRecord(
                     name=name,
                     record_base=record_base,
                     filepaths=list(filepaths),
                     driver=input_config.driver,
-                    default_atype=default_atype
+                    default_atype=input_config.atype
                 )
             )
 
