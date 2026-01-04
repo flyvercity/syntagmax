@@ -73,10 +73,10 @@ class ObsidianExtractor(Extractor):
                 errors.append(error)
                 continue
 
-            attrs = {
+            attrs = benedict({
                 field.get_str('field.marker'): field.get_str('field.content.text')
                 for field in fields
-            }
+            })
 
             attrs.update(yaml_dict.get_dict('attrs'))
             attrs['content'] = content
@@ -90,6 +90,21 @@ class ObsidianExtractor(Extractor):
                     loc_lines=(start, end)
                 )
             )
+
+            pid_handle = attrs.get_str('pid')
+
+            if pid_handle and pid_handle != 'None':
+                pid_split = pid_handle.split(':')
+
+                if len(pid_split) != 2:
+                    error = f'Invalid PID: {pid_handle}'
+                    lg.error(error)
+                    errors.append(error)
+                    continue
+
+                p_atype = pid_split[0]
+                p_aid = pid_split[1]
+                builder.add_pid(p_aid, p_atype)
 
             id = attrs.get('id')
 
