@@ -7,10 +7,9 @@
 import logging as lg
 from pathlib import Path
 from typing import Sequence
-from urllib.parse import urlparse
 
 from pyparsing import (
-    Literal,
+    CaselessLiteral,
     Suppress,
     ParseException,
     ZeroOrMore,
@@ -18,11 +17,14 @@ from pyparsing import (
     OneOrMore,
     Word,
     lineno,
-    alphanums
+    alphanums,
+    alphas
 )
 
 from syntagmax.config import Config, InputRecord
-from syntagmax.artifact import ArtifactBuilder, Artifact, ValidationError
+from syntagmax.artifact import (
+    ArtifactBuilder, Artifact, ValidationError, LineLocation
+)
 from syntagmax.extractors.extractor import Extractor, ExtractorResult
 
 
@@ -36,7 +38,13 @@ class Ref:
 
 
 class IdRef(Ref):
-    pass
+    def __init__(self, aid: str):
+        self.value = aid
+
+
+class ATypeRef(Ref):
+    def __init__(self, atype: str):
+        self.value = atype
 
 
 class PidRef(Ref):
@@ -47,31 +55,28 @@ class PidRef(Ref):
         self.revision = revision
 
 
-def capture_begin_position(s, loc, tokens):
-    return {'type': 'begin', 'line': lineno(loc, s)}
-
-
-def capture_end_position(s, loc, tokens):
-    return {'type': 'end', 'line': lineno(loc, s)}
-
-
-Begin = Literal('[<').set_parse_action(capture_begin_position)
-BodyStart = Suppress(Literal('>>>'))
-End = Literal('>]').set_parse_action(capture_end_position)
-Equal = Suppress(Literal('='))
-AType = Word(alphanums)
-AId = Word(alphanums + '-')
-Hyphen = Suppress(Literal('-'))
-At = Suppress(Literal('@'))
-IdKeyword = Suppress(Literal('ID'))
-PidKeyword = Suppress(Literal('PID'))
+Begin = Suppress(CaselessLiteral('[<'))
+BodyStart = Suppress(CaselessLiteral('>>>'))
+End = Suppress(CaselessLiteral('>]'))
+Equal = Suppress(CaselessLiteral('='))
+AType = Word(alphas, alphanums)
+AId = Word(alphas, alphanums + '-')
+Colon = Suppress(CaselessLiteral(':'))
+At = Suppress(CaselessLiteral('@'))
+IdKeyword = Suppress(CaselessLiteral('ID'))
+ATypeKeyword = Suppress(CaselessLiteral('TYPE'))
+PidKeyword = Suppress(CaselessLiteral('PID'))
 Revision = Word(alphanums)
 
-IdDirective = (IdKeyword + Equal + AType + Hyphen + AId).set_parse_action(
-    lambda t: IdRef(atype=t[0], aid=t[1])  # type: ignore
+IdDirective = (IdKeyword + Equal + AId).set_parse_action(
+    lambda t: IdRef(aid=t[0])  # type: ignore
 )
 
-PidDirective = (PidKeyword + Equal + AType + Hyphen + AId + At + Revision).set_parse_action(
+ATypeDirective = (ATypeKeyword + Equal + AType).set_parse_action(
+    lambda t: ATypeRef(atype=t[0])  # type: ignore
+)
+
+PidDirective = (PidKeyword + Equal + AType + Colon + AId + At + Revision).set_parse_action(
     lambda t: PidRef(atype=t[0], aid=t[1], revision=t[2])  # type: ignore
 )
 
@@ -90,15 +95,8 @@ Section = (
 
 
 class TextArtifact(Artifact):
-    def contents(self) -> str:
-        uri = urlparse(self.location)
-        assert uri.scheme == 'line'
-        filepath_str = f'{uri.netloc}/{uri.path}'
-        line = uri.fragment
-        filepath = self._config.base_dir() / filepath_str
-        text = filepath.read_text(encoding='utf-8')
-        begin, end = line.split('-')
-        return text.split('\n')[int(begin) - 1:int(end) - 2]
+    def __init__(self, config: Config):
+        super().__init__(config)
 
 
 class TextExtractor(Extractor):
@@ -113,33 +111,25 @@ class TextExtractor(Extractor):
         errors: list[str] = []
         text = filepath.read_text(encoding='utf-8')
         matches = Begin.scanString(text)
+        file_location = self._config.derive_path(filepath)
 
         for match in matches:
             start_location = match[1]
+            end_location = match[2]
+
             remaining_string = text[start_location:]
             section_start_string = remaining_string.split('\n', 1)[0]
             start_line = lineno(start_location, text)
-            file_location = self._config.derive_path(filepath)
-            location = f'line://{file_location}#{start_line}'
 
             lg.debug(f'Found section, parsing: {section_start_string}')
 
+            location = LineLocation(
+                loc_file=file_location,
+                loc_lines=(start_line, end_location)
+            )
+
             try:
                 section = Section.parse_string(remaining_string)
-
-                # Extract line numbers from Begin and End tokens
-                begin = start_line
-                end = start_line
-
-                for item in section:
-                    if isinstance(item, dict):
-                        if item.get('type') == 'begin':
-                            begin += item.get('line')
-                        elif item.get('type') == 'end':
-                            end += item.get('line')
-
-                # Refine position
-                location = f'line://{file_location}#{begin}-{end}'
 
                 builder = ArtifactBuilder(
                     self._config,
@@ -148,13 +138,25 @@ class TextExtractor(Extractor):
                     location
                 )
 
-                for item in section:
+                aid: str | None = None
+                atype: str | None = self._record['default_atype']
+
+                for item in section:  # type: ignore
                     if isinstance(item, IdRef):
-                        builder.add_id(item.aid, item.atype)
+                        aid = item.value
+                    if isinstance(item, ATypeRef):
+                        atype = item.value
                     elif isinstance(item, PidRef):
                         builder.add_pid(item.aid, item.atype)
-                    # Skip Begin and End token dictionaries - they're just for line number tracking
 
+                if aid is None:
+                    error = self._format_error(
+                        'Missing ID', location, section_start_string, 'ID is required'
+                    )
+                    errors.append(error)
+                    continue
+
+                builder.add_id(aid, atype)
                 artifact = builder.build()
                 artifacts.append(artifact)
 
@@ -177,7 +179,7 @@ class TextExtractor(Extractor):
         return artifacts, errors
 
     def _format_error(
-        self, error_type: str, location: str,
+        self, error_type: str, location: LineLocation,
         section_start_string: str, message: str
     ) -> str:
         return f'''Driver "text": {error_type} in {location}

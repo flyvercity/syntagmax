@@ -4,8 +4,6 @@
 # Created: 2025-03-29
 # Description: Artifacts are the basic units of the Requirement Management System (RMS).
 
-from pathlib import Path
-
 from syntagmax.errors import RMSException
 from syntagmax.config import Config
 
@@ -48,13 +46,21 @@ class Location:
     pass
 
 
+class FileLocation(Location):
+    def __init__(self, loc_file: str):
+        self.loc_file = loc_file
+
+    def __str__(self) -> str:
+        return self.loc_file
+
+
 class LineLocation(Location):
-    def __init__(self, loc_file: Path, loc_lines: tuple[int, int]):
+    def __init__(self, loc_file: str, loc_lines: tuple[int, int]):
         self.loc_file = loc_file
         self.loc_lines = loc_lines
 
     def __str__(self) -> str:
-        return f'{self.loc_file.name}:{self.loc_lines[0]}-{self.loc_lines[1]}'
+        return f'{self.loc_file}:{self.loc_lines[0]}-{self.loc_lines[1]}'
 
 
 class Artifact:

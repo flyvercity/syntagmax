@@ -85,7 +85,10 @@ class ObsidianExtractor(Extractor):
                 config=self._config,
                 ArtifactClass=ObsidianArtifact,
                 driver=self.driver(),
-                location=LineLocation(filepath, (start, end))
+                location=LineLocation(
+                    loc_file=self._config.derive_path(filepath),
+                    loc_lines=(start, end)
+                )
             )
 
             id = attrs.get('id')
