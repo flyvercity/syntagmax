@@ -3,6 +3,7 @@
 # Author: Boris Resnick
 # Created: 2025-04-06
 # Description: Extracts artifacts from Obsidian files
+import json
 from pathlib import Path
 import logging as lg
 
@@ -45,7 +46,8 @@ class ObsidianExtractor(Extractor):
                 continue
 
             req = benedict(match[0])
-            lg.debug(f'Requirement found at {start}-{end}: {req}')
+            json_req = json.dumps(req, indent=4)
+            lg.debug(f'Requirement found at {start}-{end}: {json_req}')
 
             content = req.get_str('req.content.text')
             lg.debug(f'Content: {content}')

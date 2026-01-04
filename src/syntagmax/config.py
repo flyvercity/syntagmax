@@ -10,8 +10,6 @@ import logging as lg
 from typing import TypedDict, Any
 import json
 
-import click
-
 from syntagmax.params import Params
 from syntagmax.model import IModel, build_model
 
@@ -47,8 +45,8 @@ class Config:
             config = tomllib.loads(config_file.read_text(encoding='utf-8'))
 
             if self.params['verbose']:
-                lg.debug(f'Configuration file content: {config}')
-                click.echo(json.dumps(config, indent=4))
+                json_config = json.dumps(config, indent=4)
+                lg.debug(f'Configuration file content: {json_config}')
 
             base = config.get('base')
 
