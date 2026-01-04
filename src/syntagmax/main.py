@@ -5,6 +5,9 @@
 # Description: Syntagmax Requirement Management System (RMS) Main Analysis.
 import logging as lg
 
+import rich
+from rich.table import Table
+
 from syntagmax.config import Config
 from syntagmax.errors import NonFatalError
 
@@ -13,6 +16,7 @@ from syntagmax.tree import build_tree
 from syntagmax.artifact import ARef
 from syntagmax.render import print_arttree
 from syntagmax.analyse import analyse_tree
+from syntagmax.metrics import calculate_metrics
 
 
 def process(config: Config):
@@ -32,3 +36,14 @@ def process(config: Config):
         return
 
     print_arttree(artifacts, ARef.root(), verbose=config.params['verbose'])
+    metrics = calculate_metrics(config, artifacts)
+
+    table = Table(title="Artifact Metrics")
+
+    table.add_column("Metric", style="cyan", no_wrap=True)
+    table.add_column("Value", style="magenta")
+
+    for k, v in metrics.items():
+        table.add_row(str(k), str(v))
+
+    rich.print(table)

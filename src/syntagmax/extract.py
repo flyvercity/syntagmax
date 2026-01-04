@@ -42,8 +42,8 @@ def extract(config: Config) -> tuple[dict[ARef, Artifact], list[str]]:
     errors: Sequence[str] = []
 
     for record in config.input_records():
-        lg.debug(f'Processing record: {record["record_base"]} ({record["driver"]})')
-        extractor = EXTRACTORS[record['driver']](config, record)
+        lg.debug(f'Processing record: {record.name} ({record.driver})')
+        extractor = EXTRACTORS[record.driver](config, record)
         record_artifacts, record_errors = extractor.extract()
         artifacts.extend(record_artifacts)
         errors.extend(record_errors)

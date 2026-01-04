@@ -29,7 +29,7 @@ class Extractor:
         errors: list[str] = []
         artifacts: list[Artifact] = []
 
-        for filepath in self._record['filepaths']:
+        for filepath in self._record.filepaths:
             lg.debug(f'Processing file: {filepath}')
             file_artifacts, file_errors = self.extract_from_file(filepath)
             artifacts.extend(file_artifacts)

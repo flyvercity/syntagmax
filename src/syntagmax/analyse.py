@@ -10,9 +10,13 @@ from syntagmax.config import Config
 
 def analyse_tree(config: Config, artifacts: ArtifactMap) -> list[str]:
     errors: list[str] = []
-    model = config.model
+    errors.extend(check_single_root(artifacts))
+    errors.extend(check_legit_types(config, artifacts))
+    return errors
 
-    # Check for a single root
+
+def check_single_root(artifacts: ArtifactMap) -> list[str]:
+    errors: list[str] = []
     root_count = 0
     for a in artifacts.values():
         if a.atype == 'ROOT':
@@ -21,7 +25,13 @@ def analyse_tree(config: Config, artifacts: ArtifactMap) -> list[str]:
     if root_count != 1:
         errors.append('Must have exactly one root artifact')
 
-    # Check for legit types
+    return errors
+
+
+def check_legit_types(config: Config, artifacts: ArtifactMap) -> list[str]:
+    model = config.model
+    errors: list[str] = []
+
     for a in artifacts.values():
         if not model.is_valid_atype(a.atype):
             errors.append(f'Invalid artifact type: {a}')

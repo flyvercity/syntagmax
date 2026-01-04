@@ -7,16 +7,19 @@
 from pathlib import Path
 import tomllib
 import logging as lg
-from typing import TypedDict, Any
 import json
+from dataclasses import dataclass
+
+from pydantic import BaseModel, Field
 
 from syntagmax.params import Params
 from syntagmax.model import IModel, build_model
 
 
-class InputRecord(TypedDict):
+@dataclass
+class InputRecord:
+    name: str
     record_base: Path
-    record_subdir: Path
     filepaths: list[Path]
     driver: str
     default_atype: str
@@ -27,6 +30,19 @@ DEFAULT_FILTERS = {
     'ipynb': '**/*.ipynb',
     'markdown': '**/*.md'
 }
+
+
+class InputConfig(BaseModel):
+    name: str = Field(..., description='Input source name')
+    dir: str = Field(..., description='Subdirectory relative to base directory')
+    driver: str = Field(..., description='Driver type for processing')
+    atype: str | None = Field(None, description='Default artifact type')
+    filter: str | None = Field(None, description='File filter pattern')
+
+
+class ConfigFile(BaseModel):
+    base: str = Field(..., description='Base directory path')
+    input: list[InputConfig] = Field(..., description='Input configuration records')
 
 
 class Config:
@@ -42,86 +58,57 @@ class Config:
             lg.info(f'Using configuration file: {config_file}')
 
             root_dir = config_file.parent
-            config = tomllib.loads(config_file.read_text(encoding='utf-8'))
+            config_data = tomllib.loads(config_file.read_text(encoding='utf-8'))
 
             if self.params['verbose']:
-                json_config = json.dumps(config, indent=4)
+                json_config = json.dumps(config_data, indent=4)
                 lg.debug(f'Configuration file content: {json_config}')
 
-            base = config.get('base')
+            config_model = ConfigFile.model_validate(config_data)
 
-            if not base:
-                raise UserWarning('Config: Missing `base` parameter')
+            lg.debug(f'Root directory: {root_dir}. Base directory: {config_model.base}')
 
-            lg.debug(f'Root directory: {root_dir}. Base directory: {base}')
-
-            self._base_dir = Path(root_dir, base).resolve()
+            self._base_dir = Path(root_dir, config_model.base).resolve()
             lg.debug(f'Base directory: {self._base_dir}')
-            self._read_input_records(config)
+            self._read_input_records(config_model.input)
 
         except Exception as exc:
             lg.error(f'Error during configuration: {exc}')
             raise UserWarning('Bad configuration file')
 
-    def _read_input_records(self, config: dict[str, Any]):
-        input = config.get('input')
+    def _read_input_records(self, input_configs: list[InputConfig]):
+        for input_config in input_configs:
+            name = input_config.name
+            record_base = Path(self._base_dir, input_config.dir)
+            glob = input_config.filter or '**/*'
 
-        if not input:
-            raise UserWarning('Missing input section')
-
-        for input_record in input:
-            repo = input_record.get('repo')
-
-            if not repo:
-                raise UserWarning('Missing `input.repo` parameter')
-
-            record_base = Path(self._base_dir, repo)
-
-            subdir = input_record.get('subdir')
-
-            if subdir:
-                lg.debug(f'Using subdirectory: {subdir}')
-                record_subdir = Path(record_base, subdir)
-            else:
-                lg.debug(f'Using base directory as subdirectory: {record_base}')
-                record_subdir = record_base
-
-            driver = input_record.get('driver')
-
-            if not driver:
-                raise UserWarning('Missing `input.driver` parameter')
-
-            filter = input_record.get('filter')
-            glob = filter or '**/*'
-
-            if not filter and driver in DEFAULT_FILTERS:
+            if not input_config.filter and input_config.driver in DEFAULT_FILTERS:
                 lg.info(
-                    f'Using default filter ({DEFAULT_FILTERS[driver]}) for {record_subdir}'
+                    f'Using default filter ({DEFAULT_FILTERS[input_config.driver]}) for {record_base}'
                 )
-                glob = DEFAULT_FILTERS[driver]
+                glob = DEFAULT_FILTERS[input_config.driver]
 
-            lg.debug(f'Adding input files from {record_subdir} with filter {glob}')
-            filepaths = Path(record_subdir, Path(record_subdir)).glob(glob)
+            lg.debug(f'Adding input files from {name} with filter {glob}')
+            filepaths = Path(record_base).glob(glob)
 
-            default_atype = input_record.get('atype')
+            default_atype = input_config.atype or 'REQ'
 
-            if not default_atype:
-                default_atype = 'REQ'
-                lg.warning(f'Using default AType: {default_atype}')
+            if not input_config.atype:
+                lg.warning(f'Using default AType: {default_atype} for {name}')
 
             self._input_records.append(
                 InputRecord(
+                    name=name,
                     record_base=record_base,
-                    record_subdir=record_subdir,
                     filepaths=list(filepaths),
-                    driver=driver,
+                    driver=input_config.driver,
                     default_atype=default_atype
                 )
             )
 
         for input_record in self._input_records:
-            lg.info(f'Input record: {input_record["record_subdir"]}')
-            lg.debug(f'Input files: {len(input_record["filepaths"])}')
+            lg.info(f'Input record: {input_record.name}')
+            lg.debug(f'Input files: {len(input_record.filepaths)}')
 
     def base_dir(self):
         return self._base_dir

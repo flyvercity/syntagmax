@@ -10,7 +10,7 @@ dependencies = [
     "mcp[cli]>=1.16.0",
     "pydantic>=2.11.10",
     "pyparsing>=3.2.3",
-    "python-benedict[parse,yaml]>=0.35.0",
+    "python-benedict[parse,yaml,toml]>=0.35.0",
     "pyyaml>=6.0.2",
     "rich>=13.9.4",
 ]
