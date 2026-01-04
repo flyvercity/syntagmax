@@ -42,6 +42,10 @@ class InputConfig(BaseModel):
 
 class MetricsConfig(BaseModel):
     enabled: bool = Field(default=False, description='Enable metrics collection')
+    requirement_type: str = Field(default='REQ', description='Requirement type')
+    status_field: str = Field(default='status', description='Status attribute name')
+    verify_field: str = Field(default='verify', description='Verify attribute name')
+    tbd_marker: str = Field(default='TBD', description='TBD detection marker')
 
 
 class ConfigFile(BaseModel):

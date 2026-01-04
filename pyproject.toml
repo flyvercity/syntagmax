@@ -8,6 +8,7 @@ dependencies = [
     "click>=8.1.8",
     "gitpython>=3.1.44",
     "mcp[cli]>=1.16.0",
+    "polars>=1.36.1",
     "pydantic>=2.11.10",
     "pyparsing>=3.2.3",
     "python-benedict[parse,yaml,toml]>=0.35.0",
