@@ -5,9 +5,14 @@
 # Description: Builds a tree of artifacts.
 
 from syntagmax.config import Config
-from syntagmax.artifact import ArtifactMap, Artifact, ARef
+from syntagmax.artifact import ArtifactMap, Artifact, ARef, Location
 
 MAX_TREE_DEPTH = 20
+
+
+class RootLocation(Location):
+    def __str__(self):
+        return '<ROOT>'
 
 
 class RootArtifact(Artifact):
@@ -15,7 +20,7 @@ class RootArtifact(Artifact):
         super().__init__(config)
         self.atype = 'ROOT'
         self.aid = 'ROOT'
-        self.location = 'ROOT'
+        self.location = RootLocation()
         self.children = set()
 
 

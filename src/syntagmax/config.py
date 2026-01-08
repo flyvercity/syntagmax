@@ -7,20 +7,22 @@
 from pathlib import Path
 import tomllib
 import logging as lg
-from typing import TypedDict, Any
 import json
+from dataclasses import dataclass
 
-import click
+from pydantic import BaseModel, Field
 
 from syntagmax.params import Params
 from syntagmax.model import IModel, build_model
 
 
-class InputRecord(TypedDict):
+@dataclass
+class InputRecord:
+    name: str
     record_base: Path
-    record_subdir: Path
     filepaths: list[Path]
     driver: str
+    default_atype: str
 
 
 DEFAULT_FILTERS = {
@@ -30,12 +32,38 @@ DEFAULT_FILTERS = {
 }
 
 
+class InputConfig(BaseModel):
+    name: str = Field(..., description='Input source name')
+    dir: str = Field(..., description='Subdirectory relative to base directory')
+    driver: str = Field(..., description='Driver type for processing')
+    filter: str | None = Field(default=None, description='File filter pattern')
+    atype: str = Field('REQ', description='Default artifact type')
+
+
+class MetricsConfig(BaseModel):
+    enabled: bool = Field(default=False, description='Enable metrics collection')
+    requirement_type: str = Field(default='REQ', description='Requirement type')
+    status_field: str = Field(default='status', description='Status attribute name')
+    verify_field: str = Field(default='verify', description='Verify attribute name')
+    tbd_marker: str = Field(default='TBD', description='TBD detection marker')
+
+
+class ConfigFile(BaseModel):
+    base: str = Field(..., description='Base directory path')
+    input: list[InputConfig] = Field(..., description='Input configuration records')
+    metrics: MetricsConfig = Field(MetricsConfig(), description='Metrics configuration')
+
+
 class Config:
+    params: Params
+    metrics: MetricsConfig
+    model: IModel
+
     def __init__(self, params: Params, config_filename: Path):
         self.params = params
         self._input_records: list[InputRecord] = []
         self._read_config(config_filename)
-        self.model: IModel = build_model(self.params)
+        self.model = build_model(self.params)
 
     def _read_config(self, config_filename: Path):
         try:
@@ -43,72 +71,57 @@ class Config:
             lg.info(f'Using configuration file: {config_file}')
 
             root_dir = config_file.parent
-            config = tomllib.loads(config_file.read_text(encoding='utf-8'))
+            config_data = tomllib.loads(config_file.read_text(encoding='utf-8'))
 
             if self.params['verbose']:
-                lg.debug(f'Configuration file content: {config}')
-                click.echo(json.dumps(config, indent=4))
+                json_config = json.dumps(config_data, indent=4)
+                lg.debug(f'Configuration file content: {json_config}')
 
-            base = config.get('base')
+            config_model = ConfigFile.model_validate(config_data)
 
-            if not base:
-                raise UserWarning('Missing `base` parameter')
+            lg.debug(f'Root directory: {root_dir}. Base directory: {config_model.base}')
 
-            self._base_dir = Path(root_dir, base).resolve()
+            self._base_dir = Path(root_dir, config_model.base).resolve()
             lg.debug(f'Base directory: {self._base_dir}')
-            self._read_input_records(config)
+            self._read_input_records(config_model.input)
+
+            self.metrics = config_model.metrics
+
+            if not config_model.metrics.enabled:
+                lg.warning('Metrics collection is disabled')
 
         except Exception as exc:
             lg.error(f'Error during configuration: {exc}')
             raise UserWarning('Bad configuration file')
 
-    def _read_input_records(self, config: dict[str, Any]):
-        input = config.get('input')
+    def _read_input_records(self, input_configs: list[InputConfig]):
+        for input_config in input_configs:
+            name = input_config.name
+            record_base = Path(self._base_dir, input_config.dir)
+            glob = input_config.filter or '**/*'
 
-        if not input:
-            raise UserWarning('Missing input section')
+            if not input_config.filter and input_config.driver in DEFAULT_FILTERS:
+                lg.info(
+                    f'Using default filter ({DEFAULT_FILTERS[input_config.driver]}) for {record_base}'
+                )
+                glob = DEFAULT_FILTERS[input_config.driver]
 
-        for input_record in input:
-            path = input_record.get('path')
-            record_base = Path(self._base_dir, path)
-
-            if not path:
-                raise UserWarning('Missing `input.path` parameter')
-
-            subdir = input_record.get('subdir')
-
-            if subdir:
-                record_subdir = Path(record_base, subdir)
-            else:
-                record_subdir = record_base
-
-            driver = input_record.get('driver')
-
-            if not driver:
-                raise UserWarning('Missing `input.driver` parameter')
-
-            filter = input_record.get('filter')
-            glob = filter or '**/*'
-
-            if not filter and driver in DEFAULT_FILTERS:
-                lg.info(f'Using default filter ({DEFAULT_FILTERS[driver]}) for {path}')
-                glob = DEFAULT_FILTERS[driver]
-
-            lg.debug(f'Adding input files from {record_subdir} with filter {glob}')
-            filepaths = Path(record_subdir, Path(record_subdir)).glob(glob)
+            lg.debug(f'Adding input files from {name} with filter {glob}')
+            filepaths = Path(record_base).glob(glob)
 
             self._input_records.append(
                 InputRecord(
+                    name=name,
                     record_base=record_base,
-                    record_subdir=record_subdir,
                     filepaths=list(filepaths),
-                    driver=driver
+                    driver=input_config.driver,
+                    default_atype=input_config.atype
                 )
             )
 
         for input_record in self._input_records:
-            lg.info(f'Input record: {input_record["record_subdir"]}')
-            lg.debug(f'Input files: {len(input_record["filepaths"])}')
+            lg.info(f'Input record: {input_record.name}')
+            lg.debug(f'Input files: {len(input_record.filepaths)}')
 
     def base_dir(self):
         return self._base_dir

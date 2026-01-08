@@ -10,14 +10,13 @@ from syntagmax.config import Config
 
 def analyse_tree(config: Config, artifacts: ArtifactMap) -> list[str]:
     errors: list[str] = []
-    model = config.model
+    errors.extend(check_single_root(artifacts))
+    errors.extend(check_legit_types(config, artifacts))
+    return errors
 
-    # Check for legit types
-    for a in artifacts.values():
-        if not model.is_valid_atype(a.atype):
-            errors.append(f'Invalid artifact type: {a}')
 
-    # Check for a single root
+def check_single_root(artifacts: ArtifactMap) -> list[str]:
+    errors: list[str] = []
     root_count = 0
     for a in artifacts.values():
         if a.atype == 'ROOT':
@@ -26,18 +25,15 @@ def analyse_tree(config: Config, artifacts: ArtifactMap) -> list[str]:
     if root_count != 1:
         errors.append('Must have exactly one root artifact')
 
-    # Check for allowed children
-    if not config.params['suppress_unexpected_children']:
-        for a in artifacts.values():
-            for c in a.children:
-                if not model.allowed_child(a.atype, c.atype):
-                    errors.append(f'Invalid child {c.atype} for {a} at {artifacts[c]}')
+    return errors
 
-    # Check for required children
-    if not config.params['suppress_required_children']:
-        for a in artifacts.values():
-            for c in model.required_children(a.atype):
-                if c not in map(lambda c: c.atype, a.children):
-                    errors.append(f'Required child {c} not found for {a}')
+
+def check_legit_types(config: Config, artifacts: ArtifactMap) -> list[str]:
+    model = config.model
+    errors: list[str] = []
+
+    for a in artifacts.values():
+        if not model.is_valid_atype(a.atype):
+            errors.append(f'Invalid artifact type: {a}')
 
     return errors

@@ -17,8 +17,8 @@ class ARef:
     aid: str
 
     def __init__(self, atype: str, aid: str):
-        self.atype: str = atype
-        self.aid: str = aid
+        self.atype = atype
+        self.aid = aid
 
     def __str__(self) -> str:
         return f'{self.atype}-{self.aid}'
@@ -42,23 +42,41 @@ class ARef:
         return ARef(atype, aid)
 
 
+class Location:
+    pass
+
+
+class FileLocation(Location):
+    def __init__(self, loc_file: str):
+        self.loc_file = loc_file
+
+    def __str__(self) -> str:
+        return self.loc_file
+
+
+class LineLocation(Location):
+    def __init__(self, loc_file: str, loc_lines: tuple[int, int]):
+        self.loc_file = loc_file
+        self.loc_lines = loc_lines
+
+    def __str__(self) -> str:
+        return f'{self.loc_file}:{self.loc_lines[0]}-{self.loc_lines[1]}'
+
+
 class Artifact:
     def __init__(self, config: Config):
         self._config = config
-        self.location: str = ''
+        self.location: Location | None = None
         self.driver: str = ''
         self.atype: str = ''
         self.aid: str = ''
-        self.desc: str = ''
         self.pids: list[ARef] = []
         self.children: set[ARef] = set()
         self.ansestors: set[ARef] = set()
+        self.fields: dict[str, str] = {}
 
     def ref(self) -> ARef:
         return ARef(self.atype, self.aid)
-
-    def metastring(self) -> str:
-        return self.desc
 
     def contents(self) -> list[str]: ...
 
@@ -72,7 +90,7 @@ class ArtifactBuilder:
         config: Config,
         ArtifactClass: type[Artifact],
         driver: str,
-        location: str
+        location: Location
     ):
         self.artifact = ArtifactClass(config)
         self.artifact.driver = driver
@@ -90,17 +108,24 @@ class ArtifactBuilder:
         self.artifact.atype = atype
         return self
 
-    def add_desc(self, desc: str):
-        if self.artifact.desc:
-            raise ValidationError(self._build_error('Duplicate description'))
+    def add_field(self, field: str, value: str):
+        if field in self.artifact.fields:
+            raise ValidationError(self._build_error('Duplicate field'))
 
-        self.artifact.desc = desc
+        self.artifact.fields[field] = value
+        return self
+
+    def add_fields(self, fields: dict[str, str]):
+        self.artifact.fields.update(fields)
         return self
 
     def _build_error(self, message: str) -> str:
         return f'Driver "{self.artifact.driver}": {self.artifact.location}: {message}'
 
     def build(self) -> Artifact:
+        if not self.artifact.location:
+            raise ValidationError(self._build_error('Location is required'))
+
         if not self.artifact.atype:
             raise ValidationError(self._build_error('AType is required'))
 

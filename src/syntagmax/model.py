@@ -60,8 +60,4 @@ class StandardModel(IModel):
 
 def build_model(params: Params) -> IModel:
     model = StandardModel()
-
-    if params['allow_top_level_arch']:
-        model.top_level_atypes.append('ARCH')
-
     return model

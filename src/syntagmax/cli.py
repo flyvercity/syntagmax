@@ -6,36 +6,17 @@
 
 import logging as lg
 import sys
-from pathlib import Path
 import traceback
+from pathlib import Path
 from typing import Any
 
 import click
+from rich.logging import RichHandler
 
 import syntagmax.utils as u
 from syntagmax.config import Config, Params
 from syntagmax.errors import RMSException, NonFatalError
-
-from syntagmax.extract import extract
-from syntagmax.tree import build_tree
-from syntagmax.artifact import ARef
-from syntagmax.render import print_arttree
-from syntagmax.analyse import analyse_tree
-
-
-def process(config: Config):
-    errors: list[str] = []
-    artifacts, e_errors = extract(config)
-    errors.extend(e_errors)
-    t_errors = build_tree(config, artifacts)
-    errors.extend(t_errors)
-    a_errors = analyse_tree(config, artifacts)
-    errors.extend(a_errors)
-
-    if errors:
-        raise NonFatalError(errors)
-
-    print_arttree(artifacts, ARef.root())
+from syntagmax.main import process
 
 
 @click.group(help='RMS Entry Point')
@@ -44,20 +25,11 @@ def process(config: Config):
     '--verbose', is_flag=True, help='Verbose output'
 )
 @click.option(
-    '--suppress-unexpected-children', is_flag=True,
-    help='Suppress unexpected children type errors'
-)
-@click.option(
-    '--suppress-required-children', is_flag=True,
-    help='Suppress required children errors'
-)
-@click.option(
-    '--allow-top-level-arch', is_flag=True,
-    help='Allow top level ARCH artifacts'
+    '--render-tree', is_flag=True, help='Render the artifact tree'
 )
 def rms(ctx: click.Context, **kwargs: dict[str, Any]):
     verbose = kwargs['verbose']
-    lg.basicConfig(level=lg.DEBUG if verbose else lg.INFO)
+    lg.basicConfig(level=lg.DEBUG if verbose else lg.INFO, handlers=[RichHandler()])
     ctx.obj = Params(**kwargs)  # type: ignore
     lg.info(f'Verbose: {verbose}')
 

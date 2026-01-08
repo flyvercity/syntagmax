@@ -19,9 +19,6 @@ class SyntagmaxMCP(FastMCP):
     def configure(self):
         params = Params(
             verbose=False,
-            suppress_unexpected_children=False,
-            suppress_required_children=False,
-            allow_top_level_arch=False
         )
 
         self._config = Config(params, CONFIG_FILENAME)
