@@ -10,7 +10,6 @@ import json
 from typing import Any, Dict
 import logging as lg
 
-from click.core import F
 import rich
 import requests
 
