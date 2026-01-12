@@ -15,6 +15,7 @@ from syntagmax.artifact import ARef
 from syntagmax.render import print_arttree
 from syntagmax.analyse import analyse_tree
 from syntagmax.metrics import render_metrics
+from syntagmax.ai import ai_analyze
 
 
 def process(config: Config):
@@ -38,3 +39,6 @@ def process(config: Config):
 
     if config.metrics.enabled:
         render_metrics(config, artifacts)
+
+    if config.params['ai']:
+        ai_analyze(config, artifacts)

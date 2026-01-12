@@ -10,3 +10,4 @@ from typing import TypedDict
 class Params(TypedDict):
     verbose: bool
     render_tree: bool
+    ai: bool
