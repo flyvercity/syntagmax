@@ -46,6 +46,8 @@ class MetricsConfig(BaseModel):
     status_field: str = Field(default='status', description='Status attribute name')
     verify_field: str = Field(default='verify', description='Verify attribute name')
     tbd_marker: str = Field(default='TBD', description='TBD detection marker')
+    output_format: str = Field(default='rich', description='Output format', pattern='^(rich|markdown)$')
+    output_file: str = Field(default='console', description='Output file name')
 
 
 class ConfigFile(BaseModel):
