@@ -4,14 +4,13 @@
 # Created: 2026-01-04
 # Description: Calculate metrics for a tree of artifacts.
 
-from pathlib import Path
-import rich
-from rich.table import Table
 from benedict import benedict
 import polars as pl
 
 from syntagmax.artifact import ArtifactMap
 from syntagmax.config import Config
+from syntagmax.render import print_metrics
+from syntagmax.publish import publish_metrics
 
 
 def calculate_metrics(config: Config, artifacts: ArtifactMap) -> benedict:
@@ -59,37 +58,10 @@ def render_metrics(config: Config, artifacts: ArtifactMap):
     metrics = calculate_metrics(config, artifacts)
 
     if config.metrics.output_format == 'rich':
-        render_metrics_rich(metrics)
+        print_metrics(metrics)
     elif config.metrics.output_format == 'markdown':
-        markdown = render_metrics_markdown(metrics)
-
-        if config.metrics.output_file == 'console':
-            rich.print(markdown)
-        elif config.metrics.output_file:
-            output_file = Path(config.metrics.output_file)
-            output_file.parent.mkdir(parents=True, exist_ok=True)
-            output_file.write_text(markdown, encoding='utf-8')
+        publish_metrics(metrics, config.metrics.output_file)
     else:
         raise ValueError(
             f'Invalid output format: {config.metrics.output_format}'
         )
-
-
-def render_metrics_markdown(metrics: benedict):
-    markdown = '# Project Metrics\n\n'
-
-    for k, v in metrics.items():
-        markdown += f'{k}: {v}  \n'
-
-    return markdown
-
-
-def render_metrics_rich(metrics: benedict):
-    table = Table(title="Artifact Metrics")
-    table.add_column("Metric", style="cyan", no_wrap=True)
-    table.add_column("Value", style="magenta")
-
-    for k, v in metrics.items():
-        table.add_row(str(k), str(v))
-
-    rich.print(table)

@@ -2,7 +2,11 @@
 
 # Author: Boris Resnick
 # Created: 2025-04-07
-# Description: Prints a tree of artifacts.
+# Description: Prints a tree of artifacts and other console output.
+
+import rich
+from rich.table import Table
+from benedict import benedict
 
 from syntagmax.artifact import Artifact, ArtifactMap, ARef
 import syntagmax.utils as u
@@ -52,3 +56,14 @@ def print_arttree(
 
     if children:
         print_arttree(artifacts, children[-1], indent, True, False, verbose)
+
+
+def print_metrics(metrics: benedict):
+    table = Table(title="Artifact Metrics")
+    table.add_column("Metric", style="cyan", no_wrap=True)
+    table.add_column("Value", style="magenta")
+
+    for k, v in metrics.items():
+        table.add_row(str(k), str(v))
+
+    rich.print(table)
