@@ -15,7 +15,7 @@ from rich.logging import RichHandler
 
 import syntagmax.utils as u
 from syntagmax.config import Config, Params
-from syntagmax.errors import RMSException, NonFatalError
+from syntagmax.errors import RMSException, FatalError
 from syntagmax.main import process
 
 
@@ -46,7 +46,7 @@ def main():
     try:
         rms()
 
-    except NonFatalError as e:
+    except FatalError as e:
         for error in e.errors:
             u.pprint(f'[red]{error}[/red]')
 

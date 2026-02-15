@@ -13,7 +13,7 @@ class InvalidArtifactIdentifier(RMSException):
     pass
 
 
-class NonFatalError(RMSException):
+class FatalError(RMSException):
     def __init__(self, errors: list[str]):
         self.errors = errors
         super().__init__('Errors were reported')

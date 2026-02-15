@@ -7,7 +7,7 @@
 import logging as lg
 
 from syntagmax.config import Config
-from syntagmax.errors import NonFatalError
+from syntagmax.errors import FatalError
 
 from syntagmax.extract import extract
 from syntagmax.tree import build_tree
@@ -27,7 +27,7 @@ def process(config: Config):
     errors.extend(a_errors)
 
     if errors:
-        raise NonFatalError(errors)
+        raise FatalError(errors)
 
     if not artifacts:
         lg.warning('No artifacts found')
