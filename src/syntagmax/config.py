@@ -48,6 +48,8 @@ class MetricsConfig(BaseModel):
     tbd_marker: str = Field(default='TBD', description='TBD detection marker')
     output_format: str = Field(default='rich', description='Output format', pattern='^(rich|markdown)$')
     output_file: str = Field(default='console', description='Output file name')
+    template: str | None = Field(default=None, description='Path to custom Jinja template')
+    locale: str = Field(default='en', description='Locale code for localization')
 
 
 class ConfigFile(BaseModel):

@@ -1,0 +1,14 @@
+# {{ _('Project Metrics') }}
+
+{{ _('Total Requirements') }}: {{ metrics.total_requirements }}
+
+## {{ _('Requirements by Status') }}
+
+| {{ _('Status') }} | {{ _('Count') }} |
+|-------|------|
+{% for row in metrics.requirements_by_status %}
+| {{ row.status }} | {{ row.count }} |
+{% endfor %}
+
+{{ _('Requirements without verification (%)') }}: {{ metrics.requirements_without_verify_pct | format_percent }}
+{{ _('Requirements with TBD (%)') }}: {{ metrics.requirements_with_tbd_pct | format_percent }}

@@ -60,7 +60,7 @@ def render_metrics(config: Config, artifacts: ArtifactMap):
     if config.metrics.output_format == 'rich':
         print_metrics(metrics)
     elif config.metrics.output_format == 'markdown':
-        publish_metrics(metrics, config.metrics.output_file)
+        publish_metrics(metrics, config)
     else:
         raise ValueError(
             f'Invalid output format: {config.metrics.output_format}'
