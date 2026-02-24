@@ -3,7 +3,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: syntagmax 0.0.1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-02-15 12:50+0200\n"
+"POT-Creation-Date: 2026-02-24 10:37+0200\n"
 "PO-Revision-Date: 2026-02-15 12:00+0000\n"
 "Last-Translator: \n"
 "Language: ru\n"
@@ -35,11 +35,11 @@ msgstr "Статус"
 msgid "Count"
 msgstr "Количество"
 
-#: src/syntagmax/resources/metrics.j2:13
+#: src/syntagmax/resources/metrics.j2:11
 msgid "Requirements without verification (%)"
 msgstr "Требования без верификации (%)"
 
-#: src/syntagmax/resources/metrics.j2:14
+#: src/syntagmax/resources/metrics.j2:12
 msgid "Requirements with TBD (%)"
 msgstr "Требования с TBD (%)"
 

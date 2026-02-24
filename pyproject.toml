@@ -32,6 +32,7 @@ packages = ["src/syntagmax"]
 
 [dependency-groups]
 dev = [
+    "duct>=1.0.1",
     "flake8>=7.1.2",
     "ptpython>=3.0.29",
     "pytest>=8.3.5",
