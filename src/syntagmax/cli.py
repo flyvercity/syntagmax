@@ -27,6 +27,9 @@ from syntagmax.main import process
 @click.option(
     '--render-tree', is_flag=True, help='Render the artifact tree'
 )
+@click.option(
+    '--ai', is_flag=True, help='Use AI to analyze the project'
+)
 def rms(ctx: click.Context, **kwargs: dict[str, Any]):
     verbose = kwargs['verbose']
     lg.basicConfig(level=lg.DEBUG if verbose else lg.INFO, handlers=[RichHandler()])
