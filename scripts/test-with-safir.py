@@ -9,10 +9,14 @@ from duct import cmd
 
 @click.command()
 @click.option('--ai', is_flag=True)
-def main(ai: bool):
+@click.option('--verbose', is_flag=True)
+def main(ai: bool, verbose: bool):
     cfg = Path(__file__).parent / '../../safir/rms/rms.toml'
 
     args = []
+
+    if verbose:
+        args.append('--verbose')
 
     if ai:
         args.append('--ai')

@@ -201,6 +201,8 @@ class AnthropicProvider(AIProvider):
         resp = None
         try:
             lg.debug(f'Calling Anthropic at {url}')
+            lg.debug(f'Headers: {headers}')
+            lg.debug(f'Body: {json.dumps(body)}')
             resp = requests.post(
                 url,
                 json=body,
