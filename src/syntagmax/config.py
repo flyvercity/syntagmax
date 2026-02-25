@@ -64,6 +64,7 @@ class AIConfig(BaseModel):
     aws_access_key_id: str | None = Field(default=None)
     aws_secret_access_key: str | None = Field(default=None)
     aws_region_name: str | None = Field(default=None)
+    aws_api_key: str | None = Field(default=None)
     ollama_host: str = Field(default='http://localhost:11434')
     timeout_s: float = Field(default=60.0)
 

@@ -61,6 +61,7 @@ Environment variables can also be used for API keys (e.g. `ANTHROPIC_API_KEY`, `
 | `aws_access_key_id` | No | — | AWS Access Key ID |
 | `aws_secret_access_key` | No | — | AWS Secret Access Key |
 | `aws_region_name` | No | — | AWS Region Name |
+| `aws_api_key` | No | — | AWS Bedrock API Key |
 | `timeout_s` | No | `60.0` | Request timeout in seconds |
 
 ### Example

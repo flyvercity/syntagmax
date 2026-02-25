@@ -373,7 +373,7 @@ class BedrockProvider(AIProvider):
         try:
             import boto3
         except ImportError:
-            raise AIError("boto3 is required for AWS Bedrock support. Please install it.")
+            raise AIError("boto3 is required for AWS Bedrock support. Please install it with: pip install 'syntagmax[bedrock]'")
 
         if not requirement_text or not requirement_text.strip():
             raise ValueError('requirement_text must be a non-empty string')
@@ -412,6 +412,13 @@ class BedrockProvider(AIProvider):
                 kwargs['aws_secret_access_key'] = self.config.aws_secret_access_key
 
             client = boto3.client(**kwargs)
+
+            # Support for AWS Bedrock API Keys
+            api_key = self.config.aws_api_key or os.environ.get('AWS_BEDROCK_API_KEY')
+            if api_key:
+                def add_api_key(params, **kwargs):
+                    params['headers']['x-api-key'] = api_key
+                client.meta.events.register('before-sign.bedrock-runtime.*', add_api_key)
 
             lg.debug(f'Calling Bedrock model {model}')
             response = client.invoke_model(

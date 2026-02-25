@@ -16,7 +16,7 @@ Syntagmax is a lightweight, git-friendly requirement management system designed 
 - **Templating:** [Jinja2](https://jinja.palletsprojects.com/)
 - **Rich Output:** [rich](https://github.com/Textualize/rich)
 - **Internationalization (i18n):** [Babel](https://babel.pocoo.org/)
-- **AI Integration:** Support for Ollama, Anthropic, OpenAI, Gemini, and AWS Bedrock.
+- **AI Integration:** Support for Ollama, Anthropic, OpenAI, Gemini, and AWS Bedrock (via IAM credentials or API keys).
 - **MCP:** [Model Context Protocol](https://modelcontextprotocol.io/) server support.
 
 ## Project Structure
