@@ -4,12 +4,14 @@
 # Created: 2025-03-29
 # Description: Configuration for the Syntagmax RMS.
 
+import os
 from pathlib import Path
 import tomllib
 import logging as lg
 import json
 from dataclasses import dataclass
 
+from benedict import benedict
 from pydantic import BaseModel, Field
 
 from syntagmax.params import Params
@@ -52,15 +54,31 @@ class MetricsConfig(BaseModel):
     locale: str = Field(default='en', description='Locale code for localization')
 
 
+class AIConfig(BaseModel):
+    provider: str = Field(default='ollama', description='AI provider (ollama, anthropic, openai, gemini, bedrock)')
+    model: str | None = Field(default=None, description='Model name to use')
+    # Provider-specific configurations
+    anthropic_api_key: str | None = Field(default=None)
+    openai_api_key: str | None = Field(default=None)
+    gemini_api_key: str | None = Field(default=None)
+    aws_access_key_id: str | None = Field(default=None)
+    aws_secret_access_key: str | None = Field(default=None)
+    aws_region_name: str | None = Field(default=None)
+    ollama_host: str = Field(default='http://localhost:11434')
+    timeout_s: float = Field(default=60.0)
+
+
 class ConfigFile(BaseModel):
     base: str = Field(..., description='Base directory path')
     input: list[InputConfig] = Field(..., description='Input configuration records')
     metrics: MetricsConfig = Field(MetricsConfig(), description='Metrics configuration')
+    ai: AIConfig = Field(default_factory=AIConfig, description='AI configuration')
 
 
 class Config:
     params: Params
     metrics: MetricsConfig
+    ai: AIConfig
     model: IModel
 
     def __init__(self, params: Params, config_filename: Path):
@@ -75,7 +93,21 @@ class Config:
             lg.info(f'Using configuration file: {config_file}')
 
             root_dir = config_file.parent
-            config_data = tomllib.loads(config_file.read_text(encoding='utf-8'))
+            config_data = benedict()
+
+            # Global config
+            global_config_path = Path(os.path.expanduser('~/.syntagmax/config'))
+            if global_config_path.exists():
+                lg.info(f'Loading global configuration from {global_config_path}')
+                try:
+                    global_data = tomllib.loads(global_config_path.read_text(encoding='utf-8'))
+                    config_data.merge(global_data)
+                except Exception as e:
+                    lg.warning(f'Failed to load global config: {e}')
+
+            # Project config
+            project_data = tomllib.loads(config_file.read_text(encoding='utf-8'))
+            config_data.merge(project_data)
 
             if self.params['verbose']:
                 json_config = json.dumps(config_data, indent=4)
@@ -90,6 +122,7 @@ class Config:
             self._read_input_records(config_model.input)
 
             self.metrics = config_model.metrics
+            self.ai = config_model.ai
 
             if not config_model.metrics.enabled:
                 lg.warning('Metrics collection is disabled')
