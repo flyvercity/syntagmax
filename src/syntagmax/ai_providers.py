@@ -319,6 +319,7 @@ class GeminiProvider(AIProvider):
         resp = None
         try:
             lg.debug(f'Calling Gemini at {url}')
+            lg.debug(f'Body: {json.dumps(body)}')
             resp = requests.post(
                 url,
                 json=body,
@@ -335,9 +336,33 @@ class GeminiProvider(AIProvider):
 
         try:
             content = raw['candidates'][0]['content']['parts'][0]['text']
+            
+            # Sometimes Gemini wraps json in markdown block or returns some prose
+            content = content.strip().lstrip('```json').rstrip('```')
+            if content.endswith('```'):
+                content = content[:-3]
+
+            match = re.search(r'\{.*\}', content, re.DOTALL)
+            if match:
+                content = match.group(0)
+            
+            # Sanitization: Gemini often returns single backslashes in mathematical notation
+            # which are invalid in JSON strings unless escaped.
+            # We escape backslashes that are not followed by a valid escape character.
+            # Valid escapes in JSON: ", \, /, b, f, n, r, t, uXXXX
+            def escape_invalid_slashes(m):
+                s = m.group(0)
+                if len(s) > 1 and s[1] in '"\\/bfnrtu':
+                    return s
+                return '\\\\' + s[1:] if len(s) > 1 else '\\\\'
+
+            content = re.sub(r'\\.', escape_invalid_slashes, content)
+
             result = json.loads(content)
-        except (KeyError, IndexError, json.JSONDecodeError) as e:
-             raise AIError(f'Unexpected Gemini response: {raw!r}') from e
+        except (KeyError, IndexError) as e:
+             raise AIError(f'Unexpected Gemini response shape: {raw!r}') from e
+        except json.JSONDecodeError as e:
+             raise AIError(f'Model did not return valid JSON. content={content!r}') from e
 
         self._basic_validate(result)
         return result
