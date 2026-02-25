@@ -63,6 +63,7 @@ class AIConfig(BaseModel):
     gemini_api_key: str | None = Field(default=None)
     aws_access_key_id: str | None = Field(default=None)
     aws_secret_access_key: str | None = Field(default=None)
+    aws_session_token: str | None = Field(default=None)
     aws_region_name: str | None = Field(default=None)
     aws_api_key: str | None = Field(default=None)
     ollama_host: str = Field(default='http://localhost:11434')
