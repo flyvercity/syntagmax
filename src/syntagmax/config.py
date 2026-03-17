@@ -15,7 +15,7 @@ from benedict import benedict
 from pydantic import BaseModel, Field
 
 from syntagmax.params import Params
-from syntagmax.model import IModel, build_model
+from syntagmax.metamodel import load_model
 
 
 @dataclass
@@ -66,10 +66,15 @@ class AIConfig(BaseModel):
     timeout_s: float = Field(default=60.0)
 
 
+class Metamodel(BaseModel):
+    filename: str = Field(default=None, description='Model definition file')
+
+
 class ConfigFile(BaseModel):
     base: str = Field(..., description='Base directory path')
     input: list[InputConfig] = Field(..., description='Input configuration records')
     metrics: MetricsConfig = Field(MetricsConfig(), description='Metrics configuration')
+    metamodel: Metamodel = Field(Metamodel(), description='Metamodel configuration')
     ai: AIConfig = Field(default_factory=AIConfig, description='AI configuration')
 
 
@@ -77,13 +82,11 @@ class Config:
     params: Params
     metrics: MetricsConfig
     ai: AIConfig
-    model: IModel
 
     def __init__(self, params: Params, config_filename: Path):
         self.params = params
         self._input_records: list[InputRecord] = []
         self._read_config(config_filename)
-        self.model = build_model(self.params)
 
     def _read_config(self, config_filename: Path):
         try:
@@ -125,6 +128,12 @@ class Config:
 
             if not config_model.metrics.enabled:
                 lg.warning('Metrics collection is disabled')
+
+            if config_model.metamodel.filename:
+                self.metamodel = load_model(Path(root_dir, config_model.metamodel.filename))
+            else:
+                lg.warning('No static validation model')
+                self.metamodel = None
 
         except Exception as exc:
             lg.error(f'Error during configuration: {exc}')

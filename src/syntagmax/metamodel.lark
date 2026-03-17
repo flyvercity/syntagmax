@@ -1,0 +1,15 @@
+?start: artifact+
+
+artifact: "artifact" name _NL _INDENT rule+ _DEDENT
+rule: "attribute" name "is" presence type _NL
+
+name: WORD
+presence: "mandatory" | "optional"
+type: "string" | "integer" | "boolean"
+
+%import common.WORD
+%import common.WS
+%import common.WS_INLINE
+%declare _INDENT _DEDENT
+_NL: /(\r?\n[\t ]*)+/
+%ignore WS_INLINE
