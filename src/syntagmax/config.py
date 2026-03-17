@@ -27,11 +27,7 @@ class InputRecord:
     default_atype: str
 
 
-DEFAULT_FILTERS = {
-    'obsidian': '**/*.md',
-    'ipynb': '**/*.ipynb',
-    'markdown': '**/*.md'
-}
+DEFAULT_FILTERS = {'obsidian': '**/*.md', 'ipynb': '**/*.ipynb', 'markdown': '**/*.md'}
 
 
 class InputConfig(BaseModel):
@@ -98,7 +94,8 @@ class Config:
             config_data = benedict()
 
             # Global config
-            global_config_path = Path(os.path.expanduser('~/.syntagmax/config'))
+            global_config_path = Path(os.path.expanduser('~/.config/syntagmax/config.toml'))
+
             if global_config_path.exists():
                 lg.info(f'Loading global configuration from {global_config_path}')
                 try:
@@ -140,9 +137,7 @@ class Config:
             glob = input_config.filter or '**/*'
 
             if not input_config.filter and input_config.driver in DEFAULT_FILTERS:
-                lg.info(
-                    f'Using default filter ({DEFAULT_FILTERS[input_config.driver]}) for {record_base}'
-                )
+                lg.info(f'Using default filter ({DEFAULT_FILTERS[input_config.driver]}) for {record_base}')
                 glob = DEFAULT_FILTERS[input_config.driver]
 
             lg.debug(f'Adding input files from {name} with filter {glob}')
@@ -154,7 +149,7 @@ class Config:
                     record_base=record_base,
                     filepaths=list(filepaths),
                     driver=input_config.driver,
-                    default_atype=input_config.atype
+                    default_atype=input_config.atype,
                 )
             )
 

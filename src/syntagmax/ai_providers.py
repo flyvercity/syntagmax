@@ -10,8 +10,10 @@ import re
 
 from syntagmax.config import AIConfig
 
+
 class AIError(RuntimeError):
     pass
+
 
 class AIProvider(ABC):
     def __init__(self, config: AIConfig):
@@ -191,26 +193,16 @@ class AnthropicProvider(AIProvider):
 
         api_key = self.config.anthropic_api_key or os.environ.get('ANTHROPIC_API_KEY')
         if not api_key:
-             raise AIError("Anthropic API Key is required (set via config or ANTHROPIC_API_KEY env var)")
+            raise AIError('Anthropic API Key is required (set via config or ANTHROPIC_API_KEY env var)')
 
         model = os.environ.get('STMX_AI_MODEL') or self.config.model or 'claude-3-5-sonnet-20240620'
         timeout_s = self.config.timeout_s
         prompt = self._get_prompt(requirement_text)
 
-        body = {
-            'model': model,
-            'max_tokens': 4096,
-            'messages': [
-                {'role': 'user', 'content': prompt}
-            ]
-        }
+        body = {'model': model, 'max_tokens': 4096, 'messages': [{'role': 'user', 'content': prompt}]}
 
         url = 'https://api.anthropic.com/v1/messages'
-        headers = {
-            'x-api-key': api_key,
-            'anthropic-version': '2023-06-01',
-            'content-type': 'application/json'
-        }
+        headers = {'x-api-key': api_key, 'anthropic-version': '2023-06-01', 'content-type': 'application/json'}
 
         resp = None
         try:
@@ -228,7 +220,7 @@ class AnthropicProvider(AIProvider):
         except Exception as e:
             lg.debug(f'Failed to call Anthropic with {body!r}')
             if resp:
-                 lg.debug(f'Response: {resp.text!r}')
+                lg.debug(f'Response: {resp.text!r}')
             raise AIError(f'Failed to call Anthropic: {e}') from e
 
         try:
@@ -246,7 +238,7 @@ class AnthropicProvider(AIProvider):
             content = self._sanitize_json(content)
             result = json.loads(content)
         except (KeyError, IndexError, json.JSONDecodeError) as e:
-             raise AIError(f'Unexpected Anthropic response: {raw!r}') from e
+            raise AIError(f'Unexpected Anthropic response: {raw!r}') from e
 
         self._basic_validate(result)
         return result
@@ -259,7 +251,7 @@ class OpenAIProvider(AIProvider):
 
         api_key = self.config.openai_api_key or os.environ.get('OPENAI_API_KEY')
         if not api_key:
-             raise AIError("OpenAI API Key is required (set via config or OPENAI_API_KEY env var)")
+            raise AIError('OpenAI API Key is required (set via config or OPENAI_API_KEY env var)')
 
         model = os.environ.get('STMX_AI_MODEL') or self.config.model or 'gpt-4o'
         timeout_s = self.config.timeout_s
@@ -269,16 +261,13 @@ class OpenAIProvider(AIProvider):
             'model': model,
             'messages': [
                 {'role': 'system', 'content': 'You are a helpful assistant that outputs JSON.'},
-                {'role': 'user', 'content': prompt}
+                {'role': 'user', 'content': prompt},
             ],
-            'response_format': {'type': 'json_object'}
+            'response_format': {'type': 'json_object'},
         }
 
         url = 'https://api.openai.com/v1/chat/completions'
-        headers = {
-            'Authorization': f'Bearer {api_key}',
-            'Content-Type': 'application/json'
-        }
+        headers = {'Authorization': f'Bearer {api_key}', 'Content-Type': 'application/json'}
 
         resp = None
         try:
@@ -294,14 +283,14 @@ class OpenAIProvider(AIProvider):
         except Exception as e:
             lg.debug(f'Failed to call OpenAI with {body!r}')
             if resp:
-                 lg.debug(f'Response: {resp.text!r}')
+                lg.debug(f'Response: {resp.text!r}')
             raise AIError(f'Failed to call OpenAI: {e}') from e
 
         try:
             content = raw['choices'][0]['message']['content']
             result = json.loads(content)
         except (KeyError, IndexError, json.JSONDecodeError) as e:
-             raise AIError(f'Unexpected OpenAI response: {raw!r}') from e
+            raise AIError(f'Unexpected OpenAI response: {raw!r}') from e
 
         self._basic_validate(result)
         return result
@@ -310,11 +299,11 @@ class OpenAIProvider(AIProvider):
 class GeminiProvider(AIProvider):
     def analyze_requirement(self, requirement_text: str) -> Dict[str, Any]:
         if not requirement_text or not requirement_text.strip():
-             raise ValueError('requirement_text must be a non-empty string')
+            raise ValueError('requirement_text must be a non-empty string')
 
         api_key = self.config.gemini_api_key or os.environ.get('GEMINI_API_KEY')
         if not api_key:
-             raise AIError("Gemini API Key is required (set via config or GEMINI_API_KEY env var)")
+            raise AIError('Gemini API Key is required (set via config or GEMINI_API_KEY env var)')
 
         model = os.environ.get('STMX_AI_MODEL') or self.config.model or 'gemini-1.5-pro'
         timeout_s = self.config.timeout_s
@@ -323,12 +312,8 @@ class GeminiProvider(AIProvider):
         url = f'https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}'
 
         body = {
-            "contents": [{
-                "parts": [{"text": prompt}]
-            }],
-            "generationConfig": {
-                "responseMimeType": "application/json"
-            }
+            'contents': [{'parts': [{'text': prompt}]}],
+            'generationConfig': {'responseMimeType': 'application/json'},
         }
 
         resp = None
@@ -346,12 +331,14 @@ class GeminiProvider(AIProvider):
         except Exception as e:
             lg.debug(f'Failed to call Gemini with {body!r}')
             if resp:
-                 lg.debug(f'Response: {resp.text!r}')
+                lg.debug(f'Response: {resp.text!r}')
             raise AIError(f'Failed to call Gemini: {e}') from e
+
+        content = None
 
         try:
             content = raw['candidates'][0]['content']['parts'][0]['text']
-            
+
             # Sometimes Gemini wraps json in markdown block or returns some prose
             content = content.strip().lstrip('```json').rstrip('```')
             if content.endswith('```'):
@@ -360,14 +347,14 @@ class GeminiProvider(AIProvider):
             match = re.search(r'\{.*\}', content, re.DOTALL)
             if match:
                 content = match.group(0)
-            
+
             content = self._sanitize_json(content)
 
             result = json.loads(content)
         except (KeyError, IndexError) as e:
-             raise AIError(f'Unexpected Gemini response shape: {raw!r}') from e
+            raise AIError(f'Unexpected Gemini response shape: {raw!r}') from e
         except json.JSONDecodeError as e:
-             raise AIError(f'Model did not return valid JSON. content={content!r}') from e
+            raise AIError(f'Model did not return valid JSON. content={content!r}') from e
 
         self._basic_validate(result)
         return result
@@ -384,53 +371,42 @@ class BedrockProvider(AIProvider):
         timeout_s = self.config.timeout_s
 
         body_dict = {
-            "anthropic_version": "bedrock-2023-05-31",
-            "max_tokens": 4096,
-            "messages": [
-                {
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "text",
-                            "text": prompt
-                        }
-                    ]
-                }
-            ]
+            'anthropic_version': 'bedrock-2023-05-31',
+            'max_tokens': 4096,
+            'messages': [{'role': 'user', 'content': [{'type': 'text', 'text': prompt}]}],
         }
 
         # Support for AWS Bedrock API Keys
         api_key = self.config.aws_api_key or os.environ.get('AWS_BEDROCK_API_KEY')
         if api_key:
             if not region:
-                 raise AIError("AWS Region is required for Bedrock (set via config or AWS_REGION env var)")
-            
-            url = f"https://bedrock-runtime.{region}.amazonaws.com/model/{model}/invoke"
+                raise AIError('AWS Region is required for Bedrock (set via config or AWS_REGION env var)')
+
+            url = f'https://bedrock-runtime.{region}.amazonaws.com/model/{model}/invoke'
             headers = {
-                'Authorization': f"Bearer {api_key}",
+                'Authorization': f'Bearer {api_key}',
                 'Content-Type': 'application/json',
-                'Accept': 'application/json'
+                'Accept': 'application/json',
             }
-            
+
+            resp = None
+
             try:
                 lg.debug(f'Calling Bedrock via requests at {url}')
-                resp = requests.post(
-                    url,
-                    json=body_dict,
-                    headers=headers,
-                    timeout=timeout_s
-                )
+                resp = requests.post(url, json=body_dict, headers=headers, timeout=timeout_s)
                 resp.raise_for_status()
                 response_body = resp.json()
             except Exception as e:
-                if 'resp' in locals() and resp is not None:
-                     lg.debug(f'Response: {resp.text!r}')
+                if resp:
+                    lg.debug(f'Response: {resp.text!r}')
                 raise AIError(f'Failed to call Bedrock via requests: {e}') from e
         else:
             try:
-                import boto3
+                import boto3  # type: ignore
             except ImportError:
-                raise AIError("boto3 is required for AWS Bedrock support. Please install it with: pip install 'syntagmax[bedrock]'")
+                raise AIError(
+                    "boto3 is required for AWS Bedrock support. Please install it with: pip install 'syntagmax[bedrock]'"
+                )
 
             body = json.dumps(body_dict)
 
@@ -443,21 +419,18 @@ class BedrockProvider(AIProvider):
                     kwargs['aws_access_key_id'] = self.config.aws_access_key_id
                     kwargs['aws_secret_access_key'] = self.config.aws_secret_access_key
                     if self.config.aws_session_token:
-                         kwargs['aws_session_token'] = self.config.aws_session_token
+                        kwargs['aws_session_token'] = self.config.aws_session_token
 
-                client = boto3.client(**kwargs)
+                client = boto3.client(**kwargs)  # type: ignore
 
                 lg.debug(f'Calling Bedrock model {model}')
-                response = client.invoke_model(
-                    body=body,
-                    modelId=model,
-                    accept='application/json',
-                    contentType='application/json'
+                response = client.invoke_model(  # type: ignore
+                    body=body, modelId=model, accept='application/json', contentType='application/json'
                 )
 
-                response_body = json.loads(response.get('body').read())
+                response_body = json.loads(response.get('body').read())  # type: ignore
             except Exception as e:
-                 raise AIError(f'Failed to call Bedrock: {e}') from e
+                raise AIError(f'Failed to call Bedrock: {e}') from e
 
         try:
             content = response_body.get('content')[0].get('text')
@@ -470,7 +443,7 @@ class BedrockProvider(AIProvider):
             result = json.loads(content)
 
         except Exception as e:
-             raise AIError(f'Failed to parse Bedrock response: {e}. response={response_body!r}') from e
+            raise AIError(f'Failed to parse Bedrock response: {e}. response={response_body!r}') from e
 
         self._basic_validate(result)
         return result
