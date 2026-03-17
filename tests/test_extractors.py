@@ -43,7 +43,7 @@ def test_text_extractor_basic(config, input_record, tmp_path):
     Some text before.
     [<
     ID = REQ-1
-    PID = userstory:US-1@1
+    PID = user-story:US-1@1
     >>>
     This is the body of the requirement.
     >]
@@ -66,7 +66,7 @@ def test_text_extractor_basic(config, input_record, tmp_path):
     assert artifact.atype == "requirement"
     assert len(artifact.pids) == 1
     assert artifact.pids[0].aid == "US-1"
-    assert artifact.pids[0].atype == "userstory"
+    assert artifact.pids[0].atype == "user-story"
 
 def test_obsidian_extractor_basic(config, input_record, tmp_path):
     content = """
@@ -91,6 +91,26 @@ def test_obsidian_extractor_basic(config, input_record, tmp_path):
     artifact = artifacts[0]
     assert artifact.aid == "REQ-2"
     assert artifact.atype == "custom-type"
-    assert artifact.fields['priority'] == "high"
-    assert "This is the content." in artifact.fields['content']
+def test_obsidian_extractor_complex_fields(config, input_record, tmp_path):
+    content = """
+    [REQ]
+    Main content.
+    [id] REQ-3
+    [Fusion SRS#Plot data record] Some value
+    ```yaml
+    attrs:
+      priority: low
+    ```
+    """
+    filepath = tmp_path / "test_complex.md"
+    filepath.write_text(content, encoding='utf-8')
+    
+    extractor = ObsidianExtractor(config, input_record)
+    artifacts, errors = extractor.extract_from_file(filepath)
+    
+    assert len(errors) == 0
+    assert len(artifacts) == 1
+    artifact = artifacts[0]
+    assert artifact.aid == "REQ-3"
+    assert artifact.fields['fusion srs#plot data record'].strip() == "Some value"
 

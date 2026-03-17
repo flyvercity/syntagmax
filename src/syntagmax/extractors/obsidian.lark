@@ -19,7 +19,7 @@ _RSQB: "]"
 _YAML_BEGIN: "```yaml"
 _YAML_END: "```"
 
-AID: /[a-zA-Z0-9_]+/
+AID: /[^\]]+/
 
 %import common.WS
 %ignore WS

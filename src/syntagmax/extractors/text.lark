@@ -13,8 +13,8 @@ type_directive: "TYPE" "=" ATYPE
 pid_directive: "PID" "=" ATYPE ":" AID "@" REVISION
 
 AID: /[a-zA-Z0-9-]+/
-ATYPE: /[a-zA-Z0-9]+/
-REVISION: /[a-zA-Z0-9]+/
+ATYPE: /[a-zA-Z0-9-]+/
+REVISION: /[a-zA-Z0-9-]+/
 
 body: ">>>" [body_content]
 body_content: /(.|\n)+?(?=>])/s
