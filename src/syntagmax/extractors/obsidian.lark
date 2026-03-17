@@ -1,0 +1,25 @@
+// src/syntagmax/extractors/obsidian.lark
+?start: req
+
+req: _REQ_BEGIN content fields yaml_block
+
+_REQ_BEGIN: /\[REQ\]/i
+
+content: [content_text]
+content_text: /(.|\n)+?(?=\[|```yaml|$)/s
+
+fields: field*
+field: _LSQB AID _RSQB content
+
+yaml_block: _YAML_BEGIN [yaml_content] _YAML_END
+yaml_content: /(.|\n)+?(?=```)/s
+
+_LSQB: "["
+_RSQB: "]"
+_YAML_BEGIN: "```yaml"
+_YAML_END: "```"
+
+AID: /[a-zA-Z0-9_]+/
+
+%import common.WS
+%ignore WS
