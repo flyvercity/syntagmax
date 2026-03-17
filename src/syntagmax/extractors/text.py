@@ -139,7 +139,7 @@ class TextExtractor(Extractor):
                 )
 
                 aid: str | None = None
-                atype: str | None = self._record['default_atype']
+                atype: str | None = self._record.default_atype
 
                 for item in section:  # type: ignore
                     if isinstance(item, IdRef):
