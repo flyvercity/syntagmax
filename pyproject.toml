@@ -10,6 +10,7 @@ dependencies = [
     "jinja2>=3.1",
     "gitpython>=3.1.44",
     "mcp[cli]>=1.16.0",
+    "uvicorn>=0.30.0",
     "polars>=1.36.1",
     "pydantic>=2.11.10",
     "python-benedict[parse,yaml,toml]>=0.35.0",
@@ -24,8 +25,7 @@ bedrock = [
 ]
 
 [project.scripts]
-stmx = "syntagmax.cli:main"
-stmx-mcp = "syntagmax.mcp.server:main"
+syntagmax = "syntagmax.cli:main"
 
 [build-system]
 requires = ["hatchling"]
