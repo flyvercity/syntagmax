@@ -51,7 +51,7 @@ def load_model(model_filename: Path):
     parser = Lark(grammar, parser='lalr', postlex=DSLIndenter())
     lg.info(f'Read metamodel from {model_filename}')
     metamodel_text = model_filename.read_text(encoding='utf-8')
-    lg.info(f'Using model text:\n{metamodel_text}')
+    lg.debug(f'Using model text:\n{metamodel_text}')
     tree = parser.parse(metamodel_text)
     metamodel = DSLTransformer().transform(tree)
     artifact_defs = {a['artifact_name']: a for a in metamodel}
