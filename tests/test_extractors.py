@@ -1,10 +1,8 @@
 # SPDX-License-Identifier: MIT
 import pytest
-from pathlib import Path
 from syntagmax.config import Config, InputRecord
 from syntagmax.extractors.text import TextExtractor
 from syntagmax.extractors.obsidian import ObsidianExtractor
-from syntagmax.artifact import Artifact
 from syntagmax.params import Params
 
 

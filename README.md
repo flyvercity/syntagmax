@@ -4,8 +4,6 @@
 
 Fully git-friendly lightweight requirements management system with tracing model verification, change detection, and propagation.
 
-**Companion VS Code Extension:** [syntagmax-vscode](https://github.com/flyvercity/syntagmax-vscode)
-
 ## Configuration
 
 Syntagmax uses a TOML configuration file (typically `rms.toml` or similar).
@@ -49,7 +47,7 @@ Each input defines a source of requirements or artifacts:
 
 | Field | Required | Default | Description |
 |-------|----------|---------|-------------|
-| `filename` | No | — | Path to the `.model` file defining the project's metamodel. |
+| `filename` | No | — | Path to the `.syntagmax` file defining the project's metamodel. |
 
 ### AI Configuration (`[ai]`)
 
@@ -80,11 +78,11 @@ base = ".."
 
 [[input]]
 name = "requirements"
-dir = "requirements/REQS-REFINE"
+dir = "requirements/REQS"
 driver = "obsidian"
 
 [[input]]
-name = "fusion"
+name = "implementation"
 dir = "app/src/main"
 driver = "text"
 atype = "SRC"
@@ -96,16 +94,18 @@ output_format = "markdown"
 output_file = "output/metrics.md"
 
 [metamodel]
-filename = "project.model"
+filename = "project.syntagmax"
 
 [ai]
 provider = "anthropic"
-model = "claude-3-5-sonnet-20240620"
+model = "claude-sonnet-4-6"
 ```
 
 ## Metamodel DSL
 
 Syntagmax allows defining a custom metamodel for artifacts and their attributes using a simple DSL. This metamodel is used for static validation of requirements and other artifacts.
+
+**Companion VS Code Extension:** [syntagmax-vscode](https://github.com/flyvercity/syntagmax-vscode)
 
 ### Example
 
