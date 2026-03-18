@@ -132,7 +132,7 @@ class ObsidianExtractor(Extractor):
                     continue
 
                 attrs = benedict(
-                    {field.get_str('field.marker'): field.get_str('field.content.text') for field in fields}
+                    {field.get_str('field.marker'): field.get_str('field.content.text').strip() for field in fields}
                 )
 
                 attrs.update(yaml_dict.get_dict('attrs'))
