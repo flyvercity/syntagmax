@@ -17,6 +17,7 @@ Syntagmax uses a TOML configuration file (typically `rms.toml` or similar).
 | `base` | Yes | Base directory path (relative to the config file) |
 | `input` | Yes | List of input source definitions |
 | `metrics` | No | Metrics collection settings |
+| `metamodel` | No | Metamodel configuration |
 
 ### Input sources (`[[input]]`)
 
@@ -43,6 +44,12 @@ Each input defines a source of requirements or artifacts:
 | `output_file` | No | `console` | Output file name (`console` for stdout) |
 | `template` | No | — | Path to custom Jinja template |
 | `locale` | No | `en` | Locale code for localization |
+
+### Metamodel (`[metamodel]`)
+
+| Field | Required | Default | Description |
+|-------|----------|---------|-------------|
+| `filename` | No | — | Path to the `.model` file defining the project's metamodel. |
 
 ### AI Configuration (`[ai]`)
 
@@ -87,6 +94,9 @@ filter = "**/*.kt"
 enabled = true
 output_format = "markdown"
 output_file = "output/metrics.md"
+
+[metamodel]
+filename = "project.model"
 
 [ai]
 provider = "anthropic"
