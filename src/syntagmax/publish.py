@@ -48,7 +48,7 @@ def publish_metrics(metrics: benedict, config: Config):
     template_path = config.metrics.template
 
     if template_path:
-        loader_dir = Path(template_path).parent.resolve()
+        loader_dir = Path(template_path).parent
         template_name = Path(template_path).name
     else:
         loader_dir = resources_dir

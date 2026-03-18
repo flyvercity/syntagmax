@@ -8,18 +8,7 @@ import logging as lg
 from pathlib import Path
 from typing import Sequence
 
-from pyparsing import (
-    CaselessLiteral,
-    Suppress,
-    ParseException,
-    ZeroOrMore,
-    Regex,
-    OneOrMore,
-    Word,
-    lineno,
-    alphanums,
-    alphas
-)
+from lark import Lark, Transformer, exceptions
 
 from syntagmax.config import Config, InputRecord
 from syntagmax.artifact import (
@@ -55,43 +44,33 @@ class PidRef(Ref):
         self.revision = revision
 
 
-Begin = Suppress(CaselessLiteral('[<'))
-BodyStart = Suppress(CaselessLiteral('>>>'))
-End = Suppress(CaselessLiteral('>]'))
-Equal = Suppress(CaselessLiteral('='))
-AType = Word(alphas, alphanums)
-AId = Word(alphas, alphanums + '-')
-Colon = Suppress(CaselessLiteral(':'))
-At = Suppress(CaselessLiteral('@'))
-IdKeyword = Suppress(CaselessLiteral('ID'))
-ATypeKeyword = Suppress(CaselessLiteral('TYPE'))
-PidKeyword = Suppress(CaselessLiteral('PID'))
-Revision = Word(alphanums)
+class TextTransformer(Transformer):
+    def AID(self, t):
+        return str(t)
 
-IdDirective = (IdKeyword + Equal + AId).set_parse_action(
-    lambda t: IdRef(aid=t[0])  # type: ignore
-)
+    def ATYPE(self, t):
+        return str(t)
 
-ATypeDirective = (ATypeKeyword + Equal + AType).set_parse_action(
-    lambda t: ATypeRef(atype=t[0])  # type: ignore
-)
+    def REVISION(self, t):
+        return str(t)
 
-PidDirective = (PidKeyword + Equal + AType + Colon + AId + At + Revision).set_parse_action(
-    lambda t: PidRef(atype=t[0], aid=t[1], revision=t[2])  # type: ignore
-)
+    def id_directive(self, t):
+        return IdRef(aid=t[0])
 
-Header = OneOrMore(IdDirective | PidDirective).set_parse_action(
-    lambda t: t
-)
+    def type_directive(self, t):
+        return ATypeRef(atype=t[0])
 
-HeaderSkip = ZeroOrMore(~Begin + ~End + ~BodyStart + Suppress(Regex('.')))
-BodySkip = ZeroOrMore(~Begin + ~End + ~BodyStart + Suppress(Regex('.')))
+    def pid_directive(self, t):
+        return PidRef(atype=t[0], aid=t[1], revision=t[2])
 
-Section = (
-    Begin + Header + HeaderSkip + BodyStart + BodySkip + End
-).set_parse_action(
-    lambda t: t
-)
+    def directive(self, t):
+        return t[0]
+
+    def header(self, t):
+        return [item for item in t if isinstance(item, Ref)]
+
+    def section(self, t):
+        return t[0]
 
 
 class TextArtifact(Artifact):
@@ -102,6 +81,14 @@ class TextArtifact(Artifact):
 class TextExtractor(Extractor):
     def __init__(self, config: Config, record: InputRecord):
         super().__init__(config, record)
+        grammar_path = Path(__file__).parent / 'text.lark'
+        self._parser = Lark.open(
+            grammar_path,
+            rel_to=__file__,
+            parser='lalr',
+            maybe_placeholders=False
+        )
+        self._transformer = TextTransformer()
 
     def driver(self) -> str:
         return 'text'
@@ -110,26 +97,41 @@ class TextExtractor(Extractor):
         artifacts: Sequence[Artifact] = []
         errors: list[str] = []
         text = filepath.read_text(encoding='utf-8')
-        matches = Begin.scanString(text)
         file_location = self._config.derive_path(filepath)
 
-        for match in matches:
-            start_location = match[1]
-            end_location = match[2]
+        # Use a simple search for the start marker
+        start_marker = '[<'
+        pos = 0
 
-            remaining_string = text[start_location:]
-            section_start_string = remaining_string.split('\n', 1)[0]
-            start_line = lineno(start_location, text)
+        while True:
+            start_pos = text.find(start_marker, pos)
 
-            lg.debug(f'Found section, parsing: {section_start_string}')
+            if start_pos == -1:
+                break
+
+            # Find the end marker to extract the segment
+            end_marker = '>]'
+            end_pos = text.find(end_marker, start_pos)
+
+            if end_pos == -1:
+                # Malformed segment, but we might want to report it
+                break
+
+            segment_end = end_pos + len(end_marker)
+            segment = text[start_pos:segment_end]
+            start_line = text.count('\n', 0, start_pos) + 1
+            section_start_string = segment.split('\n', 1)[0]
+
+            lg.debug(f'Found section at line {start_line}, parsing: {section_start_string}')
 
             location = LineLocation(
                 loc_file=file_location,
-                loc_lines=(start_line, end_location)
+                loc_lines=(start_line, segment_end)
             )
 
             try:
-                section = Section.parse_string(remaining_string)
+                tree = self._parser.parse(segment)
+                section = self._transformer.transform(tree)
 
                 builder = ArtifactBuilder(
                     self._config,
@@ -139,7 +141,7 @@ class TextExtractor(Extractor):
                 )
 
                 aid: str | None = None
-                atype: str | None = self._record['default_atype']
+                atype: str | None = self._record.default_atype
 
                 for item in section:  # type: ignore
                     if isinstance(item, IdRef):
@@ -154,17 +156,17 @@ class TextExtractor(Extractor):
                         'Missing ID', location, section_start_string, 'ID is required'
                     )
                     errors.append(error)
+                    pos = segment_end
                     continue
 
                 builder.add_id(aid, atype)
                 artifact = builder.build()
                 artifacts.append(artifact)
 
-            except ParseException as e:
+            except (exceptions.ParseError, exceptions.UnexpectedToken) as e:
                 error = self._format_error(
                     'Parse Error', location, section_start_string, str(e)
                 )
-
                 errors.append(error)
 
             except ValidationError as e:
@@ -173,8 +175,9 @@ class TextExtractor(Extractor):
                     location,
                     section_start_string, str(e)
                 )
-
                 errors.append(error)
+
+            pos = segment_end
 
         return artifacts, errors
 

@@ -33,12 +33,6 @@ flowchart TD
     C --> D[build_tree]
     D --> E[analyse_tree]
     E --> F[print_arttree]
-    style A fill:#222,stroke:#fff,stroke-width:2px,color:#fff
-    style B fill:#333,stroke:#fff,stroke-width:2px,color:#fff
-    style C fill:#444,stroke:#fff,stroke-width:2px,color:#fff
-    style D fill:#444,stroke:#fff,stroke-width:2px,color:#fff
-    style E fill:#444,stroke:#fff,stroke-width:2px,color:#fff
-    style F fill:#222,stroke:#fff,stroke-width:2px,color:#fff
 ```
 
 ---
