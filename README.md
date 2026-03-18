@@ -103,6 +103,34 @@ provider = "anthropic"
 model = "claude-3-5-sonnet-20240620"
 ```
 
+## Metamodel DSL
+
+Syntagmax allows defining a custom metamodel for artifacts and their attributes using a simple DSL. This metamodel is used for static validation of requirements and other artifacts.
+
+### Example
+
+```model
+artifact REQ:
+    attribute status is mandatory enum [draft, active, retired]
+    attribute verify is optional string
+    attribute priority is mandatory integer
+```
+
+### Syntax Reference
+
+| Rule | Description |
+|------|-------------|
+| `artifact <NAME>:` | Defines a new artifact type. Rules must be indented. |
+| `attribute <ATTR> is <presence> <type>` | Defines an attribute rule. |
+
+**Presence:** `mandatory` or `optional`.
+
+**Types:**
+- `string`: Any text.
+- `integer`: A whole number.
+- `boolean`: `true` or `false`.
+- `enum [<values>]`: A fixed set of allowed values (comma-separated).
+
 ## Required Improvements
 
 - Implement automatic change propagation
