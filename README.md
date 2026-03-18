@@ -134,3 +134,5 @@ artifact REQ:
 ## Required Improvements
 
 - Implement automatic change propagation
+- Enhance AI-based analysis and tracing
+- Expand VS Code extension features (LSP support)
