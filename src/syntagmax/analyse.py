@@ -4,19 +4,22 @@
 # Created: 2025-04-07
 # Description: Analyse a tree of artifacts.
 
+import logging as lg
+
 from syntagmax.artifact import ArtifactMap, Artifact
 from syntagmax.config import Config
 
 
 class ArtifactValidator:
-    def __init__(self, metamodel, errors: list[str] = []):
+    def __init__(self, metamodel, errors: list[str] | None = None):
         # Index rules by artifact name for fast lookup
         self._metamodel = metamodel
-        self.errors = errors
+        self.errors = errors if errors is not None else []
 
     def validate(self, artifact: Artifact):
         if artifact.atype not in self._metamodel:
-            return [f"Unknown artifact type: '{artifact.atype}'"]
+            self.errors.append(f"Unknown artifact type: '{artifact.atype}' ({artifact})")
+            return self.errors
 
         artifact_rules = self._metamodel[artifact.atype]['attributes']
 
@@ -82,6 +85,11 @@ def analyse_tree(config: Config, artifacts: ArtifactMap) -> list[str]:
     validator = ArtifactValidator(config.metamodel, errors)
 
     for artifact in artifacts.values():
+        # Skipping the root pseudo-artifact
+        if artifact.atype == 'ROOT':
+            continue
+
+        lg.info(f'Validating artifact: {artifact}')
         validator.validate(artifact)
 
     errors.extend(check_single_root(artifacts))

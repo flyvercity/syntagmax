@@ -1,7 +1,7 @@
 start: artifact+
 
 artifact: "artifact" name ":" _NL _INDENT rule+ _DEDENT
-rule: "attribute" name "is" presence type _NL
+rule: "attribute" name "is" PRESENCE type _NL
 
 ?type: "string" -> type_string
      | "integer" -> type_integer
@@ -10,7 +10,7 @@ rule: "attribute" name "is" presence type _NL
 
 # The '?' prefix here is the magic fix
 ?name: WORD
-?presence: "mandatory" | "optional"
+PRESENCE: "mandatory" | "optional"
 ?value: ESCAPED_STRING | WORD
 
 %import common.WORD
