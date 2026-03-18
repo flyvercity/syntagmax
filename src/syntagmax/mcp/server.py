@@ -7,9 +7,9 @@ from syntagmax.errors import FatalError
 from syntagmax.artifact import ARef
 
 class SyntagmaxMCPServer:
-    def __init__(self, config, host="127.0.0.1", port=8000):
+    def __init__(self, config, host="127.0.0.1", port=8000, sse_path="/"):
         self.config = config
-        self.mcp = FastMCP("Syntagmax RMS", host=host, port=port)
+        self.mcp = FastMCP("Syntagmax RMS", host=host, port=port, sse_path=sse_path)
         self.artifacts = {}
         self._setup_tools()
 
@@ -41,7 +41,7 @@ class SyntagmaxMCPServer:
     def run(self, transport):
         self.mcp.run(transport=transport)
 
-def run_mcp_server(config, transport, host, port):
-    server = SyntagmaxMCPServer(config, host=host, port=port)
+def run_mcp_server(config, transport, host, port, sse_path="/"):
+    server = SyntagmaxMCPServer(config, host=host, port=port, sse_path=sse_path)
     server.initialize()
     server.run(transport)
