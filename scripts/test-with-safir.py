@@ -4,7 +4,8 @@
 from pathlib import Path
 
 import click
-from duct import cmd
+from duct import cmd, StatusError
+import rich
 
 
 @click.command()
@@ -24,12 +25,16 @@ def main(ai: bool, verbose: bool):
     args.append('analyze')
     args.append(str(cfg))
 
-    cmd(
-        'uv',
-        'run',
-        'stmx',
-        *args,
-    ).run()
+    try:
+        cmd(
+            'uv',
+            'run',
+            'stmx',
+            *args,
+        ).run()
+
+    except StatusError:
+        rich.print('[bold red]Command failed[/bold red]')
 
 
 if __name__ == '__main__':

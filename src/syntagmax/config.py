@@ -71,7 +71,7 @@ class Metamodel(BaseModel):
 
 
 class ConfigFile(BaseModel):
-    base: str = Field(..., description='Base directory path')
+    base: str = Field(default='.', description='Base directory path')
     input: list[InputConfig] = Field(..., description='Input configuration records')
     metrics: MetricsConfig = Field(MetricsConfig(), description='Metrics configuration')
     metamodel: Metamodel = Field(Metamodel(), description='Metamodel configuration')
@@ -90,9 +90,12 @@ class Config:
 
     def _read_config(self, config_filename: Path):
         try:
-            config_file = Path(config_filename).resolve()
+            config_file = Path(config_filename)
             lg.info(f'Using configuration file: {config_file}')
 
+            # Note: Root directory is the directory of the config file
+            # Base directory is relative to the root directory, where
+            # artifacts are located.
             root_dir = config_file.parent
             config_data = benedict()
 
@@ -119,7 +122,7 @@ class Config:
 
             lg.debug(f'Root directory: {root_dir}. Base directory: {config_model.base}')
 
-            self._base_dir = Path(root_dir, config_model.base).resolve()
+            self._base_dir = Path(root_dir, config_model.base)
             lg.debug(f'Base directory: {self._base_dir}')
             self._read_input_records(config_model.input)
 
