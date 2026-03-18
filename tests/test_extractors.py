@@ -114,3 +114,27 @@ def test_obsidian_extractor_complex_fields(config, input_record, tmp_path):
     assert artifact.aid == "REQ-3"
     assert artifact.fields['fusion srs#plot data record'].strip() == "Some value"
 
+def test_obsidian_extractor_field_not_at_bol(config, input_record, tmp_path):
+    content = """[REQ]
+This is content with [not-a-field] in the middle.
+[id] REQ-BOL
+```yaml
+attrs:
+  priority: low
+```
+"""
+    filepath = tmp_path / "test_bol.md"
+    filepath.write_text(content, encoding='utf-8')
+    
+    extractor = ObsidianExtractor(config, input_record)
+    artifacts, errors = extractor.extract_from_file(filepath)
+    
+    assert len(errors) == 0
+    assert len(artifacts) == 1
+    artifact = artifacts[0]
+    assert artifact.aid == "REQ-BOL"
+    # 'not-a-field' should NOT be in fields
+    assert 'not-a-field' not in artifact.fields
+    # it should be in content
+    assert "[not-a-field]" in artifact.fields['content']
+

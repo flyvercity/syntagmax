@@ -3,7 +3,7 @@
 # Author: Boris Resnick
 # Created: 2025-04-06
 # Description: Extracts artifacts from Obsidian files
-import json
+
 from pathlib import Path
 import logging as lg
 import re
@@ -32,42 +32,30 @@ class ObsidianTransformer(Transformer):
         return str(t[0])
 
     def yaml_block(self, t):
-        return {'text': str(t[0]) if t else ""}
+        return {'text': str(t[0]) if t else ''}
 
     def content(self, t):
-        return {'text': str(t[0]) if t else ""}
+        return {'text': str(t[0]) if t else ''}
 
     def field(self, t):
-        return {
-            'field': {
-                'marker': t[0],
-                'content': t[1]
-            }
-        }
+        return {'field': {'marker': t[0], 'content': t[1]}}
 
     def fields(self, t):
+        # t contains only field objects since _NL is hidden and we used (field)*
         return {'list': list(t)}
 
+    def _NL(self, t):
+        return None
+
     def req(self, t):
-        return {
-            'req': {
-                'content': t[0],
-                'fields': t[1],
-                'yaml': t[2]
-            }
-        }
+        return {'req': {'content': t[0], 'fields': t[1], 'yaml': t[2]}}
 
 
 class ObsidianExtractor(Extractor):
     def __init__(self, config: Config, record: InputRecord):
         super().__init__(config, record)
         grammar_path = Path(__file__).parent / 'obsidian.lark'
-        self._parser = Lark.open(
-            grammar_path,
-            rel_to=__file__,
-            parser='lalr',
-            maybe_placeholders=False
-        )
+        self._parser = Lark.open(grammar_path, rel_to=__file__, parser='lalr', maybe_placeholders=False)
         self._transformer = ObsidianTransformer()
 
     def driver(self) -> str:
@@ -77,9 +65,7 @@ class ObsidianExtractor(Extractor):
         markdown = filepath.read_text(encoding='utf-8')
         return self._extract_from_markdown(filepath, markdown)
 
-    def _extract_from_markdown(
-        self, filepath: Path, markdown: str
-    ) -> ExtractorResult:
+    def _extract_from_markdown(self, filepath: Path, markdown: str) -> ExtractorResult:
         artifacts: list[Artifact] = []
         errors: list[str] = []
 
@@ -145,10 +131,9 @@ class ObsidianExtractor(Extractor):
                     pos = segment_end
                     continue
 
-                attrs = benedict({
-                    field.get_str('field.marker'): field.get_str('field.content.text')
-                    for field in fields
-                })
+                attrs = benedict(
+                    {field.get_str('field.marker'): field.get_str('field.content.text') for field in fields}
+                )
 
                 attrs.update(yaml_dict.get_dict('attrs'))
                 attrs['content'] = content
@@ -158,9 +143,8 @@ class ObsidianExtractor(Extractor):
                     ArtifactClass=ObsidianArtifact,
                     driver=self.driver(),
                     location=LineLocation(
-                        loc_file=self._config.derive_path(filepath),
-                        loc_lines=(start_line, segment_end)
-                    )
+                        loc_file=self._config.derive_path(filepath), loc_lines=(start_line, segment_end)
+                    ),
                 )
 
                 pid_handle = attrs.get_str('pid')
