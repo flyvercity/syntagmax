@@ -29,7 +29,7 @@ def main(ai: bool, verbose: bool):
         cmd(
             'uv',
             'run',
-            'stmx',
+            'syntagmax',
             *args,
         ).run()
 

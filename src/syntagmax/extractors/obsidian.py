@@ -34,11 +34,11 @@ class ObsidianTransformer(Transformer):
     def yaml_block(self, t):
         return {'text': str(t[0]) if t else ''}
 
-    def content(self, t):
+    def contents(self, t):
         return {'text': str(t[0]) if t else ''}
 
     def field(self, t):
-        return {'field': {'marker': t[0], 'content': t[1]}}
+        return {'field': {'marker': t[0], 'contents': t[1]}}
 
     def fields(self, t):
         # t contains only field objects since _NL is hidden and we used (field)*
@@ -48,7 +48,7 @@ class ObsidianTransformer(Transformer):
         return None
 
     def req(self, t):
-        return {'req': {'content': t[0], 'fields': t[1], 'yaml': t[2]}}
+        return {'req': {'contents': t[0], 'fields': t[1], 'yaml': t[2]}}
 
 
 class ObsidianExtractor(Extractor):
@@ -108,8 +108,8 @@ class ObsidianExtractor(Extractor):
                 req_data = self._transformer.transform(tree)
                 req = benedict(req_data)
 
-                content = req.get_str('req.content.text')
-                lg.debug(f'Content: {content}')
+                contents = req.get_str('req.contents.text')
+                lg.debug(f'Content: {contents}')
                 fields = req.get_list('req.fields.list')
                 lg.debug(f'Fields: {fields}')
                 yaml_text = req.get('req.yaml.text')
@@ -132,11 +132,11 @@ class ObsidianExtractor(Extractor):
                     continue
 
                 attrs = benedict(
-                    {field.get_str('field.marker'): field.get_str('field.content.text').strip() for field in fields}
+                    {field.get_str('field.marker'): field.get_str('field.contents.text').strip() for field in fields}
                 )
 
                 attrs.update(yaml_dict.get_dict('attrs'))
-                attrs['content'] = content
+                attrs['contents'] = contents
 
                 builder = ArtifactBuilder(
                     config=self._config,

@@ -44,12 +44,12 @@ def ai_analyze(config: Config, artifacts: dict[ARef, Artifact]):
     for artifact in artifacts.values():
         lg.info(f'Launching AI analysis for {artifact.ref()}')
 
-        if 'content' not in artifact.fields:
-            lg.warning(f'No content for {artifact.ref()}')
+        if 'contents' not in artifact.fields:
+            lg.warning(f'No contents for {artifact.ref()}')
             continue
 
         try:
-            result = provider.analyze_requirement(artifact.fields['content'])
+            result = provider.analyze_requirement(artifact.fields['contents'])
 
             rich.print(f'[bold green]Metrics for {artifact.ref()}:[/bold green]')
             rich.print(f'Ambiguity: {result["metrics"]["ambiguity"]}')

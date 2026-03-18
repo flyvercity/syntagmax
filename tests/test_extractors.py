@@ -39,7 +39,7 @@ def input_record(tmp_path):
 
 
 def test_text_extractor_basic(config, input_record, tmp_path):
-    content = """
+    contents = """
     Some text before.
     [<
     ID = REQ-1
@@ -50,7 +50,7 @@ def test_text_extractor_basic(config, input_record, tmp_path):
     Some text after.
     """
     filepath = tmp_path / 'test.txt'
-    filepath.write_text(content, encoding='utf-8')
+    filepath.write_text(contents, encoding='utf-8')
 
     # We need to make sure the config's base_dir matches tmp_path or similar
     # In our fixture, config_file is in tmp_path, so root_dir is tmp_path.
@@ -72,9 +72,9 @@ def test_text_extractor_basic(config, input_record, tmp_path):
 def test_obsidian_extractor_basic(config, input_record, tmp_path):
     import textwrap
 
-    content = textwrap.dedent("""
+    contents = textwrap.dedent("""
     [REQ]
-    This is the content.
+    This is the contents.
     [id] REQ-2
     [atype] custom-type
     [pid] user-story:US-2
@@ -84,7 +84,7 @@ def test_obsidian_extractor_basic(config, input_record, tmp_path):
     ```
     """).strip()
     filepath = tmp_path / 'test.md'
-    filepath.write_text(content, encoding='utf-8')
+    filepath.write_text(contents, encoding='utf-8')
 
     extractor = ObsidianExtractor(config, input_record)
     artifacts, errors = extractor.extract_from_file(filepath)
@@ -99,9 +99,9 @@ def test_obsidian_extractor_basic(config, input_record, tmp_path):
 def test_obsidian_extractor_complex_fields(config, input_record, tmp_path):
     import textwrap
 
-    content = textwrap.dedent("""
+    contents = textwrap.dedent("""
     [REQ]
-    Main content.
+    Main contents.
     [id] REQ-3
     [Fusion SRS#Plot data record] Some value
     ```yaml
@@ -110,7 +110,7 @@ def test_obsidian_extractor_complex_fields(config, input_record, tmp_path):
     ```
     """).strip()
     filepath = tmp_path / 'test_complex.md'
-    filepath.write_text(content, encoding='utf-8')
+    filepath.write_text(contents, encoding='utf-8')
 
     extractor = ObsidianExtractor(config, input_record)
     artifacts, errors = extractor.extract_from_file(filepath)
@@ -123,8 +123,8 @@ def test_obsidian_extractor_complex_fields(config, input_record, tmp_path):
 
 
 def test_obsidian_extractor_field_not_at_bol(config, input_record, tmp_path):
-    content = """[REQ]
-This is content with [not-a-field] in the middle.
+    contents = """[REQ]
+This is contents with [not-a-field] in the middle.
 [id] REQ-BOL
 ```yaml
 attrs:
@@ -132,7 +132,7 @@ attrs:
 ```
 """
     filepath = tmp_path / 'test_bol.md'
-    filepath.write_text(content, encoding='utf-8')
+    filepath.write_text(contents, encoding='utf-8')
 
     extractor = ObsidianExtractor(config, input_record)
     artifacts, errors = extractor.extract_from_file(filepath)
@@ -143,5 +143,5 @@ attrs:
     assert artifact.aid == 'REQ-BOL'
     # 'not-a-field' should NOT be in fields
     assert 'not-a-field' not in artifact.fields
-    # it should be in content
-    assert '[not-a-field]' in artifact.fields['content']
+    # it should be in contents
+    assert '[not-a-field]' in artifact.fields['contents']

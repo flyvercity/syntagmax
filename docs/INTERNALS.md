@@ -45,5 +45,5 @@ flowchart TD
 | Config Initialization | `Config` (config.py)  | Loads configuration and parameters                |
 | Extraction          | `extract` (extract.py) | Extracts artifacts from input files               |
 | Tree Building       | `build_tree` (tree.py) | Builds parent-child relationships between artifacts |
-| Analysis            | `analyse_tree` (analyse.py) | Validates artifact tree structure and content |
+| Analysis            | `analyse_tree` (analyse.py) | Validates artifact tree structure and contents |
 | Output              | `print_arttree` (render.py) | Prints the artifact tree to the user         |

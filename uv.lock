@@ -975,6 +975,7 @@ dependencies = [
     { name = "python-benedict", extra = ["parse", "toml", "yaml"] },
     { name = "pyyaml" },
     { name = "rich" },
+    { name = "uvicorn" },
 ]
 
 [package.optional-dependencies]
@@ -1005,6 +1006,7 @@ requires-dist = [
     { name = "python-benedict", extras = ["parse", "yaml", "toml"], specifier = ">=0.35.0" },
     { name = "pyyaml", specifier = ">=6.0.2" },
     { name = "rich", specifier = ">=13.9.4" },
+    { name = "uvicorn", specifier = ">=0.30.0" },
 ]
 provides-extras = ["bedrock"]
 

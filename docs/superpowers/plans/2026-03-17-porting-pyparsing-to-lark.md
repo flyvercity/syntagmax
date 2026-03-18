@@ -80,11 +80,11 @@ git commit -m "feat: port TextExtractor to Lark"
 
 - [ ] **Step 1: Define obsidian.lark grammar**
 ```lark
-?start: content fields yaml_block
+?start: contents fields yaml_block
 
-content: /(.|\n)*?(?=\[|$|```yaml)/
+contents: /(.|\n)*?(?=\[|$|```yaml)/
 fields: field*
-field: "[" AID "]" content
+field: "[" AID "]" contents
 yaml_block: "```yaml" /(.|\n)*?/ "```"
 
 AID: /[a-zA-Z0-9_]+/

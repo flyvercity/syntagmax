@@ -1,15 +1,15 @@
 // src/syntagmax/extractors/obsidian.lark
 ?start: req
 
-req: _REQ_BEGIN content fields yaml_block
+req: _REQ_BEGIN contents fields yaml_block
 
 _REQ_BEGIN: /\[REQ\]/i
 
-content: [content_text]
+contents: [content_text]
 content_text: /(.|\n)+?(?=\r?\n\[|```yaml|$)/s
 
 fields: (field)*
-field: _NL _LSQB AID _RSQB content
+field: _NL _LSQB AID _RSQB contents
 
 yaml_block: _NL? _YAML_BEGIN [yaml_content] _YAML_END
 yaml_content: /(.|\n)+?(?=```)/s

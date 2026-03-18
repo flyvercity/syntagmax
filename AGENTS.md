@@ -74,7 +74,7 @@ uv run stmx-mcp
 - **Unified Library:** All parsing logic must use `Lark`. `pyparsing` is deprecated and removed.
 - **Grammar Files:** Extractor-specific grammars are stored in `.lark` files within `src/syntagmax/extractors/`.
 - **Transformers:** Use `lark.Transformer` to convert parse trees into internal objects (`Ref`, `dict`, etc.).
-- **Obsidian Fields:** Fields in Obsidian (`[field] content`) MUST start at the beginning of a line to be recognized.
+- **Obsidian Fields:** Fields in Obsidian (`[field] contents`) MUST start at the beginning of a line to be recognized.
 - **Identifiers:** Grammars for `AID`, `ATYPE`, and `REVISION` support hyphens to accommodate real-world data patterns.
 
 ### Code Style & Linting

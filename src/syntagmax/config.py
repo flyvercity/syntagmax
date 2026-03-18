@@ -116,7 +116,7 @@ class Config:
 
             if self.params['verbose']:
                 json_config = json.dumps(config_data, indent=4)
-                lg.debug(f'Configuration file content: {json_config}')
+                lg.debug(f'Configuration file contents: {json_config}')
 
             config_model = ConfigFile.model_validate(config_data)
 

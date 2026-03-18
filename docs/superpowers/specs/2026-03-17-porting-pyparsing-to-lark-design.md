@@ -12,13 +12,13 @@ Currently, the project uses `lark` for its metamodel DSL (`metamodel.py` and `me
 
 #### 1. Text Extractor (`src/syntagmax/extractors/text.py`)
 - **Grammar**: A new `text.lark` file will be created in `src/syntagmax/extractors/`.
-- **Parsing**: The `TextExtractor` will continue to find segments starting with `[<`. Once a segment is found, it will use `lark.Lark` to parse the segment content.
+- **Parsing**: The `TextExtractor` will continue to find segments starting with `[<`. Once a segment is found, it will use `lark.Lark` to parse the segment contents.
 - **Transformation**: A `lark.Transformer` will be implemented in `text.py` to convert the `lark` parse tree into the internal `Ref` objects (`IdRef`, `ATypeRef`, `PidRef`).
 
 #### 2. Obsidian Extractor (`src/syntagmax/extractors/obsidian.py`)
 - **Grammar**: A new `obsidian.lark` file will be created in `src/syntagmax/extractors/`.
-- **Parsing**: The `ObsidianExtractor` will search for `[REQ]` markers. The `lark` grammar will define the structure of the requirement, including content, fields, and the YAML block.
-- **Transformation**: A `lark.Transformer` will be used to extract the fields and YAML content from the parse tree.
+- **Parsing**: The `ObsidianExtractor` will search for `[REQ]` markers. The `lark` grammar will define the structure of the requirement, including contents, fields, and the YAML block.
+- **Transformation**: A `lark.Transformer` will be used to extract the fields and YAML contents from the parse tree.
 
 #### 3. Metamodel DSL (`src/syntagmax/metamodel.py`)
 - This file already uses `lark` and will remain largely unchanged, though we might want to ensure consistency in how `lark` parsers are initialized across the project.
@@ -29,7 +29,7 @@ Currently, the project uses `lark` for its metamodel DSL (`metamodel.py` and `me
 ### Data Flow
 
 1.  **Extraction Process**:
-    - The extractor reads the file content.
+    - The extractor reads the file contents.
     - It searches for the start of an artifact segment (e.g., `[<` or `[REQ]`).
     - It extracts the substring containing the segment (until the end marker like `>]` or the end of the YAML block).
     - It passes the substring to the `lark` parser.
