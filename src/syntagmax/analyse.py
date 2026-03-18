@@ -17,6 +17,9 @@ class ArtifactValidator:
         self.errors = errors if errors is not None else []
 
     def validate(self, artifact: Artifact):
+        if self._metamodel is None:
+            return self.errors
+
         if artifact.atype not in self._metamodel:
             self.errors.append(f"Unknown artifact type: '{artifact.atype}' ({artifact})")
             return self.errors
@@ -82,6 +85,7 @@ class ArtifactValidator:
 
 def analyse_tree(config: Config, artifacts: ArtifactMap) -> list[str]:
     errors: list[str] = []
+
     validator = ArtifactValidator(config.metamodel, errors)
 
     for artifact in artifacts.values():
