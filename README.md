@@ -4,6 +4,8 @@
 
 Fully git-friendly lightweight requirements management system with tracing model verification, change detection, and propagation.
 
+**Companion VS Code Extension:** [syntagmax-vscode](https://github.com/flyvercity/syntagmax-vscode)
+
 ## Configuration
 
 Syntagmax uses a TOML configuration file (typically `rms.toml` or similar).
