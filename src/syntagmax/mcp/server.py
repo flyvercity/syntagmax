@@ -1,75 +1,47 @@
 import logging as lg
-from pathlib import Path
-
-import click
 from mcp.server.fastmcp import FastMCP
-
-from syntagmax.artifact import ARef
-from syntagmax.config import Config, Params
 from syntagmax.extract import extract
+from syntagmax.tree import build_tree
+from syntagmax.analyse import analyse_tree
+from syntagmax.errors import FatalError
+from syntagmax.artifact import ARef
 
+class SyntagmaxMCPServer:
+    def __init__(self, config):
+        self.config = config
+        self.mcp = FastMCP("Syntagmax RMS")
+        self.artifacts = {}
+        self._setup_tools()
 
-CONFIG_FILENAME = Path('C:\\Users\\boris\\projects\\flyvercity\\safir\\safir-fusion-rms\\rms.toml')
+    def initialize(self):
+        lg.info("Initializing MCP server: extracting artifacts...")
+        artifacts, e_errors = extract(self.config)
+        t_errors = build_tree(self.config, artifacts)
+        a_errors = analyse_tree(self.config, artifacts)
+        errors = e_errors + t_errors + a_errors
+        if errors:
+            raise FatalError(errors)
+        self.artifacts = artifacts
+        lg.info(f"Loaded {len(self.artifacts)} artifacts.")
 
-
-class SyntagmaxMCP(FastMCP):
-    def __init__(self):
-        super().__init__('System Requirements Source')
-
-    def configure(self):
-        params = Params(
-            verbose=False,
-        )
-
-        self._config = Config(params, CONFIG_FILENAME)
-        artifacts, _ = extract(self._config)
-        self._artifacts = artifacts
-
-    def get_requirement(self, artifact_id: str) -> str:
+    def _get_content(self, artifact_id: str) -> str:
         ref = ARef.coerce(artifact_id)
+        if artifact := self.artifacts.get(ref):
+            return "\n".join(artifact.contents())
+        
+        available = list(self.artifacts.keys())[:10]
+        ids_str = ", ".join(str(k) for k in available)
+        return f"Artifact '{artifact_id}' not found. Available IDs (first 10): {ids_str}..."
 
-        lg.info(f'Getting requirement {ref}')
+    def _setup_tools(self):
+        @self.mcp.tool(name="get_artifact_content", description="Fetch the full content of a requirement artifact by its ID (e.g., 'SRS-001').")
+        def get_artifact_content(artifact_id: str) -> str:
+            return self._get_content(artifact_id)
 
-        if artifact := self._artifacts.get(ref):
-            lg.info(f'Artifact location: {artifact.location}')
-            return '\n'.join(artifact.contents())
-        else:
-            return 'Theres no requirement with this ID.'
+    def run(self, transport, host, port):
+        self.mcp.run(transport=transport, host=host, port=port)
 
-
-mcp = SyntagmaxMCP()
-
-
-@mcp.tool(
-    name='fetch-requirement',
-    description='Get a system requirement by its ID.'
-)
-def fetch_requirement(requirement_id: str) -> str:
-    return mcp.get_requirement(requirement_id)
-
-
-@click.group(name='mcp')
-def mcp_group():
-    mcp.configure()
-    pass
-
-
-@mcp_group.command(name='run')
-def run_mcp():
-    lg.info('Starting MCP server')
-    mcp.run()
-
-
-@mcp_group.command(name='fetch-requirement')
-@click.argument('requirement_id', type=str)
-def fetch_requirement_cmd(requirement_id: str):
-    click.echo(mcp.get_requirement(requirement_id))
-
-
-def main():
-    lg.basicConfig(level=lg.INFO)
-    mcp_group()
-
-
-if __name__ == '__main__':
-    main()
+def run_mcp_server(config, transport, host, port):
+    server = SyntagmaxMCPServer(config)
+    server.initialize()
+    server.run(transport, host, port)
