@@ -10,6 +10,7 @@ Syntagmax is a lightweight, git-friendly requirement management system designed 
 - **Language:** Python 3.13+
 - **Dependency & Environment Management:** [uv](https://github.com/astral-sh/uv)
 - **Build System:** [hatchling](https://hatch.pypa.io/)
+- **Parsing:** [Lark](https://github.com/lark-parser/lark) (Unified parsing for metamodel and extractors)
 - **CLI Framework:** [click](https://click.palletsprojects.com/)
 - **Data Analysis:** [polars](https://pypolars.io/)
 - **Configuration & Validation:** [pydantic](https://docs.pydantic.dev/)
@@ -69,6 +70,13 @@ uv run stmx-mcp
 
 ## Development Conventions
 
+### Parsing and Grammars
+- **Unified Library:** All parsing logic must use `Lark`. `pyparsing` is deprecated and removed.
+- **Grammar Files:** Extractor-specific grammars are stored in `.lark` files within `src/syntagmax/extractors/`.
+- **Transformers:** Use `lark.Transformer` to convert parse trees into internal objects (`Ref`, `dict`, etc.).
+- **Obsidian Fields:** Fields in Obsidian (`[field] content`) MUST start at the beginning of a line to be recognized.
+- **Identifiers:** Grammars for `AID`, `ATYPE`, and `REVISION` support hyphens to accommodate real-world data patterns.
+
 ### Code Style & Linting
 - **Linting:** `ruff check .` and `flake8` are used. Configuration is in `pyproject.toml` and `.flake8`.
 - **Formatting:** `ruff format` is preferred. Quote style is single quotes.
@@ -77,7 +85,8 @@ uv run stmx-mcp
 ### Testing
 - **Framework:** `pytest` is used for testing.
 - **Running Tests:** `uv run pytest`
-- **Current State:** No unit tests are found in the root directory, but `.pytest_cache` indicates they may have been run. Integration tests are managed via `scripts/test-with-safir.py`.
+- **Unit Tests:** Found in `tests/`. Covers `TextExtractor` and `ObsidianExtractor` with various edge cases.
+- **Integration Test:** Managed via `scripts/test-with-safir.py` (requires a sibling `safir` project).
 
 ### Internationalization (i18n)
 - Localizations are stored in `src/syntagmax/resources/locales/`.
