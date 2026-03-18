@@ -69,7 +69,8 @@ def test_text_extractor_basic(config, input_record, tmp_path):
     assert artifact.pids[0].atype == "user-story"
 
 def test_obsidian_extractor_basic(config, input_record, tmp_path):
-    content = """
+    import textwrap
+    content = textwrap.dedent("""
     [REQ]
     This is the content.
     [id] REQ-2
@@ -79,20 +80,22 @@ def test_obsidian_extractor_basic(config, input_record, tmp_path):
     attrs:
       priority: high
     ```
-    """
+    """).strip()
     filepath = tmp_path / "test.md"
     filepath.write_text(content, encoding='utf-8')
-    
+
     extractor = ObsidianExtractor(config, input_record)
     artifacts, errors = extractor.extract_from_file(filepath)
-    
+
     assert len(errors) == 0
     assert len(artifacts) == 1
     artifact = artifacts[0]
     assert artifact.aid == "REQ-2"
     assert artifact.atype == "custom-type"
+
 def test_obsidian_extractor_complex_fields(config, input_record, tmp_path):
-    content = """
+    import textwrap
+    content = textwrap.dedent("""
     [REQ]
     Main content.
     [id] REQ-3
@@ -101,13 +104,13 @@ def test_obsidian_extractor_complex_fields(config, input_record, tmp_path):
     attrs:
       priority: low
     ```
-    """
+    """).strip()
     filepath = tmp_path / "test_complex.md"
     filepath.write_text(content, encoding='utf-8')
-    
+
     extractor = ObsidianExtractor(config, input_record)
     artifacts, errors = extractor.extract_from_file(filepath)
-    
+
     assert len(errors) == 0
     assert len(artifacts) == 1
     artifact = artifacts[0]
