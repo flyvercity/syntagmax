@@ -96,13 +96,9 @@ def analyse_tree(config: Config, artifacts: ArtifactMap) -> list[str]:
         lg.info(f'Validating artifact: {artifact}')
         validator.validate(artifact)
 
-    errors.extend(check_single_root(artifacts))
-    return errors
-
-
-def check_single_root(artifacts: ArtifactMap) -> list[str]:
-    errors: list[str] = []
+    # Ensure there is only one ROOT
     root_count = 0
+
     for a in artifacts.values():
         if a.atype == 'ROOT':
             root_count += 1

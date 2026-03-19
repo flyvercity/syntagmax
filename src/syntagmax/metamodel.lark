@@ -8,7 +8,6 @@ rule: "attribute" name "is" PRESENCE type _NL
      | "boolean" -> type_boolean
      | "enum" "[" value ("," value)* "]" -> type_enum
 
-# The '?' prefix here is the magic fix
 ?name: WORD
 PRESENCE: "mandatory" | "optional"
 ?value: ESCAPED_STRING | WORD
