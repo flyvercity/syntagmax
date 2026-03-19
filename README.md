@@ -113,6 +113,7 @@ Syntagmax allows defining a custom metamodel for artifacts and their attributes 
 artifact REQ:
     attribute id is mandatory string
     attribute contents is mandatory string
+    attribute parent is optional reference to parent
     attribute status is mandatory enum [draft, active, retired]
     attribute verify is optional string
     attribute priority is mandatory integer
@@ -138,7 +139,7 @@ Python-style comments (`# ...`) are supported.
 - `string`: Any text.
 - `integer`: A whole number.
 - `boolean`: `true` or `false`.
-- `reference`: A reference to another artifact (e.g., `SRS-001`).
+- `reference [to parent]`: A reference to another artifact (e.g., `SRS-001`). The optional `to parent` modifier marks the attribute as a parent indicator, used for building the artifact hierarchy. This replaces the previous implicit handling of attributes named `pid`.
 - `enum [<values>]`: A fixed set of allowed values (comma-separated).
 
 ### Examples of multiple attributes
