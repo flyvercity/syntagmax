@@ -12,14 +12,25 @@ from lark import Lark, Transformer, indenter
 
 class DSLTransformer(Transformer):
     def artifact(self, children):
-        # children[0] is now a string/token because of ?name
-        # filter out any _NL tokens that might be in the children
-        attrs = [c for c in children[1:] if isinstance(c, dict)]
-        return {'artifact_name': str(children[0]), 'attributes': attrs}
+        # children[0] is ARTIFACT token, children[1] is name
+        attrs = [c for c in children[2:] if isinstance(c, dict) and 'name' in c]
+        return {'type': 'artifact', 'artifact_name': str(children[1]), 'attributes': attrs}
 
     def rule(self, children):
         # children[0] is name, children[1] is presence
         return {'name': str(children[0]), 'presence': str(children[1]), 'type_info': children[2]}
+
+    def trace(self, children):
+        # trace: "trace" "from" name "to" target_list "is" PRESENCE _NL
+        return {
+            'type': 'trace',
+            'source': str(children[0]),
+            'targets': children[1],
+            'presence': str(children[2]),
+        }
+
+    def target_list(self, children):
+        return [str(c) for c in children]
 
     def type_string(self, _):
         return {'type': 'string'}
@@ -57,5 +68,14 @@ def load_model(model_filename: Path):
     lg.debug(f'Using model text:\n{metamodel_text}')
     tree = parser.parse(metamodel_text)
     metamodel = DSLTransformer().transform(tree)
-    artifact_defs = {a['artifact_name']: a for a in metamodel}
-    return artifact_defs
+
+    artifact_defs = {a['artifact_name']: a for a in metamodel if a['type'] == 'artifact'}
+    trace_rules = {}
+    for t in metamodel:
+        if t['type'] == 'trace':
+            source = t['source']
+            if source not in trace_rules:
+                trace_rules[source] = []
+            trace_rules[source].append(t)
+
+    return {'artifacts': artifact_defs, 'traces': trace_rules}
