@@ -16,8 +16,8 @@ from syntagmax.artifact import Artifact
 
 
 class IPynbExtractor(ObsidianExtractor):
-    def __init__(self, config: Config, record: InputRecord):
-        super().__init__(config, record)
+    def __init__(self, config: Config, record: InputRecord, metamodel: dict | None = None):
+        super().__init__(config, record, metamodel)
 
     def driver(self) -> str:
         return 'ipynb'

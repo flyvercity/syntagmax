@@ -15,9 +15,10 @@ type ExtractorResult = tuple[Sequence[Artifact], list[str]]
 
 
 class Extractor:
-    def __init__(self, config: Config, record: InputRecord):
+    def __init__(self, config: Config, record: InputRecord, metamodel: dict | None = None):
         self._config = config
         self._record = record
+        self._metamodel = metamodel
 
     def driver(self) -> str: ...
 

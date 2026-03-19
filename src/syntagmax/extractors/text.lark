@@ -6,14 +6,16 @@ section: "[<" header body? ">]"
 header: (directive | skip)*
 skip: /.(?!(?:>>>|>]|\[<))/s
 
-directive: id_directive | pid_directive | type_directive
+directive: id_directive | type_directive | attr_directive
 
 id_directive: "ID" "=" AID
 type_directive: "TYPE" "=" ATYPE
-pid_directive: "PID" "=" ATYPE ":" AID "@" REVISION
+attr_directive: NAME "=" VALUE
 
 AID: /[a-zA-Z0-9-]+/
 ATYPE: /[a-zA-Z0-9-]+/
+NAME: /[a-zA-Z0-9_-]+/
+VALUE: /[^ \t\n\r>\[\]]+/
 REVISION: /[a-zA-Z0-9-]+/
 
 body: ">>>" [body_content]

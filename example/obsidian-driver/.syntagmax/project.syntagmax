@@ -1,0 +1,24 @@
+# System-level requirements
+artifact SYS:
+    attribute id is mandatory string
+    attribute contents is mandatory string
+    attribute title is mandatory string
+    attribute priority is mandatory enum [critical, high, medium, low]
+    attribute status is mandatory enum [draft, active, retired]
+    attribute category is optional enum [performance, safety, interface, functional]
+    attribute verified is optional boolean
+
+# Software requirements
+artifact REQ:
+    attribute id is mandatory string
+    attribute contents is mandatory string
+    attribute title is mandatory string
+    attribute parent is optional reference to parent
+    attribute status is mandatory enum [draft, active, retired]
+    attribute priority is mandatory enum [critical, high, medium, low]
+    attribute verify is optional string
+    attribute version is optional integer
+    attribute tag is optional multiple string
+    attribute related is optional multiple reference
+
+trace from REQ to SYS is mandatory

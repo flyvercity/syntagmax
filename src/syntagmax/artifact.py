@@ -38,7 +38,14 @@ class ARef:
 
     @staticmethod
     def coerce(ref: str) -> 'ARef':
-        atype, aid = ref.split('-', 1)
+        if '-' in ref:
+            atype, aid = ref.split('-', 1)
+        else:
+            raise ValueError(f'Invalid reference format: {ref}')
+
+        if '@' in aid:
+            aid = aid.split('@', 1)[0]
+
         return ARef(atype, aid)
 
 
@@ -73,7 +80,7 @@ class Artifact:
         self.pids: list[ARef] = []
         self.children: set[ARef] = set()
         self.ansestors: set[ARef] = set()
-        self.fields: dict[str, str] = {}
+        self.fields: dict[str, str | list[str]] = {}
 
     def ref(self) -> ARef:
         return ARef(self.atype, self.aid)
@@ -86,14 +93,18 @@ class Artifact:
 
 
 class ArtifactBuilder:
-    def __init__(self, config: Config, ArtifactClass: type[Artifact], driver: str, location: Location):
+    def __init__(
+        self,
+        config: Config,
+        ArtifactClass: type[Artifact],
+        driver: str,
+        location: Location,
+        metamodel: dict | None = None,
+    ):
         self.artifact = ArtifactClass(config)
         self.artifact.driver = driver
         self.artifact.location = location
-
-    def add_pid(self, pid: str, ptype: str):
-        self.artifact.pids.append(ARef(ptype, pid))
-        return self
+        self._metamodel = metamodel
 
     def add_id(self, aid: str, atype: str):
         if self.artifact.aid:
@@ -104,14 +115,32 @@ class ArtifactBuilder:
         return self
 
     def add_field(self, field: str, value: str):
-        if field in self.artifact.fields:
-            raise ValidationError(self._build_error('Duplicate field'))
+        multiple = False
+        if self._metamodel and self.artifact.atype in self._metamodel.get('artifacts', {}):
+            atype_def = self._metamodel['artifacts'][self.artifact.atype]
+            attr_def = atype_def.get('attributes', {}).get(field)
+            if attr_def:
+                multiple = attr_def.get('multiple', False)
 
-        self.artifact.fields[field] = value
+        if multiple:
+            if field not in self.artifact.fields:
+                self.artifact.fields[field] = []
+            elif not isinstance(self.artifact.fields[field], list):
+                # ensure it's a list for multiple field
+                self.artifact.fields[field] = [self.artifact.fields[field]]
+
+            # The current field is already checked to be list in the block above or is new
+            self.artifact.fields[field].append(value)  # type: ignore
+        else:
+            if field in self.artifact.fields:
+                raise ValidationError(self._build_error(f'Duplicate field "{field}"'))
+
+            self.artifact.fields[field] = value
         return self
 
     def add_fields(self, fields: dict[str, str]):
-        self.artifact.fields.update(fields)
+        for field, value in fields.items():
+            self.add_field(field, value)
         return self
 
     def _build_error(self, message: str) -> str:
@@ -126,6 +155,14 @@ class ArtifactBuilder:
 
         if not self.artifact.aid:
             raise ValidationError(self._build_error('AID is required'))
+
+        # Ensure all multiple fields are present as lists
+        if self._metamodel and self.artifact.atype in self._metamodel.get('artifacts', {}):
+            atype_def = self._metamodel['artifacts'][self.artifact.atype]
+            for attr_name, attr_def in atype_def.get('attributes', {}).items():
+                if attr_def.get('multiple', False):
+                    if attr_name not in self.artifact.fields:
+                        self.artifact.fields[attr_name] = []
 
         return self.artifact
 

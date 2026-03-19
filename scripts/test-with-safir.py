@@ -22,6 +22,7 @@ def main(ai: bool, verbose: bool):
     if ai:
         args.append('--ai')
 
+    args.append('--render-tree')
     args.append('analyze')
     args.append(str(cfg))
 

@@ -54,43 +54,65 @@ class ArtifactValidator:
         for missing in missing_mandatory:
             self.errors.append(f"Missing mandatory attribute: '{missing}' ({artifact})")
 
-        # 4. Type Conversion and Value Validation
-        for name, value in artifact.fields.items():
-            if name not in artifact_rules:
-                continue  # Already caught by extra_fields check
-
-            type_info = artifact_rules[name]['type_info']
+        # 4. Multiplicity and Type Validation
+        def _check_type(val, type_info, attr_name):
             expected_type = type_info['type']
 
-            # -- INTEGER CHECK --
             if expected_type == 'integer':
                 try:
-                    int(value)
+                    int(val)
                 except (ValueError, TypeError):
                     self.errors.append(
-                        f"Attribute '{name}' value '{value}' cannot be converted to an integer ({artifact})"
+                        f"Attribute '{attr_name}' value '{val}' cannot be converted to an integer ({artifact})"
                     )
 
-            # -- BOOLEAN CHECK --
             elif expected_type == 'boolean':
-                # Analysts use various strings for booleans; we define a strict valid set
                 truthy = {'true', 'yes', '1'}
                 falsy = {'false', 'no', '0'}
-                if value.lower() not in truthy | falsy:
+                if str(val).lower() not in truthy | falsy:
                     self.errors.append(
-                        f"Attribute '{name}' value '{value}' is not a valid boolean (expected true/false, yes/no, 1/0) ({artifact})"
+                        f"Attribute '{attr_name}' value '{val}' is not a valid boolean (expected true/false, yes/no, 1/0) ({artifact})"
                     )
 
-            # -- ENUM CHECK --
             elif expected_type == 'enum':
                 allowed = type_info['allowed']
-                if value not in allowed:
+                if val not in allowed:
                     self.errors.append(
-                        f"Attribute '{name}' value '{value}' is invalid. Allowed values: {allowed} ({artifact})"
+                        f"Attribute '{attr_name}' value '{val}' is invalid. Allowed values: {allowed} ({artifact})"
                     )
 
-            # -- STRING CHECK --
-            # No conversion needed for 'string' as input is already dict[str, str]
+            elif expected_type == 'reference':
+                if not isinstance(val, str) or '-' not in val:
+                    self.errors.append(
+                        f"Attribute '{attr_name}' value '{val}' is a malformed reference (expected TYPE-ID) ({artifact})"
+                    )
+                else:
+                    ref_atype = val.split('-', 1)[0]
+                    if ref_atype not in self._artifacts:
+                        self.errors.append(
+                            f"Attribute '{attr_name}' value '{val}' refers to an unknown artifact type '{ref_atype}' ({artifact})"
+                        )
+
+        for name, value in artifact.fields.items():
+            if name not in artifact_rules:
+                continue
+
+            rule = artifact_rules[name]
+            is_multiple = rule.get('multiple', False)
+            type_info = rule['type_info']
+
+            # Multiplicity check
+            if is_multiple:
+                if not isinstance(value, list):
+                    self.errors.append(f"Attribute '{name}' must be a list (multiple=True) ({artifact})")
+                else:
+                    for item in value:
+                        _check_type(item, type_info, name)
+            else:
+                if isinstance(value, list):
+                    self.errors.append(f"Attribute '{name}' must not be a list (multiple=False) ({artifact})")
+                else:
+                    _check_type(value, type_info, name)
 
     def _validate_traces(self, artifact: Artifact):
         trace_rules = self._traces.get(artifact.atype, [])

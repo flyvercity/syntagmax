@@ -6,7 +6,7 @@ Fully git-friendly lightweight requirements management system with tracing model
 
 ## Configuration
 
-Syntagmax uses a TOML configuration file (typically `rms.toml` or similar).
+Syntagmax uses a TOML configuration file (default `.syntagmax/config.toml`).
 
 ### Top-level options
 
@@ -112,7 +112,8 @@ Syntagmax allows defining a custom metamodel for artifacts and their attributes 
 ```model
 artifact REQ:
     attribute id is mandatory string
-    attribute contents is mondatory string
+    attribute contents is mandatory string
+    attribute parent is optional reference to parent
     attribute status is mandatory enum [draft, active, retired]
     attribute verify is optional string
     attribute priority is mandatory integer
@@ -127,15 +128,44 @@ Python-style comments (`# ...`) are supported.
 | Rule | Description |
 |------|-------------|
 | `artifact <NAME>:` | Defines a new artifact type. Rules must be indented. |
-| `attribute <ATTR> is <presence> <type>` | Defines an attribute rule. |
+| `attribute <ATTR> is <presence> [multiple] <type>` | Defines an attribute rule. |
 
 **Presence:** `mandatory` or `optional`.
+
+**Modifier:**
+- `multiple`: (Optional) Allows an attribute to have multiple values. Multiple values are extracted into a list. If a `multiple` attribute is missing, it defaults to an empty list `[]`.
 
 **Types:**
 - `string`: Any text.
 - `integer`: A whole number.
 - `boolean`: `true` or `false`.
+- `reference [to parent]`: A reference to another artifact (e.g., `SRS-001`). The optional `to parent` modifier marks the attribute as a parent indicator, used for building the artifact hierarchy. This replaces the previous implicit handling of attributes named `pid`.
 - `enum [<values>]`: A fixed set of allowed values (comma-separated).
+
+### Examples of multiple attributes
+
+Multiple values can be specified by repeating the attribute:
+
+```
+[<
+ID = REQ-1
+tag = security
+tag = performance
+>>>
+This requirement has multiple tags.
+>]
+```
+
+In this case, `artifact.fields['tag']` will be `['security', 'performance']`.
+
+In Obsidian (YAML):
+```yaml
+attrs:
+  author:
+    - Alice
+    - Bob
+```
+This will result in `artifact.fields['author']` being `['Alice', 'Bob']`.
 
 ## Required Improvements
 

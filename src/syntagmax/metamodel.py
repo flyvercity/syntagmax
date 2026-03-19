@@ -19,8 +19,13 @@ class DSLTransformer(Transformer):
         return {'type': 'artifact', 'artifact_name': str(children[1]), 'attributes': attrs}
 
     def rule(self, children):
-        # children[0] is name, children[1] is presence
-        return {'name': str(children[0]), 'presence': str(children[1]), 'type_info': children[2]}
+        # children: name, presence, (multiple_token | None), type_info
+        return {
+            'name': str(children[0]),
+            'presence': str(children[1]),
+            'multiple': children[2] is not None,
+            'type_info': children[3]
+        }
 
     def trace(self, children):
         # trace: "trace" "from" name "to" target_list "is" PRESENCE _NL
@@ -42,6 +47,10 @@ class DSLTransformer(Transformer):
 
     def type_boolean(self, _):
         return {'type': 'boolean'}
+
+    def type_reference(self, children):
+        to_parent = len(children) > 0 and children[0] is not None
+        return {'type': 'reference', 'to_parent': to_parent}
 
     def type_enum(self, values):
         # values are now clean strings because of ?value
