@@ -10,7 +10,6 @@ Overhaul the Model Context Protocol (MCP) integration in `syntagmax` to support 
 ## 2. Goals
 - Replace the standalone, hardcoded MCP script with a first-class CLI command: `syntagmax mcp run`.
 - Support SSE (Streaming) transport for network-based access.
-- Retain stdio transport for local use/development.
 - Mirror the extraction logic from `src/syntagmax/main.py`.
 - Provide a single robust tool: `get_artifact_content`.
 
@@ -19,7 +18,7 @@ Overhaul the Model Context Protocol (MCP) integration in `syntagmax` to support 
 ### 3.1 CLI Integration (`src/syntagmax/cli.py`)
 - Add a new `mcp` command group to the `rms` entry point.
 - Implement the `run` command:
-  - Usage: `syntagmax mcp run <config-file> [--transport sse|stdio] [--host 127.0.0.1] [--port 8000]`
+  - Usage: `syntagmax mcp run <config-file> [--host 127.0.0.1] [--port 8000]`
   - Orchestrates: `Params` -> `Config` -> `server.run_mcp_server`.
 
 ### 3.2 MCP Server (`src/syntagmax/mcp/server.py`)

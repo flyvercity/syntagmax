@@ -78,20 +78,15 @@ class Artifact:
     def ref(self) -> ARef:
         return ARef(self.atype, self.aid)
 
-    def contents(self) -> list[str]: ...
+    def contents(self) -> str:
+        return self.fields.get('contents', 'empty')
 
     def __str__(self) -> str:
         return f'{self.atype}-{self.aid}@{self.location}'
 
 
 class ArtifactBuilder:
-    def __init__(
-        self,
-        config: Config,
-        ArtifactClass: type[Artifact],
-        driver: str,
-        location: Location
-    ):
+    def __init__(self, config: Config, ArtifactClass: type[Artifact], driver: str, location: Location):
         self.artifact = ArtifactClass(config)
         self.artifact.driver = driver
         self.artifact.location = location

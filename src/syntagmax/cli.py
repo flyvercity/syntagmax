@@ -22,15 +22,9 @@ from syntagmax.mcp.server import run_mcp_server
 
 @click.group(help='RMS Entry Point')
 @click.pass_context
-@click.option(
-    '--verbose', is_flag=True, help='Verbose output'
-)
-@click.option(
-    '--render-tree', is_flag=True, help='Render the artifact tree'
-)
-@click.option(
-    '--ai', is_flag=True, help='Use AI to analyze the project'
-)
+@click.option('--verbose', is_flag=True, help='Verbose output')
+@click.option('--render-tree', is_flag=True, help='Render the artifact tree')
+@click.option('--ai', is_flag=True, help='Use AI to analyze the project')
 def rms(ctx: click.Context, **kwargs: dict[str, Any]):
     verbose = kwargs['verbose']
     lg.basicConfig(level=lg.DEBUG if verbose else lg.INFO, handlers=[RichHandler()])
@@ -54,13 +48,12 @@ def mcp():
 @mcp.command(help='Run the MCP server')
 @click.pass_obj
 @click.argument('config_path', type=click.Path(exists=True))
-@click.option('--transport', type=click.Choice(['sse', 'stdio']), default='sse', help='Transport layer')
 @click.option('--host', default='127.0.0.1', help='Host for SSE')
 @click.option('--port', default=8000, help='Port for SSE')
 @click.option('--sse-path', default='/', help='Path for SSE stream')
-def run(obj: Params, config_path: str, transport: str, host: str, port: int, sse_path: str):
+def run(obj: Params, config_path: str, host: str, port: int, sse_path: str):
     configurator = Config(obj, Path(config_path))
-    run_mcp_server(configurator, transport, host, port, sse_path)
+    run_mcp_server(configurator, host, port, sse_path)
 
 
 def main():
@@ -71,11 +64,7 @@ def main():
         for error in e.errors:
             u.pprint(f'[red]{error}[/red]')
 
-        u.pprint(
-            '[light red]'
-            f'Non-Fatal Errors Encountered: {len(e.errors)}'
-            '[/light red]'
-        )
+        u.pprint(f'[light red]Non-Fatal Errors Encountered: {len(e.errors)}[/light red]')
 
         sys.exit(1)
 

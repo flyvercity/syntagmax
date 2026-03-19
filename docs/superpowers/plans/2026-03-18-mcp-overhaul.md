@@ -171,7 +171,6 @@ def mcp():
 @mcp.command(help='Run the MCP server')
 @click.pass_obj
 @click.argument('config_path', type=click.Path(exists=True))
-@click.option('--transport', type=click.Choice(['sse', 'stdio']), default='sse', help='Transport layer')
 @click.option('--host', default='127.0.0.1', help='Host for SSE')
 @click.option('--port', default=8000, help='Port for SSE')
 def run(obj: Params, config_path: Path, transport: str, host: str, port: int):
@@ -204,8 +203,3 @@ echo 'verbose = true' >> test_rms.toml
 
 Run: `syntagmax mcp run test_rms.toml --transport sse --port 8080`
 Expected: Server starts and listens on 8080 (CTRL+C to stop).
-
-- [ ] **Step 3: Verify stdio (dry run)**
-
-Run: `echo '{"method": "list_tools", "params": {}}' | syntagmax mcp run test_rms.toml --transport stdio`
-Expected: JSON output containing `get_artifact_content`.

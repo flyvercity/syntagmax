@@ -111,10 +111,14 @@ Syntagmax allows defining a custom metamodel for artifacts and their attributes 
 
 ```model
 artifact REQ:
+    attribute id is mandatory string
+    attribute contents is mondatory string
     attribute status is mandatory enum [draft, active, retired]
     attribute verify is optional string
     attribute priority is mandatory integer
 ```
+
+The attributes `id` and `contents` are always mandatory for all artifacts, but the type is flexible.
 
 ### Syntax Reference
 
