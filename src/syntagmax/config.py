@@ -15,7 +15,8 @@ from benedict import benedict
 from pydantic import BaseModel, Field
 
 from syntagmax.params import Params
-from syntagmax.metamodel import load_model
+from syntagmax.metamodel import load_metamodel
+from syntagmax.errors import FatalError
 
 
 @dataclass
@@ -71,7 +72,7 @@ class Metamodel(BaseModel):
 
 
 class ConfigFile(BaseModel):
-    base: str = Field(default='.', description='Base directory path')
+    base: str = Field(default='..', description='Base directory path')
     input: list[InputConfig] = Field(..., description='Input configuration records')
     metrics: MetricsConfig = Field(MetricsConfig(), description='Metrics configuration')
     metamodel: Metamodel = Field(Metamodel(), description='Metamodel configuration')
@@ -89,58 +90,64 @@ class Config:
         self._read_config(config_filename)
 
     def _read_config(self, config_filename: Path):
+        errors: list[str] = []
+
+        config_file = Path(config_filename)
+        lg.info(f'Using configuration file: {config_file}')
+
+        # Note: Root directory is the directory of the config file
+        # Base directory is relative to the root directory, where
+        # artifacts are located.
+        root_dir = config_file.parent
+        config_data = benedict()
+
         try:
-            config_file = Path(config_filename)
-            lg.info(f'Using configuration file: {config_file}')
-
-            # Note: Root directory is the directory of the config file
-            # Base directory is relative to the root directory, where
-            # artifacts are located.
-            root_dir = config_file.parent
-            config_data = benedict()
-
             # Global config
             global_config_path = Path(os.path.expanduser('~/.config/syntagmax/config.toml'))
 
             if global_config_path.exists():
                 lg.info(f'Loading global configuration from {global_config_path}')
-                try:
-                    global_data = tomllib.loads(global_config_path.read_text(encoding='utf-8'))
-                    config_data.merge(global_data)
-                except Exception as e:
-                    lg.warning(f'Failed to load global config: {e}')
+                global_data = tomllib.loads(global_config_path.read_text(encoding='utf-8'))
+                config_data.merge(global_data)
+        except Exception as e:
+            errors.append(f'Failed to load global config: {e}')
 
+        try:
             # Project config
             project_data = tomllib.loads(config_file.read_text(encoding='utf-8'))
             config_data.merge(project_data)
-
-            if self.params['verbose']:
-                json_config = json.dumps(config_data, indent=4)
-                lg.debug(f'Configuration file contents: {json_config}')
-
-            config_model = ConfigFile.model_validate(config_data)
-
-            lg.debug(f'Root directory: {root_dir}. Base directory: {config_model.base}')
-
-            self._base_dir = Path(root_dir, config_model.base)
-            lg.debug(f'Base directory: {self._base_dir}')
-            self._read_input_records(config_model.input)
-
-            self.metrics = config_model.metrics
-            self.ai = config_model.ai
-
-            if not config_model.metrics.enabled:
-                lg.warning('Metrics collection is disabled')
-
-            if config_model.metamodel.filename:
-                self.metamodel = load_model(Path(root_dir, config_model.metamodel.filename))
-            else:
-                lg.warning('No static validation model')
-                self.metamodel = None
-
         except Exception as exc:
-            lg.error(f'Error during configuration: {exc}')
-            raise UserWarning('Bad configuration file')
+            errors.append(f'Failed to load project config: {exc}')
+
+        if self.params['verbose']:
+            json_config = json.dumps(config_data, indent=4)
+            lg.debug(f'Configuration file contents: {json_config}')
+
+        if errors:
+            raise FatalError(errors)
+
+        config_model = ConfigFile.model_validate(config_data)
+
+        lg.debug(f'Root directory: {root_dir}. Base directory: {config_model.base}')
+
+        self._base_dir = Path(root_dir, config_model.base)
+        lg.debug(f'Base directory: {self._base_dir}')
+        self._read_input_records(config_model.input)
+
+        self.metrics = config_model.metrics
+        self.ai = config_model.ai
+
+        if not config_model.metrics.enabled:
+            lg.warning('Metrics collection is disabled')
+
+        if config_model.metamodel.filename:
+            self.metamodel = load_metamodel(Path(root_dir, config_model.metamodel.filename), errors)
+        else:
+            lg.warning('No static validation model')
+            self.metamodel = None
+
+        if errors:
+            raise FatalError(errors)
 
     def _read_input_records(self, input_configs: list[InputConfig]):
         for input_config in input_configs:

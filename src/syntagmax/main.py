@@ -14,7 +14,7 @@ from syntagmax.tree import build_tree
 from syntagmax.artifact import ARef
 from syntagmax.render import print_arttree
 from syntagmax.analyse import analyse_tree
-from syntagmax.metrics import render_metrics
+from syntagmax.metrics import calculate_metrics, render_metrics
 from syntagmax.ai import ai_analyze
 
 
@@ -27,9 +27,6 @@ def process(config: Config):
     a_errors = analyse_tree(config, artifacts)
     errors.extend(a_errors)
 
-    if errors:
-        raise FatalError(errors)
-
     if not artifacts:
         lg.warning('No artifacts found')
         return
@@ -37,8 +34,16 @@ def process(config: Config):
     if config.params['render_tree']:
         print_arttree(artifacts, ARef.root(), verbose=config.params['verbose'])
 
+    if errors:
+        raise FatalError(errors)
+
     if config.metrics.enabled:
-        render_metrics(config, artifacts)
+        metrics = calculate_metrics(config, artifacts, errors)
+
+        if errors:
+            raise FatalError(errors)
+
+        render_metrics(metrics, config)
 
     if config.params['ai']:
         ai_analyze(config, artifacts)

@@ -40,9 +40,8 @@ class ArtifactValidator:
         artifact_rules = self._artifacts[artifact.atype]['attributes']
 
         # 1. Map rules by attribute name
-        rule_map = {r['name']: r for r in artifact_rules}
-        mandatory_names = {r['name'] for r in artifact_rules if r['presence'] == 'mandatory'}
-        all_allowed_names = set(rule_map.keys())
+        mandatory_names = {r['name'] for r in artifact_rules.values() if r['presence'] == 'mandatory'}
+        all_allowed_names = set(artifact_rules.keys())
 
         # 2. Check for Additional Attributes (Strict Mode)
         actual_names = set(artifact.fields.keys())
@@ -57,10 +56,10 @@ class ArtifactValidator:
 
         # 4. Type Conversion and Value Validation
         for name, value in artifact.fields.items():
-            if name not in rule_map:
+            if name not in artifact_rules:
                 continue  # Already caught by extra_fields check
 
-            type_info = rule_map[name]['type_info']
+            type_info = artifact_rules[name]['type_info']
             expected_type = type_info['type']
 
             # -- INTEGER CHECK --
@@ -116,7 +115,7 @@ class ArtifactValidator:
                 targets = set(rule['targets'])
                 found = any(p.atype in targets for p in actual_parents)
                 if not found:
-                    target_str = " or ".join(f"'{t}'" for t in targets)
+                    target_str = ' or '.join(f"'{t}'" for t in targets)
                     self.errors.append(f"Missing mandatory trace from '{artifact.atype}' to {target_str} ({artifact})")
 
 
