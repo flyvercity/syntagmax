@@ -122,12 +122,6 @@ class ArtifactBuilder:
             if attr_def:
                 multiple = attr_def.get('multiple', False)
 
-        if field.lower() == 'pid':
-            try:
-                self.artifact.pids.append(ARef.coerce(value))
-            except Exception:
-                pass
-
         if multiple:
             if field not in self.artifact.fields:
                 self.artifact.fields[field] = []
