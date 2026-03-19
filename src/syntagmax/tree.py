@@ -24,6 +24,32 @@ class RootArtifact(Artifact):
         self.children = set()
 
 
+def populate_pids(config: Config, artifacts: ArtifactMap):
+    if not config.metamodel:
+        return
+
+    for a in artifacts.values():
+        if a.atype not in config.metamodel['artifacts']:
+            continue
+
+        rules = config.metamodel['artifacts'][a.atype]['attributes']
+        for attr_name, rule in rules.items():
+            type_info = rule.get('type_info', {})
+            if type_info.get('type') == 'reference' and type_info.get('to_parent'):
+                val = a.fields.get(attr_name)
+                if not val:
+                    continue
+
+                refs = val if rule.get('multiple') else [val]
+                for ref_str in refs:
+                    try:
+                        ref = ARef.coerce(ref_str)
+                        if ref not in a.pids:
+                            a.pids.append(ref)
+                    except Exception:
+                        pass
+
+
 def gather_ansestors(
     artifacts: ArtifactMap, ref: ARef, depth: int = 0
 ) -> str | None:
