@@ -1,0 +1,26 @@
+base = ".."
+
+[[input]]
+name = "system-requirements"
+dir = "SYS"
+driver = "obsidian"
+atype = "SYS"
+
+[[input]]
+name = "software-requirements"
+dir = "REQ"
+driver = "obsidian"
+atype = "REQ"
+
+[metrics]
+enabled = true
+requirement_type = "REQ"
+status_field = "status"
+verify_field = "verify"
+tbd_marker = "TBD"
+output_format = "markdown"
+output_file = "output/metrics.md"
+
+[metamodel]
+filename = "project.syntagmax"
+

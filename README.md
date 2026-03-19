@@ -6,7 +6,7 @@ Fully git-friendly lightweight requirements management system with tracing model
 
 ## Configuration
 
-Syntagmax uses a TOML configuration file (typically `rms.toml` or similar).
+Syntagmax uses a TOML configuration file (default `.syntagmax/config.toml`).
 
 ### Top-level options
 
