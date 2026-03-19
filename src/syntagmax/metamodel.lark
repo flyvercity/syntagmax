@@ -1,7 +1,7 @@
 start: (artifact | trace | _NL)+
 
 artifact: ARTIFACT name ":" _NL _INDENT (rule | _NL)* _DEDENT
-rule: "attribute" name "is" PRESENCE type _NL
+rule: "attribute" name "is" PRESENCE [MULTIPLE] type _NL
 
 trace: "trace" "from" name "to" target_list "is" PRESENCE _NL
 target_list: name ("or" name)*
@@ -13,6 +13,7 @@ target_list: name ("or" name)*
      | "enum" "[" value ("," value)* "]" -> type_enum
 
 ARTIFACT: "artifact"
+MULTIPLE: "multiple"
 ?name: WORD
 PRESENCE: "mandatory" | "optional"
 ?value: ESCAPED_STRING | WORD

@@ -59,3 +59,19 @@ artifact REQ:
     model = load_metamodel(model_file, errors, validate=False)
     assert not errors
     assert model['artifacts']['REQ']['attributes']['link']['type_info'] == {'type': 'reference'}
+
+
+def test_multiple_attribute_modifier(tmp_path):
+    model_content = """
+artifact REQ:
+    attribute id is mandatory string
+    attribute contents is mandatory string
+    attribute tags is optional multiple string
+"""
+    model_file = tmp_path / "test_multiple.model"
+    model_file.write_text(model_content)
+    errors = []
+    model = load_metamodel(model_file, errors, validate=False)
+    assert not errors
+    assert model['artifacts']['REQ']['attributes']['tags']['multiple'] is True
+    assert model['artifacts']['REQ']['attributes']['id']['multiple'] is False

@@ -52,8 +52,8 @@ class ObsidianTransformer(Transformer):
 
 
 class ObsidianExtractor(Extractor):
-    def __init__(self, config: Config, record: InputRecord):
-        super().__init__(config, record)
+    def __init__(self, config: Config, record: InputRecord, metamodel: dict | None = None):
+        super().__init__(config, record, metamodel)
         grammar_path = Path(__file__).parent / 'obsidian.lark'
         self._parser = Lark.open(grammar_path, rel_to=__file__, parser='lalr', maybe_placeholders=False)
         self._transformer = ObsidianTransformer()
@@ -131,23 +131,15 @@ class ObsidianExtractor(Extractor):
                     pos = segment_end
                     continue
 
-                attrs = benedict(
-                    {field.get_str('field.marker'): field.get_str('field.contents.text').strip() for field in fields}
-                )
+                yaml_attrs = yaml_dict.get_dict('attrs')
 
-                attrs.update(yaml_dict.get_dict('attrs'))
-                attrs['contents'] = contents
+                # Merged dict for ID/AType extraction, YAML takes precedence
+                temp_attrs = {
+                    **{field.get_str('field.marker'): field.get_str('field.contents.text').strip() for field in fields},
+                    **yaml_attrs,
+                }
 
-                builder = ArtifactBuilder(
-                    config=self._config,
-                    ArtifactClass=ObsidianArtifact,
-                    driver=self.driver(),
-                    location=LineLocation(
-                        loc_file=self._config.derive_path(filepath), loc_lines=(start_line, segment_end)
-                    ),
-                )
-
-                aid = attrs.get('id')
+                aid = temp_attrs.get('id')
 
                 if not aid:
                     error = f'Missing ID in metadata at line {start_line}'
@@ -156,9 +148,35 @@ class ObsidianExtractor(Extractor):
                     pos = segment_end
                     continue
 
-                atype = attrs.get('atype') or self._record.default_atype
+                atype = temp_attrs.get('atype') or self._record.default_atype
+
+                builder = ArtifactBuilder(
+                    config=self._config,
+                    ArtifactClass=ObsidianArtifact,
+                    driver=self.driver(),
+                    location=LineLocation(
+                        loc_file=self._config.derive_path(filepath), loc_lines=(start_line, segment_end)
+                    ),
+                    metamodel=self._metamodel,
+                )
+
                 builder.add_id(aid, atype)
-                builder.add_fields(attrs)
+
+                # Add fields found in markdown individually
+                for field in fields:
+                    builder.add_field(field.get_str('field.marker'), field.get_str('field.contents.text').strip())
+
+                # Add fields found in YAML individually
+                for name, value in yaml_attrs.items():
+                    if isinstance(value, list):
+                        for v in value:
+                            builder.add_field(name, str(v))
+                    else:
+                        builder.add_field(name, str(value))
+
+                # Add contents as a field
+                builder.add_field('contents', contents)
+
                 artifacts.append(builder.build())
 
             except (exceptions.ParseError, exceptions.UnexpectedToken) as e:

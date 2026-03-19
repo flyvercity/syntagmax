@@ -112,7 +112,7 @@ Syntagmax allows defining a custom metamodel for artifacts and their attributes 
 ```model
 artifact REQ:
     attribute id is mandatory string
-    attribute contents is mondatory string
+    attribute contents is mandatory string
     attribute status is mandatory enum [draft, active, retired]
     attribute verify is optional string
     attribute priority is mandatory integer
@@ -127,9 +127,12 @@ Python-style comments (`# ...`) are supported.
 | Rule | Description |
 |------|-------------|
 | `artifact <NAME>:` | Defines a new artifact type. Rules must be indented. |
-| `attribute <ATTR> is <presence> <type>` | Defines an attribute rule. |
+| `attribute <ATTR> is <presence> [multiple] <type>` | Defines an attribute rule. |
 
 **Presence:** `mandatory` or `optional`.
+
+**Modifier:**
+- `multiple`: (Optional) Allows an attribute to have multiple values. Multiple values are extracted into a list. If a `multiple` attribute is missing, it defaults to an empty list `[]`.
 
 **Types:**
 - `string`: Any text.
@@ -137,6 +140,31 @@ Python-style comments (`# ...`) are supported.
 - `boolean`: `true` or `false`.
 - `reference`: A reference to another artifact (e.g., `SRS-001`).
 - `enum [<values>]`: A fixed set of allowed values (comma-separated).
+
+### Examples of multiple attributes
+
+Multiple values can be specified by repeating the attribute:
+
+```
+[<
+ID = REQ-1
+tag = security
+tag = performance
+>>>
+This requirement has multiple tags.
+>]
+```
+
+In this case, `artifact.fields['tag']` will be `['security', 'performance']`.
+
+In Obsidian (YAML):
+```yaml
+attrs:
+  author:
+    - Alice
+    - Bob
+```
+This will result in `artifact.fields['author']` being `['Alice', 'Bob']`.
 
 ## Required Improvements
 

@@ -43,7 +43,7 @@ def test_text_extractor_basic(config, input_record, tmp_path):
     Some text before.
     [<
     ID = REQ-1
-    PID = user-story:US-1@1
+    PID = user-story-US-1@1
     >>>
     This is the body of the requirement.
     >]
@@ -65,8 +65,8 @@ def test_text_extractor_basic(config, input_record, tmp_path):
     assert artifact.aid == 'REQ-1'
     assert artifact.atype == 'requirement'
     assert len(artifact.pids) == 1
-    assert artifact.pids[0].aid == 'US-1'
-    assert artifact.pids[0].atype == 'user-story'
+    assert artifact.pids[0].aid == 'story-US-1'
+    assert artifact.pids[0].atype == 'user'
 
 
 def test_obsidian_extractor_basic(config, input_record, tmp_path):
