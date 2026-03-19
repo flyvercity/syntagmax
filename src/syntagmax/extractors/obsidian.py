@@ -147,20 +147,6 @@ class ObsidianExtractor(Extractor):
                     ),
                 )
 
-                pid_handle = attrs.get_str('pid')
-
-                if pid_handle and pid_handle != 'None':
-                    pid_split = pid_handle.split(':')
-
-                    if len(pid_split) != 2:
-                        error = f'Invalid PID: {pid_handle}'
-                        lg.error(error)
-                        errors.append(error)
-                    else:
-                        p_atype = pid_split[0]
-                        p_aid = pid_split[1]
-                        builder.add_pid(p_aid, p_atype)
-
                 aid = attrs.get('id')
 
                 if not aid:

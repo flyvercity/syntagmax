@@ -40,11 +40,10 @@ git commit -m "test: add baseline tests for extractors"
 ?start: header body?
 
 header: (directive)*
-directive: id_directive | pid_directive | type_directive
+directive: id_directive | type_directive
 
 id_directive: "ID" "=" AID
 type_directive: "TYPE" "=" ATYPE
-pid_directive: "PID" "=" ATYPE ":" AID "@" REVISION
 
 AID: /[a-zA-Z0-9-]+/
 ATYPE: /[a-zA-Z0-9]+/

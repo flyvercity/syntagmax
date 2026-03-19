@@ -91,10 +91,6 @@ class ArtifactBuilder:
         self.artifact.driver = driver
         self.artifact.location = location
 
-    def add_pid(self, pid: str, ptype: str):
-        self.artifact.pids.append(ARef(ptype, pid))
-        return self
-
     def add_id(self, aid: str, atype: str):
         if self.artifact.aid:
             raise ValidationError(self._build_error('Duplicate AID'))
