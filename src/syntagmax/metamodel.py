@@ -48,8 +48,10 @@ class DSLTransformer(Transformer):
     def type_boolean(self, _):
         return {'type': 'boolean'}
 
-    def type_reference(self, _):
-        return {'type': 'reference'}
+    def type_reference(self, children):
+        # Lark passes literal strings as children if they are in the rule
+        to_parent = any(str(c) == 'to' for c in children)
+        return {'type': 'reference', 'to_parent': to_parent}
 
     def type_enum(self, values):
         # values are now clean strings because of ?value

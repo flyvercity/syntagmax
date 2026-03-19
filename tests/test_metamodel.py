@@ -75,3 +75,22 @@ artifact REQ:
     assert not errors
     assert model['artifacts']['REQ']['attributes']['tags']['multiple'] is True
     assert model['artifacts']['REQ']['attributes']['id']['multiple'] is False
+
+
+def test_reference_to_parent_parsing(tmp_path):
+    model_content = """
+artifact REQ:
+    attribute id is mandatory string
+    attribute contents is mandatory string
+    attribute mainpid is mandatory reference to parent
+    attribute link is optional reference
+"""
+    model_file = tmp_path / "test_parent.model"
+    model_file.write_text(model_content)
+    errors = []
+    from syntagmax.metamodel import load_metamodel
+    model = load_metamodel(model_file, errors, validate=False)
+    assert not errors
+    attrs = model['artifacts']['REQ']['attributes']
+    assert attrs['mainpid']['type_info'] == {'type': 'reference', 'to_parent': True}
+    assert attrs['link']['type_info'] == {'type': 'reference', 'to_parent': False}
