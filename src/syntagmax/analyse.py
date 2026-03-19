@@ -89,6 +89,19 @@ class ArtifactValidator:
                         f"Attribute '{name}' value '{value}' is invalid. Allowed values: {allowed} ({artifact})"
                     )
 
+            # -- REFERENCE CHECK --
+            elif expected_type == 'reference':
+                if '-' not in value:
+                    self.errors.append(
+                        f"Attribute '{name}' value '{value}' is a malformed reference (expected TYPE-ID) ({artifact})"
+                    )
+                else:
+                    ref_atype = value.split('-', 1)[0]
+                    if ref_atype not in self._artifacts:
+                        self.errors.append(
+                            f"Attribute '{name}' value '{value}' refers to an unknown artifact type '{ref_atype}' ({artifact})"
+                        )
+
             # -- STRING CHECK --
             # No conversion needed for 'string' as input is already dict[str, str]
 
