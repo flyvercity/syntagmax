@@ -43,6 +43,9 @@ class DSLTransformer(Transformer):
     def type_boolean(self, _):
         return {'type': 'boolean'}
 
+    def type_reference(self, _):
+        return {'type': 'reference'}
+
     def type_enum(self, values):
         # values are now clean strings because of ?value
         return {'type': 'enum', 'allowed': [str(v).strip('"') for v in values]}
