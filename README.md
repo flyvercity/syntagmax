@@ -122,6 +122,8 @@ The attributes `id` and `contents` are always mandatory for all artifacts, but t
 
 ### Syntax Reference
 
+Python-style comments (`# ...`) are supported.
+
 | Rule | Description |
 |------|-------------|
 | `artifact <NAME>:` | Defines a new artifact type. Rules must be indented. |

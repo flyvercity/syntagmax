@@ -13,7 +13,9 @@ from lark import Lark, Transformer, indenter
 class DSLTransformer(Transformer):
     def artifact(self, children):
         # children[0] is now a string/token because of ?name
-        return {'artifact_name': str(children[0]), 'attributes': children[1:]}
+        # filter out any _NL tokens that might be in the children
+        attrs = [c for c in children[1:] if isinstance(c, dict)]
+        return {'artifact_name': str(children[0]), 'attributes': attrs}
 
     def rule(self, children):
         # children[0] is name, children[1] is presence
@@ -33,7 +35,8 @@ class DSLTransformer(Transformer):
         return {'type': 'enum', 'allowed': [str(v).strip('"') for v in values]}
 
     def start(self, items):
-        return items
+        # filter out any leading/trailing _NL tokens
+        return [i for i in items if isinstance(i, dict)]
 
 
 class DSLIndenter(indenter.Indenter):

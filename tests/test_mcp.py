@@ -8,7 +8,7 @@ def test_get_artifact_content_success():
     server = SyntagmaxMCPServer(mock_config)
     
     mock_artifact = MagicMock()
-    mock_artifact.contents.return_value = ["Line 1", "Line 2"]
+    mock_artifact.contents.return_value = "Line 1\nLine 2"
     server.artifacts = {ARef.coerce("SRS-001"): mock_artifact}
     
     # We need to access the tool function directly or via the server's tool registry

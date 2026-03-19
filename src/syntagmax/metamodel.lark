@@ -1,6 +1,6 @@
-start: artifact+
+start: (artifact | _NL)+
 
-artifact: "artifact" name ":" _NL _INDENT rule+ _DEDENT
+artifact: "artifact" name ":" _NL _INDENT (rule | _NL)* _DEDENT
 rule: "attribute" name "is" PRESENCE type _NL
 
 ?type: "string" -> type_string
@@ -16,7 +16,9 @@ PRESENCE: "mandatory" | "optional"
 %import common.WORD
 %import common.ESCAPED_STRING
 %import common.WS_INLINE
+%import common.SH_COMMENT
 %ignore WS_INLINE
+%ignore SH_COMMENT
 
 %declare _INDENT _DEDENT
 _NL: /(\r?\n[\t ]*)+/
