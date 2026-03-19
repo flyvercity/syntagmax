@@ -16,35 +16,27 @@ CONST_T_CHAR = '├─'
 CONST_L_CHAR = '└─'
 
 
-def print_artifact(
-    artifact: Artifact, indent: str, last: bool, top: bool, verbose: bool = False
-):
+def print_artifact(artifact: Artifact, indent: str, last: bool, top: bool, verbose: bool = False):
     this_indent = indent + (CONST_L_CHAR if last else CONST_T_CHAR) if not top else ' '
     u.pprint(f'{this_indent}[cyan]{artifact.atype}[/cyan]: [green]{artifact.aid}[/green]')
     metastring = str(artifact)
     has_children = bool(artifact.children)
 
     detail_indent = (
-        indent + (CONST_I_CHAR if not last else ' ')
-        + ' '
-        + (CONST_I_CHAR if has_children else ' ')
-        + (' ' * 2)
+        indent + (CONST_I_CHAR if not last else ' ') + ' ' + (CONST_I_CHAR if has_children else ' ') + (' ' * 2)
     )
 
     u.pprint(f'{detail_indent}{metastring}')
 
-    if verbose:
-        for field in artifact.fields:
-            u.pprint(f'{detail_indent}\t- {field}: {artifact.fields[field]}')
+    for field in artifact.fields:
+        field_str = str(artifact.fields[field])
+        if len(field_str) > 60:
+            field_str = field_str[0:60] + '...'
+        u.pprint(f'{detail_indent}\t- {field}: {field_str}')
 
 
 def print_arttree(
-    artifacts: ArtifactMap,
-    ref: ARef,
-    indent: str = "",
-    last: bool = True,
-    top: bool = True,
-    verbose: bool = False
+    artifacts: ArtifactMap, ref: ARef, indent: str = '', last: bool = True, top: bool = True, verbose: bool = False
 ):
     artifact = artifacts[ref]
     print_artifact(artifact, indent, last, top, verbose)
@@ -59,9 +51,9 @@ def print_arttree(
 
 
 def print_metrics(metrics: benedict):
-    table = Table(title="Artifact Metrics")
-    table.add_column("Metric", style="cyan", no_wrap=True)
-    table.add_column("Value", style="magenta")
+    table = Table(title='Artifact Metrics')
+    table.add_column('Metric', style='cyan', no_wrap=True)
+    table.add_column('Value', style='magenta')
 
     for k, v in metrics.items():
         table.add_row(str(k), str(v))
