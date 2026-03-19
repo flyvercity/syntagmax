@@ -27,6 +27,7 @@ def print_artifact(artifact: Artifact, indent: str, last: bool, top: bool, verbo
     )
 
     u.pprint(f'{detail_indent}{metastring}')
+    u.pprint(f'{detail_indent}\tParents: {artifact.pids}')
 
     for field in artifact.fields:
         field_str = str(artifact.fields[field])
