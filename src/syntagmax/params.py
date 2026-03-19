@@ -11,3 +11,4 @@ class Params(TypedDict):
     verbose: bool
     render_tree: bool
     ai: bool
+    cwd: str

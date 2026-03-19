@@ -13,23 +13,35 @@ from syntagmax.config import Config
 class ArtifactValidator:
     def __init__(self, metamodel, errors: list[str] | None = None):
         # Index rules by artifact name for fast lookup
-        self._metamodel = metamodel
+        if metamodel is not None and 'artifacts' in metamodel:
+            self._artifacts = metamodel['artifacts']
+            self._traces = metamodel.get('traces', {})
+        else:
+            # Backward compatibility
+            self._artifacts = metamodel
+            self._traces = {}
+
         self.errors = errors if errors is not None else []
 
     def validate(self, artifact: Artifact):
-        if self._metamodel is None:
+        if self._artifacts is None:
             return self.errors
 
-        if artifact.atype not in self._metamodel:
+        if artifact.atype not in self._artifacts:
             self.errors.append(f"Unknown artifact type: '{artifact.atype}' ({artifact})")
             return self.errors
 
-        artifact_rules = self._metamodel[artifact.atype]['attributes']
+        self._validate_attributes(artifact)
+        self._validate_traces(artifact)
+
+        return self.errors
+
+    def _validate_attributes(self, artifact: Artifact):
+        artifact_rules = self._artifacts[artifact.atype]['attributes']
 
         # 1. Map rules by attribute name
-        rule_map = {r['name']: r for r in artifact_rules}
-        mandatory_names = {r['name'] for r in artifact_rules if r['presence'] == 'mandatory'}
-        all_allowed_names = set(rule_map.keys())
+        mandatory_names = {r['name'] for r in artifact_rules.values() if r['presence'] == 'mandatory'}
+        all_allowed_names = set(artifact_rules.keys())
 
         # 2. Check for Additional Attributes (Strict Mode)
         actual_names = set(artifact.fields.keys())
@@ -44,10 +56,10 @@ class ArtifactValidator:
 
         # 4. Type Conversion and Value Validation
         for name, value in artifact.fields.items():
-            if name not in rule_map:
+            if name not in artifact_rules:
                 continue  # Already caught by extra_fields check
 
-            type_info = rule_map[name]['type_info']
+            type_info = artifact_rules[name]['type_info']
             expected_type = type_info['type']
 
             # -- INTEGER CHECK --
@@ -80,7 +92,31 @@ class ArtifactValidator:
             # -- STRING CHECK --
             # No conversion needed for 'string' as input is already dict[str, str]
 
-        return self.errors
+    def _validate_traces(self, artifact: Artifact):
+        trace_rules = self._traces.get(artifact.atype, [])
+
+        # Filter out ROOT from parents for validation, it's always allowed
+        actual_parents = [p for p in artifact.pids if p.atype != 'ROOT']
+
+        # 1. Forbidden undeclared traces
+        # Collect all allowed target types from all rules for this artifact type
+        allowed_target_types = set()
+        for rule in trace_rules:
+            allowed_target_types.update(rule['targets'])
+
+        for parent in actual_parents:
+            if parent.atype not in allowed_target_types:
+                self.errors.append(f"Trace from '{artifact.atype}' to '{parent.atype}' is not allowed ({artifact})")
+
+        # 2. Mandatory traces
+        for rule in trace_rules:
+            if rule['presence'] == 'mandatory':
+                # Check if at least one parent matches any of the targets in this mandatory rule
+                targets = set(rule['targets'])
+                found = any(p.atype in targets for p in actual_parents)
+                if not found:
+                    target_str = ' or '.join(f"'{t}'" for t in targets)
+                    self.errors.append(f"Missing mandatory trace from '{artifact.atype}' to {target_str} ({artifact})")
 
 
 def analyse_tree(config: Config, artifacts: ArtifactMap) -> list[str]:
@@ -96,13 +132,9 @@ def analyse_tree(config: Config, artifacts: ArtifactMap) -> list[str]:
         lg.info(f'Validating artifact: {artifact}')
         validator.validate(artifact)
 
-    errors.extend(check_single_root(artifacts))
-    return errors
-
-
-def check_single_root(artifacts: ArtifactMap) -> list[str]:
-    errors: list[str] = []
+    # Ensure there is only one ROOT
     root_count = 0
+
     for a in artifacts.values():
         if a.atype == 'ROOT':
             root_count += 1

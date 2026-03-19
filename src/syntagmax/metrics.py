@@ -13,24 +13,32 @@ from syntagmax.render import print_metrics
 from syntagmax.publish import publish_metrics
 
 
-def calculate_metrics(config: Config, artifacts: ArtifactMap) -> benedict:
+def calculate_metrics(config: Config, artifacts: ArtifactMap, errors: list[str]) -> benedict:
     metrics = benedict()
 
-    df = pl.DataFrame([{
-        'atype': artifact.atype,
-        'aid': artifact.aid,
-        'status': artifact.fields.get(config.metrics.status_field, 'UNKNOWN'),
-        'verify': artifact.fields.get(config.metrics.verify_field),
-        'has_tbd': any(
-            config.metrics.tbd_marker in field for field in artifact.fields.values()
-        ),
-    } for artifact in artifacts.values()])
+    df = pl.DataFrame(
+        [
+            {
+                'atype': artifact.atype,
+                'aid': artifact.aid,
+                'status': artifact.fields.get(config.metrics.status_field, 'UNKNOWN'),
+                'verify': artifact.fields.get(config.metrics.verify_field),
+                'has_tbd': any(config.metrics.tbd_marker in field for field in artifact.fields.values()),
+            }
+            for artifact in artifacts.values()
+        ]
+    )
 
     requirements = (
         df.filter(pl.col('atype') == config.metrics.requirement_type)  # type: ignore
     )
 
     req_count = requirements.height
+
+    if req_count == 0:
+        errors.append('No requirements found')
+        return metrics
+
     metrics['total_requirements'] = req_count
 
     metrics['requirements_by_status'] = (
@@ -41,27 +49,26 @@ def calculate_metrics(config: Config, artifacts: ArtifactMap) -> benedict:
     )
     metrics['requirements_without_verify_pct'] = (
         requirements.filter(  # type: ignore
-            pl.col('verify')
-            .is_null()
-        ).height / float(req_count) * 100.0
+            pl.col('verify').is_null()
+        ).height
+        / float(req_count)
+        * 100.0
     )
     metrics['requirements_with_tbd_pct'] = (
         requirements.filter(  # type: ignore
             pl.col('has_tbd')
-        ).height / float(req_count) * 100.0
+        ).height
+        / float(req_count)
+        * 100.0
     )
 
     return metrics
 
 
-def render_metrics(config: Config, artifacts: ArtifactMap):
-    metrics = calculate_metrics(config, artifacts)
-
+def render_metrics(metrics: benedict, config: Config):
     if config.metrics.output_format == 'rich':
         print_metrics(metrics)
     elif config.metrics.output_format == 'markdown':
         publish_metrics(metrics, config)
     else:
-        raise ValueError(
-            f'Invalid output format: {config.metrics.output_format}'
-        )
+        raise ValueError(f'Invalid output format: {config.metrics.output_format}')

@@ -6,6 +6,7 @@
 
 import logging as lg
 import sys
+import os
 import traceback
 from pathlib import Path
 from typing import Any
@@ -25,16 +26,27 @@ from syntagmax.mcp.server import run_mcp_server
 @click.option('--verbose', is_flag=True, help='Verbose output')
 @click.option('--render-tree', is_flag=True, help='Render the artifact tree')
 @click.option('--ai', is_flag=True, help='Use AI to analyze the project')
+@click.option('--cwd', type=click.Path(exists=True), help='Change the working directory')
 def rms(ctx: click.Context, **kwargs: dict[str, Any]):
+
     verbose = kwargs['verbose']
     lg.basicConfig(level=lg.DEBUG if verbose else lg.INFO, handlers=[RichHandler()])
     ctx.obj = Params(**kwargs)  # type: ignore
+
+    if ctx.obj['cwd']:
+        lg.info(f'Changing working directory to: {ctx.obj["cwd"]}')
+        os.chdir(ctx.obj['cwd'])
+
     lg.info(f'Verbose: {verbose}')
 
 
 @rms.command(help='Run full analysis of the project')
 @click.pass_obj
-@click.argument('config', type=click.Path(exists=True))
+@click.argument(
+    'config',
+    type=click.Path(exists=True),
+    default='.syntagmax/config.toml',
+)
 def analyze(obj: Params, config: Path):
     configurator = Config(obj, config)
     process(configurator)

@@ -1,14 +1,17 @@
-start: (artifact | _NL)+
+start: (artifact | trace | _NL)+
 
-artifact: "artifact" name ":" _NL _INDENT (rule | _NL)* _DEDENT
+artifact: ARTIFACT name ":" _NL _INDENT (rule | _NL)* _DEDENT
 rule: "attribute" name "is" PRESENCE type _NL
+
+trace: "trace" "from" name "to" target_list "is" PRESENCE _NL
+target_list: name ("or" name)*
 
 ?type: "string" -> type_string
      | "integer" -> type_integer
      | "boolean" -> type_boolean
      | "enum" "[" value ("," value)* "]" -> type_enum
 
-# The '?' prefix here is the magic fix
+ARTIFACT: "artifact"
 ?name: WORD
 PRESENCE: "mandatory" | "optional"
 ?value: ESCAPED_STRING | WORD
