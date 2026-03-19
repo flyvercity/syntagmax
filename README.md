@@ -135,6 +135,7 @@ Python-style comments (`# ...`) are supported.
 - `string`: Any text.
 - `integer`: A whole number.
 - `boolean`: `true` or `false`.
+- `reference`: A reference to another artifact (e.g., `SRS-001`).
 - `enum [<values>]`: A fixed set of allowed values (comma-separated).
 
 ## Required Improvements
