@@ -1,4 +1,3 @@
-# tests/test_metamodel_pids.py
 import pytest
 from syntagmax.artifact import Artifact, ARef
 from syntagmax.tree import populate_pids
