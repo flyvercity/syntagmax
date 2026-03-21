@@ -1,0 +1,6 @@
+id: SYS-004
+atype: SYS
+title: System architecture diagram
+priority: medium
+contents: A diagram showing the high-level architecture
+status: draft
