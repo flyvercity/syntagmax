@@ -28,11 +28,13 @@ def print_artifact(artifact: Artifact, indent: str, last: bool, top: bool, verbo
     u.pprint(f'{detail_indent} Parents: [{pids_str}]')
 
     if artifact.revisions:
-        rev_list = sorted(list(artifact.revisions), key=lambda r: r.timestamp, reverse=True)
-        revisions_str = ', '.join([r.hash_short for r in rev_list])
         from rich.markup import escape
+        u.pprint(escape(f'{detail_indent}  Revisions:'))
+        rev_list = sorted(list(artifact.revisions), key=lambda r: r.timestamp, reverse=True)
 
-        u.pprint(escape(f'{detail_indent} Revisions: [{revisions_str}]'))
+        for r in rev_list:
+            rev_str = f'{r.hash_short} ({r.timestamp.strftime("%Y-%m-%d %H:%M")} by {r.author_email})'
+            u.pprint(escape(f'{detail_indent}    - {rev_str}'))
 
     for field in artifact.fields:
         field_str = str(artifact.fields[field])
