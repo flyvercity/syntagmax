@@ -2,6 +2,7 @@
 
 import pytest
 from syntagmax.metamodel import load_metamodel
+
 from syntagmax.artifact import Artifact
 from syntagmax.analyse import ArtifactValidator
 from syntagmax.config import Config
@@ -46,8 +47,8 @@ artifact TEST:
     attribute title is mandatory string
 
 trace from REQ to SYS or DER is mandatory
-trace from TEST to REQ is mandatory
-trace from TEST to SRC is optional
+trace from TEST to REQ is mandatory via git
+trace from TEST to SRC is optional via timestamp
 """,
         encoding='utf-8',
     )
@@ -59,7 +60,7 @@ trace from TEST to SRC is optional
     assert len(metamodel['traces']['REQ']) == 1
     assert metamodel['traces']['REQ'][0]['targets'] == ['SYS', 'DER']
     assert metamodel['traces']['REQ'][0]['presence'] == 'mandatory'
-
+    
 
 def test_trace_validation(config, tmp_path):
     model_file = tmp_path / 'test.model'
@@ -110,6 +111,7 @@ trace from REQ to SYS is mandatory
     req3.atype = 'REQ'
     req3.aid = '3'
     req3.fields = {'title': 'Req 3'}
+
     req3.pids = ['999']
 
     ts_other = Artifact(config)
@@ -117,6 +119,7 @@ trace from REQ to SYS is mandatory
     ts_other.aid = '999'
 
     validator = ArtifactValidator(metamodel, {'999': ts_other}, errors=[])
+
     errors = validator.validate(req3)
     assert any("Trace from 'REQ' to 'OTHER' is not allowed" in e for e in errors)
 
@@ -139,6 +142,7 @@ artifact REQ:
     req.atype = 'REQ'
     req.aid = '1'
     req.fields = {'title': 'Req 1'}
+
     req.pids = ['101']
 
     ts = Artifact(config)
@@ -146,6 +150,7 @@ artifact REQ:
     ts.aid = '101'
 
     validator = ArtifactValidator(metamodel, {ts.aid: ts})
+
     errors = validator.validate(req)
     assert any("Trace from 'REQ' to 'SYS' is not allowed" in e for e in errors)
 
@@ -154,8 +159,10 @@ artifact REQ:
     req_root.atype = 'REQ'
     req_root.aid = '2'
     req_root.fields = {'title': 'Req 2'}
+
     req_root.pids = ['ROOT']
 
     validator = ArtifactValidator(metamodel, {}, errors=[])
+
     errors = validator.validate(req_root)
     assert not errors

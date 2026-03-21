@@ -8,7 +8,7 @@ import logging as lg
 from typing import Sequence
 
 from syntagmax.extractors.text import TextExtractor
-from syntagmax.extractors.filename import FilenameExtractor
+from syntagmax.extractors.sidecar import SidecarExtractor
 from syntagmax.extractors.obsidian import ObsidianExtractor
 from syntagmax.extractors.ipynb import IPynbExtractor
 from syntagmax.artifact import Artifact
@@ -18,9 +18,9 @@ from syntagmax.utils import pprint
 
 EXTRACTORS = {
     'text': TextExtractor,
-    'filename': FilenameExtractor,
+    'sidecar': SidecarExtractor,
     'obsidian': ObsidianExtractor,
-    'ipynb': IPynbExtractor
+    'ipynb': IPynbExtractor,
 }
 
 

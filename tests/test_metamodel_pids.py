@@ -39,3 +39,4 @@ def test_populate_pids_from_metamodel():
     for p in expected_pids:
         assert p in art.pids
     assert 'REQ-2' not in art.pids # Since link is not to_parent
+
