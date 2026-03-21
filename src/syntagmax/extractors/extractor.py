@@ -22,9 +22,7 @@ class Extractor:
 
     def driver(self) -> str: ...
 
-    def extract_from_file(
-        self, filepath: Path
-    ) -> ExtractorResult: ...
+    def extract_from_file(self, filepath: Path) -> ExtractorResult: ...
 
     def extract(self) -> ExtractorResult:
         errors: list[str] = []

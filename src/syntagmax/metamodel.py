@@ -24,16 +24,18 @@ class DSLTransformer(Transformer):
             'name': str(children[0]),
             'presence': str(children[1]),
             'multiple': children[2] is not None,
-            'type_info': children[3]
+            'type_info': children[3],
         }
 
     def trace(self, children):
-        # trace: "trace" "from" name "to" target_list "is" PRESENCE _NL
+        # trace: "trace" "from" name "to" target_list "is" PRESENCE ["via" TRACE_MODE] _NL
+        mode = str(children[3]) if len(children) > 3 and children[3] is not None else 'timestamp'
         return {
             'type': 'trace',
             'source': str(children[0]),
             'targets': children[1],
             'presence': str(children[2]),
+            'mode': mode,
         }
 
     def target_list(self, children):
@@ -88,12 +90,40 @@ def load_metamodel(model_filename: Path, errors, validate=True):
 
     artifact_defs = {a['artifact_name']: a for a in metamodel if a['type'] == 'artifact'}
     trace_rules = {}
+
+    # Consistency checks variables
+    # To check consistency we track properties per target for a given source
+    # properties: {source: {target: {'presence': p, 'mode': m}}}
+    trace_props: dict[str, dict[str, dict[str, str]]] = {}
+
     for t in metamodel:
         if t['type'] == 'trace':
             source = t['source']
             if source not in trace_rules:
                 trace_rules[source] = []
             trace_rules[source].append(t)
+
+            # Check consistency of rules
+            if source not in trace_props:
+                trace_props[source] = {}
+            for target in t['targets']:
+                if target in trace_props[source]:
+                    existing = trace_props[source][target]
+                    if existing['presence'] != t['presence']:
+                        errors.append(
+                            f'Inconsistent trace rules for {source} -> {target}: '
+                            f"presence is both '{existing['presence']}' and '{t['presence']}'"
+                        )
+                    if existing['mode'] != t['mode']:
+                        errors.append(
+                            f'Inconsistent trace rules for {source} -> {target}: '
+                            f"mode is both '{existing['mode']}' and '{t['mode']}'"
+                        )
+                else:
+                    trace_props[source][target] = {
+                        'presence': t['presence'],
+                        'mode': t['mode'],
+                    }
 
     metamodel = {'artifacts': artifact_defs, 'traces': trace_rules}
 

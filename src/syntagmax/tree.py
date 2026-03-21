@@ -50,9 +50,7 @@ def populate_pids(config: Config, artifacts: ArtifactMap):
                         pass
 
 
-def gather_ansestors(
-    artifacts: ArtifactMap, ref: ARef, depth: int = 0
-) -> str | None:
+def gather_ansestors(artifacts: ArtifactMap, ref: ARef, depth: int = 0) -> str | None:
     if depth > MAX_TREE_DEPTH:
         return f'Circular reference detected with {artifacts[ref].aid}'
 
