@@ -23,16 +23,16 @@ Syntagmax is a lightweight, git-friendly requirement management system designed 
 ## Project Structure
 
 - `src/syntagmax/`: Core source code.
-    - `cli.py`: CLI entry point (`stmx` command).
+    - `cli.py`: CLI entry point (`syntagmax` command).
     - `main.py`: Orchestrates the processing pipeline.
     - `extract.py`: Artifact extraction logic using various drivers.
-    - `extractors/`: Driver-specific extractors (`text`, `filename`, `obsidian`, `ipynb`).
+    - `extractors/`: Driver-specific extractors (`text`, `obsidian`, `ipynb`).
     - `tree.py`: Logic for building the artifact relationship tree.
     - `analyse.py`: Tree validation and analysis.
     - `render.py`: Output rendering (tree view).
     - `metrics.py`: Metric collection and rendering.
     - `ai.py`: AI-based project analysis.
-    - `mcp/`: MCP server implementation (`stmx-mcp`).
+    - `mcp/`: MCP server implementation.
     - `resources/`: Shared resources, Jinja templates, and localizations.
 - `docs/`: Project documentation, including `INTERNALS.md`.
 - `scripts/`: Development and maintenance scripts.
@@ -47,52 +47,50 @@ uv sync
 ```
 
 ### Running the CLI
-The main tool is `stmx`.
+The main tool is `syntagmax`.
 ```powershell
 # Run analysis on a project config
-uv run stmx analyze path/to/rms.toml
+uv run syntagmax analyze path/to/config.toml
 
 # Verbose output with tree rendering
-uv run stmx --verbose --render-tree analyze path/to/rms.toml
+uv run syntagmax --verbose --render-tree analyze path/to/config.toml
 
 # AI-enabled analysis
-uv run stmx --ai analyze path/to/rms.toml
+uv run syntagmax --ai analyze path/to/config.toml
 ```
 
 ### Running the MCP Server
 ```powershell
-uv run stmx-mcp
+uv run syntagmax mcp run path/to/config.toml
 ```
 
 ### Maintenance Scripts
 - **Update Translations:** `python scripts/update-translations.py` (requires `babel.cfg`)
-- **Integration Test:** `python scripts/test-with-safir.py` (requires a sibling `safir` project)
 
 ## Development Conventions
 
 ### Parsing and Grammars
-- **Unified Library:** All parsing logic must use `Lark`. `pyparsing` is deprecated and removed.
+- **Unified Library:** All parsing logic must use `Lark`.
 - **Grammar Files:** Extractor-specific grammars are stored in `.lark` files within `src/syntagmax/extractors/`.
 - **Transformers:** Use `lark.Transformer` to convert parse trees into internal objects (`Ref`, `dict`, etc.).
 - **Obsidian Fields:** Fields in Obsidian (`[field] contents`) MUST start at the beginning of a line to be recognized.
 - **Identifiers:** Grammars for `AID`, `ATYPE`, and `REVISION` support hyphens to accommodate real-world data patterns.
 
 ### Code Style & Linting
-- **Linting:** `ruff check .` and `flake8` are used. Configuration is in `pyproject.toml` and `.flake8`.
-- **Formatting:** `ruff format` is preferred. Quote style is single quotes.
+- **Linting:** `ruff check .` and `flake8` are used.
+- **Formatting:** `ruff format .` is preferred. Quote style is single quotes.
 - **Line Length:** 120 characters.
 
 ### Testing
 - **Framework:** `pytest` is used for testing.
 - **Running Tests:** `uv run pytest`
 - **Unit Tests:** Found in `tests/`. Covers `TextExtractor` and `ObsidianExtractor` with various edge cases.
-- **Integration Test:** Managed via `scripts/test-with-safir.py` (requires a sibling `safir` project).
 
 ### Internationalization (i18n)
 - Localizations are stored in `src/syntagmax/resources/locales/`.
 - Use `scripts/update-translations.py` to extract new messages and update `.po` files.
 
 ### Configuration
-- Syntagmax projects are configured via TOML files (e.g., `rms.toml`).
+- Syntagmax projects are configured via TOML files (e.g., `config.toml`).
 - Global AI settings can be placed in `~/.syntagmax/config`.
 - Environment variables (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, etc.) are supported.
