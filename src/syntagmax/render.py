@@ -30,6 +30,11 @@ def print_artifact(artifact: Artifact, indent: str, last: bool, top: bool, verbo
     pids_str = ', '.join([str(pid) for pid in artifact.pids])
     u.pprint(f'{detail_indent}\tParents: [{pids_str}]')
 
+    if artifact.revisions:
+        rev_list = sorted(list(artifact.revisions), key=lambda r: r.timestamp, reverse=True)
+        revisions_str = ", ".join([r.hash_short for r in rev_list])
+        u.pprint(f'{detail_indent}\tRevisions: [{revisions_str}]')
+
     for field in artifact.fields:
         field_str = str(artifact.fields[field])
         if len(field_str) > 60:
