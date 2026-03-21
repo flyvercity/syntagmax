@@ -46,14 +46,6 @@ class Revision:
     timestamp: datetime
     author_email: str
 
-    def __eq__(self, other):
-        if not isinstance(other, Revision):
-            return False
-        return self.hash_long == other.hash_long
-
-    def __hash__(self):
-        return hash(self.hash_long)
-
     def __str__(self) -> str:
         return f'{self.hash_short} by {self.author_email} at {self.timestamp}'
 

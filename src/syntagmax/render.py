@@ -8,7 +8,7 @@ import rich
 from rich.table import Table
 from benedict import benedict
 
-from syntagmax.artifact import Artifact, ArtifactMap
+from syntagmax.artifact import Artifact, ArtifactMap, Revision
 import syntagmax.utils as u
 
 CONST_I_CHAR = '│'
@@ -20,26 +20,25 @@ def print_artifact(artifact: Artifact, indent: str, last: bool, top: bool, verbo
     this_indent = indent + (CONST_L_CHAR if last else CONST_T_CHAR) if not top else ' '
     u.pprint(f'{this_indent}[cyan]{artifact.atype}[/cyan]: [green]{artifact.aid}[/green]')
     metastring = str(artifact)
-    has_children = bool(artifact.children)
 
-    detail_indent = (
-        indent + (CONST_I_CHAR if not last else ' ') + ' ' + (CONST_I_CHAR if has_children else ' ') + (' ' * 2)
-    )
+    detail_indent = indent + (CONST_I_CHAR if not last else ' ') + ' '
 
-    u.pprint(f'{detail_indent}{metastring}')
+    u.pprint(f'{detail_indent} {metastring}')
     pids_str = ', '.join([str(pid) for pid in artifact.pids])
-    u.pprint(f'{detail_indent}\tParents: [{pids_str}]')
+    u.pprint(f'{detail_indent} Parents: [{pids_str}]')
 
     if artifact.revisions:
         rev_list = sorted(list(artifact.revisions), key=lambda r: r.timestamp, reverse=True)
-        revisions_str = ", ".join([r.hash_short for r in rev_list])
-        u.pprint(f'{detail_indent}\tRevisions: [{revisions_str}]')
+        revisions_str = ', '.join([r.hash_short for r in rev_list])
+        from rich.markup import escape
+
+        u.pprint(escape(f'{detail_indent} Revisions: [{revisions_str}]'))
 
     for field in artifact.fields:
         field_str = str(artifact.fields[field])
         if len(field_str) > 60:
             field_str = field_str[0:60] + '...'
-        u.pprint(f'{detail_indent}\t- {field}: {field_str}')
+        u.pprint(f'{detail_indent}  - {field}: {field_str}')
 
 
 def print_arttree(
@@ -50,8 +49,8 @@ def print_arttree(
     children = list(sorted(artifact.children, key=lambda c: artifacts[c].aid))
     indent += (CONST_I_CHAR if not last else ' ') + ' '
 
-    for child in children[:-1]:
-        print_arttree(artifacts, child, indent, False, False, verbose)
+    for child_id in children[:-1]:
+        print_arttree(artifacts, child_id, indent, False, False, verbose)
 
     if children:
         print_arttree(artifacts, children[-1], indent, True, False, verbose)
