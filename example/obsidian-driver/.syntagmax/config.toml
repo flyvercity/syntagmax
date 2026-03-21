@@ -28,6 +28,11 @@ tbd_marker = "TBD"
 output_format = "markdown"
 output_file = "output/metrics.md"
 
+[impact]
+enabled = true
+output_format = "markdown"
+output_file = "output/impact.md"
+
 [metamodel]
 filename = "project.syntagmax"
 
