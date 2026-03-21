@@ -33,9 +33,7 @@ def print_artifact(artifact: Artifact, indent: str, last: bool, top: bool, has_c
     else:
         detail_indent = indent + '   '
 
-    detail_indent += CONST_II_CHAR
-
-    u.pprint(f'{detail_indent} {metastring}')
+    u.pprint(f'{detail_indent} [i]{metastring}[/i]')
 
     pids_str_list = []
     if artifact.parent_links:
