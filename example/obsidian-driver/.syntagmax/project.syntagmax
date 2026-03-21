@@ -21,4 +21,4 @@ artifact REQ:
     attribute tag is optional multiple string
     attribute related is optional multiple reference
 
-trace from REQ to SYS is mandatory via commit
+trace from REQ to SYS is mandatory
