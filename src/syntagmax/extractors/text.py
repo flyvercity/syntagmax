@@ -109,11 +109,12 @@ class TextExtractor(Extractor):
             segment_end = end_pos + len(end_marker)
             segment = text[start_pos:segment_end]
             start_line = text.count('\n', 0, start_pos) + 1
+            end_line = text.count('\n', 0, segment_end) + 1
             section_start_string = segment.split('\n', 1)[0]
 
             lg.debug(f'Found section at line {start_line}, parsing: {section_start_string}')
 
-            location = LineLocation(loc_file=file_location, loc_lines=(start_line, segment_end))
+            location = LineLocation(loc_file=file_location, loc_lines=(start_line, end_line))
 
             try:
                 tree = self._parser.parse(segment)

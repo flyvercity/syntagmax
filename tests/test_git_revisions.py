@@ -25,6 +25,7 @@ def mock_artifact(mock_config):
 def test_populate_revisions_line_location(mock_repo_class, mock_config, mock_artifact):
     mock_repo = MagicMock()
     mock_repo_class.return_value = mock_repo
+    mock_repo.working_tree_dir = "/mock/repo"
     
     mock_artifact.location = LineLocation("file.md", (1, 10))
     
@@ -52,6 +53,7 @@ def test_populate_revisions_line_location(mock_repo_class, mock_config, mock_art
 def test_populate_revisions_file_location(mock_repo_class, mock_config, mock_artifact):
     mock_repo = MagicMock()
     mock_repo_class.return_value = mock_repo
+    mock_repo.working_tree_dir = "/mock/repo"
     
     mock_artifact.location = FileLocation("file.md")
     
@@ -76,6 +78,7 @@ def test_populate_revisions_file_location(mock_repo_class, mock_config, mock_art
 def test_populate_revisions_file_location_with_sidecar(mock_repo_class, mock_config, mock_artifact):
     mock_repo = MagicMock()
     mock_repo_class.return_value = mock_repo
+    mock_repo.working_tree_dir = "/mock/repo"
     
     mock_artifact.location = FileLocation("file.md", "file.md.stmx")
     
@@ -118,6 +121,7 @@ def test_populate_revisions_invalid_repo(mock_repo_class, mock_config, mock_arti
 def test_populate_revisions_exception_handling(mock_repo_class, mock_config, mock_artifact):
     mock_repo = MagicMock()
     mock_repo_class.return_value = mock_repo
+    mock_repo.working_tree_dir = "/mock/repo"
     
     mock_artifact.location = FileLocation("file.md")
     mock_repo.iter_commits.side_effect = Exception("Git error")

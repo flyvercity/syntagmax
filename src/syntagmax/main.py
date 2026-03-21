@@ -15,6 +15,7 @@ from syntagmax.render import print_arttree
 from syntagmax.analyse import analyse_tree
 from syntagmax.metrics import calculate_metrics, render_metrics
 from syntagmax.ai import ai_analyze
+from syntagmax.git_utils import populate_revisions
 
 
 def process(config: Config):
@@ -33,10 +34,7 @@ def process(config: Config):
 
     if not config.params.get('no_git', False):
         try:
-            from syntagmax.git_utils import populate_revisions
             populate_revisions(config, artifacts)
-        except ImportError:
-            lg.warning("GitPython not installed, skipping revision extraction.")
         except Exception as e:
             lg.warning(f"Failed to extract git revisions: {e}")
     else:

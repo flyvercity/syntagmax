@@ -100,6 +100,7 @@ class ObsidianExtractor(Extractor):
             segment_end = end_pos + len(yaml_end_marker)
             segment = markdown[start_pos:segment_end]
             start_line = markdown.count('\n', 0, start_pos) + 1
+            end_line = markdown.count('\n', 0, segment_end) + 1
 
             lg.debug(f'Found requirement at line {start_line}, parsing')
 
@@ -155,7 +156,7 @@ class ObsidianExtractor(Extractor):
                     ArtifactClass=ObsidianArtifact,
                     driver=self.driver(),
                     location=LineLocation(
-                        loc_file=self._config.derive_path(filepath), loc_lines=(start_line, segment_end)
+                        loc_file=self._config.derive_path(filepath), loc_lines=(start_line, end_line)
                     ),
                     metamodel=self._metamodel,
                 )
