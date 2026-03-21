@@ -31,6 +31,17 @@ def process(config: Config):
         lg.warning('No artifacts found')
         return
 
+    if not config.params.get('no_git', False):
+        try:
+            from syntagmax.git_utils import populate_revisions
+            populate_revisions(config, artifacts)
+        except ImportError:
+            lg.warning("GitPython not installed, skipping revision extraction.")
+        except Exception as e:
+            lg.warning(f"Failed to extract git revisions: {e}")
+    else:
+        lg.warning("Git history extraction skipped (--no-git)")
+
     if config.params['render_tree']:
         print_arttree(artifacts, 'ROOT', verbose=config.params['verbose'])
 
