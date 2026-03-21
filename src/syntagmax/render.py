@@ -42,7 +42,7 @@ def print_arttree(
 ):
     artifact = artifacts[ref]
     print_artifact(artifact, indent, last, top, verbose)
-    children = list(sorted(artifact.children, key=lambda c: c.aid))
+    children = list(sorted(artifact.children, key=lambda c: artifacts[c].aid))
     indent += (CONST_I_CHAR if not last else ' ') + ' '
 
     for child in children[:-1]:
