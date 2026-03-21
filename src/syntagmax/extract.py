@@ -20,7 +20,7 @@ EXTRACTORS = {
     'text': TextExtractor,
     'sidecar': SidecarExtractor,
     'obsidian': ObsidianExtractor,
-    'ipynb': IPynbExtractor
+    'ipynb': IPynbExtractor,
 }
 
 

@@ -52,10 +52,11 @@ artifact REQ:
     attribute contents is mandatory string
     attribute link is optional reference
 """
-    model_file = tmp_path / "test.model"
+    model_file = tmp_path / 'test.model'
     model_file.write_text(model_content)
     errors = []
     from syntagmax.metamodel import load_metamodel
+
     model = load_metamodel(model_file, errors, validate=False)
     assert not errors
     assert model['artifacts']['REQ']['attributes']['link']['type_info'] == {'type': 'reference', 'to_parent': False}
@@ -68,7 +69,7 @@ artifact REQ:
     attribute contents is mandatory string
     attribute tags is optional multiple string
 """
-    model_file = tmp_path / "test_multiple.model"
+    model_file = tmp_path / 'test_multiple.model'
     model_file.write_text(model_content)
     errors = []
     model = load_metamodel(model_file, errors, validate=False)
@@ -85,10 +86,11 @@ artifact REQ:
     attribute mainpid is mandatory reference to parent
     attribute link is optional reference
 """
-    model_file = tmp_path / "test_parent.model"
+    model_file = tmp_path / 'test_parent.model'
     model_file.write_text(model_content)
     errors = []
     from syntagmax.metamodel import load_metamodel
+
     model = load_metamodel(model_file, errors, validate=False)
     assert not errors
     attrs = model['artifacts']['REQ']['attributes']
