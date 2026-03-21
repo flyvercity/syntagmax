@@ -11,7 +11,7 @@ from syntagmax.config import Config
 
 
 class ArtifactValidator:
-    def __init__(self, metamodel, errors: list[str] | None = None):
+    def __init__(self, metamodel, artifacts: ArtifactMap, errors: list[str] | None = None):
         # Index rules by artifact name for fast lookup
         if metamodel is not None and 'artifacts' in metamodel:
             self._artifacts = metamodel['artifacts']
@@ -22,6 +22,7 @@ class ArtifactValidator:
             self._traces = {}
 
         self.errors = errors if errors is not None else []
+        self._artifacts_map = artifacts
 
     def validate(self, artifact: Artifact):
         if self._artifacts is None:
@@ -82,15 +83,22 @@ class ArtifactValidator:
                     )
 
             elif expected_type == 'reference':
-                if not isinstance(val, str) or '-' not in val:
+                if not isinstance(val, str):
                     self.errors.append(
-                        f"Attribute '{attr_name}' value '{val}' is a malformed reference (expected TYPE-ID) ({artifact})"
+                        f"Attribute '{attr_name}' value '{val}' is a malformed reference (expected ID string) ({artifact})"
                     )
                 else:
-                    ref_atype = val.split('-', 1)[0]
-                    if ref_atype not in self._artifacts:
+                    # Look up the referenced artifact by ID
+                    # Some refs might be TYPE-ID or ID@REVISION, so extract just ID
+                    aid = val.split('@')[0] if '@' in val else val
+                    ref_artifact = self._artifacts_map.get(aid)
+                    if not ref_artifact:
                         self.errors.append(
-                            f"Attribute '{attr_name}' value '{val}' refers to an unknown artifact type '{ref_atype}' ({artifact})"
+                            f"Attribute '{attr_name}' value '{val}' refers to an unknown artifact ID '{aid}' ({artifact})"
+                        )
+                    elif ref_artifact.atype not in self._artifacts:
+                        self.errors.append(
+                            f"Attribute '{attr_name}' value '{val}' refers to an artifact with unknown type '{ref_artifact.atype}' ({artifact})"
                         )
 
         for name, value in artifact.fields.items():
@@ -117,11 +125,16 @@ class ArtifactValidator:
     def _validate_traces(self, artifact: Artifact):
         trace_rules = self._traces.get(artifact.atype, [])
 
-        # Filter out ROOT from parents for validation, it's always allowed
-        actual_parents = [p for p in artifact.pids if p.atype != 'ROOT']
+        # Look up parents to get their types
+        actual_parents = []
+        for pid in artifact.pids:
+            if pid == 'ROOT':
+                continue
+            parent_artifact = self._artifacts_map.get(pid)
+            if parent_artifact:
+                actual_parents.append(parent_artifact)
 
         # 1. Forbidden undeclared traces
-        # Collect all allowed target types from all rules for this artifact type
         allowed_target_types = set()
         for rule in trace_rules:
             allowed_target_types.update(rule['targets'])
@@ -133,7 +146,6 @@ class ArtifactValidator:
         # 2. Mandatory traces
         for rule in trace_rules:
             if rule['presence'] == 'mandatory':
-                # Check if at least one parent matches any of the targets in this mandatory rule
                 targets = set(rule['targets'])
                 found = any(p.atype in targets for p in actual_parents)
                 if not found:
@@ -144,7 +156,7 @@ class ArtifactValidator:
 def analyse_tree(config: Config, artifacts: ArtifactMap) -> list[str]:
     errors: list[str] = []
 
-    validator = ArtifactValidator(config.metamodel, errors)
+    validator = ArtifactValidator(config.metamodel, artifacts, errors)
 
     for artifact in artifacts.values():
         # Skipping the root pseudo-artifact

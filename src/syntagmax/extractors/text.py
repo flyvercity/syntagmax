@@ -15,21 +15,11 @@ from syntagmax.artifact import ArtifactBuilder, Artifact, ValidationError, LineL
 from syntagmax.extractors.extractor import Extractor, ExtractorResult
 
 
-class Ref:
-    atype: str
-    aid: str
-
-    def __init__(self, atype: str, aid: str):
-        self.atype = atype
-        self.aid = aid
-
-
-class IdRef(Ref):
+class IdRef:
     def __init__(self, aid: str):
         self.value = aid
 
-
-class ATypeRef(Ref):
+class ATypeRef:
     def __init__(self, atype: str):
         self.value = atype
 
@@ -63,7 +53,7 @@ class TextTransformer(Transformer):
         return t[0]
 
     def header(self, t):
-        return [item for item in t if isinstance(item, (Ref, tuple))]
+        return [item for item in t if isinstance(item, (IdRef, ATypeRef, tuple))]
 
     def body_content(self, t):
         return str(t[0])

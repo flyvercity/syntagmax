@@ -1,19 +1,17 @@
-from syntagmax.artifact import Artifact, ARef
+import pytest
+from syntagmax.artifact import Artifact
 from syntagmax.tree import populate_pids
-
+from syntagmax.config import Config
+from syntagmax.params import Params
 
 def test_populate_pids_from_metamodel():
     metamodel = {
         'artifacts': {
             'REQ': {
                 'attributes': {
-                    'mainpid': {
-                        'name': 'mainpid',
-                        'multiple': False,
-                        'type_info': {'type': 'reference', 'to_parent': True},
-                    },
+                    'mainpid': {'name': 'mainpid', 'multiple': False, 'type_info': {'type': 'reference', 'to_parent': True}},
                     'pids': {'name': 'pids', 'multiple': True, 'type_info': {'type': 'reference', 'to_parent': True}},
-                    'link': {'name': 'link', 'multiple': False, 'type_info': {'type': 'reference', 'to_parent': False}},
+                    'link': {'name': 'link', 'multiple': False, 'type_info': {'type': 'reference', 'to_parent': False}}
                 }
             }
         }
@@ -27,13 +25,18 @@ def test_populate_pids_from_metamodel():
 
     art = Artifact(None)
     art.atype = 'REQ'
-    art.fields = {'mainpid': 'SRS-1', 'pids': ['SRS-2', 'SRS-3'], 'link': 'REQ-2'}
+    art.fields = {
+        'mainpid': '1',
+        'pids': ['2', '3'],
+        'link': 'REQ-2'
+    }
 
-    artifacts = {ARef('REQ', '1'): art}
+    artifacts = {'1': art}
     populate_pids(config, artifacts)
 
-    expected_pids = [ARef('SRS', '1'), ARef('SRS', '2'), ARef('SRS', '3')]
+    expected_pids = ['1', '2', '3']
     assert len(art.pids) == 3
     for p in expected_pids:
         assert p in art.pids
-    assert ARef('REQ', '2') not in art.pids
+    assert 'REQ-2' not in art.pids # Since link is not to_parent
+

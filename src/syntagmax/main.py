@@ -11,7 +11,6 @@ from syntagmax.errors import FatalError
 
 from syntagmax.extract import extract
 from syntagmax.tree import build_tree, populate_pids
-from syntagmax.artifact import ARef
 from syntagmax.render import print_arttree
 from syntagmax.analyse import analyse_tree
 from syntagmax.metrics import calculate_metrics, render_metrics
@@ -33,7 +32,7 @@ def process(config: Config):
         return
 
     if config.params['render_tree']:
-        print_arttree(artifacts, ARef.root(), verbose=config.params['verbose'])
+        print_arttree(artifacts, 'ROOT', verbose=config.params['verbose'])
 
     if errors:
         raise FatalError(errors)

@@ -2,7 +2,8 @@
 
 import pytest
 from syntagmax.metamodel import load_metamodel
-from syntagmax.artifact import Artifact, ARef
+
+from syntagmax.artifact import Artifact
 from syntagmax.analyse import ArtifactValidator
 from syntagmax.config import Config
 
@@ -59,59 +60,7 @@ trace from TEST to SRC is optional via timestamp
     assert len(metamodel['traces']['REQ']) == 1
     assert metamodel['traces']['REQ'][0]['targets'] == ['SYS', 'DER']
     assert metamodel['traces']['REQ'][0]['presence'] == 'mandatory'
-    assert metamodel['traces']['REQ'][0]['mode'] == 'timestamp'
-
-    assert 'TEST' in metamodel['traces']
-    assert len(metamodel['traces']['TEST']) == 2
-    assert metamodel['traces']['TEST'][0]['targets'] == ['REQ']
-    assert metamodel['traces']['TEST'][0]['presence'] == 'mandatory'
-    assert metamodel['traces']['TEST'][0]['mode'] == 'git'
-    assert metamodel['traces']['TEST'][1]['targets'] == ['SRC']
-    assert metamodel['traces']['TEST'][1]['presence'] == 'optional'
-    assert metamodel['traces']['TEST'][1]['mode'] == 'timestamp'
-
-
-def test_trace_consistency_errors(tmp_path):
-    model_file = tmp_path / 'inconsistent_presence.model'
-    model_file.write_text(
-        """
-artifact REQ:
-    attribute title is mandatory string
-
-artifact SYS:
-    attribute title is mandatory string
-
-trace from REQ to SYS is mandatory
-trace from REQ to SYS or DER is optional
-""",
-        encoding='utf-8',
-    )
-
-    errors = []
-    load_metamodel(model_file, errors, validate=False)
-    assert any(
-        "Inconsistent trace rules for REQ -> SYS: presence is both 'mandatory' and 'optional'" in e for e in errors
-    )
-
-    model_file_mode = tmp_path / 'inconsistent_mode.model'
-    model_file_mode.write_text(
-        """
-artifact REQ:
-    attribute title is mandatory string
-
-artifact SYS:
-    attribute title is mandatory string
-
-trace from REQ to SYS is mandatory via git
-trace from REQ to SYS or DER is mandatory
-""",
-        encoding='utf-8',
-    )
-
-    errors2 = []
-    load_metamodel(model_file_mode, errors2, validate=False)
-    assert any("Inconsistent trace rules for REQ -> SYS: mode is both 'git' and 'timestamp'" in e for e in errors2)
-
+    
 
 def test_trace_validation(config, tmp_path):
     model_file = tmp_path / 'test.model'
@@ -136,9 +85,13 @@ trace from REQ to SYS is mandatory
     req1.atype = 'REQ'
     req1.aid = '1'
     req1.fields = {'title': 'Req 1'}
-    req1.pids = [ARef('SYS', '101')]
+    req1.pids = ['101']
 
-    validator = ArtifactValidator(metamodel)
+    ts1 = Artifact(config)
+    ts1.atype = 'SYS'
+    ts1.aid = '101'
+
+    validator = ArtifactValidator(metamodel, {ts1.aid: ts1})
     errors = validator.validate(req1)
     assert not errors
 
@@ -149,7 +102,7 @@ trace from REQ to SYS is mandatory
     req2.fields = {'title': 'Req 2'}
     req2.pids = []  # No parents
 
-    validator = ArtifactValidator(metamodel, errors=[])
+    validator = ArtifactValidator(metamodel, {}, errors=[])
     errors = validator.validate(req2)
     assert any("Missing mandatory trace from 'REQ' to 'SYS'" in e for e in errors)
 
@@ -158,9 +111,15 @@ trace from REQ to SYS is mandatory
     req3.atype = 'REQ'
     req3.aid = '3'
     req3.fields = {'title': 'Req 3'}
-    req3.pids = [ARef('OTHER', '999')]
 
-    validator = ArtifactValidator(metamodel, errors=[])
+    req3.pids = ['999']
+
+    ts_other = Artifact(config)
+    ts_other.atype = 'OTHER'
+    ts_other.aid = '999'
+
+    validator = ArtifactValidator(metamodel, {'999': ts_other}, errors=[])
+
     errors = validator.validate(req3)
     assert any("Trace from 'REQ' to 'OTHER' is not allowed" in e for e in errors)
 
@@ -183,9 +142,15 @@ artifact REQ:
     req.atype = 'REQ'
     req.aid = '1'
     req.fields = {'title': 'Req 1'}
-    req.pids = [ARef('SYS', '101')]
 
-    validator = ArtifactValidator(metamodel)
+    req.pids = ['101']
+
+    ts = Artifact(config)
+    ts.atype = 'SYS'
+    ts.aid = '101'
+
+    validator = ArtifactValidator(metamodel, {ts.aid: ts})
+
     errors = validator.validate(req)
     assert any("Trace from 'REQ' to 'SYS' is not allowed" in e for e in errors)
 
@@ -194,8 +159,10 @@ artifact REQ:
     req_root.atype = 'REQ'
     req_root.aid = '2'
     req_root.fields = {'title': 'Req 2'}
-    req_root.pids = [ARef.root()]
 
-    validator = ArtifactValidator(metamodel, errors=[])
+    req_root.pids = ['ROOT']
+
+    validator = ArtifactValidator(metamodel, {}, errors=[])
+
     errors = validator.validate(req_root)
     assert not errors

@@ -12,43 +12,6 @@ class ValidationError(RMSException):
     pass
 
 
-class ARef:
-    atype: str
-    aid: str
-
-    def __init__(self, atype: str, aid: str):
-        self.atype = atype
-        self.aid = aid
-
-    def __str__(self) -> str:
-        return f'{self.atype}-{self.aid}'
-
-    def __eq__(self, other: object) -> bool:
-        if not isinstance(other, ARef):
-            return False
-
-        return self.atype == other.atype and self.aid == other.aid
-
-    def __hash__(self) -> int:
-        return hash((self.atype, self.aid))
-
-    @staticmethod
-    def root() -> 'ARef':
-        return ARef('ROOT', 'ROOT')
-
-    @staticmethod
-    def coerce(ref: str) -> 'ARef':
-        if '-' in ref:
-            atype, aid = ref.split('-', 1)
-        else:
-            raise ValueError(f'Invalid reference format: {ref}')
-
-        if '@' in aid:
-            aid = aid.split('@', 1)[0]
-
-        return ARef(atype, aid)
-
-
 class Location:
     pass
 
@@ -77,13 +40,10 @@ class Artifact:
         self.driver: str = ''
         self.atype: str = ''
         self.aid: str = ''
-        self.pids: list[ARef] = []
-        self.children: set[ARef] = set()
-        self.ansestors: set[ARef] = set()
+        self.pids: list[str] = []
+        self.children: set[str] = set()
+        self.ansestors: set[str] = set()
         self.fields: dict[str, str | list[str]] = {}
-
-    def ref(self) -> ARef:
-        return ARef(self.atype, self.aid)
 
     def contents(self) -> str:
         return self.fields.get('contents', 'empty')
@@ -167,4 +127,4 @@ class ArtifactBuilder:
         return self.artifact
 
 
-type ArtifactMap = dict[ARef, Artifact]
+type ArtifactMap = dict[str, Artifact]

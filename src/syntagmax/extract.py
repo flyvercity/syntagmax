@@ -11,7 +11,7 @@ from syntagmax.extractors.text import TextExtractor
 from syntagmax.extractors.sidecar import SidecarExtractor
 from syntagmax.extractors.obsidian import ObsidianExtractor
 from syntagmax.extractors.ipynb import IPynbExtractor
-from syntagmax.artifact import Artifact, ARef
+from syntagmax.artifact import Artifact
 from syntagmax.config import Config
 from syntagmax.utils import pprint
 
@@ -37,7 +37,7 @@ def print_artifact(artifact: Artifact):
     )
 
 
-def extract(config: Config) -> tuple[dict[ARef, Artifact], list[str]]:
+def extract(config: Config) -> tuple[dict[str, Artifact], list[str]]:
     artifacts: Sequence[Artifact] = []
     errors: Sequence[str] = []
 
@@ -54,12 +54,12 @@ def extract(config: Config) -> tuple[dict[ARef, Artifact], list[str]]:
         for artifact in artifacts:
             print_artifact(artifact)
 
-    artifact_map: dict[ARef, Artifact] = {}
+    artifact_map: dict[str, Artifact] = {}
 
     for a in artifacts:
-        if a.ref() in artifact_map:
-            errors.append(f'Duplicate artifact: {a} replaces {artifact_map[a.ref()]}')
+        if a.aid in artifact_map:
+            errors.append(f'Duplicate artifact: {a} replaces {artifact_map[a.aid]}')
         else:
-            artifact_map[a.ref()] = a
+            artifact_map[a.aid] = a
 
     return artifact_map, errors
