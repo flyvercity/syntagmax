@@ -91,6 +91,40 @@ Environment variables can also be used for API keys (e.g. `ANTHROPIC_API_KEY`, `
 | `aws_api_key` | No | — | AWS Bedrock API Key |
 | `timeout_s` | No | `60.0` | Request timeout in seconds |
 
+## MCP Server
+
+Syntagmax includes a Model Context Protocol (MCP) server that allows LLMs to interact with your requirements directly.
+
+### Tools
+
+- `list_artifacts`: Returns a list of all artifacts in the system.
+- `search_artifacts`: Search for requirements by keyword.
+- `get_artifact_content`: Fetch full details of a specific requirement (including traceability).
+
+### Running the Server
+
+To start the server using Server-Sent Events (SSE):
+
+```bash
+uv run syntagmax mcp run .syntagmax/config.toml --transport sse --port 8000
+```
+
+### Sample Configuration
+
+To use Syntagmax with an MCP client that supports SSE, point it to the server's endpoint:
+
+```json
+{
+  "mcpServers": {
+    "syntagmax": {
+      "url": "http://127.0.0.1:8000/sse"
+    }
+  }
+}
+```
+
+Note: When running via SSE, the server must be started manually or managed by a process manager before the client connects.
+
 ### Example
 
 ```toml
@@ -239,4 +273,3 @@ This will result in `artifact.fields['author']` being `['Alice', 'Bob']`.
 
 - Implement automatic change propagation
 - Enhance AI-based analysis and tracing
-- Expand VS Code extension features (LSP support)

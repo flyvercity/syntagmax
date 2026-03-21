@@ -162,7 +162,7 @@ class SyntagmaxMCPServer:
         self.mcp.run(transport=transport)
 
 
-def run_mcp_server(config, host, port, sse_path='/'):
+def run_mcp_server(config, host, port, sse_path='/', transport='stdio'):
     server = SyntagmaxMCPServer(config, host=host, port=port, sse_path=sse_path)
     server.initialize()
-    server.run('sse')
+    server.run(transport)

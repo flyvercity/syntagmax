@@ -66,9 +66,10 @@ def mcp():
 @click.option('--host', default='127.0.0.1', help='Host for SSE')
 @click.option('--port', default=8000, help='Port for SSE')
 @click.option('--sse-path', default='/', help='Path for SSE stream')
-def run(obj: Params, config_path: str, host: str, port: int, sse_path: str):
+@click.option('--transport', default='stdio', type=click.Choice(['stdio', 'sse']), help='MCP transport to use')
+def run(obj: Params, config_path: str, host: str, port: int, sse_path: str, transport: str):
     configurator = Config(obj, Path(config_path))
-    run_mcp_server(configurator, host, port, sse_path)
+    run_mcp_server(configurator, host, port, sse_path, transport)
 
 
 def main():
