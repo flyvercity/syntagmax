@@ -31,6 +31,7 @@ def print_artifact(artifact: Artifact, indent: str, last: bool, top: bool, verbo
         from rich.markup import escape
         u.pprint(escape(f'{detail_indent}  Revisions:'))
         rev_list = sorted(list(artifact.revisions), key=lambda r: r.timestamp, reverse=True)
+
         for r in rev_list:
             rev_str = f'{r.hash_short} ({r.timestamp.strftime("%Y-%m-%d %H:%M")} by {r.author_email})'
             u.pprint(escape(f'{detail_indent}    - {rev_str}'))
