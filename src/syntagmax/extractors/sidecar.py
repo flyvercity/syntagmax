@@ -76,7 +76,10 @@ class SidecarExtractor(Extractor):
         aid = str(data.pop('id'))
         atype = str(data.pop('atype', self._record.default_atype))
 
-        location = FileLocation(self._config.derive_path(filepath))
+        location = FileLocation(
+            self._config.derive_path(filepath),
+            self._config.derive_path(sidecar_path)
+        )
 
         builder = ArtifactBuilder(
             self._config, Artifact, self.driver(), location, self._metamodel

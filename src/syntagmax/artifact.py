@@ -4,6 +4,9 @@
 # Created: 2025-03-29
 # Description: Artifacts are the basic units of the Requirement Management System (RMS).
 
+from dataclasses import dataclass
+from datetime import datetime
+
 from syntagmax.errors import RMSException
 from syntagmax.config import Config
 
@@ -17,10 +20,13 @@ class Location:
 
 
 class FileLocation(Location):
-    def __init__(self, loc_file: str):
+    def __init__(self, loc_file: str, loc_sidecar: str | None = None):
         self.loc_file = loc_file
+        self.loc_sidecar = loc_sidecar
 
     def __str__(self) -> str:
+        if self.loc_sidecar:
+            return f"{self.loc_file} (sidecar: {self.loc_sidecar})"
         return self.loc_file
 
 
@@ -31,6 +37,25 @@ class LineLocation(Location):
 
     def __str__(self) -> str:
         return f'{self.loc_file}:{self.loc_lines[0]}-{self.loc_lines[1]}'
+
+
+@dataclass(frozen=True)
+class Revision:
+    hash_long: str
+    hash_short: str
+    timestamp: datetime
+    author_email: str
+
+    def __eq__(self, other):
+        if not isinstance(other, Revision):
+            return False
+        return self.hash_long == other.hash_long
+
+    def __hash__(self):
+        return hash(self.hash_long)
+
+    def __str__(self) -> str:
+        return f'{self.hash_short} by {self.author_email} at {self.timestamp}'
 
 
 class Artifact:
@@ -44,6 +69,7 @@ class Artifact:
         self.children: set[str] = set()
         self.ansestors: set[str] = set()
         self.fields: dict[str, str | list[str]] = {}
+        self.revisions: set[Revision] = set()
 
     def contents(self) -> str:
         return self.fields.get('contents', 'empty')
