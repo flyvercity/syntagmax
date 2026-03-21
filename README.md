@@ -4,6 +4,14 @@
 
 Fully git-friendly lightweight requirements management system with tracing model verification, change detection, and propagation.
 
+## Quick Demo
+
+Run example analysis with:
+
+```bash
+uv run syntagmax --render-tree --cwd ./example/obsidian-driver/ analyze
+```
+
 ## Configuration
 
 Syntagmax uses a TOML configuration file (default `.syntagmax/config.toml`).
