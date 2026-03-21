@@ -26,7 +26,7 @@ class FileLocation(Location):
 
     def __str__(self) -> str:
         if self.loc_sidecar:
-            return f"{self.loc_file} (sidecar: {self.loc_sidecar})"
+            return f'{self.loc_file} (sidecar: {self.loc_sidecar})'
         return self.loc_file
 
 
@@ -81,7 +81,7 @@ class Artifact:
         return self.fields.get('contents', 'empty')
 
     def __str__(self) -> str:
-        return f'{self.atype}-{self.aid}@{self.location}'
+        return f'{self.atype}።{self.aid}@{self.location}'
 
 
 class ArtifactBuilder:
