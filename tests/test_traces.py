@@ -47,7 +47,7 @@ artifact TEST:
     attribute title is mandatory string
 
 trace from REQ to SYS or DER is mandatory
-trace from TEST to REQ is mandatory via git
+trace from TEST to REQ is mandatory via commit
 trace from TEST to SRC is optional via timestamp
 """,
         encoding='utf-8',

@@ -18,7 +18,7 @@ ARTIFACT: "artifact"
 MULTIPLE: "multiple"
 ?name: WORD
 PRESENCE: "mandatory" | "optional"
-TRACE_MODE: "git" | "timestamp"
+TRACE_MODE: "commit" | "timestamp"
 ?value: ESCAPED_STRING | WORD
 
 %import common.WORD

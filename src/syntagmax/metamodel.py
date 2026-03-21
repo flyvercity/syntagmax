@@ -29,6 +29,7 @@ class DSLTransformer(Transformer):
 
     def trace(self, children):
         # trace: "trace" "from" name "to" target_list "is" PRESENCE ["via" TRACE_MODE] _NL
+        # TRACE_MODE is "commit" or "timestamp"
         mode = str(children[3]) if len(children) > 3 and children[3] is not None else 'timestamp'
         return {
             'type': 'trace',
