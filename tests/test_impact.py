@@ -63,6 +63,8 @@ enabled = true
     
     assert impact_data['total_suspicious'] == 1
     assert child.parent_links[0].is_suspicious is True
+    assert "p001" in impact_data['suspicious_links'][0]['actual_revision']
+    assert "test@example.com" in impact_data['suspicious_links'][0]['actual_revision']
 
 def test_impact_analysis_commit(tmp_path):
     config_path = tmp_path / "config.toml"

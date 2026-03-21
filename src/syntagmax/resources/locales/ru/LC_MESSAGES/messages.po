@@ -68,7 +68,7 @@ msgid "Parent"
 msgstr "Родитель"
 
 #: src/syntagmax/resources/impact.j2:8
-msgid "Nominal Revision"
+msgid "Required Revision"
 msgstr "Номинальная ревизия"
 
 #: src/syntagmax/resources/impact.j2:8

@@ -176,7 +176,7 @@ Python-style comments (`# ...`) are supported.
 - `integer`: A whole number.
 - `boolean`: `true` or `false`.
 - `reference [to parent]`: A reference to another artifact (e.g., `SRS-001`). The optional `to parent` modifier marks the attribute as a parent indicator, used for building the artifact hierarchy. 
-  - **Nominal Revision**: You can specify a parent's revision using the `@` symbol: `parent: SRS-001@c2d94e4`. This allows for impact analysis to identify if a requirement is outdated relative to its parent.
+  - **Nominal Revision**: For "via commit" traces, you can specify a parent's revision using the `@` symbol: `parent: SRS-001@c2d94e4`. This allows for impact analysis to identify if a requirement is outdated relative to its parent.
 - `enum [<values>]`: A fixed set of allowed values (comma-separated).
 
 ### Impact Analysis Logic

@@ -57,13 +57,18 @@ def perform_impact_analysis(config: Config, artifacts: ArtifactMap, errors: list
                         link.is_suspicious = True
 
             if link.is_suspicious:
+                actual_rev_obj = parent.latest_revision
+                actual_rev_str = "None"
+                if actual_rev_obj:
+                    actual_rev_str = f"{actual_rev_obj.hash_short} ({actual_rev_obj.timestamp.strftime('%Y-%m-%d %H:%M')} by {actual_rev_obj.author_email})"
+
                 suspicious_links.append({
                     'artifact_aid': a.aid,
                     'artifact_atype': a.atype,
                     'parent_aid': parent.aid,
                     'parent_atype': parent.atype,
                     'nominal_revision': link.nominal_revision,
-                    'actual_revision': parent.latest_revision.hash_short if parent.latest_revision else 'None'
+                    'actual_revision': actual_rev_str
                 })
 
     impact_data['suspicious_links'] = suspicious_links
