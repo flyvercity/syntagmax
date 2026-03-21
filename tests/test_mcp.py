@@ -1,4 +1,3 @@
-import pytest
 from unittest.mock import MagicMock
 from syntagmax.mcp.server import SyntagmaxMCPServer
 

@@ -2,7 +2,6 @@ import pytest
 from syntagmax.metamodel import load_metamodel
 from syntagmax.analyse import ArtifactValidator
 from syntagmax.artifact import Artifact
-from pathlib import Path
 
 @pytest.fixture
 def metamodel(tmp_path):

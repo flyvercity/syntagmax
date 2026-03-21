@@ -1,0 +1,15 @@
+# {{ _("Impact Analysis Report") }}
+
+## {{ _("Summary") }}
+{{ _("Total suspicious links") }}: {{ impact.total_suspicious }}
+
+## {{ _("Suspicious Links") }}
+{% if impact.total_suspicious > 0 %}
+| {{ _("Artifact") }} | {{ _("Parent") }} | {{ _("Nominal Revision") }} | {{ _("Actual Revision") }} |
+|----------|--------|------------------|-----------------|
+{% for link in impact.suspicious_links -%}
+| {{ link.artifact_atype }}:{{ link.artifact_aid }} | {{ link.parent_atype }}:{{ link.parent_aid }} | {{ link.nominal_revision }} | {{ link.actual_revision }} |
+{% endfor %}
+{% else %}
+{{ _("No suspicious links found.") }}
+{% endif %}

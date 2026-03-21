@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 from datetime import datetime
 import git
 from syntagmax.git_utils import populate_revisions
-from syntagmax.artifact import Artifact, LineLocation, FileLocation, Revision
+from syntagmax.artifact import Artifact, LineLocation, FileLocation
 from syntagmax.config import Config
 
 @pytest.fixture

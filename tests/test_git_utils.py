@@ -1,11 +1,9 @@
 # SPDX-License-Identifier: MIT
 import pytest
 import git
-from datetime import datetime
-from pathlib import Path
 from syntagmax.config import Config
 from syntagmax.params import Params
-from syntagmax.artifact import Artifact, FileLocation, LineLocation, Revision
+from syntagmax.artifact import Artifact, FileLocation, LineLocation
 from syntagmax.git_utils import populate_revisions
 
 @pytest.fixture
@@ -29,7 +27,7 @@ def config(tmp_path, git_repo):
     _, repo_path = git_repo
     cfg_path = repo_path / 'config.toml'
     cfg_path.write_text(
-        f"""
+        """
 base = "."
 [[input]]
 name = "test"

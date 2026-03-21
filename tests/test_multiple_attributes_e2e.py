@@ -1,6 +1,5 @@
 import pytest
 import textwrap
-from pathlib import Path
 
 from syntagmax.config import Config, InputRecord
 from syntagmax.extractors.text import TextExtractor

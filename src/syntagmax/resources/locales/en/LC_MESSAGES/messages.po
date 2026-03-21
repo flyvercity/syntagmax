@@ -42,3 +42,39 @@ msgstr "Requirements without verification (%)"
 msgid "Requirements with TBD (%)"
 msgstr "Requirements with TBD (%)"
 
+#: src/syntagmax/resources/impact.j2:1
+msgid "Impact Analysis Report"
+msgstr "Impact Analysis Report"
+
+#: src/syntagmax/resources/impact.j2:3
+msgid "Summary"
+msgstr "Summary"
+
+#: src/syntagmax/resources/impact.j2:4
+msgid "Total suspicious links"
+msgstr "Total suspicious links"
+
+#: src/syntagmax/resources/impact.j2:6
+msgid "Suspicious Links"
+msgstr "Suspicious Links"
+
+#: src/syntagmax/resources/impact.j2:8
+msgid "Artifact"
+msgstr "Artifact"
+
+#: src/syntagmax/resources/impact.j2:8
+msgid "Parent"
+msgstr "Parent"
+
+#: src/syntagmax/resources/impact.j2:8
+msgid "Nominal Revision"
+msgstr "Nominal Revision"
+
+#: src/syntagmax/resources/impact.j2:8
+msgid "Actual Revision"
+msgstr "Actual Revision"
+
+#: src/syntagmax/resources/impact.j2:11
+msgid "No suspicious links found."
+msgstr "No suspicious links found."
+

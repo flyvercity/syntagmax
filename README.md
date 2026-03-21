@@ -43,6 +43,18 @@ Each input defines a source of requirements or artifacts:
 | `template` | No | — | Path to custom Jinja template |
 | `locale` | No | `en` | Locale code for localization |
 
+### Impact Analysis (`[impact]`)
+
+Impact analysis helps identify potentially outdated artifacts by comparing their parent revisions.
+
+| Field | Required | Default | Description |
+|-------|----------|---------|-------------|
+| `enabled` | No | `false` | Enable impact analysis |
+| `output_format` | No | `rich` | Output format: `rich` or `markdown` |
+| `output_file` | No | `console` | Output file name (`console` for stdout) |
+| `template` | No | — | Path to custom Jinja template |
+| `locale` | No | `en` | Locale code for localization |
+
 ### Metamodel (`[metamodel]`)
 
 | Field | Required | Default | Description |
@@ -163,8 +175,32 @@ Python-style comments (`# ...`) are supported.
 - `string`: Any text.
 - `integer`: A whole number.
 - `boolean`: `true` or `false`.
-- `reference [to parent]`: A reference to another artifact (e.g., `SRS-001`). The optional `to parent` modifier marks the attribute as a parent indicator, used for building the artifact hierarchy. This replaces the previous implicit handling of attributes named `pid`.
+- `reference [to parent]`: A reference to another artifact (e.g., `SRS-001`). The optional `to parent` modifier marks the attribute as a parent indicator, used for building the artifact hierarchy. 
+  - **Nominal Revision**: You can specify a parent's revision using the `@` symbol: `parent: SRS-001@c2d94e4`. This allows for impact analysis to identify if a requirement is outdated relative to its parent.
 - `enum [<values>]`: A fixed set of allowed values (comma-separated).
+
+### Impact Analysis Logic
+
+When impact analysis is enabled (`[impact] enabled = true`), Syntagmax performs the following checks:
+
+1. **Via Commit**: If a parent reference includes a revision (e.g., `SRS-001@c2d94e4`), Syntagmax compares it with the parent's actual latest revision. If they differ, the link is marked as suspicious.
+2. **Via Timestamp**: If no revision is specified and the metamodel trace mode is `timestamp`, the link is marked as suspicious if the parent was modified later than the artifact.
+
+Suspicious links are highlighted in the artifact tree (printed in yellow) and included in the impact analysis report.
+
+> **Note**: Impact analysis requires a clean git worktree. You can bypass this check using the `--allow-dirty-worktree` flag.
+
+### Trace Modes
+
+Metamodel traces can specify an analysis mode:
+
+```model
+trace from REQ to SYS is mandatory via commit
+trace from SYS to ARCH is optional via timestamp
+```
+
+- `via commit`: Requires specific revision pinning in the artifact (e.g. `parent: SYS-001@c2d94e4`).
+- `via timestamp`: Uses modification times to detect potential staleness. Defaults to `older` nominal revision if not specified.
 
 ### Examples of multiple attributes
 

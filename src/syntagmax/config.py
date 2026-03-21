@@ -51,6 +51,14 @@ class MetricsConfig(BaseModel):
     locale: str = Field(default='en', description='Locale code for localization')
 
 
+class ImpactConfig(BaseModel):
+    enabled: bool = Field(default=False, description='Enable impact analysis')
+    output_format: str = Field(default='rich', description='Output format', pattern='^(rich|markdown)$')
+    output_file: str = Field(default='console', description='Output file name')
+    template: str | None = Field(default=None, description='Path to custom Jinja template')
+    locale: str = Field(default='en', description='Locale code for localization')
+
+
 class AIConfig(BaseModel):
     provider: str = Field(default='ollama', description='AI provider (ollama, anthropic, openai, gemini, bedrock)')
     model: str | None = Field(default=None, description='Model name to use')
@@ -75,6 +83,7 @@ class ConfigFile(BaseModel):
     base: str = Field(default='..', description='Base directory path')
     input: list[InputConfig] = Field(..., description='Input configuration records')
     metrics: MetricsConfig = Field(MetricsConfig(), description='Metrics configuration')
+    impact: ImpactConfig = Field(ImpactConfig(), description='Impact analysis configuration')
     metamodel: Metamodel = Field(Metamodel(), description='Metamodel configuration')
     ai: AIConfig = Field(default_factory=AIConfig, description='AI configuration')
 
@@ -82,10 +91,14 @@ class ConfigFile(BaseModel):
 class Config:
     params: Params
     metrics: MetricsConfig
+    impact: ImpactConfig
     ai: AIConfig
 
     def __init__(self, params: Params, config_filename: Path):
         self.params = params
+        self.metrics = MetricsConfig()
+        self.impact = ImpactConfig()
+        self.ai = AIConfig()
         self._input_records: list[InputRecord] = []
         self._read_config(config_filename)
 
@@ -135,10 +148,14 @@ class Config:
         self._read_input_records(config_model.input)
 
         self.metrics = config_model.metrics
+        self.impact = config_model.impact
         self.ai = config_model.ai
 
         if not config_model.metrics.enabled:
             lg.warning('Metrics collection is disabled')
+
+        if not config_model.impact.enabled:
+            lg.warning('Impact analysis is disabled')
 
         if config_model.metamodel.filename:
             self.metamodel = load_metamodel(Path(root_dir, config_model.metamodel.filename), errors)
@@ -185,3 +202,14 @@ class Config:
 
     def input_records(self) -> list[InputRecord]:
         return self._input_records
+
+    def get_trace_mode(self, source_atype: str, target_atype: str) -> str:
+        if not self.metamodel:
+            return 'timestamp'
+
+        traces = self.metamodel.get('traces', {}).get(source_atype, [])
+        for trace in traces:
+            if target_atype in trace.get('targets', []):
+                return trace.get('mode', 'timestamp')
+
+        return 'timestamp'

@@ -16,6 +16,7 @@ from syntagmax.analyse import analyse_tree
 from syntagmax.metrics import calculate_metrics, render_metrics
 from syntagmax.ai import ai_analyze
 from syntagmax.git_utils import populate_revisions
+from syntagmax.impact import perform_impact_analysis, render_impact_report
 
 
 def process(config: Config):
@@ -40,6 +41,11 @@ def process(config: Config):
     else:
         lg.warning("Git history extraction skipped (--no-git)")
 
+    # Impact analysis
+    impact_data = None
+    if config.impact.enabled:
+        impact_data = perform_impact_analysis(config, artifacts, errors)
+
     if config.params['render_tree']:
         print_arttree(artifacts, 'ROOT', verbose=config.params['verbose'])
 
@@ -53,6 +59,9 @@ def process(config: Config):
             raise FatalError(errors)
 
         render_metrics(metrics, config)
+
+    if impact_data:
+        render_impact_report(impact_data, config)
 
     if config.params['ai']:
         ai_analyze(config, artifacts)

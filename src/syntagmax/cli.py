@@ -48,7 +48,9 @@ def rms(ctx: click.Context, **kwargs: dict[str, Any]):
     type=click.Path(exists=True),
     default='.syntagmax/config.toml',
 )
-def analyze(obj: Params, config: Path):
+@click.option('--allow-dirty-worktree', is_flag=True, help='Allow analysis on a dirty git worktree')
+def analyze(obj: Params, config: Path, allow_dirty_worktree: bool):
+    obj['allow_dirty_worktree'] = allow_dirty_worktree
     configurator = Config(obj, config)
     process(configurator)
 

@@ -1,9 +1,7 @@
 import pytest
-from pathlib import Path
 from syntagmax.metamodel import load_metamodel
 from syntagmax.analyse import ArtifactValidator
 from syntagmax.artifact import Artifact
-from syntagmax.config import Config
 
 @pytest.fixture
 def validator(tmp_path):

@@ -25,7 +25,20 @@ def print_artifact(artifact: Artifact, indent: str, last: bool, top: bool, verbo
     detail_indent = indent + (CONST_I_CHAR if not last else ' ') + ' '
 
     u.pprint(f'{detail_indent} {metastring}')
-    pids_str = ', '.join([str(pid) for pid in artifact.pids])
+    
+    pids_str_list = []
+    if artifact.parent_links:
+        for link in artifact.parent_links:
+            s = link.pid
+            if link.nominal_revision:
+                s += f'@{link.nominal_revision}'
+            if link.is_suspicious:
+                s = f'[yellow]{s}[/yellow]'
+            pids_str_list.append(s)
+    else:
+        pids_str_list = [str(pid) for pid in artifact.pids]
+        
+    pids_str = ', '.join(pids_str_list)
     u.pprint(f'{detail_indent} Parents: [{pids_str}]')
 
     if artifact.revisions:

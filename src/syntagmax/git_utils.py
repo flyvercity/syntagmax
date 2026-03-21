@@ -12,6 +12,14 @@ from syntagmax.artifact import ArtifactMap, Revision, LineLocation, FileLocation
 from syntagmax.config import Config
 
 
+def is_dirty(config: Config) -> bool:
+    try:
+        repo = git.Repo(config.base_dir(), search_parent_directories=True)
+        return repo.is_dirty() or len(repo.untracked_files) > 0
+    except Exception:
+        return False
+
+
 def populate_revisions(config: Config, artifacts: ArtifactMap):
     """
     Populate revisions for each artifact in the map using git history.

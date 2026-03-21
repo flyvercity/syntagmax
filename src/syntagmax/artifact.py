@@ -50,6 +50,13 @@ class Revision:
         return f'{self.hash_short} by {self.author_email} at {self.timestamp}'
 
 
+@dataclass
+class ParentLink:
+    pid: str
+    nominal_revision: str | None = None
+    is_suspicious: bool = False
+
+
 class Artifact:
     def __init__(self, config: Config):
         self._config = config
@@ -58,10 +65,17 @@ class Artifact:
         self.atype: str = ''
         self.aid: str = ''
         self.pids: list[str] = []
+        self.parent_links: list[ParentLink] = []
         self.children: set[str] = set()
         self.ansestors: set[str] = set()
         self.fields: dict[str, str | list[str]] = {}
         self.revisions: set[Revision] = set()
+
+    @property
+    def latest_revision(self) -> Revision | None:
+        if not self.revisions:
+            return None
+        return max(self.revisions, key=lambda r: r.timestamp)
 
     def contents(self) -> str:
         return self.fields.get('contents', 'empty')

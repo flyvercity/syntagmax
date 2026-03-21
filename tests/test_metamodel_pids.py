@@ -1,8 +1,5 @@
-import pytest
 from syntagmax.artifact import Artifact
 from syntagmax.tree import populate_pids
-from syntagmax.config import Config
-from syntagmax.params import Params
 
 def test_populate_pids_from_metamodel():
     metamodel = {

@@ -5,7 +5,7 @@
 # Description: Builds a tree of artifacts.
 
 from syntagmax.config import Config
-from syntagmax.artifact import ArtifactMap, Artifact, Location
+from syntagmax.artifact import ArtifactMap, Artifact, Location, ParentLink
 
 MAX_TREE_DEPTH = 20
 
@@ -43,7 +43,19 @@ def populate_pids(config: Config, artifacts: ArtifactMap):
                 refs = val if rule.get('multiple') else [val]
                 for ref_str in refs:
                     try:
-                        aid = ref_str.split('@')[0] if '@' in ref_str else ref_str
+                        parts = ref_str.split('@')
+                        aid = parts[0]
+                        nominal_revision = parts[1] if len(parts) > 1 else None
+
+                        parent_artifact = artifacts.get(aid)
+                        if parent_artifact:
+                            # Find trace mode from a.atype to parent_artifact.atype
+                            trace_mode = config.get_trace_mode(a.atype, parent_artifact.atype)
+                            if trace_mode == 'timestamp' and not nominal_revision:
+                                nominal_revision = 'older'
+
+                        a.parent_links.append(ParentLink(pid=aid, nominal_revision=nominal_revision))
+
                         if aid not in a.pids:
                             a.pids.append(aid)
                     except Exception:

@@ -43,3 +43,39 @@ msgstr "Требования без верификации (%)"
 msgid "Requirements with TBD (%)"
 msgstr "Требования с TBD (%)"
 
+#: src/syntagmax/resources/impact.j2:1
+msgid "Impact Analysis Report"
+msgstr "Отчет об анализе влияния"
+
+#: src/syntagmax/resources/impact.j2:3
+msgid "Summary"
+msgstr "Сводка"
+
+#: src/syntagmax/resources/impact.j2:4
+msgid "Total suspicious links"
+msgstr "Всего подозрительных связей"
+
+#: src/syntagmax/resources/impact.j2:6
+msgid "Suspicious Links"
+msgstr "Подозрительные связи"
+
+#: src/syntagmax/resources/impact.j2:8
+msgid "Artifact"
+msgstr "Артефакт"
+
+#: src/syntagmax/resources/impact.j2:8
+msgid "Parent"
+msgstr "Родитель"
+
+#: src/syntagmax/resources/impact.j2:8
+msgid "Nominal Revision"
+msgstr "Номинальная ревизия"
+
+#: src/syntagmax/resources/impact.j2:8
+msgid "Actual Revision"
+msgstr "Фактическая ревизия"
+
+#: src/syntagmax/resources/impact.j2:11
+msgid "No suspicious links found."
+msgstr "Подозрительных связей не обнаружено."
+
