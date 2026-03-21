@@ -72,7 +72,7 @@ def test_populate_revisions_file_location(mock_repo_class, mock_config, mock_art
     assert rev.hash_long == "abcdef1234567890"
     assert rev.hash_short == "abcdef1"
     
-    mock_repo.iter_commits.assert_called_once_with(paths="file.md", max_count=1)
+    mock_repo.iter_commits.assert_called_once_with("HEAD", paths="file.md", max_count=1)
 
 @patch("git.Repo")
 def test_populate_revisions_file_location_with_sidecar(mock_repo_class, mock_config, mock_artifact):

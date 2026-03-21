@@ -26,6 +26,7 @@ def populate_revisions(config: Config, artifacts: ArtifactMap):
     for artifact in artifacts.values():
         revisions = set()
         base_dir = Path(config.base_dir())
+        lg.debug(f"Processing revisions for artifact {artifact.aid} at {artifact.location}")
         if isinstance(artifact.location, LineLocation):
             # Paths in artifacts are relative to config.base_dir()
             # We need them relative to repo_root for git
@@ -33,6 +34,7 @@ def populate_revisions(config: Config, artifacts: ArtifactMap):
             try:
                 rel_repo_path = abs_path.relative_to(repo_root)
                 start, end = artifact.location.loc_lines
+                lg.debug(f"Blaming {rel_repo_path} lines {start}-{end}")
                 # git blame returns a list of (Commit, list of lines)
                 for commit, _ in repo.blame(None, str(rel_repo_path), L=f"{start},{end}"):
                     revisions.add(Revision(
@@ -41,6 +43,7 @@ def populate_revisions(config: Config, artifacts: ArtifactMap):
                         timestamp=datetime.fromtimestamp(commit.committed_date),
                         author_email=commit.author.email
                     ))
+                lg.debug(f"Found {len(revisions)} revisions for {artifact.aid}")
             except Exception as e:
                 lg.debug(f"Failed to blame {artifact.location.loc_file}: {e}")
 
@@ -54,8 +57,9 @@ def populate_revisions(config: Config, artifacts: ArtifactMap):
                 abs_path = (base_dir / path).absolute()
                 try:
                     rel_repo_path = abs_path.relative_to(repo_root)
-                    # Use repo.iter_commits(paths=path, max_count=1) for both the file and its sidecar
-                    for commit in repo.iter_commits(paths=str(rel_repo_path), max_count=1):
+                    lg.debug(f"Getting history for {rel_repo_path}")
+                    # Use repo.iter_commits('HEAD', paths=path, max_count=1) for both the file and its sidecar
+                    for commit in repo.iter_commits('HEAD', paths=str(rel_repo_path), max_count=1):
                          revisions.add(Revision(
                             hash_long=commit.hexsha,
                             hash_short=commit.hexsha[:7],
@@ -64,5 +68,6 @@ def populate_revisions(config: Config, artifacts: ArtifactMap):
                         ))
                 except Exception as e:
                     lg.debug(f"Failed to get history for {path}: {e}")
+            lg.debug(f"Found {len(revisions)} revisions for {artifact.aid}")
         
         artifact.revisions = revisions
