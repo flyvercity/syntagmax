@@ -77,7 +77,7 @@ def test_text_extractor_multiple_attributes(config, input_record, metamodel, tmp
     assert artifact.fields['author'] == []  # Optional multiple attribute defaults to []
 
     # Run validator
-    validator = ArtifactValidator(metamodel)
+    validator = ArtifactValidator(metamodel, {})
     val_errors = validator.validate(artifact)
     assert len(val_errors) == 0
 
@@ -113,11 +113,11 @@ def test_obsidian_extractor_multiple_attributes(config, input_record, metamodel,
     assert 'tagB' in artifact.fields['tag']
     assert 'tagC' in artifact.fields['tag']
     assert len(artifact.fields['tag']) == 3
-    
+
     assert artifact.fields['author'] == ['Alice', 'Bob']
 
     # Run validator
-    validator = ArtifactValidator(metamodel)
+    validator = ArtifactValidator(metamodel, {})
     val_errors = validator.validate(artifact)
     assert len(val_errors) == 0
 
@@ -143,7 +143,7 @@ def test_mandatory_multiple_attribute_missing(config, input_record, metamodel, t
     assert artifact.fields['tag'] == []
 
     # Run validator
-    validator = ArtifactValidator(metamodel)
+    validator = ArtifactValidator(metamodel, {})
     val_errors = validator.validate(artifact)
     # Based on our analysis, [] satisfies mandatory for now because it's "present".
     # If the user wants mandatory to mean "not empty", validator needs to change.

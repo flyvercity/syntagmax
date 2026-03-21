@@ -21,7 +21,7 @@ artifact REQ:
     return load_metamodel(model_file, errors, validate=True)
 
 def test_multiple_attribute_valid(metamodel):
-    validator = ArtifactValidator(metamodel)
+    validator = ArtifactValidator(metamodel, {})
     art = Artifact(None)
     art.atype = "REQ"
     art.aid = "1"
@@ -35,7 +35,7 @@ def test_multiple_attribute_valid(metamodel):
     assert not errors
 
 def test_multiple_attribute_invalid_not_list(metamodel):
-    validator = ArtifactValidator(metamodel)
+    validator = ArtifactValidator(metamodel, {})
     art = Artifact(None)
     art.atype = "REQ"
     art.aid = "1"
@@ -48,7 +48,7 @@ def test_multiple_attribute_invalid_not_list(metamodel):
     assert any("must be a list" in e for e in errors)
 
 def test_single_attribute_invalid_is_list(metamodel):
-    validator = ArtifactValidator(metamodel)
+    validator = ArtifactValidator(metamodel, {})
     art = Artifact(None)
     art.atype = "REQ"
     art.aid = "1"
@@ -61,7 +61,7 @@ def test_single_attribute_invalid_is_list(metamodel):
     assert any("must not be a list" in e for e in errors)
 
 def test_multiple_attribute_type_check(metamodel):
-    validator = ArtifactValidator(metamodel)
+    validator = ArtifactValidator(metamodel, {})
     art = Artifact(None)
     art.atype = "REQ"
     art.aid = "1"
@@ -74,7 +74,7 @@ def test_multiple_attribute_type_check(metamodel):
     assert any("not a valid boolean" in e for e in errors)
 
 def test_mandatory_missing(metamodel):
-    validator = ArtifactValidator(metamodel)
+    validator = ArtifactValidator(metamodel, {})
     art = Artifact(None)
     art.atype = "REQ"
     art.aid = "1"
@@ -86,7 +86,7 @@ def test_mandatory_missing(metamodel):
     assert any("Missing mandatory attribute: 'contents'" in e for e in errors)
 
 def test_enum_validation(metamodel):
-    validator = ArtifactValidator(metamodel)
+    validator = ArtifactValidator(metamodel, {})
     art = Artifact(None)
     art.atype = "REQ"
     art.aid = "1"
@@ -113,8 +113,8 @@ artifact REQ:
     model_file.write_text(model_content)
     errors = []
     metamodel = load_metamodel(model_file, errors, validate=True)
-    validator = ArtifactValidator(metamodel)
-    
+    validator = ArtifactValidator(metamodel, {})
+
     art = Artifact(None)
     art.atype = "REQ"
     art.aid = "1"

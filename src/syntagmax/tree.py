@@ -5,7 +5,7 @@
 # Description: Builds a tree of artifacts.
 
 from syntagmax.config import Config
-from syntagmax.artifact import ArtifactMap, Artifact, ARef, Location
+from syntagmax.artifact import ArtifactMap, Artifact, Location
 
 MAX_TREE_DEPTH = 20
 
@@ -43,15 +43,15 @@ def populate_pids(config: Config, artifacts: ArtifactMap):
                 refs = val if rule.get('multiple') else [val]
                 for ref_str in refs:
                     try:
-                        ref = ARef.coerce(ref_str)
-                        if ref not in a.pids:
-                            a.pids.append(ref)
+                        aid = ref_str.split('@')[0] if '@' in ref_str else ref_str
+                        if aid not in a.pids:
+                            a.pids.append(aid)
                     except Exception:
                         pass
 
 
 def gather_ansestors(
-    artifacts: ArtifactMap, ref: ARef, depth: int = 0
+    artifacts: ArtifactMap, ref: str, depth: int = 0
 ) -> str | None:
     if depth > MAX_TREE_DEPTH:
         return f'Circular reference detected with {artifacts[ref].aid}'
@@ -75,15 +75,15 @@ def build_tree(config: Config, artifacts: ArtifactMap) -> list[str]:
             if pid not in full_set:
                 errors.append(f'Missing parent: {pid} at {a}')
             else:
-                artifacts[pid].children.add(a.ref())
+                artifacts[pid].children.add(a.aid)
 
-    top_level = {a.ref(): a for a in artifacts.values() if a.pids == []}
+    top_level = {a.aid: a for a in artifacts.values() if a.pids == []}
     root = RootArtifact(config)
 
     for a in top_level.values():
-        root.children.add(a.ref())
+        root.children.add(a.aid)
 
-    artifacts[root.ref()] = root
+    artifacts[root.aid] = root
 
     for ref in artifacts.keys():
         err = gather_ansestors(artifacts, ref)

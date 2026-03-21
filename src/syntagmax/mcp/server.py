@@ -4,7 +4,6 @@ from syntagmax.extract import extract
 from syntagmax.tree import build_tree
 from syntagmax.analyse import analyse_tree
 from syntagmax.errors import FatalError
-from syntagmax.artifact import ARef
 
 
 class SyntagmaxMCPServer:
@@ -26,19 +25,18 @@ class SyntagmaxMCPServer:
         lg.info(f'Loaded {len(self.artifacts)} artifacts.')
 
     def _get_content(self, artifact_id: str) -> str:
-        ref = ARef.coerce(artifact_id)
-        lg.info(f'Requesting artifact {ref}')
+        lg.info(f'Requesting artifact {artifact_id}')
 
-        if artifact := self.artifacts.get(ref):
-            lg.info(f'Found artifact {ref}')
+        if artifact := self.artifacts.get(artifact_id):
+            lg.info(f'Found artifact {artifact_id}')
             response = artifact.contents()
         else:
-            lg.warning(f'Artifact {ref} not found.')
+            lg.warning(f'Artifact {artifact_id} not found.')
             available = list(self.artifacts.keys())[:10]
             ids_str = ', '.join(str(k) for k in available)
             response = f"Artifact '{artifact_id}' not found. Available IDs (first 10): {ids_str}..."
 
-        lg.info(f'Responding to {ref}: {response}')
+        lg.info(f'Responding to {artifact_id}: {response}')
         return response
 
     def _setup_tools(self):

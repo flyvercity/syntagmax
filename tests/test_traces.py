@@ -2,7 +2,7 @@
 
 import pytest
 from syntagmax.metamodel import load_metamodel
-from syntagmax.artifact import Artifact, ARef
+from syntagmax.artifact import Artifact
 from syntagmax.analyse import ArtifactValidator
 from syntagmax.config import Config
 
@@ -84,9 +84,13 @@ trace from REQ to SYS is mandatory
     req1.atype = 'REQ'
     req1.aid = '1'
     req1.fields = {'title': 'Req 1'}
-    req1.pids = [ARef('SYS', '101')]
+    req1.pids = ['101']
 
-    validator = ArtifactValidator(metamodel)
+    ts1 = Artifact(config)
+    ts1.atype = 'SYS'
+    ts1.aid = '101'
+
+    validator = ArtifactValidator(metamodel, {ts1.aid: ts1})
     errors = validator.validate(req1)
     assert not errors
 
@@ -97,7 +101,7 @@ trace from REQ to SYS is mandatory
     req2.fields = {'title': 'Req 2'}
     req2.pids = []  # No parents
 
-    validator = ArtifactValidator(metamodel, errors=[])
+    validator = ArtifactValidator(metamodel, {}, errors=[])
     errors = validator.validate(req2)
     assert any("Missing mandatory trace from 'REQ' to 'SYS'" in e for e in errors)
 
@@ -106,9 +110,13 @@ trace from REQ to SYS is mandatory
     req3.atype = 'REQ'
     req3.aid = '3'
     req3.fields = {'title': 'Req 3'}
-    req3.pids = [ARef('OTHER', '999')]
+    req3.pids = ['999']
 
-    validator = ArtifactValidator(metamodel, errors=[])
+    ts_other = Artifact(config)
+    ts_other.atype = 'OTHER'
+    ts_other.aid = '999'
+
+    validator = ArtifactValidator(metamodel, {'999': ts_other}, errors=[])
     errors = validator.validate(req3)
     assert any("Trace from 'REQ' to 'OTHER' is not allowed" in e for e in errors)
 
@@ -131,9 +139,13 @@ artifact REQ:
     req.atype = 'REQ'
     req.aid = '1'
     req.fields = {'title': 'Req 1'}
-    req.pids = [ARef('SYS', '101')]
+    req.pids = ['101']
 
-    validator = ArtifactValidator(metamodel)
+    ts = Artifact(config)
+    ts.atype = 'SYS'
+    ts.aid = '101'
+
+    validator = ArtifactValidator(metamodel, {ts.aid: ts})
     errors = validator.validate(req)
     assert any("Trace from 'REQ' to 'SYS' is not allowed" in e for e in errors)
 
@@ -142,8 +154,8 @@ artifact REQ:
     req_root.atype = 'REQ'
     req_root.aid = '2'
     req_root.fields = {'title': 'Req 2'}
-    req_root.pids = [ARef.root()]
+    req_root.pids = ['ROOT']
 
-    validator = ArtifactValidator(metamodel, errors=[])
+    validator = ArtifactValidator(metamodel, {}, errors=[])
     errors = validator.validate(req_root)
     assert not errors

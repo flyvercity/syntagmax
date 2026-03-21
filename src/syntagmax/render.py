@@ -8,7 +8,7 @@ import rich
 from rich.table import Table
 from benedict import benedict
 
-from syntagmax.artifact import Artifact, ArtifactMap, ARef
+from syntagmax.artifact import Artifact, ArtifactMap
 import syntagmax.utils as u
 
 CONST_I_CHAR = '│'
@@ -38,7 +38,7 @@ def print_artifact(artifact: Artifact, indent: str, last: bool, top: bool, verbo
 
 
 def print_arttree(
-    artifacts: ArtifactMap, ref: ARef, indent: str = '', last: bool = True, top: bool = True, verbose: bool = False
+    artifacts: ArtifactMap, ref: str, indent: str = '', last: bool = True, top: bool = True, verbose: bool = False
 ):
     artifact = artifacts[ref]
     print_artifact(artifact, indent, last, top, verbose)

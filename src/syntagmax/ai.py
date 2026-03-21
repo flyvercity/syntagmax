@@ -10,7 +10,7 @@ import logging as lg
 
 import rich
 
-from syntagmax.artifact import Artifact, ARef
+from syntagmax.artifact import Artifact
 from syntagmax.config import Config
 from syntagmax.ai_providers import (
     AIProvider,
@@ -22,7 +22,7 @@ from syntagmax.ai_providers import (
 )
 
 
-def ai_analyze(config: Config, artifacts: dict[ARef, Artifact]):
+def ai_analyze(config: Config, artifacts: dict[str, Artifact]):
     provider_name = config.ai.provider.lower()
     lg.info(f'Using AI provider: {provider_name}')
 

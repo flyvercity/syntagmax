@@ -2,7 +2,7 @@ import pytest
 from pathlib import Path
 from syntagmax.metamodel import load_metamodel
 from syntagmax.analyse import ArtifactValidator
-from syntagmax.artifact import Artifact, ARef
+from syntagmax.artifact import Artifact
 from syntagmax.config import Config
 
 @pytest.fixture
@@ -19,15 +19,27 @@ artifact SRS:
 """
     model_file = tmp_path / "test.model"
     model_file.write_text(model_content)
+
     errors = []
     metamodel = load_metamodel(model_file, errors, validate=True)
-    return ArtifactValidator(metamodel)
+
+    ref_art1 = Artifact(None)
+    ref_art1.atype = 'SRS'
+    ref_art1.aid = '001'
+
+    ref_art2 = Artifact(None)
+    ref_art2.atype = 'XYZ'
+    ref_art2.aid = '002'
+
+    artifacts = {'001': ref_art1, '002': ref_art2}
+    return ArtifactValidator(metamodel, artifacts)
+
 
 def test_valid_reference(validator):
     art = Artifact(None)
     art.atype = "REQ"
     art.aid = "1"
-    art.fields = {"id": "1", "contents": "test", "link": "SRS-001"}
+    art.fields = {"id": "1", "contents": "test", "link": "001"}
     errors = validator.validate(art)
     assert not errors
 
@@ -37,12 +49,12 @@ def test_malformed_reference(validator):
     art.aid = "1"
     art.fields = {"id": "1", "contents": "test", "link": "INVALID_REF"}
     errors = validator.validate(art)
-    assert any("malformed reference" in e.lower() for e in errors)
+    assert any("unknown artifact id" in e.lower() for e in errors)
 
 def test_unknown_type_reference(validator):
     art = Artifact(None)
     art.atype = "REQ"
     art.aid = "1"
-    art.fields = {"id": "1", "contents": "test", "link": "XYZ-001"}
+    art.fields = {"id": "1", "contents": "test", "link": "002"}
     errors = validator.validate(art)
-    assert any("unknown artifact type" in e.lower() for e in errors)
+    assert any("artifact with unknown type" in e.lower() for e in errors)
