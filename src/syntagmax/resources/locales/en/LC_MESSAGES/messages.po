@@ -3,7 +3,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: syntagmax 0.0.1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-02-24 10:37+0200\n"
+"POT-Creation-Date: 2026-03-21 20:46+0200\n"
 "PO-Revision-Date: 2026-02-15 12:00+0000\n"
 "Last-Translator: \n"
 "Language: en\n"
@@ -13,34 +13,6 @@ msgstr ""
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.18.0\n"
-
-#: src/syntagmax/resources/metrics.j2:1
-msgid "Project Metrics"
-msgstr "Project Metrics"
-
-#: src/syntagmax/resources/metrics.j2:3
-msgid "Total Requirements"
-msgstr "Total Requirements"
-
-#: src/syntagmax/resources/metrics.j2:5
-msgid "Requirements by Status"
-msgstr "Requirements by Status"
-
-#: src/syntagmax/resources/metrics.j2:7
-msgid "Status"
-msgstr "Status"
-
-#: src/syntagmax/resources/metrics.j2:7
-msgid "Count"
-msgstr "Count"
-
-#: src/syntagmax/resources/metrics.j2:11
-msgid "Requirements without verification (%)"
-msgstr "Requirements without verification (%)"
-
-#: src/syntagmax/resources/metrics.j2:12
-msgid "Requirements with TBD (%)"
-msgstr "Requirements with TBD (%)"
 
 #: src/syntagmax/resources/impact.j2:1
 msgid "Impact Analysis Report"
@@ -74,7 +46,35 @@ msgstr "Required Revision"
 msgid "Actual Revision"
 msgstr "Actual Revision"
 
-#: src/syntagmax/resources/impact.j2:11
+#: src/syntagmax/resources/impact.j2:14
 msgid "No suspicious links found."
 msgstr "No suspicious links found."
+
+#: src/syntagmax/resources/metrics.j2:1
+msgid "Project Metrics"
+msgstr "Project Metrics"
+
+#: src/syntagmax/resources/metrics.j2:3
+msgid "Total Requirements"
+msgstr "Total Requirements"
+
+#: src/syntagmax/resources/metrics.j2:5
+msgid "Requirements by Status"
+msgstr "Requirements by Status"
+
+#: src/syntagmax/resources/metrics.j2:7
+msgid "Status"
+msgstr "Status"
+
+#: src/syntagmax/resources/metrics.j2:7
+msgid "Count"
+msgstr "Count"
+
+#: src/syntagmax/resources/metrics.j2:11
+msgid "Requirements without verification (%)"
+msgstr "Requirements without verification (%)"
+
+#: src/syntagmax/resources/metrics.j2:12
+msgid "Requirements with TBD (%)"
+msgstr "Requirements with TBD (%)"
 
