@@ -15,17 +15,28 @@ import syntagmax.utils as u
 CONST_I_CHAR = '│'
 CONST_T_CHAR = '├─'
 CONST_L_CHAR = '└─'
+CONST_II_CHAR = '║'
 
 
-def print_artifact(artifact: Artifact, indent: str, last: bool, top: bool, verbose: bool = False):
+def print_artifact(artifact: Artifact, indent: str, last: bool, top: bool, has_children: bool, verbose: bool = False):
     this_indent = indent + (CONST_L_CHAR if last else CONST_T_CHAR) if not top else ' '
     u.pprint(f'{this_indent}[cyan]{artifact.atype}[/cyan]: [green]{artifact.aid}[/green]')
     metastring = str(artifact)
 
-    detail_indent = indent + (CONST_I_CHAR if not last else ' ') + ' '
+    if top:
+        return
+
+    if has_children:
+        detail_indent = indent + CONST_I_CHAR + ' ' + CONST_I_CHAR
+    elif not last:
+        detail_indent = indent + CONST_I_CHAR
+    else:
+        detail_indent = indent + '   '
+
+    detail_indent += CONST_II_CHAR
 
     u.pprint(f'{detail_indent} {metastring}')
-    
+
     pids_str_list = []
     if artifact.parent_links:
         for link in artifact.parent_links:
@@ -37,7 +48,7 @@ def print_artifact(artifact: Artifact, indent: str, last: bool, top: bool, verbo
             pids_str_list.append(s)
     else:
         pids_str_list = [str(pid) for pid in artifact.pids]
-        
+
     pids_str = ', '.join(pids_str_list)
     u.pprint(f'{detail_indent} Parents: [{pids_str}]')
 
@@ -61,8 +72,8 @@ def print_arttree(
     artifacts: ArtifactMap, ref: str, indent: str = '', last: bool = True, top: bool = True, verbose: bool = False
 ):
     artifact = artifacts[ref]
-    print_artifact(artifact, indent, last, top, verbose)
     children = list(sorted(artifact.children, key=lambda c: artifacts[c].aid))
+    print_artifact(artifact, indent, last, top, bool(children), verbose)
     indent += (CONST_I_CHAR if not last else ' ') + ' '
 
     for child_id in children[:-1]:
