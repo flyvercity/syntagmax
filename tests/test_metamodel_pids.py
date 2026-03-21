@@ -18,6 +18,17 @@ def test_populate_pids_from_metamodel():
         def __init__(self, mm):
             self.metamodel = mm
 
+        def get_trace_mode(self, source_atype: str, target_atype: str) -> str:
+            if not self.metamodel:
+                return 'timestamp'
+
+            traces = self.metamodel.get('traces', {}).get(source_atype, [])
+            for trace in traces:
+                if target_atype in trace.get('targets', []):
+                    return trace.get('mode', 'timestamp')
+
+            return 'timestamp'
+
     config = MockConfig(metamodel)
 
     art = Artifact(None)
@@ -36,4 +47,9 @@ def test_populate_pids_from_metamodel():
     for p in expected_pids:
         assert p in art.pids
     assert 'REQ-2' not in art.pids # Since link is not to_parent
+
+    assert len(art.parent_links) == 3
+    pids_in_links = [link.pid for link in art.parent_links]
+    for p in expected_pids:
+        assert p in pids_in_links
 
