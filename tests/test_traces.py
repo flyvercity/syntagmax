@@ -46,8 +46,8 @@ artifact TEST:
     attribute title is mandatory string
 
 trace from REQ to SYS or DER is mandatory
-trace from TEST to REQ is mandatory
-trace from TEST to SRC is optional
+trace from TEST to REQ is mandatory via git
+trace from TEST to SRC is optional via timestamp
 """,
         encoding='utf-8',
     )
@@ -59,6 +59,58 @@ trace from TEST to SRC is optional
     assert len(metamodel['traces']['REQ']) == 1
     assert metamodel['traces']['REQ'][0]['targets'] == ['SYS', 'DER']
     assert metamodel['traces']['REQ'][0]['presence'] == 'mandatory'
+    assert metamodel['traces']['REQ'][0]['mode'] == 'timestamp'
+
+    assert 'TEST' in metamodel['traces']
+    assert len(metamodel['traces']['TEST']) == 2
+    assert metamodel['traces']['TEST'][0]['targets'] == ['REQ']
+    assert metamodel['traces']['TEST'][0]['presence'] == 'mandatory'
+    assert metamodel['traces']['TEST'][0]['mode'] == 'git'
+    assert metamodel['traces']['TEST'][1]['targets'] == ['SRC']
+    assert metamodel['traces']['TEST'][1]['presence'] == 'optional'
+    assert metamodel['traces']['TEST'][1]['mode'] == 'timestamp'
+
+
+def test_trace_consistency_errors(tmp_path):
+    model_file = tmp_path / 'inconsistent_presence.model'
+    model_file.write_text(
+        """
+artifact REQ:
+    attribute title is mandatory string
+
+artifact SYS:
+    attribute title is mandatory string
+
+trace from REQ to SYS is mandatory
+trace from REQ to SYS or DER is optional
+""",
+        encoding='utf-8',
+    )
+
+    errors = []
+    load_metamodel(model_file, errors, validate=False)
+    assert any(
+        "Inconsistent trace rules for REQ -> SYS: presence is both 'mandatory' and 'optional'" in e for e in errors
+    )
+
+    model_file_mode = tmp_path / 'inconsistent_mode.model'
+    model_file_mode.write_text(
+        """
+artifact REQ:
+    attribute title is mandatory string
+
+artifact SYS:
+    attribute title is mandatory string
+
+trace from REQ to SYS is mandatory via git
+trace from REQ to SYS or DER is mandatory
+""",
+        encoding='utf-8',
+    )
+
+    errors2 = []
+    load_metamodel(model_file_mode, errors2, validate=False)
+    assert any("Inconsistent trace rules for REQ -> SYS: mode is both 'git' and 'timestamp'" in e for e in errors2)
 
 
 def test_trace_validation(config, tmp_path):

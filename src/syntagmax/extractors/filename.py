@@ -38,9 +38,7 @@ class FilenameExtractor(Extractor):
         aid = handle_split[1]
         location = FileLocation(self._config.derive_path(filepath))
 
-        builder = ArtifactBuilder(
-            self._config, Artifact, self.driver(), location
-        )
+        builder = ArtifactBuilder(self._config, Artifact, self.driver(), location)
 
         builder.add_id(aid, atype)
         builder.add_field('description', description)

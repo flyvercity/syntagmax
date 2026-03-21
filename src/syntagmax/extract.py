@@ -20,7 +20,7 @@ EXTRACTORS = {
     'text': TextExtractor,
     'filename': FilenameExtractor,
     'obsidian': ObsidianExtractor,
-    'ipynb': IPynbExtractor
+    'ipynb': IPynbExtractor,
 }
 
 
