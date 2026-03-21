@@ -12,3 +12,4 @@ class Params(TypedDict):
     render_tree: bool
     ai: bool
     cwd: str
+    no_git: bool

@@ -27,6 +27,7 @@ from syntagmax.mcp.server import run_mcp_server
 @click.option('--render-tree', is_flag=True, help='Render the artifact tree')
 @click.option('--ai', is_flag=True, help='Use AI to analyze the project')
 @click.option('--cwd', type=click.Path(exists=True), help='Change the working directory')
+@click.option('--no-git', is_flag=True, help='Skip git history extraction')
 def rms(ctx: click.Context, **kwargs: dict[str, Any]):
 
     verbose = kwargs['verbose']
