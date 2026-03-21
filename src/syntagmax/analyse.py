@@ -143,14 +143,33 @@ class ArtifactValidator:
             if parent.atype not in allowed_target_types:
                 self.errors.append(f"Trace from '{artifact.atype}' to '{parent.atype}' is not allowed ({artifact})")
 
-        # 2. Mandatory traces
+        # 2. Mandatory traces and Mode validation
         for rule in trace_rules:
-            if rule['presence'] == 'mandatory':
-                targets = set(rule['targets'])
-                found = any(p.atype in targets for p in actual_parents)
-                if not found:
-                    target_str = ' or '.join(f"'{t}'" for t in targets)
-                    self.errors.append(f"Missing mandatory trace from '{artifact.atype}' to {target_str} ({artifact})")
+            targets = set(rule['targets'])
+            mode = rule.get('mode', 'timestamp')
+            
+            found = False
+            for parent in actual_parents:
+                if parent.atype in targets:
+                    found = True
+                    # Validate mode
+                    # Find the link in parent_links
+                    link = next((l for l in artifact.parent_links if l.pid == parent.aid), None)
+                    if link:
+                        if mode == 'timestamp' and link.nominal_revision != 'older' and link.nominal_revision is not None:
+                            self.errors.append(
+                                f"Trace from '{artifact.atype}' to '{parent.atype}' is 'by timestamp', "
+                                f"but revision was specified: '{link.pid}@{link.nominal_revision}' ({artifact})"
+                            )
+                        if mode == 'commit' and (link.nominal_revision is None or link.nominal_revision == 'older'):
+                            self.errors.append(
+                                f"Trace from '{artifact.atype}' to '{parent.atype}' is 'by commit', "
+                                f"but no revision was specified for parent '{parent.aid}' ({artifact})"
+                            )
+
+            if rule['presence'] == 'mandatory' and not found:
+                target_str = ' or '.join(f"'{t}'" for t in targets)
+                self.errors.append(f"Missing mandatory trace from '{artifact.atype}' to {target_str} ({artifact})")
 
 
 def analyse_tree(config: Config, artifacts: ArtifactMap) -> list[str]:
