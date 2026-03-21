@@ -101,6 +101,30 @@ provider = "anthropic"
 model = "claude-sonnet-4-6"
 ```
 
+## Git Integration
+
+Syntagmax automatically extracts revision history for each artifact using Git. This provides traceability and helps track changes over time.
+
+### Revision Descriptors
+
+Each artifact is attached with a set of revisions. A revision includes:
+- **Short Hash**: The 7-character commit hash.
+- **Timestamp**: Date and time of the commit.
+- **Author**: Email of the commit author.
+
+### Extraction Logic
+
+- **Text-based artifacts** (e.g., source code sections, Obsidian requirements): Syntagmax uses `git blame` to identify all commits that affected the specific lines where the artifact is defined.
+- **Sidecar artifacts**: Syntagmax identifies the last commit that affected the primary file (e.g., an image) and all commits that affected the sidecar metadata file.
+
+### Disabling Git Integration
+
+If you want to skip git history extraction (e.g., if you are not in a git repository or want to speed up analysis), use the `--no-git` flag:
+
+```bash
+syntagmax analyze --no-git
+```
+
 ## Metamodel DSL
 
 Syntagmax allows defining a custom metamodel for artifacts and their attributes using a simple DSL. This metamodel is used for static validation of requirements and other artifacts.
