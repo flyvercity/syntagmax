@@ -15,9 +15,11 @@ from syntagmax.extractors.extractor import Extractor, ExtractorResult
 from syntagmax.config import Config, InputRecord
 from syntagmax.artifact import ArtifactBuilder, Artifact, Location
 
+
 class MarkdownArtifact(Artifact):
     def __init__(self, config: Config):
         super().__init__(config)
+
 
 class MarkdownTransformer(Transformer):
     def AID(self, t):
@@ -47,6 +49,7 @@ class MarkdownTransformer(Transformer):
     def req(self, t):
         return {'req': {'contents': t[0], 'fields': t[1], 'yaml': t[2]}}
 
+
 class MarkdownExtractor(Extractor):
     def __init__(self, config: Config, record: InputRecord, metamodel: dict | None = None):
         super().__init__(config, record, metamodel)
@@ -55,10 +58,7 @@ class MarkdownExtractor(Extractor):
         self._transformer = MarkdownTransformer()
 
     def _extract_from_markdown(
-        self, 
-        filepath: Path, 
-        markdown: str, 
-        location_builder: Callable[[int, int], Location]
+        self, filepath: Path, markdown: str, location_builder: Callable[[int, int], Location]
     ) -> ExtractorResult:
         artifacts: list[Artifact] = []
         errors: list[str] = []
@@ -135,10 +135,9 @@ class MarkdownExtractor(Extractor):
 
                 if not aid:
                     error = f'Missing ID in metadata at line {start_line}'
-                    lg.error(error)
-                    errors.append(error)
+                    lg.warning(error)
                     pos = segment_end
-                    continue
+                    aid = '<undefined>'
 
                 atype = temp_attrs.get('atype') or self._record.default_atype
 

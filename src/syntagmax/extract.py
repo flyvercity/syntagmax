@@ -62,11 +62,14 @@ def build_artifact_map(artifacts_list: list[Artifact]) -> tuple[dict[str, Artifa
     errors: list[str] = []
 
     for a in artifacts_list:
+        print('<<' + a.aid + '>>')
         if not a.aid:
             errors.append(f'Artifact {a.atype} at {a.location} has no ID')
             continue
         if a.aid in artifacts:
-            errors.append(f'Duplicate artifact ID: {a.aid} at {a.location} (already defined at {artifacts[a.aid].location})')
+            errors.append(
+                f'Duplicate artifact ID: {a.aid} at {a.location} (already defined at {artifacts[a.aid].location})'
+            )
             continue
         artifacts[a.aid] = a
 
