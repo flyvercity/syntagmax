@@ -9,7 +9,7 @@ import logging as lg
 from syntagmax.config import Config
 from syntagmax.errors import FatalError
 
-from syntagmax.extract import extract
+from syntagmax.extract import extract, build_artifact_map
 from syntagmax.tree import build_tree, populate_pids
 from syntagmax.render import print_arttree
 from syntagmax.analyse import analyse_tree
@@ -21,8 +21,12 @@ from syntagmax.impact import perform_impact_analysis, render_impact_report
 
 def process(config: Config):
     errors: list[str] = []
-    artifacts, e_errors = extract(config)
+    artifacts_list, e_errors = extract(config)
     errors.extend(e_errors)
+
+    artifacts, v_errors = build_artifact_map(artifacts_list)
+    errors.extend(v_errors)
+
     populate_pids(config, artifacts)
     t_errors = build_tree(config, artifacts)
     errors.extend(t_errors)

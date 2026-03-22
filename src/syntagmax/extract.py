@@ -37,9 +37,9 @@ def print_artifact(artifact: Artifact):
     )
 
 
-def extract(config: Config) -> tuple[dict[str, Artifact], list[str]]:
-    artifacts: Sequence[Artifact] = []
-    errors: Sequence[str] = []
+def extract(config: Config) -> tuple[list[Artifact], list[str]]:
+    artifacts: list[Artifact] = []
+    errors: list[str] = []
 
     for record in config.input_records():
         lg.debug(f'Processing record: {record.name} ({record.driver})')
@@ -54,12 +54,20 @@ def extract(config: Config) -> tuple[dict[str, Artifact], list[str]]:
         for artifact in artifacts:
             print_artifact(artifact)
 
-    artifact_map: dict[str, Artifact] = {}
+    return artifacts, errors
 
-    for a in artifacts:
-        if a.aid in artifact_map:
-            errors.append(f'Duplicate artifact: {a} replaces {artifact_map[a.aid]}')
-        else:
-            artifact_map[a.aid] = a
 
-    return artifact_map, errors
+def build_artifact_map(artifacts_list: list[Artifact]) -> tuple[dict[str, Artifact], list[str]]:
+    artifacts: dict[str, Artifact] = {}
+    errors: list[str] = []
+
+    for a in artifacts_list:
+        if not a.aid:
+            errors.append(f'Artifact {a.atype} at {a.location} has no ID')
+            continue
+        if a.aid in artifacts:
+            errors.append(f'Duplicate artifact ID: {a.aid} at {a.location} (already defined at {artifacts[a.aid].location})')
+            continue
+        artifacts[a.aid] = a
+
+    return artifacts, errors

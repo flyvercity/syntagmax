@@ -1,6 +1,6 @@
 import logging as lg
 from mcp.server.fastmcp import FastMCP
-from syntagmax.extract import extract
+from syntagmax.extract import extract, build_artifact_map
 from syntagmax.tree import build_tree, populate_pids
 from syntagmax.analyse import analyse_tree
 from syntagmax.errors import FatalError
@@ -15,11 +15,12 @@ class SyntagmaxMCPServer:
 
     def initialize(self):
         lg.info('Initializing MCP server: extracting artifacts...')
-        artifacts, e_errors = extract(self.config)
+        artifacts_list, e_errors = extract(self.config)
+        artifacts, v_errors = build_artifact_map(artifacts_list)
         populate_pids(self.config, artifacts)
         t_errors = build_tree(self.config, artifacts)
         a_errors = analyse_tree(self.config, artifacts)
-        errors = e_errors + t_errors + a_errors
+        errors = e_errors + v_errors + t_errors + a_errors
         if errors:
             raise FatalError(errors)
         self.artifacts = artifacts
