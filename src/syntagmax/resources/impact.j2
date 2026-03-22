@@ -10,6 +10,11 @@
 {% for link in impact.suspicious_links -%}
 | {{ link.artifact_atype }}:{{ link.artifact_aid }} | {{ link.parent_atype }}:{{ link.parent_aid }} | {{ link.nominal_revision }} | {{ link.actual_revision }} |
 {% endfor %}
+
+## {{ _("Suspicious Tree") }}
+```text
+{{ impact.suspicious_tree }}
+```
 {% else %}
 {{ _("No suspicious links found.") }}
 {% endif %}

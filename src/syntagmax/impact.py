@@ -74,7 +74,60 @@ def perform_impact_analysis(config: Config, artifacts: ArtifactMap, errors: list
     impact_data['suspicious_links'] = suspicious_links
     impact_data['total_suspicious'] = len(suspicious_links)
 
+    if suspicious_links:
+        suspicious_aids = {link['artifact_aid'] for link in suspicious_links}
+        impact_data['suspicious_tree'] = _generate_suspicious_tree(artifacts, suspicious_aids)
+
     return impact_data
+
+
+CONST_I_CHAR = '│'
+CONST_T_CHAR = '├─'
+CONST_L_CHAR = '└─'
+
+
+def _generate_suspicious_tree(artifacts: ArtifactMap, suspicious_aids: set[str]) -> str:
+    cache: dict[str, bool] = {}
+
+    def has_suspicious_descendant(aid: str) -> bool:
+        if aid in cache:
+            return cache[aid]
+        res = False
+        if aid in suspicious_aids:
+            res = True
+        else:
+            for cid in artifacts[aid].children:
+                if has_suspicious_descendant(cid):
+                    res = True
+                    break
+        cache[aid] = res
+        return res
+
+    def render_node(aid: str, indent: str = '', last: bool = True, top: bool = True) -> str:
+        if not has_suspicious_descendant(aid):
+            return ""
+
+        a = artifacts[aid]
+        this_indent = indent + (CONST_L_CHAR if last else CONST_T_CHAR) if not top else ''
+        
+        status = ""
+        if aid in suspicious_aids:
+            status = " [!] OUTDATED"
+        
+        label = f"{a.atype}:{a.aid}" if a.atype != 'ROOT' else a.aid
+        line = f"{this_indent}{label}{status}\n"
+        
+        new_indent = indent + ((CONST_I_CHAR + ' ') if not last else '  ') if not top else ''
+        
+        relevant_children = [cid for cid in sorted(a.children) if has_suspicious_descendant(cid)]
+        
+        res = line
+        for i, cid in enumerate(relevant_children):
+            res += render_node(cid, new_indent, i == len(relevant_children) - 1, False)
+        
+        return res
+
+    return render_node('ROOT').strip()
 
 
 def _load_catalog(locale_dir: Path, locale: str) -> Catalog | None:
@@ -132,6 +185,10 @@ def _print_impact_console(impact_data: benedict):
         )
 
     rich.print(table)
+
+    if 'suspicious_tree' in impact_data:
+        from rich.panel import Panel
+        rich.print(Panel(impact_data['suspicious_tree'], title='Suspicious Tree', expand=False))
 
 
 def _publish_impact_report(impact_data: benedict, config: Config):
