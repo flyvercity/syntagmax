@@ -39,6 +39,15 @@ class LineLocation(Location):
         return f'{self.loc_file}:{self.loc_lines[0]}-{self.loc_lines[1]}'
 
 
+class NotebookLocation(LineLocation):
+    def __init__(self, loc_file: str, loc_lines: tuple[int, int], loc_cell: int):
+        super().__init__(loc_file, loc_lines)
+        self.loc_cell = loc_cell
+
+    def __str__(self) -> str:
+        return f'{self.loc_file}[{self.loc_cell}]:{self.loc_lines[0]}-{self.loc_lines[1]}'
+
+
 @dataclass(frozen=True)
 class Revision:
     hash_long: str
