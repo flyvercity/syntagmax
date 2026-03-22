@@ -12,6 +12,18 @@ Run example analysis with:
 uv run syntagmax --render-tree --cwd ./example/obsidian-driver/ analyze
 ```
 
+## Getting Started
+
+To initialize a new Syntagmax project in the current directory:
+
+```bash
+uv run syntagmax init
+```
+
+This command creates a `.syntagmax` directory with:
+- `config.toml`: A template configuration file with common options.
+- `project.syntagmax`: A basic metamodel definition to get you started.
+
 ## Configuration
 
 Syntagmax uses a TOML configuration file (default `.syntagmax/config.toml`).
