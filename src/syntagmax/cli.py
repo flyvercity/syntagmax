@@ -19,6 +19,7 @@ from syntagmax.config import Config, Params
 from syntagmax.errors import RMSException, FatalError
 from syntagmax.main import process
 from syntagmax.mcp.server import run_mcp_server
+from syntagmax.init_cmd import init_project
 
 
 @click.group(help='RMS Entry Point')
@@ -39,6 +40,14 @@ def rms(ctx: click.Context, **kwargs: dict[str, Any]):
         os.chdir(ctx.obj['cwd'])
 
     lg.info(f'Verbose: {verbose}')
+
+
+@rms.command(help='Initialize a new Syntagmax project')
+@click.pass_context
+def init(ctx: click.Context):
+    cwd = ctx.obj.get('cwd') if ctx.obj else None
+    init_project(cwd)
+    u.pprint('[green]Initialized a new Syntagmax project.[/green]')
 
 
 @rms.command(help='Run full analysis of the project')
