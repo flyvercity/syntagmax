@@ -95,7 +95,7 @@ def _generate_suspicious_tree(artifacts: ArtifactMap, suspicious_aids: set[str])
         res = False
         if aid in suspicious_aids:
             res = True
-        else:
+        elif aid in artifacts:
             for cid in artifacts[aid].children:
                 if has_suspicious_descendant(cid):
                     res = True
@@ -105,6 +105,9 @@ def _generate_suspicious_tree(artifacts: ArtifactMap, suspicious_aids: set[str])
 
     def render_node(aid: str, indent: str = '', last: bool = True, top: bool = True) -> str:
         if not has_suspicious_descendant(aid):
+            return ""
+
+        if aid not in artifacts:
             return ""
 
         a = artifacts[aid]
