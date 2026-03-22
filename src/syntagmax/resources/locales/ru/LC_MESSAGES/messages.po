@@ -3,7 +3,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: syntagmax 0.0.1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-03-21 20:46+0200\n"
+"POT-Creation-Date: 2026-03-22 14:08+0200\n"
 "PO-Revision-Date: 2026-02-15 12:00+0000\n"
 "Last-Translator: \n"
 "Language: ru\n"
@@ -48,6 +48,11 @@ msgid "Actual Revision"
 msgstr "Фактическая ревизия"
 
 #: src/syntagmax/resources/impact.j2:14
+#, fuzzy
+msgid "Suspicious Tree"
+msgstr "Подозрительные связи"
+
+#: src/syntagmax/resources/impact.j2:19
 msgid "No suspicious links found."
 msgstr "Подозрительных связей не обнаружено."
 
