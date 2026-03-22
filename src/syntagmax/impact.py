@@ -76,7 +76,8 @@ def perform_impact_analysis(config: Config, artifacts: ArtifactMap, errors: list
 
     if suspicious_links:
         suspicious_aids = {link['artifact_aid'] for link in suspicious_links}
-        impact_data['suspicious_tree'] = _generate_suspicious_tree(artifacts, suspicious_aids)
+        updated_aids = {link['parent_aid'] for link in suspicious_links}
+        impact_data['suspicious_tree'] = _generate_suspicious_tree(artifacts, suspicious_aids, updated_aids)
 
     return impact_data
 
@@ -86,7 +87,7 @@ CONST_T_CHAR = '├─'
 CONST_L_CHAR = '└─'
 
 
-def _generate_suspicious_tree(artifacts: ArtifactMap, suspicious_aids: set[str]) -> str:
+def _generate_suspicious_tree(artifacts: ArtifactMap, suspicious_aids: set[str], updated_aids: set[str]) -> str:
     cache: dict[str, bool] = {}
 
     def has_suspicious_descendant(aid: str) -> bool:
@@ -115,7 +116,9 @@ def _generate_suspicious_tree(artifacts: ArtifactMap, suspicious_aids: set[str])
         
         status = ""
         if aid in suspicious_aids:
-            status = " [!] OUTDATED"
+            status += " [!] OUTDATED"
+        if aid in updated_aids:
+            status += " [*] UPDATED"
         
         label = f"{a.atype}:{a.aid}" if a.atype != 'ROOT' else a.aid
         line = f"{this_indent}{label}{status}\n"
