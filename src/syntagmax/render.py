@@ -26,12 +26,12 @@ def print_artifact(artifact: Artifact, indent: str, last: bool, top: bool, has_c
     if top:
         return
 
-    if has_children:
-        detail_indent = indent + CONST_I_CHAR + ' ' + CONST_I_CHAR
-    elif not last:
-        detail_indent = indent + CONST_I_CHAR
-    else:
-        detail_indent = indent + '   '
+    # detail_indent should continue the tree lines for siblings and children
+    # 1. Continue the parent's branch line only if this artifact is not the last child
+    # 2. Add a vertical line for this artifact's own children
+    branch_line = CONST_I_CHAR if not last else ' '
+    children_line = CONST_I_CHAR if has_children else ' '
+    detail_indent = indent + branch_line + ' ' + children_line
 
     u.pprint(f'{detail_indent} [i]{metastring}[/i]')
 
