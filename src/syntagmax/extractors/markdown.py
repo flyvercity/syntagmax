@@ -13,7 +13,7 @@ from benedict import benedict
 
 from syntagmax.extractors.extractor import Extractor, ExtractorResult
 from syntagmax.config import Config, InputRecord
-from syntagmax.artifact import ArtifactBuilder, Artifact, Location
+from syntagmax.artifact import ArtifactBuilder, Artifact, Location, UNDEFINED_ID
 
 
 class MarkdownArtifact(Artifact):
@@ -137,7 +137,7 @@ class MarkdownExtractor(Extractor):
                     error = f'Missing ID in metadata at line {start_line}'
                     lg.warning(error)
                     pos = segment_end
-                    aid = '<undefined>'
+                    aid = UNDEFINED_ID
 
                 atype = temp_attrs.get('atype') or self._record.default_atype
 

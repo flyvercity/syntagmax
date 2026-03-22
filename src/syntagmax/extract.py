@@ -11,7 +11,7 @@ from syntagmax.extractors.text import TextExtractor
 from syntagmax.extractors.sidecar import SidecarExtractor
 from syntagmax.extractors.obsidian import ObsidianExtractor
 from syntagmax.extractors.ipynb import IPynbExtractor
-from syntagmax.artifact import Artifact
+from syntagmax.artifact import Artifact, UNDEFINED_ID
 from syntagmax.config import Config
 from syntagmax.utils import pprint
 
@@ -62,8 +62,7 @@ def build_artifact_map(artifacts_list: list[Artifact]) -> tuple[dict[str, Artifa
     errors: list[str] = []
 
     for a in artifacts_list:
-        print('<<' + a.aid + '>>')
-        if not a.aid:
+        if not a.aid or a.aid == UNDEFINED_ID:
             errors.append(f'Artifact {a.atype} at {a.location} has no ID')
             continue
         if a.aid in artifacts:

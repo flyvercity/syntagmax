@@ -66,6 +66,9 @@ class ParentLink:
     is_suspicious: bool = False
 
 
+UNDEFINED_ID = '<undefined>'
+
+
 class Artifact:
     def __init__(self, config: Config):
         self._config = config

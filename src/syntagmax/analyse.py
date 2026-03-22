@@ -147,16 +147,20 @@ class ArtifactValidator:
         for rule in trace_rules:
             targets = set(rule['targets'])
             mode = rule.get('mode', 'timestamp')
-            
+
             found = False
             for parent in actual_parents:
                 if parent.atype in targets:
                     found = True
                     # Validate mode
                     # Find the link in parent_links
-                    link = next((l for l in artifact.parent_links if l.pid == parent.aid), None)
+                    link = next((pl for pl in artifact.parent_links if pl.pid == parent.aid), None)
                     if link:
-                        if mode == 'timestamp' and link.nominal_revision != 'older' and link.nominal_revision is not None:
+                        if (
+                            mode == 'timestamp'
+                            and link.nominal_revision != 'older'
+                            and link.nominal_revision is not None
+                        ):
                             self.errors.append(
                                 f"Trace from '{artifact.atype}' to '{parent.atype}' is 'by timestamp', "
                                 f"but revision was specified: '{link.pid}@{link.nominal_revision}' ({artifact})"

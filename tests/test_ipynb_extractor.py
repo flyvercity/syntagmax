@@ -1,7 +1,6 @@
 # SPDX-License-Identifier: MIT
 import json
 import pytest
-from pathlib import Path
 from syntagmax.config import Config, InputRecord
 from syntagmax.extractors.ipynb import IPynbExtractor
 from syntagmax.params import Params

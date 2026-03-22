@@ -13,11 +13,13 @@ from lark import Lark, Transformer, exceptions
 from syntagmax.config import Config, InputRecord
 from syntagmax.artifact import ArtifactBuilder, Artifact, ValidationError, LineLocation
 from syntagmax.extractors.extractor import Extractor, ExtractorResult
+from syntagmax.artifact import UNDEFINED_ID
 
 
 class IdRef:
     def __init__(self, aid: str):
         self.value = aid
+
 
 class ATypeRef:
     def __init__(self, atype: str):
@@ -136,9 +138,9 @@ class TextExtractor(Extractor):
 
                 if aid is None:
                     error = self._format_error('Missing ID', location, section_start_string, 'ID is required')
-                    errors.append(error)
+                    lg.warning(error)
                     pos = segment_end
-                    continue
+                    aid = UNDEFINED_ID
 
                 builder.add_id(aid, atype)
                 builder.add_field('id', aid)

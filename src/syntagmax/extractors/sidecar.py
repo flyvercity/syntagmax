@@ -11,6 +11,7 @@ import yaml
 from syntagmax.config import Config, InputRecord
 from syntagmax.artifact import ArtifactBuilder, Artifact, FileLocation, ValidationError
 from syntagmax.extractors.extractor import Extractor, ExtractorResult
+from syntagmax.artifact import UNDEFINED_ID
 
 
 class SidecarExtractor(Extractor):
@@ -38,15 +39,17 @@ class SidecarExtractor(Extractor):
                 original_path = sidecar_path.with_name(original_name)
 
                 if not original_path.exists():
-                    errors.append(f'{self.driver()} :: Orphaned sidecar file {sidecar_path} without matching original file')
+                    errors.append(
+                        f'{self.driver()} :: Orphaned sidecar file {sidecar_path} without matching original file'
+                    )
 
         return artifacts, errors
 
     def extract_from_file(self, filepath: Path) -> ExtractorResult:
         lg.debug(f'Processing sidecar driver for original file: {filepath}')
 
-        stmx_path = filepath.with_name(f"{filepath.name}.stmx")
-        syntagmax_path = filepath.with_name(f"{filepath.name}.syntagmax")
+        stmx_path = filepath.with_name(f'{filepath.name}.stmx')
+        syntagmax_path = filepath.with_name(f'{filepath.name}.syntagmax')
 
         stmx_exists = stmx_path.exists()
         syntagmax_exists = syntagmax_path.exists()
@@ -73,17 +76,12 @@ class SidecarExtractor(Extractor):
         if 'id' not in data:
             return [], [f'{self.driver()} :: Missing required "id" field in sidecar {sidecar_path}']
 
-        aid = str(data.pop('id'))
+        aid = str(data.pop('id', UNDEFINED_ID))
         atype = str(data.pop('atype', self._record.default_atype))
 
-        location = FileLocation(
-            self._config.derive_path(filepath),
-            self._config.derive_path(sidecar_path)
-        )
+        location = FileLocation(self._config.derive_path(filepath), self._config.derive_path(sidecar_path))
 
-        builder = ArtifactBuilder(
-            self._config, Artifact, self.driver(), location, self._metamodel
-        )
+        builder = ArtifactBuilder(self._config, Artifact, self.driver(), location, self._metamodel)
 
         try:
             builder.add_id(aid, atype)
