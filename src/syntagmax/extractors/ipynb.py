@@ -6,49 +6,36 @@
 
 from pathlib import Path
 import json
-import traceback
-import logging as lg
 
-from syntagmax.config import Config, InputRecord
-from syntagmax.extractors.obsidian import ObsidianExtractor
+from syntagmax.extractors.markdown import MarkdownExtractor
 from syntagmax.extractors.extractor import ExtractorResult
-from syntagmax.artifact import Artifact
+from syntagmax.artifact import NotebookLocation
 
 
-class IPynbExtractor(ObsidianExtractor):
-    def __init__(self, config: Config, record: InputRecord, metamodel: dict | None = None):
-        super().__init__(config, record, metamodel)
-
+class IPynbExtractor(MarkdownExtractor):
     def driver(self) -> str:
         return 'ipynb'
 
     def extract_from_file(self, filepath: Path) -> ExtractorResult:
         try:
             notebook = json.loads(filepath.read_text(encoding='utf-8'))
-            base_dir = self._config.base_dir()
-            location = f'file://{filepath.relative_to(base_dir)}'
-            artifacts: list[Artifact] = []
-            errors: list[str] = []
+            loc_file = self._config.derive_path(filepath)
+            artifacts = []
+            errors = []
 
-            for cell in notebook['cells']:
+            for i, cell in enumerate(notebook['cells']):
                 if cell['cell_type'] == 'markdown':
                     markdown = ''.join(cell['source'])
-                    cell_artifacts, cell_errors = self._extract_from_markdown(location, markdown)
-                    errors.extend(cell_errors)
 
-                    if cell_artifacts:
-                        # NB: allowing only one artifact per file
-                        if not artifacts:
-                            artifacts.extend(cell_artifacts)
-                        else:
-                            error = f'Multiple artifacts found in {location}'
-                            errors.append(error)
+                    def location_builder(start, end, idx=i):
+                        return NotebookLocation(loc_file=loc_file, loc_lines=(start, end), loc_cell=idx)
+
+                    cell_artifacts, cell_errors = self._extract_from_markdown(filepath, markdown, location_builder)
+                    errors.extend(cell_errors)
+                    artifacts.extend(cell_artifacts)
 
             return artifacts, errors
 
         except Exception as e:
-            if self._config.params['verbose']:
-                lg.error(f'Error extracting from {filepath}: {e}, {traceback.format_exc()}')
-
             message = f'Error extracting from {filepath}: {e}'
             return [], [message]
