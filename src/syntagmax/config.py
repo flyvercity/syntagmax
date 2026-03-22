@@ -32,60 +32,76 @@ DEFAULT_FILTERS = {'obsidian': '**/*.md', 'ipynb': '**/*.ipynb', 'markdown': '**
 
 
 class InputConfig(BaseModel):
-    name: str = Field(..., description='Input source name')
-    dir: str = Field(..., description='Subdirectory relative to base directory')
-    driver: str = Field(..., description='Driver type for processing')
-    filter: str | None = Field(default=None, description='File filter pattern')
-    atype: str = Field('REQ', description='Default artifact type')
+    name: str = Field(..., description='Input source name (e.g., "requirements")')
+    dir: str = Field(..., description='Subdirectory relative to the base directory where artifacts are located')
+    driver: str = Field(..., description='Driver type for processing (e.g., "obsidian", "text")')
+    filter: str | None = Field(
+        default=None, description='File filter pattern (glob). If omitted, driver-specific defaults are used.'
+    )
+    atype: str = Field('REQ', description='Default artifact type for this input source')
 
 
 class MetricsConfig(BaseModel):
-    enabled: bool = Field(default=False, description='Enable metrics collection')
-    requirement_type: str = Field(default='REQ', description='Requirement type')
-    status_field: str = Field(default='status', description='Status attribute name')
-    verify_field: str = Field(default='verify', description='Verify attribute name')
-    tbd_marker: str = Field(default='TBD', description='TBD detection marker')
-    output_format: str = Field(default='rich', description='Output format', pattern='^(rich|markdown)$')
-    output_file: str = Field(default='console', description='Output file name')
-    template: str | None = Field(default=None, description='Path to custom Jinja template')
-    locale: str = Field(default='en', description='Locale code for localization')
+    enabled: bool = Field(default=False, description='Enable metrics collection and reporting')
+    requirement_type: str = Field(
+        default='REQ', description='The artifact type to treat as a "requirement" for metrics'
+    )
+    status_field: str = Field(default='status', description='Name of the attribute used to track artifact status')
+    verify_field: str = Field(default='verify', description='Name of the attribute used to track verification status')
+    tbd_marker: str = Field(default='TBD', description='String marker used to identify "To Be Defined" items')
+    output_format: str = Field(
+        default='rich', description='Format for the metrics report (rich or markdown)', pattern='^(rich|markdown)$'
+    )
+    output_file: str = Field(default='console', description='Output destination: "console" or a file path')
+    template: str | None = Field(default=None, description='Optional path to a custom Jinja2 template for the report')
+    locale: str = Field(default='en', description='Locale code for localized reports (e.g., "en", "ru")')
 
 
 class ImpactConfig(BaseModel):
-    enabled: bool = Field(default=False, description='Enable impact analysis')
-    output_format: str = Field(default='rich', description='Output format', pattern='^(rich|markdown)$')
-    output_file: str = Field(default='console', description='Output file name')
-    template: str | None = Field(default=None, description='Path to custom Jinja template')
-    locale: str = Field(default='en', description='Locale code for localization')
+    enabled: bool = Field(default=False, description='Enable impact analysis to detect potentially outdated artifacts')
+    output_format: str = Field(
+        default='rich', description='Format for the impact report (rich or markdown)', pattern='^(rich|markdown)$'
+    )
+    output_file: str = Field(default='console', description='Output destination: "console" or a file path')
+    template: str | None = Field(default=None, description='Optional path to a custom Jinja2 template for the report')
+    locale: str = Field(default='en', description='Locale code for localized reports (e.g., "en", "ru")')
 
 
 class AIConfig(BaseModel):
-    provider: str = Field(default='ollama', description='AI provider (ollama, anthropic, openai, gemini, bedrock)')
-    model: str | None = Field(default=None, description='Model name to use')
+    provider: str = Field(
+        default='ollama', description='AI provider to use (ollama, anthropic, openai, gemini, bedrock)'
+    )
+    model: str | None = Field(default=None, description='Model name to use (e.g., "gpt-4o", "claude-3-5-sonnet")')
     # Provider-specific configurations
-    anthropic_api_key: str | None = Field(default=None)
-    openai_api_key: str | None = Field(default=None)
-    gemini_api_key: str | None = Field(default=None)
-    aws_access_key_id: str | None = Field(default=None)
-    aws_secret_access_key: str | None = Field(default=None)
-    aws_session_token: str | None = Field(default=None)
-    aws_region_name: str | None = Field(default=None)
-    aws_api_key: str | None = Field(default=None)
-    ollama_host: str = Field(default='http://localhost:11434')
-    timeout_s: float = Field(default=60.0)
+    anthropic_api_key: str | None = Field(
+        default=None, description='Anthropic API Key. Can also be set via ANTHROPIC_API_KEY env var.'
+    )
+    openai_api_key: str | None = Field(
+        default=None, description='OpenAI API Key. Can also be set via OPENAI_API_KEY env var.'
+    )
+    gemini_api_key: str | None = Field(
+        default=None, description='Google Gemini API Key. Can also be set via GEMINI_API_KEY env var.'
+    )
+    aws_access_key_id: str | None = Field(default=None, description='AWS Access Key ID for Bedrock.')
+    aws_secret_access_key: str | None = Field(default=None, description='AWS Secret Access Key for Bedrock.')
+    aws_session_token: str | None = Field(default=None, description='AWS Session Token for Bedrock (optional).')
+    aws_region_name: str | None = Field(default=None, description='AWS Region for Bedrock (e.g., "us-east-1").')
+    aws_api_key: str | None = Field(default=None, description='AWS Bedrock API Key (if applicable).')
+    ollama_host: str = Field(default='http://localhost:11434', description='Host URL for the Ollama API')
+    timeout_s: float = Field(default=60.0, description='Timeout in seconds for AI provider requests')
 
 
 class Metamodel(BaseModel):
-    filename: str = Field(default=None, description='Model definition file')
+    filename: str = Field(default=None, description='Path to the .syntagmax file defining the project metamodel')
 
 
 class ConfigFile(BaseModel):
-    base: str = Field(default='..', description='Base directory path')
-    input: list[InputConfig] = Field(..., description='Input configuration records')
-    metrics: MetricsConfig = Field(MetricsConfig(), description='Metrics configuration')
-    impact: ImpactConfig = Field(ImpactConfig(), description='Impact analysis configuration')
-    metamodel: Metamodel = Field(Metamodel(), description='Metamodel configuration')
-    ai: AIConfig = Field(default_factory=AIConfig, description='AI configuration')
+    base: str = Field(default='..', description='Base directory for relative paths, relative to this config file')
+    input: list[InputConfig] = Field(..., description='List of input sources to process')
+    metrics: MetricsConfig = Field(MetricsConfig(), description='Configuration for metrics collection')
+    impact: ImpactConfig = Field(ImpactConfig(), description='Configuration for impact analysis')
+    metamodel: Metamodel = Field(Metamodel(), description='Configuration for the artifact metamodel')
+    ai: AIConfig = Field(default_factory=AIConfig, description='Configuration for AI-powered analysis')
 
 
 class Config:
