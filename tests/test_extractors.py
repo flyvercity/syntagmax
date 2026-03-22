@@ -144,3 +144,32 @@ attrs:
     assert 'not-a-field' not in artifact.fields
     # it should be in contents
     assert '[not-a-field]' in artifact.fields['contents']
+
+
+def test_text_extractor_lowercase(config, input_record, tmp_path):
+    contents = """
+    [<
+    id = REQ-1
+    type = system-requirement
+    >>>
+    This is the body.
+    >]
+    [<
+    ID = REQ-2
+    type = user-requirement
+    >>>
+    Mixed case.
+    >]
+    """
+    filepath = tmp_path / 'test_lower.txt'
+    filepath.write_text(contents, encoding='utf-8')
+
+    extractor = TextExtractor(config, input_record)
+    artifacts, errors = extractor.extract_from_file(filepath)
+
+    assert len(errors) == 0
+    assert len(artifacts) == 2
+    assert artifacts[0].aid == 'REQ-1'
+    assert artifacts[0].atype == 'system-requirement'
+    assert artifacts[1].aid == 'REQ-2'
+    assert artifacts[1].atype == 'user-requirement'

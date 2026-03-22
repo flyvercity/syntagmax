@@ -19,6 +19,18 @@ dir = "REQ"
 driver = "obsidian"
 atype = "REQ"
 
+[[input]]
+name = "implementation"
+dir = "src"
+driver = "text"
+atype = "SRC"
+
+[[input]]
+name = "verification"
+dir = "tests"
+driver = "text"
+atype = "TEST"
+
 [metrics]
 enabled = true
 requirement_type = "REQ"

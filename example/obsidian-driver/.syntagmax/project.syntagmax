@@ -22,3 +22,18 @@ artifact REQ:
     attribute related is optional multiple reference
 
 trace from REQ to SYS is mandatory
+
+# Source code
+artifact SRC:
+    attribute id is mandatory string
+    attribute contents is mandatory string
+    attribute parent is mandatory reference to parent
+
+# Tests
+artifact TEST:
+    attribute id is mandatory string
+    attribute contents is mandatory string
+    attribute parent is mandatory multiple reference to parent
+
+trace from SRC to REQ is mandatory
+trace from TEST to REQ or SRC is mandatory

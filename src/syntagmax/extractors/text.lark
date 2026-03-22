@@ -8,8 +8,8 @@ skip: /.(?!(?:>>>|>]|\[<))/s
 
 directive: id_directive | type_directive | attr_directive
 
-id_directive: "ID" "=" AID
-type_directive: "TYPE" "=" ATYPE
+id_directive: ("ID" | "id") "=" AID
+type_directive: ("TYPE" | "type") "=" ATYPE
 attr_directive: NAME "=" VALUE
 
 AID: /[a-zA-Z0-9-]+/

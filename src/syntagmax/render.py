@@ -62,6 +62,7 @@ def print_artifact(artifact: Artifact, indent: str, last: bool, top: bool, has_c
     for field in artifact.fields:
         field_str = str(artifact.fields[field])
         if len(field_str) > 60:
+            field_str = field_str.split()[0]
             field_str = field_str[0:60] + '...'
         u.pprint(f'{detail_indent}  - {field}: {field_str}')
 
