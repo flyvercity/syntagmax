@@ -1,5 +1,10 @@
 # SPDX-License-Identifier: MIT
 
+# Author: Boris Resnick
+# Created: 2026-03-22
+# Description: AI providers for Syntagmax.
+
+
 from abc import ABC, abstractmethod
 from typing import Any, Dict
 import logging as lg
