@@ -10,6 +10,8 @@ import re
 from syntagmax.artifact import ArtifactMap, Artifact
 from syntagmax.config import Config
 
+NUM_PATTERN = re.compile(r'\{num(?::(\d+))?\}')
+
 
 class ArtifactValidator:
     def __init__(self, metamodel, artifacts: ArtifactMap, errors: list[str] | None = None):
@@ -24,6 +26,7 @@ class ArtifactValidator:
 
         self.errors = errors if errors is not None else []
         self._artifacts_map = artifacts
+        self._schema_regex_cache = {}  # Cache compiled regexes for performance
 
     def validate(self, artifact: Artifact):
         if self._artifacts is None:
@@ -49,53 +52,30 @@ class ArtifactValidator:
         if not schema:
             return
 
-        # Replace macros in schema with regex patterns
-        # {atype} -> artifact.atype
-        # {num:padding} -> \d{padding,} or \d+
-        pattern = schema.replace('{atype}', artifact.atype)
+        cache_key = (schema, artifact.atype)
+        if cache_key not in self._schema_regex_cache:
+            # Replace macros in schema with regex patterns
+            # {atype} -> artifact.atype
+            # {num:padding} -> \d{padding,} or \d+
+            pattern = schema.replace('{atype}', artifact.atype)
 
-        # Handle {num} and {num:padding}
-        # We need to find all occurrences of {num(?::(\d+))?}
-        num_pattern = re.compile(r'\{num(?::(\d+))?\}')
-
-        def replacer(match):
-            padding = match.group(1)
-            if padding:
-                return rf'\d{{{padding}}}'
-            return r'\d+'
-
-        # Split by the num_pattern, escape parts, and join with regex patterns
-        parts = num_pattern.split(pattern)
-        # num_pattern.split with groups will include the padding group in parts
-        # e.g. "REQ-{num:3}" -> ["REQ-", "3", ""]
-        regex_parts = []
-        for i, part in enumerate(parts):
-            if i % 2 == 0:
-                regex_parts.append(re.escape(part))
-            else:
-                if part:
-                    regex_parts.append(rf'\d{{{part}}}')
+            final_pattern = ""
+            last_pos = 0
+            for match in NUM_PATTERN.finditer(pattern):
+                final_pattern += re.escape(pattern[last_pos:match.start()])
+                padding = match.group(1)
+                if padding:
+                    final_pattern += rf'\d{{{padding}}}'
                 else:
-                    regex_parts.append(r'\d+')
+                    final_pattern += r'\d+'
+                last_pos = match.end()
+            final_pattern += re.escape(pattern[last_pos:])
 
-        # Wait, the split behavior is different if there's a group.
-        # Let's re-do this more carefully.
+            final_pattern = f'^{final_pattern}$'
+            self._schema_regex_cache[cache_key] = re.compile(final_pattern)
 
-        final_pattern = ""
-        last_pos = 0
-        for match in num_pattern.finditer(pattern):
-            final_pattern += re.escape(pattern[last_pos:match.start()])
-            padding = match.group(1)
-            if padding:
-                final_pattern += rf'\d{{{padding}}}'
-            else:
-                final_pattern += r'\d+'
-            last_pos = match.end()
-        final_pattern += re.escape(pattern[last_pos:])
-
-        final_pattern = f'^{final_pattern}$'
-
-        if not re.match(final_pattern, artifact.aid):
+        compiled_pattern = self._schema_regex_cache[cache_key]
+        if not compiled_pattern.match(artifact.aid):
             self.errors.append(
                 f"Artifact ID '{artifact.aid}' does not match schema '{schema}' for type '{artifact.atype}' ({artifact})"
             )
