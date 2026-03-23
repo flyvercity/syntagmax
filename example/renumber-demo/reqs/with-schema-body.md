@@ -1,7 +1,7 @@
 [REQ]
-This is the fifth requirement.
-[title] Fifth Requirement
+This is the fourth requirement.
+[title] Fourth Requirement
+[id] REQ-{num:3}
 ```yaml
 attrs:
-    id: REQ-{num:5}
 ```
