@@ -47,17 +47,3 @@ class Extractor:
         # Default implementation for bulk updates
         for artifact, new_id in updates:
             self.update_artifact(artifact, {'id': new_id})
-
-    def _format_file_location(self, filepath: Path) -> str:
-        names: list[str] = ['...']
-        parents = filepath.parents
-
-        if len(parents) >= 2:
-            names.append(parents[1].name)
-
-        if len(parents) >= 1:
-            names.append(parents[0].name)
-
-        names.append(filepath.name)
-
-        return '/'.join(names)
