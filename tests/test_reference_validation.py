@@ -7,12 +7,12 @@ from syntagmax.artifact import Artifact
 def validator(tmp_path):
     model_content = """
 artifact REQ:
-    attribute id is mandatory string
+    id is string
     attribute contents is mandatory string
     attribute link is optional reference
 
 artifact SRS:
-    attribute id is mandatory string
+    id is string
     attribute contents is mandatory string
 """
     model_file = tmp_path / "test.model"

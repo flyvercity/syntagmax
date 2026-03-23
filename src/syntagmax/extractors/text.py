@@ -5,6 +5,7 @@
 # Description: Extracts artifacts from text files (primarily, source code).
 
 import logging as lg
+import re
 from pathlib import Path
 from typing import Sequence
 

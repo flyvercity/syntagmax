@@ -6,12 +6,11 @@
 
 import logging as lg
 import re
-from typing import Sequence, Dict, List
 from collections import defaultdict
 
-from syntagmax.artifact import Artifact, ArtifactMap, UNDEFINED_ID
+from syntagmax.artifact import UNDEFINED_ID
 from syntagmax.config import Config
-from syntagmax.extract import extract, build_artifact_map
+from syntagmax.extract import extract
 
 def renumber_artifacts(
     config: Config,

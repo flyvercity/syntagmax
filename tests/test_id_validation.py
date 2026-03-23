@@ -1,10 +1,8 @@
 
 import pytest
-from pathlib import Path
 from syntagmax.metamodel import load_metamodel
 from syntagmax.artifact import Artifact, ArtifactMap
 from syntagmax.analyse import ArtifactValidator
-from syntagmax.config import Config
 from syntagmax.errors import FatalError
 
 @pytest.fixture

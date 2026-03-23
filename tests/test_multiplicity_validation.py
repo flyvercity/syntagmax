@@ -7,7 +7,7 @@ from syntagmax.artifact import Artifact
 def metamodel(tmp_path):
     model_content = """
 artifact REQ:
-    attribute id is mandatory string
+    id is string
     attribute contents is mandatory string
     attribute tags is optional multiple string
     attribute count is optional integer
@@ -104,7 +104,7 @@ def test_enum_validation(metamodel):
 def test_mandatory_multiple_missing(tmp_path):
     model_content = """
 artifact REQ:
-    attribute id is mandatory string
+    id is string
     attribute contents is mandatory string
     attribute tags is mandatory multiple string
 """
