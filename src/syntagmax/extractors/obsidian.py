@@ -6,13 +6,9 @@
 
 from pathlib import Path
 
-from syntagmax.extractors.markdown import MarkdownExtractor, MarkdownArtifact
+from syntagmax.extractors.markdown import MarkdownExtractor
 from syntagmax.extractors.extractor import ExtractorResult
 from syntagmax.artifact import LineLocation
-
-
-class ObsidianArtifact(MarkdownArtifact):
-    pass
 
 
 class ObsidianExtractor(MarkdownExtractor):
