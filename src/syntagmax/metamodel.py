@@ -19,13 +19,30 @@ class DSLTransformer(Transformer):
         return {'type': 'artifact', 'artifact_name': str(children[1]), 'attributes': attrs}
 
     def rule(self, children):
-        # children: name, presence, (multiple_token | None), type_info
-        return {
-            'name': str(children[0]),
-            'presence': str(children[1]),
-            'multiple': children[2] is not None,
-            'type_info': children[3],
-        }
+        # Handle the "attribute" rule
+        # If the first child is the "attribute" token (implicitly handled by rule grammar)
+        # or if it has a type, it's a regular attribute.
+        if hasattr(children[0], 'type') and children[0].type == 'WORD':
+            # children: name, presence, (multiple_token | None), type_info
+            return {
+                'name': str(children[0]),
+                'presence': str(children[1]),
+                'multiple': children[2] is not None,
+                'type_info': children[3],
+                'id_rule': False,
+            }
+        # Handle the "id" rule
+        else:
+            # children: type_info, [schema]
+            schema = str(children[1]).strip('"') if len(children) > 1 and children[1] is not None else None
+            return {
+                'name': 'id',
+                'presence': 'mandatory',
+                'multiple': False,
+                'type_info': children[0],
+                'schema': schema,
+                'id_rule': True,
+            }
 
     def trace(self, children):
         # trace: "trace" "from" name "to" target_list "is" PRESENCE ["via" TRACE_MODE] _NL
@@ -139,13 +156,35 @@ def load_metamodel(model_filename: Path, errors, validate=True):
 def validate_metamodel(metamodel: dict, errors: list[str]):
     for artifact_def in metamodel['artifacts'].values():
         attributes = artifact_def['attributes']
+        artifact_name = artifact_def['artifact_name']
 
-        if 'id' not in attributes:
-            errors.append(f"Artifact '{artifact_def['artifact_name']}' is missing an id attribute")
-        elif attributes['id']['presence'] != 'mandatory':
-            errors.append(f"Artifact '{artifact_def['artifact_name']}' id attribute is not mandatory")
+        # Check for regular attributes named 'id'
+        # The parser now distinguishes between 'id is ...' and 'attribute name is ...'
+        # but if someone does 'attribute id is ...' it might still come through as a regular rule.
+        # Actually, the grammar I wrote is:
+        # rule: "attribute" name "is" PRESENCE [MULTIPLE] type _NL
+        #    | "id" "is" type ["as" SCHEMA] _NL
+        # So "attribute id is ..." will match the first branch.
+
+        # Let's check if any regular attribute (not from the "id" rule) is named 'id'
+        # In our transformer, the "id" rule results in a dict with 'name': 'id' and possibly 'schema'.
+        # The regular rule results in a dict with 'name': str(children[0]).
+
+        # Actually, let's just check if there's more than one 'id' or if it doesn't have the expected mandatory properties.
+
+        # Forbid definitions of "regular" attributes named 'id'.
+        # All attributes named 'id' must come from the "id" rule.
+        for attr_name, attr_def in attributes.items():
+            if attr_name == 'id' and not attr_def.get('id_rule', False):
+                errors.append(f"Artifact '{artifact_name}' has a regular attribute named 'id'. Use 'id is ...' instead.")
+
+        id_attr = attributes.get('id')
+        if not id_attr:
+            errors.append(f"Artifact '{artifact_name}' is missing an id attribute")
+        elif id_attr.get('presence') != 'mandatory':
+            errors.append(f"Artifact '{artifact_name}' id attribute is not mandatory")
 
         if 'contents' not in attributes:
-            errors.append(f"Artifact '{artifact_def['artifact_name']}' is missing a contents attribute")
+            errors.append(f"Artifact '{artifact_name}' is missing a contents attribute")
         elif attributes['contents']['presence'] != 'mandatory':
             errors.append(f"Artifact '{artifact_def['artifact_name']}' contents attribute is not mandatory")

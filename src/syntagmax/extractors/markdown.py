@@ -57,6 +57,51 @@ class MarkdownExtractor(Extractor):
         self._parser = Lark.open(grammar_path, rel_to=__file__, parser='lalr', maybe_placeholders=False)
         self._transformer = MarkdownTransformer()
 
+    def update_artifacts(self, loc_file: str, updates: list[tuple[Artifact, str]]):
+        from syntagmax.artifact import LineLocation
+
+        # Read the file
+        filepath = self._config.base_dir() / loc_file
+        text = filepath.read_text(encoding='utf-8')
+        lines = text.splitlines(keepends=True)
+
+        # Apply updates in reverse order of line numbers to avoid offset shifts
+        updates.sort(key=lambda u: u[0].location.loc_lines[0], reverse=True) # type: ignore
+
+        for artifact, new_id in updates:
+            if not isinstance(artifact.location, LineLocation):
+                continue
+
+            start_line, end_line = artifact.location.loc_lines
+            segment_lines = lines[start_line - 1 : end_line]
+            segment = "".join(segment_lines)
+
+            # Update [id] format
+            segment = re.sub(r'\[id\]\s*[a-zA-Z0-9-{}:]*', f'[id] {new_id}', segment, flags=re.IGNORECASE)
+
+            # Update YAML block
+            yaml_start = segment.find('```yaml')
+            if yaml_start != -1:
+                yaml_end = segment.find('```', yaml_start + 7)
+                if yaml_end != -1:
+                    yaml_block = segment[yaml_start : yaml_end + 3]
+                    # Specific regex for id replacement in YAML to be more robust
+                    yaml_block = re.sub(r'^(\s*id:\s*).*$', rf'\g<1>{new_id}', yaml_block, flags=re.MULTILINE)
+                    segment = segment[:yaml_start] + yaml_block + segment[yaml_end + 3 :]
+
+            # Replace the segment in the lines list
+            lines[start_line - 1 : end_line] = [segment]
+
+        filepath.write_text("".join(lines), encoding='utf-8')
+
+    def update_artifact(self, artifact: Artifact, fields: dict[str, str]):
+        from syntagmax.artifact import LineLocation
+        if not isinstance(artifact.location, LineLocation):
+            return
+
+        if 'id' in fields:
+            self.update_artifacts(artifact.location.loc_file, [(artifact, fields['id'])])
+
     def _extract_from_markdown(
         self, filepath: Path, markdown: str, location_builder: Callable[[int, int], Location]
     ) -> ExtractorResult:

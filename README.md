@@ -218,7 +218,8 @@ Python-style comments (`# ...`) are supported.
 | Rule | Description |
 |------|-------------|
 | `artifact <NAME>:` | Defines a new artifact type. Rules must be indented. |
-| `attribute <ATTR> is <presence> [multiple] <type>` | Defines an attribute rule. |
+| `id is <type> [as <schema>]` | Defines the id attribute and its optional schema. |
+| `attribute <ATTR> is <presence> [multiple] <type>` | Defines a general attribute rule. |
 
 **Presence:** `mandatory` or `optional`.
 
@@ -280,6 +281,33 @@ attrs:
     - Bob
 ```
 This will result in `artifact.fields['author']` being `['Alice', 'Bob']`.
+
+## Editing and Renumbering
+
+Syntagmax provides a command to renumber artifact IDs according to a schema. This is useful when you want to ensure a consistent naming convention across your project.
+
+### Renumbering Command
+
+To renumber artifacts, use the `edit renumber` command:
+
+```bash
+uv run syntagmax edit renumber --all
+```
+
+#### Options:
+- `--all`: Renumber all artifacts.
+- `--atype <type>`: Renumber only artifacts of a specific type.
+- `--schema <schema>`: Use a custom schema for renumbering.
+- `--dry-run`: Show what changes would be made without actually modifying any files.
+
+### ID Schema Format
+
+The ID schema can include the following macros:
+- `{atype}`: The type of the artifact (e.g., `REQ`, `SYS`).
+- `{num}`: A sequential number.
+- `{num:padding}`: A sequential number with zero-padding (e.g., `{num:3}` for `001`).
+
+Example schema: `myproject-{atype}-{num:4}`
 
 ## Required Improvements
 

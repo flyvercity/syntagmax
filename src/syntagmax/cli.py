@@ -20,6 +20,7 @@ from syntagmax.errors import RMSException, FatalError
 from syntagmax.main import process
 from syntagmax.mcp.server import run_mcp_server
 from syntagmax.init_cmd import init_project
+from syntagmax.edit import renumber_artifacts
 
 
 @click.group(help='RMS Entry Point')
@@ -62,6 +63,31 @@ def analyze(obj: Params, config: Path, allow_dirty_worktree: bool):
     obj['allow_dirty_worktree'] = allow_dirty_worktree
     configurator = Config(obj, config)
     process(configurator)
+
+
+@rms.group(help='Project Editing Commands')
+def edit():
+    pass
+
+
+@edit.command(help='Renumber artifact IDs')
+@click.pass_obj
+@click.argument(
+    'config_path',
+    type=click.Path(exists=True),
+    default='.syntagmax/config.toml',
+)
+@click.option('--all', 'renumber_all', is_flag=True, help='Renumber all artifacts')
+@click.option('--atype', help='Filter by artifact type')
+@click.option('--schema', help='Custom ID schema')
+@click.option('--dry-run', is_flag=True, help='Perform a dry run without modifications')
+def renumber(obj: Params, config_path: Path, renumber_all: bool, atype: str | None, schema: str | None, dry_run: bool):
+    if not renumber_all and not atype:
+        u.pprint('[red]Either --all or --atype must be specified.[/red]')
+        return
+
+    configurator = Config(obj, Path(config_path))
+    renumber_artifacts(configurator, atype, schema, dry_run)
 
 
 @rms.group(help='MCP Server Management')
