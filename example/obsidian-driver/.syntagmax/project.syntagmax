@@ -1,6 +1,6 @@
 # System-level requirements
 artifact SYS:
-    attribute id is mandatory string
+    id is string
     attribute contents is mandatory string
     attribute title is mandatory string
     attribute priority is mandatory enum [critical, high, medium, low]
@@ -10,7 +10,7 @@ artifact SYS:
 
 # Software requirements
 artifact REQ:
-    attribute id is mandatory string
+    id is string
     attribute contents is mandatory string
     attribute title is mandatory string
     attribute parent is optional reference to parent
@@ -25,13 +25,13 @@ trace from REQ to SYS is mandatory
 
 # Source code
 artifact SRC:
-    attribute id is mandatory string
+    id is string
     attribute contents is mandatory string
     attribute parent is mandatory reference to parent
 
 # Tests
 artifact TEST:
-    attribute id is mandatory string
+    id is string
     attribute contents is mandatory string
     attribute parent is mandatory multiple reference to parent
 
