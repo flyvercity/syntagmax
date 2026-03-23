@@ -4,6 +4,8 @@
 # Created: 2025-04-06
 # Description: Builds a tree of artifacts.
 
+import logging as lg
+
 from syntagmax.config import Config
 from syntagmax.artifact import ArtifactMap, Artifact, Location, ParentLink
 
@@ -58,8 +60,8 @@ def populate_pids(config: Config, artifacts: ArtifactMap):
 
                         if aid not in a.pids:
                             a.pids.append(aid)
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        lg.warning(f"Error processing parent link '{ref_str}' for artifact '{a.aid}': {e}")
 
 
 def gather_ansestors(
