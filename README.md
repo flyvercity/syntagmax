@@ -286,6 +286,14 @@ This will result in `artifact.fields['author']` being `['Alice', 'Bob']`.
 
 Syntagmax provides a command to renumber artifact IDs according to a schema. This is useful when you want to ensure a consistent naming convention across your project.
 
+### Quick Editing Demo
+
+```bash
+mkdir tmp
+cp -rf ./example/renumber-demo ./tmp/
+uv run syntagmax --cwd ./tmp/renumber-demo edit renumber --all
+```
+
 ### Renumbering Command
 
 To renumber artifacts, use the `edit renumber` command:
