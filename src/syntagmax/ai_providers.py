@@ -121,6 +121,19 @@ JSON schema (for grounding; still return JSON only):
         if not isinstance(rewrite, dict) or 'shall' not in rewrite or 'acceptance_criteria' not in rewrite:
             raise AIError("Missing/invalid 'rewrite'")
 
+    def _redact_sensitive_info(self, data: Any) -> Any:
+        if isinstance(data, dict):
+            redacted = {}
+            for k, v in data.items():
+                if k.lower() in ('x-api-key', 'authorization', 'api-key'):
+                    redacted[k] = '***REDACTED***'
+                else:
+                    redacted[k] = v
+            return redacted
+        elif isinstance(data, str):
+            return re.sub(r'([?&]key=)[^&]+', r'\1***REDACTED***', data)
+        return data
+
     def _sanitize_json(self, content: str) -> str:
         # Sanitization: Models often return single backslashes in mathematical notation
         # which are invalid in JSON strings unless escaped.
@@ -212,7 +225,7 @@ class AnthropicProvider(AIProvider):
         resp = None
         try:
             lg.debug(f'Calling Anthropic at {url}')
-            lg.debug(f'Headers: {headers}')
+            lg.debug(f'Headers: {self._redact_sensitive_info(headers)}')
             lg.debug(f'Body: {json.dumps(body)}')
             resp = requests.post(
                 url,
@@ -323,7 +336,7 @@ class GeminiProvider(AIProvider):
 
         resp = None
         try:
-            lg.debug(f'Calling Gemini at {url}')
+            lg.debug(f'Calling Gemini at {self._redact_sensitive_info(url)}')
             lg.debug(f'Body: {json.dumps(body)}')
             resp = requests.post(
                 url,
