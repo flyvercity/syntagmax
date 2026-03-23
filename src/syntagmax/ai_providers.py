@@ -24,8 +24,13 @@ class AIProvider(ABC):
     def __init__(self, config: AIConfig):
         self.config = config
 
-    @abstractmethod
     def analyze_requirement(self, requirement_text: str) -> Dict[str, Any]:
+        if not requirement_text or not requirement_text.strip():
+            raise ValueError('requirement_text must be a non-empty string')
+        return self._analyze_requirement_impl(requirement_text)
+
+    @abstractmethod
+    def _analyze_requirement_impl(self, requirement_text: str) -> Dict[str, Any]:
         pass
 
     def _get_schema(self) -> Dict[str, Any]:
@@ -121,6 +126,19 @@ JSON schema (for grounding; still return JSON only):
         if not isinstance(rewrite, dict) or 'shall' not in rewrite or 'acceptance_criteria' not in rewrite:
             raise AIError("Missing/invalid 'rewrite'")
 
+    def _redact_sensitive_info(self, data: Any) -> Any:
+        if isinstance(data, dict):
+            redacted = {}
+            for k, v in data.items():
+                if k.lower() in ('x-api-key', 'authorization', 'api-key'):
+                    redacted[k] = '***REDACTED***'
+                else:
+                    redacted[k] = v
+            return redacted
+        elif isinstance(data, str):
+            return re.sub(r'([?&]key=)[^&]+', r'\1***REDACTED***', data)
+        return data
+
     def _sanitize_json(self, content: str) -> str:
         # Sanitization: Models often return single backslashes in mathematical notation
         # which are invalid in JSON strings unless escaped.
@@ -136,10 +154,7 @@ JSON schema (for grounding; still return JSON only):
 
 
 class OllamaProvider(AIProvider):
-    def analyze_requirement(self, requirement_text: str) -> Dict[str, Any]:
-        if not requirement_text or not requirement_text.strip():
-            raise ValueError('requirement_text must be a non-empty string')
-
+    def _analyze_requirement_impl(self, requirement_text: str) -> Dict[str, Any]:
         model = os.environ.get('STMX_AI_MODEL') or self.config.model or 'deepseek-v3.1:671b-cloud'
         host = self.config.ollama_host
         timeout_s = self.config.timeout_s
@@ -192,10 +207,7 @@ class OllamaProvider(AIProvider):
 
 
 class AnthropicProvider(AIProvider):
-    def analyze_requirement(self, requirement_text: str) -> Dict[str, Any]:
-        if not requirement_text or not requirement_text.strip():
-            raise ValueError('requirement_text must be a non-empty string')
-
+    def _analyze_requirement_impl(self, requirement_text: str) -> Dict[str, Any]:
         api_key = self.config.anthropic_api_key or os.environ.get('ANTHROPIC_API_KEY')
         if not api_key:
             raise AIError('Anthropic API Key is required (set via config or ANTHROPIC_API_KEY env var)')
@@ -212,7 +224,7 @@ class AnthropicProvider(AIProvider):
         resp = None
         try:
             lg.debug(f'Calling Anthropic at {url}')
-            lg.debug(f'Headers: {headers}')
+            lg.debug(f'Headers: {self._redact_sensitive_info(headers)}')
             lg.debug(f'Body: {json.dumps(body)}')
             resp = requests.post(
                 url,
@@ -250,10 +262,7 @@ class AnthropicProvider(AIProvider):
 
 
 class OpenAIProvider(AIProvider):
-    def analyze_requirement(self, requirement_text: str) -> Dict[str, Any]:
-        if not requirement_text or not requirement_text.strip():
-            raise ValueError('requirement_text must be a non-empty string')
-
+    def _analyze_requirement_impl(self, requirement_text: str) -> Dict[str, Any]:
         api_key = self.config.openai_api_key or os.environ.get('OPENAI_API_KEY')
         if not api_key:
             raise AIError('OpenAI API Key is required (set via config or OPENAI_API_KEY env var)')
@@ -302,10 +311,7 @@ class OpenAIProvider(AIProvider):
 
 
 class GeminiProvider(AIProvider):
-    def analyze_requirement(self, requirement_text: str) -> Dict[str, Any]:
-        if not requirement_text or not requirement_text.strip():
-            raise ValueError('requirement_text must be a non-empty string')
-
+    def _analyze_requirement_impl(self, requirement_text: str) -> Dict[str, Any]:
         api_key = self.config.gemini_api_key or os.environ.get('GEMINI_API_KEY')
         if not api_key:
             raise AIError('Gemini API Key is required (set via config or GEMINI_API_KEY env var)')
@@ -323,7 +329,7 @@ class GeminiProvider(AIProvider):
 
         resp = None
         try:
-            lg.debug(f'Calling Gemini at {url}')
+            lg.debug(f'Calling Gemini at {self._redact_sensitive_info(url)}')
             lg.debug(f'Body: {json.dumps(body)}')
             resp = requests.post(
                 url,
@@ -366,10 +372,7 @@ class GeminiProvider(AIProvider):
 
 
 class BedrockProvider(AIProvider):
-    def analyze_requirement(self, requirement_text: str) -> Dict[str, Any]:
-        if not requirement_text or not requirement_text.strip():
-            raise ValueError('requirement_text must be a non-empty string')
-
+    def _analyze_requirement_impl(self, requirement_text: str) -> Dict[str, Any]:
         model = os.environ.get('STMX_AI_MODEL') or self.config.model or 'anthropic.claude-3-sonnet-20240229-v1:0'
         region = os.environ.get('STMX_AWS_REGION') or self.config.aws_region_name
         prompt = self._get_prompt(requirement_text)

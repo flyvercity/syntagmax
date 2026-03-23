@@ -16,7 +16,11 @@ def is_dirty(config: Config) -> bool:
     try:
         repo = git.Repo(config.base_dir(), search_parent_directories=True)
         return repo.is_dirty() or len(repo.untracked_files) > 0
-    except Exception:
+    except git.InvalidGitRepositoryError:
+        lg.warning("Not a git repository, assuming not dirty.")
+        return False
+    except git.exc.NoSuchPathError:
+        lg.warning("Repository path does not exist, assuming not dirty.")
         return False
 
 

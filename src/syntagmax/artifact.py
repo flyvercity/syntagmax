@@ -143,11 +143,6 @@ class ArtifactBuilder:
             self.artifact.fields[field] = value
         return self
 
-    def add_fields(self, fields: dict[str, str]):
-        for field, value in fields.items():
-            self.add_field(field, value)
-        return self
-
     def _build_error(self, message: str) -> str:
         return f'Driver "{self.artifact.driver}": {self.artifact.location}: {message}'
 

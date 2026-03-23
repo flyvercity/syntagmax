@@ -10,6 +10,8 @@ import re
 from syntagmax.artifact import ArtifactMap, Artifact
 from syntagmax.config import Config
 
+_NUM_PATTERN = re.compile(r'\{num(?::(\d+))?\}')
+
 
 class ArtifactValidator:
     def __init__(self, metamodel, artifacts: ArtifactMap, errors: list[str] | None = None):
@@ -24,6 +26,19 @@ class ArtifactValidator:
 
         self.errors = errors if errors is not None else []
         self._artifacts_map = artifacts
+        self._id_schema_cache = {}
+
+        self._mandatory_names_cache = {}
+        self._all_allowed_names_cache = {}
+        if self._artifacts:
+            for atype, rules in self._artifacts.items():
+                if rules and 'attributes' in rules:
+                    attr_rules = rules['attributes']
+                    self._mandatory_names_cache[atype] = {r['name'] for r in attr_rules.values() if r['presence'] == 'mandatory'}
+                    self._all_allowed_names_cache[atype] = set(attr_rules.keys())
+                else:
+                    self._mandatory_names_cache[atype] = set()
+                    self._all_allowed_names_cache[atype] = set()
 
     def validate(self, artifact: Artifact):
         if self._artifacts is None:
@@ -49,53 +64,32 @@ class ArtifactValidator:
         if not schema:
             return
 
-        # Replace macros in schema with regex patterns
-        # {atype} -> artifact.atype
-        # {num:padding} -> \d{padding,} or \d+
-        pattern = schema.replace('{atype}', artifact.atype)
+        cache_key = (artifact.atype, schema)
+        compiled_pattern = self._id_schema_cache.get(cache_key)
 
-        # Handle {num} and {num:padding}
-        # We need to find all occurrences of {num(?::(\d+))?}
-        num_pattern = re.compile(r'\{num(?::(\d+))?\}')
+        if compiled_pattern is None:
+            # Replace macros in schema with regex patterns
+            # {atype} -> artifact.atype
+            # {num:padding} -> \d{padding,} or \d+
+            pattern = schema.replace('{atype}', artifact.atype)
 
-        def replacer(match):
-            padding = match.group(1)
-            if padding:
-                return rf'\d{{{padding}}}'
-            return r'\d+'
-
-        # Split by the num_pattern, escape parts, and join with regex patterns
-        parts = num_pattern.split(pattern)
-        # num_pattern.split with groups will include the padding group in parts
-        # e.g. "REQ-{num:3}" -> ["REQ-", "3", ""]
-        regex_parts = []
-        for i, part in enumerate(parts):
-            if i % 2 == 0:
-                regex_parts.append(re.escape(part))
-            else:
-                if part:
-                    regex_parts.append(rf'\d{{{part}}}')
+            final_pattern = ""
+            last_pos = 0
+            for match in _NUM_PATTERN.finditer(pattern):
+                final_pattern += re.escape(pattern[last_pos:match.start()])
+                padding = match.group(1)
+                if padding:
+                    final_pattern += rf'\d{{{padding}}}'
                 else:
-                    regex_parts.append(r'\d+')
+                    final_pattern += r'\d+'
+                last_pos = match.end()
+            final_pattern += re.escape(pattern[last_pos:])
 
-        # Wait, the split behavior is different if there's a group.
-        # Let's re-do this more carefully.
+            final_pattern = f'^{final_pattern}$'
+            compiled_pattern = re.compile(final_pattern)
+            self._id_schema_cache[cache_key] = compiled_pattern
 
-        final_pattern = ""
-        last_pos = 0
-        for match in num_pattern.finditer(pattern):
-            final_pattern += re.escape(pattern[last_pos:match.start()])
-            padding = match.group(1)
-            if padding:
-                final_pattern += rf'\d{{{padding}}}'
-            else:
-                final_pattern += r'\d+'
-            last_pos = match.end()
-        final_pattern += re.escape(pattern[last_pos:])
-
-        final_pattern = f'^{final_pattern}$'
-
-        if not re.match(final_pattern, artifact.aid):
+        if not compiled_pattern.match(artifact.aid):
             self.errors.append(
                 f"Artifact ID '{artifact.aid}' does not match schema '{schema}' for type '{artifact.atype}' ({artifact})"
             )
@@ -103,9 +97,9 @@ class ArtifactValidator:
     def _validate_attributes(self, artifact: Artifact):
         artifact_rules = self._artifacts[artifact.atype]['attributes']
 
-        # 1. Map rules by attribute name
-        mandatory_names = {r['name'] for r in artifact_rules.values() if r['presence'] == 'mandatory'}
-        all_allowed_names = set(artifact_rules.keys())
+        # 1. Map rules by attribute name (using precomputed caches)
+        mandatory_names = self._mandatory_names_cache.get(artifact.atype, set())
+        all_allowed_names = self._all_allowed_names_cache.get(artifact.atype, set())
 
         # 2. Check for Additional Attributes (Strict Mode)
         actual_names = set(artifact.fields.keys())
