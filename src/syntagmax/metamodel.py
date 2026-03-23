@@ -34,7 +34,7 @@ class DSLTransformer(Transformer):
         # Handle the "id" rule
         else:
             # children: type_info, [schema]
-            schema = str(children[1]).strip('"') if len(children) > 1 and children[1] is not None else None
+            schema = children[1] if len(children) > 1 and children[1] is not None else None
             return {
                 'name': 'id',
                 'presence': 'mandatory',
@@ -58,6 +58,21 @@ class DSLTransformer(Transformer):
 
     def target_list(self, children):
         return [str(c) for c in children]
+
+    def unquoted_items(self, children):
+        return "".join(map(str, children))
+
+    def quoted_items(self, children):
+        # We need to strip the quotes if they were included by the rule?
+        # quoted_items: "\"" (QUOTED_PART | placeholder | invalid_placeholder)* "\""
+        # The children will be only the items inside the quotes because "\"" are literal strings in the rule.
+        return "".join(map(str, children))
+
+    def PLACEHOLDER(self, token):
+        return str(token)
+
+    def INVALID_PLACEHOLDER(self, token):
+        raise ValueError(f"Invalid placeholder: {token}")
 
     def type_string(self, _):
         return {'type': 'string'}

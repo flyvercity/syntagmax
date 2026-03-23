@@ -14,6 +14,9 @@ class InvalidArtifactIdentifier(RMSException):
 
 
 class FatalError(RMSException):
-    def __init__(self, errors: list[str]):
-        self.errors = errors
-        super().__init__('Errors were reported')
+    def __init__(self, errors: list[str] | str):
+        if isinstance(errors, str):
+            self.errors = [errors]
+        else:
+            self.errors = errors
+        super().__init__("\n".join(self.errors))
