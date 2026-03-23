@@ -66,7 +66,7 @@ class MarkdownExtractor(Extractor):
         lines = text.splitlines(keepends=True)
 
         # Apply updates in reverse order of line numbers to avoid offset shifts
-        updates.sort(key=lambda u: u[0].location.loc_lines[0], reverse=True) # type: ignore
+        updates.sort(key=lambda u: u[0].location.loc_lines[0], reverse=True)  # type: ignore
 
         for artifact, new_id in updates:
             if not isinstance(artifact.location, LineLocation):
@@ -74,7 +74,7 @@ class MarkdownExtractor(Extractor):
 
             start_line, end_line = artifact.location.loc_lines
             segment_lines = lines[start_line - 1 : end_line]
-            segment = "".join(segment_lines)
+            segment = ''.join(segment_lines)
 
             # Update [id] format
             segment = re.sub(r'\[id\]\s*[a-zA-Z0-9-{}:]*', f'[id] {new_id}', segment, flags=re.IGNORECASE)
@@ -92,10 +92,11 @@ class MarkdownExtractor(Extractor):
             # Replace the segment in the lines list
             lines[start_line - 1 : end_line] = [segment]
 
-        filepath.write_text("".join(lines), encoding='utf-8')
+        filepath.write_text(''.join(lines), encoding='utf-8')
 
     def update_artifact(self, artifact: Artifact, fields: dict[str, str]):
         from syntagmax.artifact import LineLocation
+
         if not isinstance(artifact.location, LineLocation):
             return
 
@@ -214,13 +215,13 @@ class MarkdownExtractor(Extractor):
                 artifacts.append(builder.build())
 
             except (exceptions.ParseError, exceptions.UnexpectedToken) as e:
-                error = f'Parse error in requirement at line {start_line}: {e}'
-                lg.error(error)
+                lg.exception(e)
+                error = f'Parse error in requirement at line {start_line} in {filepath}'
                 errors.append(error)
 
             except Exception as e:
-                error = f'Error processing requirement at line {start_line}: {e}'
-                lg.error(error)
+                lg.exception(e)
+                error = f'Error processing requirement at line {start_line} in {filepath}'
                 errors.append(error)
 
             pos = segment_end
