@@ -5,6 +5,7 @@
 # Description: Analyse a tree of artifacts.
 
 import logging as lg
+import re
 
 from syntagmax.artifact import ArtifactMap, Artifact
 from syntagmax.config import Config
@@ -33,9 +34,71 @@ class ArtifactValidator:
             return self.errors
 
         self._validate_attributes(artifact)
+        self._validate_id_schema(artifact)
         self._validate_traces(artifact)
 
         return self.errors
+
+    def _validate_id_schema(self, artifact: Artifact):
+        artifact_rules = self._artifacts[artifact.atype]['attributes']
+        id_rule = artifact_rules.get('id')
+        if not id_rule:
+            return
+
+        schema = id_rule.get('schema')
+        if not schema:
+            return
+
+        # Replace macros in schema with regex patterns
+        # {atype} -> artifact.atype
+        # {num:padding} -> \d{padding,} or \d+
+        pattern = schema.replace('{atype}', artifact.atype)
+
+        # Handle {num} and {num:padding}
+        # We need to find all occurrences of {num(?::(\d+))?}
+        num_pattern = re.compile(r'\{num(?::(\d+))?\}')
+
+        def replacer(match):
+            padding = match.group(1)
+            if padding:
+                return rf'\d{{{padding}}}'
+            return r'\d+'
+
+        # Split by the num_pattern, escape parts, and join with regex patterns
+        parts = num_pattern.split(pattern)
+        # num_pattern.split with groups will include the padding group in parts
+        # e.g. "REQ-{num:3}" -> ["REQ-", "3", ""]
+        regex_parts = []
+        for i, part in enumerate(parts):
+            if i % 2 == 0:
+                regex_parts.append(re.escape(part))
+            else:
+                if part:
+                    regex_parts.append(rf'\d{{{part}}}')
+                else:
+                    regex_parts.append(r'\d+')
+
+        # Wait, the split behavior is different if there's a group.
+        # Let's re-do this more carefully.
+
+        final_pattern = ""
+        last_pos = 0
+        for match in num_pattern.finditer(pattern):
+            final_pattern += re.escape(pattern[last_pos:match.start()])
+            padding = match.group(1)
+            if padding:
+                final_pattern += rf'\d{{{padding}}}'
+            else:
+                final_pattern += r'\d+'
+            last_pos = match.end()
+        final_pattern += re.escape(pattern[last_pos:])
+
+        final_pattern = f'^{final_pattern}$'
+
+        if not re.match(final_pattern, artifact.aid):
+            self.errors.append(
+                f"Artifact ID '{artifact.aid}' does not match schema '{schema}' for type '{artifact.atype}' ({artifact})"
+            )
 
     def _validate_attributes(self, artifact: Artifact):
         artifact_rules = self._artifacts[artifact.atype]['attributes']

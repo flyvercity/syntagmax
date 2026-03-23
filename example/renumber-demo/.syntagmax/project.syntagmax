@@ -1,0 +1,4 @@
+artifact REQ:
+    id is string as REQ-{num:3}
+    attribute contents is mandatory string
+    attribute title is mandatory string

@@ -84,6 +84,46 @@ class TextExtractor(Extractor):
     def driver(self) -> str:
         return 'text'
 
+    def update_artifacts(self, loc_file: str, updates: list[tuple[Artifact, str]]):
+        from syntagmax.artifact import LineLocation
+
+        # Read the file
+        filepath = self._config.base_dir() / loc_file
+        text = filepath.read_text(encoding='utf-8')
+        lines = text.splitlines(keepends=True)
+
+        # Apply updates in reverse order of line numbers to avoid offset shifts
+        # Actually, if we use a list of lines, it's safer to work with indices.
+        # Let's sort updates by start_line in reverse.
+        updates.sort(key=lambda u: u[0].location.loc_lines[0], reverse=True) # type: ignore
+
+        for artifact, new_id in updates:
+            if not isinstance(artifact.location, LineLocation):
+                continue
+
+            start_line, end_line = artifact.location.loc_lines
+            segment_lines = lines[start_line - 1 : end_line]
+            segment = "".join(segment_lines)
+
+            # Update the ID field in the segment
+            # Try to replace ID=AID or id=AID
+            segment = re.sub(r'(\b[Ii][Dd]\s*=\s*)[a-zA-Z0-9-{}:]+', rf'\g<1>{new_id}', segment)
+
+            # Replace the segment in the lines list
+            lines[start_line - 1 : end_line] = [segment]
+
+        filepath.write_text("".join(lines), encoding='utf-8')
+
+    def update_artifact(self, artifact: Artifact, fields: dict[str, str]):
+        # This is now less preferred than update_artifacts for renumbering
+        from syntagmax.artifact import LineLocation
+        if not isinstance(artifact.location, LineLocation):
+            return
+
+        # Use update_artifacts with a single update
+        if 'id' in fields:
+            self.update_artifacts(artifact.location.loc_file, [(artifact, fields['id'])])
+
     def extract_from_file(self, filepath: Path) -> ExtractorResult:
         artifacts: Sequence[Artifact] = []
         errors: list[str] = []

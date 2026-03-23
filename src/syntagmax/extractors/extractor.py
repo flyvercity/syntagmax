@@ -41,6 +41,13 @@ class Extractor:
 
         return artifacts, errors
 
+    def update_artifact(self, artifact: Artifact, fields: dict[str, str]): ...
+
+    def update_artifacts(self, loc_file: str, updates: list[tuple[Artifact, str]]):
+        # Default implementation for bulk updates
+        for artifact, new_id in updates:
+            self.update_artifact(artifact, {'id': new_id})
+
     def _format_file_location(self, filepath: Path) -> str:
         names: list[str] = ['...']
         parents = filepath.parents

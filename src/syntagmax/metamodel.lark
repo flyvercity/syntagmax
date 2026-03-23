@@ -2,6 +2,7 @@ start: (artifact | trace | _NL)+
 
 artifact: ARTIFACT name ":" _NL _INDENT (rule | _NL)* _DEDENT
 rule: "attribute" name "is" PRESENCE [MULTIPLE] type _NL
+    | "id" "is" type ["as" schema_value] _NL
 
 trace: "trace" "from" name "to" target_list "is" PRESENCE ["via" TRACE_MODE] _NL
 target_list: name ("or" name)*
@@ -14,8 +15,10 @@ target_list: name ("or" name)*
 
 to_parent: "to" "parent"
 
+?schema_value: ESCAPED_STRING | SCHEMA
 ARTIFACT: "artifact"
 MULTIPLE: "multiple"
+SCHEMA: /[^ \t\n\r"]+/
 ?name: WORD
 PRESENCE: "mandatory" | "optional"
 TRACE_MODE: "commit" | "timestamp"
