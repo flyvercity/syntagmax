@@ -25,6 +25,18 @@ class ArtifactValidator:
         self.errors = errors if errors is not None else []
         self._artifacts_map = artifacts
 
+        self._mandatory_names_cache = {}
+        self._all_allowed_names_cache = {}
+        if self._artifacts:
+            for atype, rules in self._artifacts.items():
+                if rules and 'attributes' in rules:
+                    attr_rules = rules['attributes']
+                    self._mandatory_names_cache[atype] = {r['name'] for r in attr_rules.values() if r['presence'] == 'mandatory'}
+                    self._all_allowed_names_cache[atype] = set(attr_rules.keys())
+                else:
+                    self._mandatory_names_cache[atype] = set()
+                    self._all_allowed_names_cache[atype] = set()
+
     def validate(self, artifact: Artifact):
         if self._artifacts is None:
             return self.errors
@@ -103,9 +115,9 @@ class ArtifactValidator:
     def _validate_attributes(self, artifact: Artifact):
         artifact_rules = self._artifacts[artifact.atype]['attributes']
 
-        # 1. Map rules by attribute name
-        mandatory_names = {r['name'] for r in artifact_rules.values() if r['presence'] == 'mandatory'}
-        all_allowed_names = set(artifact_rules.keys())
+        # 1. Map rules by attribute name (using precomputed caches)
+        mandatory_names = self._mandatory_names_cache.get(artifact.atype, set())
+        all_allowed_names = self._all_allowed_names_cache.get(artifact.atype, set())
 
         # 2. Check for Additional Attributes (Strict Mode)
         actual_names = set(artifact.fields.keys())
