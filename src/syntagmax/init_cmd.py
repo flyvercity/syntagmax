@@ -32,10 +32,9 @@ def generate_toml() -> str:
 
     # Input
     toml_str.append('[[input]]')
-    toml_str.append('name = "system-requirements"')
-    toml_str.append('dir = "SYS"')
+    toml_str.append('name = "requirements"')
+    toml_str.append('dir = "REQ"')
     toml_str.append('driver = "obsidian"')
-    toml_str.append('atype = "SYS"')
     toml_str.append('')
 
     # Metamodel
