@@ -33,7 +33,7 @@ class RepoCache:
     def get_repo(self, artifact: Artifact):
         base = self.config.base_dir()
 
-        art_base = Path(base, artifact.location.filepath()).parent.absolute()
+        art_base = Path(base, artifact.location.filepath()).parent.absolute().resolve()
 
         repo = self.repos.get(art_base)
         repo_root = self.repo_roots.get(art_base)
