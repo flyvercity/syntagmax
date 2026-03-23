@@ -19,14 +19,13 @@ from syntagmax.artifact import ArtifactBuilder, Artifact, Location, UNDEFINED_ID
 class MarkdownArtifact(Artifact):
     def __init__(self, config: Config):
         super().__init__(config)
+        self.yaml_data: benedict | None = None
+        self.source_metadata: dict[str, str] = {}
 
 
 class MarkdownTransformer(Transformer):
     def AID(self, t):
         return str(t).lower()
-
-    def content_text(self, t):
-        return str(t[0])
 
     def yaml_content(self, t):
         return str(t[0])
@@ -35,10 +34,16 @@ class MarkdownTransformer(Transformer):
         return {'text': str(t[0]) if t else ''}
 
     def contents(self, t):
-        return {'text': str(t[0]) if t else ''}
+        return {'text': ''.join(str(c) for c in t) if t else ''}
 
     def field(self, t):
-        return {'field': {'marker': t[0], 'contents': t[1]}}
+        # field: _LSQB AID _RSQB [FIELD_TEXT] _NL
+        # children: AID, [FIELD_TEXT]
+        marker = str(t[0])
+        text = ''
+        if len(t) > 1:
+            text = str(t[1])
+        return {'field': {'marker': marker, 'contents': {'text': text.strip()}}}
 
     def fields(self, t):
         return {'list': list(t)}
@@ -47,7 +52,25 @@ class MarkdownTransformer(Transformer):
         return None
 
     def req(self, t):
-        return {'req': {'contents': t[0], 'fields': t[1], 'yaml': t[2]}}
+        # req: _REQ_BEGIN (contents | field)* yaml_block
+        # children: (contents | field)* yaml_block
+        all_contents = []
+        all_fields = []
+        yaml_data = t[-1]
+
+        for child in t[:-1]:
+            if 'text' in child:
+                all_contents.append(child['text'])
+            elif 'field' in child:
+                all_fields.append(child)
+
+        return {
+            'req': {
+                'contents': {'text': ''.join(all_contents)},
+                'fields': {'list': all_fields},
+                'yaml': yaml_data,
+            }
+        }
 
 
 class MarkdownExtractor(Extractor):
@@ -76,18 +99,42 @@ class MarkdownExtractor(Extractor):
             segment_lines = lines[start_line - 1 : end_line]
             segment = ''.join(segment_lines)
 
-            # Update [id] format
-            segment = re.sub(r'\[id\]\s*[a-zA-Z0-9-{}:]*', f'[id] {new_id}', segment, flags=re.IGNORECASE)
+            # Shortcut approach:
+            # - do not try to manipulate artifact's body
+            # - add/update id attribute in the yaml_data dict
+            # - re-emit a full yaml block
 
-            # Update YAML block
-            yaml_start = segment.find('```yaml')
-            if yaml_start != -1:
-                yaml_end = segment.find('```', yaml_start + 7)
-                if yaml_end != -1:
-                    yaml_block = segment[yaml_start : yaml_end + 3]
-                    # Specific regex for id replacement in YAML to be more robust
-                    yaml_block = re.sub(r'^(\s*id:\s*).*$', rf'\g<1>{new_id}', yaml_block, flags=re.MULTILINE)
-                    segment = segment[:yaml_start] + yaml_block + segment[yaml_end + 3 :]
+            if isinstance(artifact, MarkdownArtifact) and artifact.yaml_data is not None:
+                yaml_data = artifact.yaml_data
+                if yaml_data.get('attrs') is None:
+                    yaml_data['attrs'] = {}
+
+                yaml_data['attrs']['id'] = new_id
+
+                # Re-emit YAML
+                new_yaml_content = yaml_data.to_yaml()
+                new_yaml_block = f"```yaml\n{new_yaml_content.strip()}\n```"
+
+                # Replace the YAML block in the segment
+                yaml_start = segment.find('```yaml')
+                if yaml_start != -1:
+                    yaml_end = segment.find('```', yaml_start + 7)
+                    if yaml_end != -1:
+                        segment = segment[:yaml_start] + new_yaml_block + segment[yaml_end + 3 :]
+            else:
+                # Fallback to old method if no yaml_data
+                # Update [id] format
+                segment = re.sub(r'\[id\]\s*[a-zA-Z0-9-{}:]*', f'[id] {new_id}', segment, flags=re.IGNORECASE)
+
+                # Update YAML block
+                yaml_start = segment.find('```yaml')
+                if yaml_start != -1:
+                    yaml_end = segment.find('```', yaml_start + 7)
+                    if yaml_end != -1:
+                        yaml_block = segment[yaml_start : yaml_end + 3]
+                        # Specific regex for id replacement in YAML to be more robust
+                        yaml_block = re.sub(r'^(\s*id:\s*).*$', rf'\g<1>{new_id}', yaml_block, flags=re.MULTILINE)
+                        segment = segment[:yaml_start] + yaml_block + segment[yaml_end + 3 :]
 
             # Replace the segment in the lines list
             lines[start_line - 1 : end_line] = [segment]
@@ -196,13 +243,19 @@ class MarkdownExtractor(Extractor):
                 )
 
                 builder.add_id(aid, atype)
+                builder.add_field('id', aid)
 
                 # Add fields found in markdown individually
                 for field in fields:
-                    builder.add_field(field.get_str('field.marker'), field.get_str('field.contents.text').strip())
+                    marker = field.get_str('field.marker')
+                    if marker.lower() in ['id', 'atype']:
+                        continue
+                    builder.add_field(marker, field.get_str('field.contents.text').strip())
 
                 # Add fields found in YAML individually
                 for name, value in yaml_attrs.items():
+                    if name.lower() in ['id', 'atype']:
+                        continue
                     if isinstance(value, list):
                         for v in value:
                             builder.add_field(name, str(v))
@@ -212,7 +265,16 @@ class MarkdownExtractor(Extractor):
                 # Add contents as a field
                 builder.add_field('contents', contents)
 
-                artifacts.append(builder.build())
+                artifact = builder.build()
+                if isinstance(artifact, MarkdownArtifact):
+                    artifact.yaml_data = yaml_dict
+                    # Record source for each field
+                    for field in fields:
+                        artifact.source_metadata[field.get_str('field.marker').lower()] = 'markdown'
+                    for name in yaml_attrs.keys():
+                        artifact.source_metadata[name.lower()] = 'yaml'
+
+                artifacts.append(artifact)
 
             except (exceptions.ParseError, exceptions.UnexpectedToken) as e:
                 lg.exception(e)
