@@ -37,18 +37,20 @@ def process(config: Config):
         lg.warning('No artifacts found')
         return
 
+    # Impact analysis
+    impact_data = None
+
     if not config.params.get('no_git', False):
         try:
             populate_revisions(config, artifacts)
         except Exception as e:
-            lg.warning(f"Failed to extract git revisions: {e}")
-    else:
-        lg.warning("Git history extraction skipped (--no-git)")
+            lg.exception(e)
+            errors.append('Failed to extract git revisions')
 
-    # Impact analysis
-    impact_data = None
-    if config.impact.enabled:
-        impact_data = perform_impact_analysis(config, artifacts, errors)
+        if config.impact.enabled:
+            impact_data = perform_impact_analysis(config, artifacts, errors)
+    else:
+        lg.warning('Git history extraction skipped (--no-git)')
 
     if config.params['render_tree']:
         print_arttree(artifacts, 'ROOT', verbose=config.params['verbose'])

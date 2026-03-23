@@ -16,13 +16,17 @@ class ValidationError(RMSException):
 
 
 class Location:
-    pass
+    def filepath(self) -> str:
+        raise NotImplementedError
 
 
 class FileLocation(Location):
     def __init__(self, loc_file: str, loc_sidecar: str | None = None):
         self.loc_file = loc_file
         self.loc_sidecar = loc_sidecar
+
+    def filepath(self) -> str:
+        return self.loc_file
 
     def __str__(self) -> str:
         if self.loc_sidecar:
@@ -35,6 +39,9 @@ class LineLocation(Location):
         self.loc_file = loc_file
         self.loc_lines = loc_lines
 
+    def filepath(self) -> str:
+        return self.loc_file
+
     def __str__(self) -> str:
         return f'{self.loc_file}:{self.loc_lines[0]}-{self.loc_lines[1]}'
 
@@ -43,6 +50,9 @@ class NotebookLocation(LineLocation):
     def __init__(self, loc_file: str, loc_lines: tuple[int, int], loc_cell: int):
         super().__init__(loc_file, loc_lines)
         self.loc_cell = loc_cell
+
+    def filepath(self) -> str:
+        return self.loc_file
 
     def __str__(self) -> str:
         return f'{self.loc_file}[{self.loc_cell}]:{self.loc_lines[0]}-{self.loc_lines[1]}'
