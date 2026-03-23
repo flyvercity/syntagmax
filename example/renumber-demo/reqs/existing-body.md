@@ -1,6 +1,6 @@
 [REQ]
-[id] REQ-001
 This is the first requirement.
+[id] REQ-001
 [title] First Requirement
 ```yaml
 attrs:
