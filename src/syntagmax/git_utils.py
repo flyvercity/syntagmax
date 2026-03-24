@@ -12,25 +12,13 @@ from syntagmax.artifact import ArtifactMap, Revision, LineLocation, FileLocation
 from syntagmax.config import Config
 
 
-def is_dirty(config: Config) -> bool:
-    try:
-        repo = git.Repo(config.base_dir(), search_parent_directories=True)
-        return repo.is_dirty() or len(repo.untracked_files) > 0
-    except git.InvalidGitRepositoryError:
-        lg.warning("Not a git repository, assuming not dirty.")
-        return False
-    except git.exc.NoSuchPathError:
-        lg.warning("Repository path does not exist, assuming not dirty.")
-        return False
-
-
 class RepoCache:
     def __init__(self, config: Config):
         self.config = config
         self.repos = {}
         self.repo_roots = {}
 
-    def get_repo(self, artifact: Artifact):
+    def get_repo(self, artifact: Artifact, errors: list[str]):
         base = self.config.base_dir()
 
         art_base = Path(base, artifact.location.filepath()).parent.absolute().resolve()
@@ -43,17 +31,26 @@ class RepoCache:
 
         try:
             lg.info(f'Derived git repo: {art_base}')
-            self.repo = git.Repo(art_base, search_parent_directories=True)
-            self.repo_root = Path(self.repo.working_tree_dir).absolute()
-            self.repos[art_base] = self.repo
-            self.repo_roots[art_base] = self.repo_root
-            return self.repo, self.repo_root
+            repo = git.Repo(art_base, search_parent_directories=True)
+            is_dirty = repo.is_dirty() or len(repo.untracked_files) > 0
+
+            # Check for dirty worktree
+            if is_dirty and not self.config.params.get('allow_dirty_worktree', False):
+                errors.append(
+                    f'The repository for the base {art_base} is dirty. Commit your changes or use --allow-dirty-worktree.'
+                )
+
+            repo_root = Path(repo.working_tree_dir).absolute()
+            self.repos[art_base] = repo
+            self.repo_roots[art_base] = repo_root
+            return repo, repo_root
 
         except git.InvalidGitRepositoryError:
-            raise UserWarning('Not a git repository, skipping revision extraction.')
+            errors.append(f'Not a git repository, skipping revision extraction for {artifact.aid}.')
+            return None, None
 
 
-def populate_revisions(config: Config, artifacts: ArtifactMap):
+def populate_revisions(config: Config, artifacts: ArtifactMap, errors: list[str]):
     """
     Populate revisions for each artifact in the map using git history.
     """
@@ -63,7 +60,11 @@ def populate_revisions(config: Config, artifacts: ArtifactMap):
         if artifact.atype == 'ROOT':
             continue
 
-        repo, repo_root = repos.get_repo(artifact)
+        repo, repo_root = repos.get_repo(artifact, errors)
+
+        if not repo:
+            lg.warning(f'Could not get repo for artifact {artifact.aid}, skipping.')
+            continue
 
         revisions = set()
         base_dir = Path(config.base_dir())
@@ -72,7 +73,7 @@ def populate_revisions(config: Config, artifacts: ArtifactMap):
         if isinstance(artifact.location, LineLocation):
             # Paths in artifacts are relative to config.base_dir()
             # We need them relative to repo_root for git
-            abs_path = (base_dir / artifact.location.loc_file).absolute()
+            abs_path = (base_dir / artifact.location.loc_file).absolute().resolve()
 
             rel_repo_path = abs_path.relative_to(repo_root)
             start, end = artifact.location.loc_lines
@@ -96,7 +97,7 @@ def populate_revisions(config: Config, artifacts: ArtifactMap):
                 paths.append(artifact.location.loc_sidecar)
 
             for path in paths:
-                abs_path = (base_dir / path).absolute()
+                abs_path = (base_dir / path).absolute().resolve()
 
                 rel_repo_path = abs_path.relative_to(repo_root)
                 lg.debug(f'Getting history for {rel_repo_path}')

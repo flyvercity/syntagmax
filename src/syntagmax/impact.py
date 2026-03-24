@@ -17,16 +17,10 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 from syntagmax.artifact import ArtifactMap
 from syntagmax.config import Config
-from syntagmax.git_utils import is_dirty
 
 
 def perform_impact_analysis(config: Config, artifacts: ArtifactMap, errors: list[str]) -> benedict:
     if not config.impact.enabled:
-        return benedict()
-
-    # Check for dirty worktree
-    if is_dirty(config) and not config.params.get('allow_dirty_worktree', False):
-        errors.append("Repository is dirty. Commit your changes or use --allow-dirty-worktree.")
         return benedict()
 
     impact_data = benedict()
@@ -52,24 +46,28 @@ def perform_impact_analysis(config: Config, artifacts: ArtifactMap, errors: list
                 if parent.latest_revision:
                     # Compare nominal revision with parent's latest revision
                     # We compare short hash for simplicity as it is what user likely provides
-                    if link.nominal_revision != parent.latest_revision.hash_short and \
-                       link.nominal_revision != parent.latest_revision.hash_long:
+                    if (
+                        link.nominal_revision != parent.latest_revision.hash_short
+                        and link.nominal_revision != parent.latest_revision.hash_long
+                    ):
                         link.is_suspicious = True
 
             if link.is_suspicious:
                 actual_rev_obj = parent.latest_revision
-                actual_rev_str = "None"
+                actual_rev_str = 'None'
                 if actual_rev_obj:
-                    actual_rev_str = f"{actual_rev_obj.hash_short} ({actual_rev_obj.timestamp.strftime('%Y-%m-%d %H:%M')} by {actual_rev_obj.author_email})"
+                    actual_rev_str = f'{actual_rev_obj.hash_short} ({actual_rev_obj.timestamp.strftime("%Y-%m-%d %H:%M")} by {actual_rev_obj.author_email})'
 
-                suspicious_links.append({
-                    'artifact_aid': a.aid,
-                    'artifact_atype': a.atype,
-                    'parent_aid': parent.aid,
-                    'parent_atype': parent.atype,
-                    'nominal_revision': link.nominal_revision,
-                    'actual_revision': actual_rev_str
-                })
+                suspicious_links.append(
+                    {
+                        'artifact_aid': a.aid,
+                        'artifact_atype': a.atype,
+                        'parent_aid': parent.aid,
+                        'parent_atype': parent.atype,
+                        'nominal_revision': link.nominal_revision,
+                        'actual_revision': actual_rev_str,
+                    }
+                )
 
     impact_data['suspicious_links'] = suspicious_links
     impact_data['total_suspicious'] = len(suspicious_links)
@@ -106,31 +104,31 @@ def _generate_suspicious_tree(artifacts: ArtifactMap, suspicious_aids: set[str],
 
     def render_node(aid: str, indent: str = '', last: bool = True, top: bool = True) -> str:
         if not has_suspicious_descendant(aid):
-            return ""
+            return ''
 
         if aid not in artifacts:
-            return ""
+            return ''
 
         a = artifacts[aid]
         this_indent = indent + (CONST_L_CHAR if last else CONST_T_CHAR) if not top else ''
-        
-        status = ""
+
+        status = ''
         if aid in suspicious_aids:
-            status += " [!] OUTDATED"
+            status += ' [!] OUTDATED'
         if aid in updated_aids:
-            status += " [*] UPDATED"
-        
-        label = f"{a.atype}:{a.aid}" if a.atype != 'ROOT' else a.aid
-        line = f"{this_indent}{label}{status}\n"
-        
+            status += ' [*] UPDATED'
+
+        label = f'{a.atype}:{a.aid}' if a.atype != 'ROOT' else a.aid
+        line = f'{this_indent}{label}{status}\n'
+
         new_indent = indent + ((CONST_I_CHAR + ' ') if not last else '  ') if not top else ''
-        
+
         relevant_children = [cid for cid in sorted(a.children) if has_suspicious_descendant(cid)]
-        
+
         res = line
         for i, cid in enumerate(relevant_children):
             res += render_node(cid, new_indent, i == len(relevant_children) - 1, False)
-        
+
         return res
 
     return render_node('ROOT').strip()
@@ -172,8 +170,9 @@ def render_impact_report(impact_data: benedict, config: Config):
 
 def _print_impact_console(impact_data: benedict):
     from rich.table import Table
+
     if impact_data['total_suspicious'] == 0:
-        rich.print("[green]No suspicious links found.[/green]")
+        rich.print('[green]No suspicious links found.[/green]')
         return
 
     table = Table(title='Impact Analysis: Suspicious Links')
@@ -184,16 +183,17 @@ def _print_impact_console(impact_data: benedict):
 
     for link in impact_data['suspicious_links']:
         table.add_row(
-            f"{link['artifact_atype']}:{link['artifact_aid']}",
-            f"{link['parent_atype']}:{link['parent_aid']}",
+            f'{link["artifact_atype"]}:{link["artifact_aid"]}',
+            f'{link["parent_atype"]}:{link["parent_aid"]}',
             str(link['nominal_revision']),
-            str(link['actual_revision'])
+            str(link['actual_revision']),
         )
 
     rich.print(table)
 
     if 'suspicious_tree' in impact_data:
         from rich.panel import Panel
+
         rich.print(Panel(impact_data['suspicious_tree'], title='Suspicious Tree', expand=False))
 
 
@@ -213,7 +213,7 @@ def _publish_impact_report(impact_data: benedict, config: Config):
     locale = config.impact.locale or 'en'
     catalog = _load_catalog(locale_dir, locale)
     gettext_fn = _make_gettext(catalog)
-    
+
     env = Environment(
         loader=FileSystemLoader(str(loader_dir)),
         extensions=['jinja2.ext.i18n'],
