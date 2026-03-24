@@ -3,6 +3,7 @@ import time
 
 _NUM_PATTERN = re.compile(r'\{num(?::(\d+))?\}')
 
+
 class OriginalValidator:
     def __init__(self):
         self.errors = []
@@ -29,10 +30,10 @@ class OriginalValidator:
                 else:
                     regex_parts.append(r'\d+')
 
-        final_pattern = ""
+        final_pattern = ''
         last_pos = 0
         for match in num_pattern.finditer(pattern):
-            final_pattern += re.escape(pattern[last_pos:match.start()])
+            final_pattern += re.escape(pattern[last_pos : match.start()])
             padding = match.group(1)
             if padding:
                 final_pattern += rf'\d{{{padding}}}'
@@ -44,7 +45,8 @@ class OriginalValidator:
         final_pattern = f'^{final_pattern}$'
 
         if not re.match(final_pattern, aid):
-            self.errors.append("error")
+            self.errors.append('error')
+
 
 class NewValidator:
     def __init__(self):
@@ -58,10 +60,10 @@ class NewValidator:
         else:
             pattern = schema.replace('{atype}', atype)
 
-            final_pattern = ""
+            final_pattern = ''
             last_pos = 0
             for match in _NUM_PATTERN.finditer(pattern):
-                final_pattern += re.escape(pattern[last_pos:match.start()])
+                final_pattern += re.escape(pattern[last_pos : match.start()])
                 padding = match.group(1)
                 if padding:
                     final_pattern += rf'\d{{{padding}}}'
@@ -75,13 +77,14 @@ class NewValidator:
             self._id_schema_cache[cache_key] = compiled_pattern
 
         if not compiled_pattern.match(aid):
-            self.errors.append("error")
+            self.errors.append('error')
+
 
 def run_bench():
-    atype = "REQ"
-    schema = "{atype}-{num:3}"
+    atype = 'REQ'
+    schema = '{atype}-{num:3}'
 
-    aids = [f"REQ-{i:03d}" for i in range(100000)]
+    aids = [f'REQ-{i:03d}' for i in range(100000)]
 
     orig = OriginalValidator()
     start = time.time()
@@ -95,7 +98,8 @@ def run_bench():
         new_v.validate(atype, schema, aid)
     new_time = time.time() - start
 
-    print(f"Original: {orig_time:.4f}s")
-    print(f"New: {new_time:.4f}s")
+    print(f'Original: {orig_time:.4f}s')
+    print(f'New: {new_time:.4f}s')
+
 
 run_bench()
