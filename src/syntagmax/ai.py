@@ -1,3 +1,9 @@
+# SPDX-License-Identifier: MIT
+
+# Author: Boris Resnick
+# Created: 2026-01-06
+# Description: Syntagmax Requirement Management System (RMS) AI Analysis Subsystem.
+
 """
 Call AI provider to score a single requirement for:
   - ambiguity

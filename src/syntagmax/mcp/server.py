@@ -15,14 +15,16 @@ class SyntagmaxMCPServer:
 
     def initialize(self):
         lg.info('Initializing MCP server: extracting artifacts...')
-        artifacts_list, e_errors = extract(self.config)
-        artifacts, v_errors = build_artifact_map(artifacts_list)
-        populate_pids(self.config, artifacts)
-        t_errors = build_tree(self.config, artifacts)
-        a_errors = analyse_tree(self.config, artifacts)
-        errors = e_errors + v_errors + t_errors + a_errors
+        errors: list[str] = []
+        artifacts_list = extract(self.config, errors)
+        artifacts = build_artifact_map(artifacts_list, errors)
+        populate_pids(self.config, artifacts, errors)
+        build_tree(self.config, artifacts, errors)
+        analyse_tree(self.config, artifacts, errors)
+
         if errors:
             raise FatalError(errors)
+
         self.artifacts = artifacts
         lg.info(f'Loaded {len(self.artifacts)} artifacts.')
 
