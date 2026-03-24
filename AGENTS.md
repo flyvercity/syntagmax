@@ -94,3 +94,7 @@ uv run syntagmax mcp run path/to/config.toml
 - Syntagmax projects are configured via TOML files (e.g., `config.toml`).
 - Global AI settings can be placed in `~/.syntagmax/config`.
 - Environment variables (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, etc.) are supported.
+
+## Instructions for Jules
+
+Observe rules in `.agent/rules/`.
