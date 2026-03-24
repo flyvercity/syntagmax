@@ -34,7 +34,9 @@ class ArtifactValidator:
             for atype, rules in self._artifacts.items():
                 if rules and 'attributes' in rules:
                     attr_rules = rules['attributes']
-                    self._mandatory_names_cache[atype] = {r['name'] for r in attr_rules.values() if r['presence'] == 'mandatory'}
+                    self._mandatory_names_cache[atype] = {
+                        r['name'] for r in attr_rules.values() if r['presence'] == 'mandatory'
+                    }
                     self._all_allowed_names_cache[atype] = set(attr_rules.keys())
                 else:
                     self._mandatory_names_cache[atype] = set()
@@ -73,10 +75,10 @@ class ArtifactValidator:
             # {num:padding} -> \d{padding,} or \d+
             pattern = schema.replace('{atype}', artifact.atype)
 
-            final_pattern = ""
+            final_pattern = ''
             last_pos = 0
             for match in _NUM_PATTERN.finditer(pattern):
-                final_pattern += re.escape(pattern[last_pos:match.start()])
+                final_pattern += re.escape(pattern[last_pos : match.start()])
                 padding = match.group(1)
                 if padding:
                     final_pattern += rf'\d{{{padding}}}'
@@ -233,9 +235,7 @@ class ArtifactValidator:
                 self.errors.append(f"Missing mandatory trace from '{artifact.atype}' to {target_str} ({artifact})")
 
 
-def analyse_tree(config: Config, artifacts: ArtifactMap) -> list[str]:
-    errors: list[str] = []
-
+def analyse_tree(config: Config, artifacts: ArtifactMap, errors: list[str]):
     validator = ArtifactValidator(config.metamodel, artifacts, errors)
 
     for artifact in artifacts.values():
@@ -255,5 +255,3 @@ def analyse_tree(config: Config, artifacts: ArtifactMap) -> list[str]:
 
     if root_count != 1:
         errors.append('Must have exactly one root artifact')
-
-    return errors

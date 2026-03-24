@@ -1,49 +1,48 @@
 # Processing Pipeline Overview
 
-This document describes the processing pipeline for the Requirement Management System (RMS) CLI tool, as implemented in `cli.py`, `analyse.py`, and `extract.py`.
+This document describes the processing pipeline for the Requirement Management System (RMS) CLI tool, as implemented in `cli.py`, `main.py`, and `utils.py`.
 
-## Pipeline Steps
+## Topological Execution Plan
 
-### 1. CLI Entry Point
-The user interacts with the system via the CLI, which provides commands such as `analyze` (full project analysis).
+Syntagmax uses a dynamic execution pipeline based on a Directed Acyclic Graph (DAG). Instead of a hardcoded sequence, the system determines the necessary steps to reach a requested target (e.g., `metrics` or `impact`) using a topological sorter.
 
-### 2. Config Initialization
-For the `analyze` command, the configuration is initialized using the provided config file and CLI options.
+### Pipeline Steps and Dependencies
 
-### 3. Extraction
-Artifacts are extracted from the input files using the appropriate extractor (e.g., text, markdown, obsidian, etc.).
+The core pipeline steps and their dependencies are defined as follows:
 
-### 4. Tree Building
-The extracted artifacts are organized into a tree structure, establishing parent-child relationships.
-
-### 5. Analysis
-The artifact tree is analyzed for validity, including checks for artifact types, root presence, allowed/required children, etc.
-
-### 6. Output
-The resulting artifact tree is printed. Errors are reported as needed.
-
----
+| Step | Dependencies | Description |
+|------|--------------|-------------|
+| `extract` | None | Extracts raw artifacts from input sources. |
+| `build_artifact_map` | `extract` | Organizes extracted artifacts into a searchable map. |
+| `populate_pids` | `build_artifact_map` | Resolves parent IDs from artifact attributes. |
+| `build_tree` | `populate_pids` | Establishes parent-child relationships and builds the hierarchy. |
+| `tree` | `build_tree` | Performs structural analysis and validation of the tree. |
+| `populate_revisions` | `build_artifact_map` | Extracts Git history and populates artifact revisions. |
+| `impact` | `populate_revisions`, `build_tree` | Performs impact analysis by comparing revisions. |
+| `metrics` | `tree` | Calculates project metrics (coverage, TBDs, etc.). |
+| `ai` | `build_artifact_map` | Performs AI-assisted analysis of artifacts. |
 
 ## Pipeline Flow (Mermaid Diagram)
 
 ```mermaid
 flowchart TD
-    A[CLI Entry Point] --> B[Config Initialization]
-    B --> C[extract]
-    C --> D[build_tree]
-    D --> E[analyse_tree]
-    E --> F[print_arttree]
+    extract --> build_artifact_map
+    build_artifact_map --> populate_pids
+    build_artifact_map --> populate_revisions
+    build_artifact_map --> ai
+    populate_pids --> build_tree
+    build_tree --> tree
+    build_tree --> impact
+    populate_revisions --> impact
+    tree --> metrics
 ```
 
----
+## Execution Logic
 
-## Summary Table
+When a user runs `syntagmax analyze <step>`, the system:
+1. Identifies the target `<step>`.
+2. Resolves all recursive dependencies for that step.
+3. Orders them topologically.
+4. Executes each step in sequence, passing a shared `artifacts` map and `errors` list between them.
 
-| Step                | Function/Module         | Description                                      |
-|---------------------|------------------------|--------------------------------------------------|
-| CLI Entry Point     | `cli.py`               | Handles user commands and options                 |
-| Config Initialization | `Config` (config.py)  | Loads configuration and parameters                |
-| Extraction          | `extract` (extract.py) | Extracts artifacts from input files               |
-| Tree Building       | `build_tree` (tree.py) | Builds parent-child relationships between artifacts |
-| Analysis            | `analyse_tree` (analyse.py) | Validates artifact tree structure and contents |
-| Output              | `print_arttree` (render.py) | Prints the artifact tree to the user         |
+This approach ensures that only the necessary work is performed and that dependencies are always satisfied.

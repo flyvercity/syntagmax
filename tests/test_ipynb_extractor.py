@@ -40,41 +40,36 @@ def input_record(tmp_path):
 
 def test_ipynb_extractor_basic(config, input_record, tmp_path):
     notebook_content = {
-        "cells": [
+        'cells': [
             {
-                "cell_type": "markdown",
-                "source": [
-                    "[REQ]\n",
-                    "This is cell 1 contents.\n",
-                    "[id] REQ-IPY-1\n",
-                    "```yaml\n",
-                    "attrs:\n",
-                    "  priority: high\n",
-                    "```"
-                ]
+                'cell_type': 'markdown',
+                'source': [
+                    '[REQ]\n',
+                    'This is cell 1 contents.\n',
+                    '[id] REQ-IPY-1\n',
+                    '```yaml\n',
+                    'attrs:\n',
+                    '  priority: high\n',
+                    '```',
+                ],
             },
+            {'cell_type': 'code', 'source': ["print('hello world')"], 'outputs': [], 'execution_count': 1},
             {
-                "cell_type": "code",
-                "source": ["print('hello world')"],
-                "outputs": [],
-                "execution_count": 1
+                'cell_type': 'markdown',
+                'source': [
+                    '[REQ]\n',
+                    'This is cell 2 contents.\n',
+                    '[id] REQ-IPY-2\n',
+                    '```yaml\n',
+                    'attrs:\n',
+                    '  priority: low\n',
+                    '```',
+                ],
             },
-            {
-                "cell_type": "markdown",
-                "source": [
-                    "[REQ]\n",
-                    "This is cell 2 contents.\n",
-                    "[id] REQ-IPY-2\n",
-                    "```yaml\n",
-                    "attrs:\n",
-                    "  priority: low\n",
-                    "```"
-                ]
-            }
         ],
-        "metadata": {},
-        "nbformat": 4,
-        "nbformat_minor": 4
+        'metadata': {},
+        'nbformat': 4,
+        'nbformat_minor': 4,
     }
 
     filepath = tmp_path / 'test.ipynb'
@@ -85,13 +80,13 @@ def test_ipynb_extractor_basic(config, input_record, tmp_path):
 
     # Currently it should fail because it expects Path but gets str in IPynbExtractor
     # AND it currently only allows 1 artifact per file.
-    
+
     assert len(errors) == 0
     assert len(artifacts) == 2
-    
+
     assert artifacts[0].aid == 'REQ-IPY-1'
     assert artifacts[1].aid == 'REQ-IPY-2'
-    
+
     # Check locations
     assert str(artifacts[0].location) == 'test.ipynb[0]:1-7'
     assert str(artifacts[1].location) == 'test.ipynb[2]:1-7'

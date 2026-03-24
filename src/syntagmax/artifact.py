@@ -100,7 +100,7 @@ class Artifact:
         return max(self.revisions, key=lambda r: r.timestamp)
 
     def contents(self) -> str:
-        return self.fields.get('contents', 'empty')
+        return self.fields.get('contents', '<empty>')
 
     def __str__(self) -> str:
         hash_short = self.latest_revision.hash_short if self.latest_revision else 'none'

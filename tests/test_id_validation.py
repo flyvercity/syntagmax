@@ -1,19 +1,21 @@
-
 import pytest
 from syntagmax.metamodel import load_metamodel
 from syntagmax.artifact import Artifact, ArtifactMap
 from syntagmax.analyse import ArtifactValidator
 from syntagmax.errors import FatalError
 
+
 @pytest.fixture
 def mock_config():
     class MockConfig:
         def __init__(self):
             self.params = {'verbose': False}
+
     return MockConfig()
 
+
 def test_id_schema_validation(tmp_path):
-    model_file = tmp_path / "project.syntagmax"
+    model_file = tmp_path / 'project.syntagmax'
     model_file.write_text("""
 artifact REQ:
     id is string as REQ-{num:3}
@@ -61,22 +63,23 @@ artifact SYS:
     validator = ArtifactValidator(metamodel, artifacts)
 
     v_errors = validator.validate(a1)
-    assert not v_errors, f"a1 should be valid, errors: {v_errors}"
+    assert not v_errors, f'a1 should be valid, errors: {v_errors}'
 
     validator = ArtifactValidator(metamodel, artifacts)
     v_errors = validator.validate(a2)
-    assert any("does not match schema" in e for e in v_errors), f"a2 should have schema error, errors: {v_errors}"
+    assert any('does not match schema' in e for e in v_errors), f'a2 should have schema error, errors: {v_errors}'
 
     validator = ArtifactValidator(metamodel, artifacts)
     v_errors = validator.validate(a3)
-    assert not v_errors, f"a3 should be valid, errors: {v_errors}"
+    assert not v_errors, f'a3 should be valid, errors: {v_errors}'
 
     validator = ArtifactValidator(metamodel, artifacts)
     v_errors = validator.validate(a4)
-    assert any("does not match schema" in e for e in v_errors), f"a4 should have schema error, errors: {v_errors}"
+    assert any('does not match schema' in e for e in v_errors), f'a4 should have schema error, errors: {v_errors}'
+
 
 def test_id_attribute_forbidden(tmp_path):
-    model_file = tmp_path / "project.syntagmax"
+    model_file = tmp_path / 'project.syntagmax'
     model_file.write_text("""
 artifact REQ:
     attribute id is mandatory string
@@ -87,8 +90,9 @@ artifact REQ:
         load_metamodel(model_file, errors)
     assert any("regular attribute named 'id'" in e for e in excinfo.value.errors)
 
+
 def test_id_schema_with_spaces(tmp_path):
-    model_file = tmp_path / "project.syntagmax"
+    model_file = tmp_path / 'project.syntagmax'
     model_file.write_text("""
 artifact REQ:
     id is string as "Project REQ-{num:3}"
@@ -97,4 +101,4 @@ artifact REQ:
     errors = []
     metamodel = load_metamodel(model_file, errors)
     assert not errors
-    assert metamodel['artifacts']['REQ']['attributes']['id']['schema'] == "Project REQ-{num:3}"
+    assert metamodel['artifacts']['REQ']['attributes']['id']['schema'] == 'Project REQ-{num:3}'

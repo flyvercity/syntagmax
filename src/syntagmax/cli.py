@@ -17,7 +17,7 @@ from rich.logging import RichHandler
 import syntagmax.utils as u
 from syntagmax.config import Config, Params
 from syntagmax.errors import RMSException, FatalError
-from syntagmax.main import process
+from syntagmax.main import process, public_steps
 from syntagmax.mcp.server import run_mcp_server
 from syntagmax.init_cmd import init_project
 from syntagmax.edit import renumber_artifacts
@@ -27,7 +27,6 @@ from syntagmax.edit import renumber_artifacts
 @click.pass_context
 @click.option('--verbose', is_flag=True, help='Verbose output')
 @click.option('--render-tree', is_flag=True, help='Render the artifact tree')
-@click.option('--ai', is_flag=True, help='Use AI to analyze the project')
 @click.option('--cwd', type=click.Path(exists=True), help='Change the working directory')
 @click.option('--no-git', is_flag=True, help='Skip git history extraction')
 def rms(ctx: click.Context, **kwargs: dict[str, Any]):
@@ -53,16 +52,18 @@ def init(ctx: click.Context):
 
 @rms.command(help='Run full analysis of the project')
 @click.pass_obj
-@click.argument(
-    'config',
+@click.option(
+    '-f',
+    '--config-file',
     type=click.Path(exists=True),
     default='.syntagmax/config.toml',
 )
 @click.option('--allow-dirty-worktree', is_flag=True, help='Allow analysis on a dirty git worktree')
-def analyze(obj: Params, config: Path, allow_dirty_worktree: bool):
+@click.argument('step', type=click.Choice(public_steps()), default='metrics')
+def analyze(obj: Params, config_file: Path, allow_dirty_worktree: bool, step: str):
     obj['allow_dirty_worktree'] = allow_dirty_worktree
-    configurator = Config(obj, config)
-    process(configurator)
+    config = Config(obj, config_file)
+    process(step, config)
 
 
 @rms.group(help='Project Editing Commands')

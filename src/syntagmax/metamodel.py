@@ -60,19 +60,19 @@ class DSLTransformer(Transformer):
         return [str(c) for c in children]
 
     def unquoted_items(self, children):
-        return "".join(map(str, children))
+        return ''.join(map(str, children))
 
     def quoted_items(self, children):
         # We need to strip the quotes if they were included by the rule?
         # quoted_items: "\"" (QUOTED_PART | placeholder | invalid_placeholder)* "\""
         # The children will be only the items inside the quotes because "\"" are literal strings in the rule.
-        return "".join(map(str, children))
+        return ''.join(map(str, children))
 
     def PLACEHOLDER(self, token):
         return str(token)
 
     def INVALID_PLACEHOLDER(self, token):
-        raise ValueError(f"Invalid placeholder: {token}")
+        raise ValueError(f'Invalid placeholder: {token}')
 
     def type_string(self, _):
         return {'type': 'string'}
@@ -191,7 +191,9 @@ def validate_metamodel(metamodel: dict, errors: list[str]):
         # All attributes named 'id' must come from the "id" rule.
         for attr_name, attr_def in attributes.items():
             if attr_name == 'id' and not attr_def.get('id_rule', False):
-                errors.append(f"Artifact '{artifact_name}' has a regular attribute named 'id'. Use 'id is ...' instead.")
+                errors.append(
+                    f"Artifact '{artifact_name}' has a regular attribute named 'id'. Use 'id is ...' instead."
+                )
 
         id_attr = attributes.get('id')
         if not id_attr:

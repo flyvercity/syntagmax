@@ -13,57 +13,76 @@ from syntagmax.extract import extract, build_artifact_map
 from syntagmax.tree import build_tree, populate_pids
 from syntagmax.render import print_arttree
 from syntagmax.analyse import analyse_tree
-from syntagmax.metrics import calculate_metrics, render_metrics
+from syntagmax.metrics import calculate_metrics
 from syntagmax.ai import ai_analyze
 from syntagmax.git_utils import populate_revisions
-from syntagmax.impact import perform_impact_analysis, render_impact_report
+from syntagmax.utils import get_execution_plan
+from syntagmax.impact import perform_impact_analysis
 
 
-def process(config: Config):
+STEPS = {
+    'extract': extract,
+    'build_artifact_map': build_artifact_map,
+    'populate_pids': populate_pids,
+    'build_tree': build_tree,
+    'tree': analyse_tree,
+    'populate_revisions': populate_revisions,
+    'impact': perform_impact_analysis,
+    'metrics': calculate_metrics,
+    'ai': ai_analyze,
+}
+
+DEPS = {
+    'extract': set(),
+    'build_artifact_map': {'extract'},
+    'populate_pids': {'build_artifact_map'},
+    'build_tree': {'populate_pids'},
+    'tree': {'build_tree'},
+    'populate_revisions': {'build_artifact_map'},
+    'impact': {'populate_revisions', 'build_tree'},
+    'metrics': {'tree'},
+    'ai': {'build_artifact_map'},
+}
+
+
+def public_steps():
+    return [
+        'extract',
+        'tree',
+        'impact',
+        'metrics',
+        'ai',
+    ]
+
+
+def process(requested_step, config: Config):
     errors: list[str] = []
-    artifacts_list, e_errors = extract(config)
-    errors.extend(e_errors)
+    artifacts_list = None
+    artifacts = None
+    plan = get_execution_plan(DEPS, requested_step)
 
-    artifacts, v_errors = build_artifact_map(artifacts_list)
-    errors.extend(v_errors)
+    for step in plan:
+        lg.info(f'Executing step: {step}')
 
-    populate_pids(config, artifacts)
-    t_errors = build_tree(config, artifacts)
-    errors.extend(t_errors)
-    a_errors = analyse_tree(config, artifacts)
-    errors.extend(a_errors)
+        match step:
+            case 'extract':
+                artifacts_list = extract(config, errors)
+            case 'build_artifact_map':
+                if artifacts_list is None:
+                    raise FatalError(f'Artifacts list not initialized for step {step}')
 
-    if not artifacts:
-        lg.warning('No artifacts found')
-        return
+                artifacts = build_artifact_map(artifacts_list, errors)
+            case _:
+                if artifacts is None:
+                    raise FatalError(f'Artifacts not initialized for step {step}')
 
-    # Impact analysis
-    impact_data = None
-
-    if not config.params.get('no_git', False):
-        populate_revisions(config, artifacts, errors)
-    else:
-        lg.warning('Git history extraction skipped (--no-git)')
-
-    if config.impact.enabled:
-        impact_data = perform_impact_analysis(config, artifacts, errors)
+                STEPS[step](config, artifacts, errors)
 
     if config.params['render_tree']:
-        print_arttree(artifacts, 'ROOT', verbose=config.params['verbose'])
+        if not artifacts or 'ROOT' not in artifacts:
+            lg.warning('No tree was built, skipping tree rendering')
+        else:
+            print_arttree(artifacts, 'ROOT', verbose=config.params['verbose'])
 
     if errors:
         raise FatalError(errors)
-
-    if config.metrics.enabled:
-        metrics = calculate_metrics(config, artifacts, errors)
-
-        if errors:
-            raise FatalError(errors)
-
-        render_metrics(metrics, config)
-
-    if impact_data:
-        render_impact_report(impact_data, config)
-
-    if config.params['ai']:
-        ai_analyze(config, artifacts)

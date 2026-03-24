@@ -7,9 +7,11 @@ from syntagmax.extractors.obsidian import ObsidianExtractor
 from syntagmax.analyse import ArtifactValidator
 from syntagmax.params import Params
 
+
 @pytest.fixture
 def params():
     return Params(verbose=False, render_tree=False, ai=False)
+
 
 @pytest.fixture
 def config(params, tmp_path):
@@ -27,6 +29,7 @@ atype = "REQ"
     )
     return Config(params=params, config_filename=cfg_path)
 
+
 @pytest.fixture
 def metamodel():
     return {
@@ -35,19 +38,36 @@ def metamodel():
                 'artifact_name': 'REQ',
                 'attributes': {
                     'id': {'name': 'id', 'presence': 'mandatory', 'multiple': False, 'type_info': {'type': 'string'}},
-                    'contents': {'name': 'contents', 'presence': 'mandatory', 'multiple': False, 'type_info': {'type': 'string'}},
+                    'contents': {
+                        'name': 'contents',
+                        'presence': 'mandatory',
+                        'multiple': False,
+                        'type_info': {'type': 'string'},
+                    },
                     'tag': {'name': 'tag', 'presence': 'mandatory', 'multiple': True, 'type_info': {'type': 'string'}},
-                    'author': {'name': 'author', 'presence': 'optional', 'multiple': True, 'type_info': {'type': 'string'}},
-                    'priority': {'name': 'priority', 'presence': 'optional', 'multiple': False, 'type_info': {'type': 'string'}}
-                }
+                    'author': {
+                        'name': 'author',
+                        'presence': 'optional',
+                        'multiple': True,
+                        'type_info': {'type': 'string'},
+                    },
+                    'priority': {
+                        'name': 'priority',
+                        'presence': 'optional',
+                        'multiple': False,
+                        'type_info': {'type': 'string'},
+                    },
+                },
             }
         },
-        'traces': {}
+        'traces': {},
     }
+
 
 @pytest.fixture
 def input_record(tmp_path):
     return InputRecord(name='test', record_base=tmp_path, filepaths=[], driver='text', default_atype='REQ')
+
 
 def test_text_extractor_multiple_attributes(config, input_record, metamodel, tmp_path):
     contents = """
@@ -79,6 +99,7 @@ def test_text_extractor_multiple_attributes(config, input_record, metamodel, tmp
     val_errors = validator.validate(artifact)
     assert len(val_errors) == 0
 
+
 def test_obsidian_extractor_multiple_attributes(config, input_record, metamodel, tmp_path):
     contents = textwrap.dedent("""
     [REQ]
@@ -106,7 +127,7 @@ def test_obsidian_extractor_multiple_attributes(config, input_record, metamodel,
     assert artifact.aid == 'REQ-2'
     # Obsidian extractor: fields from markdown AND from YAML are added.
     # tag should contain tagA, tagB, tagC
-    assert 'tag1' not in artifact.fields['tag'] # just a check
+    assert 'tag1' not in artifact.fields['tag']  # just a check
     assert 'tagA' in artifact.fields['tag']
     assert 'tagB' in artifact.fields['tag']
     assert 'tagC' in artifact.fields['tag']
@@ -118,6 +139,7 @@ def test_obsidian_extractor_multiple_attributes(config, input_record, metamodel,
     validator = ArtifactValidator(metamodel, {})
     val_errors = validator.validate(artifact)
     assert len(val_errors) == 0
+
 
 def test_mandatory_multiple_attribute_missing(config, input_record, metamodel, tmp_path):
     # Missing 'tag' which is mandatory multiple

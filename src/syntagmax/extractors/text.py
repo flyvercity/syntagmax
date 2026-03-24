@@ -96,7 +96,7 @@ class TextExtractor(Extractor):
         # Apply updates in reverse order of line numbers to avoid offset shifts
         # Actually, if we use a list of lines, it's safer to work with indices.
         # Let's sort updates by start_line in reverse.
-        updates.sort(key=lambda u: u[0].location.loc_lines[0], reverse=True) # type: ignore
+        updates.sort(key=lambda u: u[0].location.loc_lines[0], reverse=True)  # type: ignore
 
         for artifact, new_id in updates:
             if not isinstance(artifact.location, LineLocation):
@@ -104,7 +104,7 @@ class TextExtractor(Extractor):
 
             start_line, end_line = artifact.location.loc_lines
             segment_lines = lines[start_line - 1 : end_line]
-            segment = "".join(segment_lines)
+            segment = ''.join(segment_lines)
 
             # Update the ID field in the segment
             # Try to replace ID=AID or id=AID
@@ -113,11 +113,12 @@ class TextExtractor(Extractor):
             # Replace the segment in the lines list
             lines[start_line - 1 : end_line] = [segment]
 
-        filepath.write_text("".join(lines), encoding='utf-8')
+        filepath.write_text(''.join(lines), encoding='utf-8')
 
     def update_artifact(self, artifact: Artifact, fields: dict[str, str]):
         # This is now less preferred than update_artifacts for renumbering
         from syntagmax.artifact import LineLocation
+
         if not isinstance(artifact.location, LineLocation):
             return
 

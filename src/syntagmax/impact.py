@@ -20,8 +20,6 @@ from syntagmax.config import Config
 
 
 def perform_impact_analysis(config: Config, artifacts: ArtifactMap, errors: list[str]) -> benedict:
-    if not config.impact.enabled:
-        return benedict()
 
     impact_data = benedict()
     suspicious_links = []
@@ -77,7 +75,7 @@ def perform_impact_analysis(config: Config, artifacts: ArtifactMap, errors: list
         updated_aids = {link['parent_aid'] for link in suspicious_links}
         impact_data['suspicious_tree'] = _generate_suspicious_tree(artifacts, suspicious_aids, updated_aids)
 
-    return impact_data
+    _render_impact_report(impact_data, config)
 
 
 CONST_I_CHAR = '│'
@@ -158,8 +156,8 @@ def _make_gettext(catalog: Catalog | None):
     return gettext
 
 
-def render_impact_report(impact_data: benedict, config: Config):
-    if not config.impact.enabled or not impact_data:
+def _render_impact_report(impact_data: benedict, config: Config):
+    if not impact_data:
         return
 
     if config.impact.output_format == 'rich':

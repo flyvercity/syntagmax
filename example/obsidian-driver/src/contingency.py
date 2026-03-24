@@ -2,4 +2,6 @@
 def activate_contingency_mode():
     # Transfer control to GCS
     pass
+
+
 # >]

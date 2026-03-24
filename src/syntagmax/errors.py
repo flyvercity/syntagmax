@@ -19,4 +19,4 @@ class FatalError(RMSException):
             self.errors = [errors]
         else:
             self.errors = errors
-        super().__init__("\n".join(self.errors))
+        super().__init__('\n'.join(self.errors))

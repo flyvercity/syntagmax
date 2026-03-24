@@ -1,3 +1,9 @@
+# SPDX-License-Identifier: MIT
+
+# Author: Boris Resnick
+# Created: 2026-01-06
+# Description: Syntagmax Requirement Management System (RMS) AI Analysis Subsystem.
+
 """
 Call AI provider to score a single requirement for:
   - ambiguity
@@ -10,7 +16,7 @@ import logging as lg
 
 import rich
 
-from syntagmax.artifact import Artifact
+from syntagmax.artifact import ArtifactMap
 from syntagmax.config import Config
 from syntagmax.ai_providers import (
     AIProvider,
@@ -22,7 +28,7 @@ from syntagmax.ai_providers import (
 )
 
 
-def ai_analyze(config: Config, artifacts: dict[str, Artifact]):
+def ai_analyze(config: Config, artifacts: ArtifactMap, errors: list[str]):
     provider_name = config.ai.provider.lower()
     lg.info(f'Using AI provider: {provider_name}')
 
@@ -38,20 +44,19 @@ def ai_analyze(config: Config, artifacts: dict[str, Artifact]):
     elif provider_name == 'bedrock':
         provider = BedrockProvider(config.ai)
     else:
-        lg.error(f'Unknown AI provider: {provider_name}')
+        errors.append(f'Unknown AI provider: {provider_name}')
         return
 
     for artifact in artifacts.values():
-        lg.info(f'Launching AI analysis for {artifact.ref()}')
-
-        if 'contents' not in artifact.fields:
-            lg.warning(f'No contents for {artifact.ref()}')
+        if artifact.atype == 'ROOT':
             continue
 
-        try:
-            result = provider.analyze_requirement(artifact.fields['contents'])
+        lg.info(f'Launching AI analysis for {artifact.aid}')
 
-            rich.print(f'[bold green]Metrics for {artifact.ref()}:[/bold green]')
+        try:
+            result = provider.analyze_requirement(artifact.contents())
+
+            rich.print(f'[bold green]Metrics for {artifact}:[/bold green]')
             rich.print(f'Ambiguity: {result["metrics"]["ambiguity"]}')
             rich.print(f'Completeness: {result["metrics"]["completeness"]}')
             rich.print(f'Verifiability: {result["metrics"]["verifiability"]}')
@@ -59,4 +64,4 @@ def ai_analyze(config: Config, artifacts: dict[str, Artifact]):
 
             lg.debug(f'Metrics {artifact!r}, {result!r}')
         except Exception as e:
-            lg.error(f'AI analysis failed for {artifact.ref()}: {e}')
+            errors.append(f'AI analysis failed for {artifact}: {e}')

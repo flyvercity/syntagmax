@@ -60,7 +60,7 @@ trace from TEST to SRC is optional via timestamp
     assert len(metamodel['traces']['REQ']) == 1
     assert metamodel['traces']['REQ'][0]['targets'] == ['SYS', 'DER']
     assert metamodel['traces']['REQ'][0]['presence'] == 'mandatory'
-    
+
 
 def test_trace_validation(config, tmp_path):
     model_file = tmp_path / 'test.model'

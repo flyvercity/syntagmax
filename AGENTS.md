@@ -12,6 +12,7 @@ Syntagmax is a lightweight, git-friendly requirement management system designed 
 - **Build System:** [hatchling](https://hatch.pypa.io/)
 - **Parsing:** [Lark](https://github.com/lark-parser/lark) (Unified parsing for metamodel and extractors)
 - **CLI Framework:** [click](https://click.palletsprojects.com/)
+- **Execution Pipeline:** `graphlib.TopologicalSorter` for DAG-based step resolution.
 - **Data Analysis:** [polars](https://pypolars.io/)
 - **Configuration & Validation:** [pydantic](https://docs.pydantic.dev/)
 - **Templating:** [Jinja2](https://jinja.palletsprojects.com/)
@@ -24,7 +25,8 @@ Syntagmax is a lightweight, git-friendly requirement management system designed 
 
 - `src/syntagmax/`: Core source code.
     - `cli.py`: CLI entry point (`syntagmax` command).
-    - `main.py`: Orchestrates the processing pipeline.
+    - `main.py`: Orchestrates the processing pipeline using a DAG-based execution plan.
+    - `utils.py`: Shared utilities including the topological execution plan resolver.
     - `extract.py`: Artifact extraction logic using various drivers.
     - `extractors/`: Driver-specific extractors (`text`, `obsidian`, `ipynb`).
     - `tree.py`: Logic for building the artifact relationship tree.
@@ -32,6 +34,8 @@ Syntagmax is a lightweight, git-friendly requirement management system designed 
     - `render.py`: Output rendering (tree view).
     - `metrics.py`: Metric collection and rendering.
     - `ai.py`: AI-based project analysis.
+    - `impact.py`: Impact analysis logic (git-based staleness detection).
+    - `git_utils.py`: Git-related utilities.
     - `mcp/`: MCP server implementation.
     - `resources/`: Shared resources, Jinja templates, and localizations.
 - `docs/`: Project documentation, including `INTERNALS.md`.
@@ -49,14 +53,14 @@ uv sync
 ### Running the CLI
 The main tool is `syntagmax`.
 ```powershell
-# Run analysis on a project config
+# Run full analysis on a project config (defaults to metrics)
 uv run syntagmax analyze path/to/config.toml
+
+# Run specific step (e.g. impact analysis)
+uv run syntagmax analyze path/to/config.toml impact
 
 # Verbose output with tree rendering
 uv run syntagmax --verbose --render-tree analyze path/to/config.toml
-
-# AI-enabled analysis
-uv run syntagmax --ai analyze path/to/config.toml
 ```
 
 ### Running the MCP Server

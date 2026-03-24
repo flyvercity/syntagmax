@@ -188,7 +188,33 @@ Each artifact is attached with a set of revisions. A revision includes:
 If you want to skip git history extraction (e.g., if you are not in a git repository or want to speed up analysis), use the `--no-git` flag:
 
 ```bash
-syntagmax analyze --no-git
+uv run syntagmax analyze .syntagmax/config.toml --no-git
+```
+
+## Running Analysis
+
+The `analyze` command is the primary way to process your project. It supports a dynamic execution pipeline where you can request a specific target step.
+
+```bash
+uv run syntagmax analyze [CONFIG_FILE] [STEP]
+```
+
+### Target Steps
+
+Syntagmax will automatically resolve and execute all dependencies required for the requested step:
+
+| Step | Description |
+|------|-------------|
+| `extract` | Only extract artifacts from source files. |
+| `tree` | Build and validate the artifact tree. |
+| `impact` | Perform impact analysis (requires git history). |
+| `metrics` | (Default) Calculate project metrics and coverage. |
+| `ai` | Perform AI-assisted analysis. |
+
+Example:
+```bash
+# Run impact analysis only
+uv run syntagmax analyze .syntagmax/config.toml impact
 ```
 
 ## Metamodel DSL

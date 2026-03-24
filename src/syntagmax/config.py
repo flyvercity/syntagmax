@@ -42,7 +42,6 @@ class InputConfig(BaseModel):
 
 
 class MetricsConfig(BaseModel):
-    enabled: bool = Field(default=False, description='Enable metrics collection and reporting')
     requirement_type: str = Field(
         default='REQ', description='The artifact type to treat as a "requirement" for metrics'
     )
@@ -58,7 +57,6 @@ class MetricsConfig(BaseModel):
 
 
 class ImpactConfig(BaseModel):
-    enabled: bool = Field(default=False, description='Enable impact analysis to detect potentially outdated artifacts')
     output_format: str = Field(
         default='rich', description='Format for the impact report (rich or markdown)', pattern='^(rich|markdown)$'
     )
@@ -166,12 +164,6 @@ class Config:
         self.metrics = config_model.metrics
         self.impact = config_model.impact
         self.ai = config_model.ai
-
-        if not config_model.metrics.enabled:
-            lg.warning('Metrics collection is disabled')
-
-        if not config_model.impact.enabled:
-            lg.warning('Impact analysis is disabled')
 
         if config_model.metamodel.filename:
             self.metamodel = load_metamodel(Path(root_dir, config_model.metamodel.filename), errors)
