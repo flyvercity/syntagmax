@@ -13,7 +13,7 @@ from syntagmax.render import print_metrics
 from syntagmax.publish import publish_metrics
 
 
-def calculate_metrics(config: Config, artifacts: ArtifactMap, errors: list[str]) -> benedict:
+def calculate_metrics(config: Config, artifacts: ArtifactMap, errors: list[str]):
     metrics = benedict()
 
     df = pl.DataFrame(
@@ -62,10 +62,6 @@ def calculate_metrics(config: Config, artifacts: ArtifactMap, errors: list[str])
         * 100.0
     )
 
-    return metrics
-
-
-def render_metrics(metrics: benedict, config: Config):
     if config.metrics.output_format == 'rich':
         print_metrics(metrics)
     elif config.metrics.output_format == 'markdown':

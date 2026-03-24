@@ -37,9 +37,8 @@ def print_artifact(artifact: Artifact):
     )
 
 
-def extract(config: Config) -> tuple[list[Artifact], list[str]]:
+def extract(config: Config, errors) -> list[Artifact]:
     artifacts: list[Artifact] = []
-    errors: list[str] = []
 
     for record in config.input_records():
         lg.debug(f'Processing record: {record.name} ({record.driver})')
@@ -54,12 +53,11 @@ def extract(config: Config) -> tuple[list[Artifact], list[str]]:
         for artifact in artifacts:
             print_artifact(artifact)
 
-    return artifacts, errors
+    return artifacts
 
 
-def build_artifact_map(artifacts_list: list[Artifact]) -> tuple[dict[str, Artifact], list[str]]:
+def build_artifact_map(artifacts_list: list[Artifact], errors) -> dict[str, Artifact]:
     artifacts: dict[str, Artifact] = {}
-    errors: list[str] = []
 
     for a in artifacts_list:
         if not a.aid or a.aid == UNDEFINED_ID:
@@ -72,4 +70,4 @@ def build_artifact_map(artifacts_list: list[Artifact]) -> tuple[dict[str, Artifa
             continue
         artifacts[a.aid] = a
 
-    return artifacts, errors
+    return artifacts

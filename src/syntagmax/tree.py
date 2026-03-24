@@ -4,8 +4,6 @@
 # Created: 2025-04-06
 # Description: Builds a tree of artifacts.
 
-import logging as lg
-
 from syntagmax.config import Config
 from syntagmax.artifact import ArtifactMap, Artifact, Location, ParentLink
 
@@ -26,7 +24,7 @@ class RootArtifact(Artifact):
         self.children = set()
 
 
-def populate_pids(config: Config, artifacts: ArtifactMap):
+def populate_pids(config: Config, artifacts: ArtifactMap, errors: list[str]):
     if not config.metamodel:
         return
 
@@ -61,12 +59,10 @@ def populate_pids(config: Config, artifacts: ArtifactMap):
                         if aid not in a.pids:
                             a.pids.append(aid)
                     except Exception as e:
-                        lg.warning(f"Error processing parent link '{ref_str}' for artifact '{a.aid}': {e}")
+                        errors.append(f"Error processing parent link '{ref_str}' for artifact '{a.aid}': {e}")
 
 
-def gather_ansestors(
-    artifacts: ArtifactMap, ref: str, depth: int = 0
-) -> str | None:
+def gather_ansestors(artifacts: ArtifactMap, ref: str, depth: int = 0) -> str | None:
     if depth > MAX_TREE_DEPTH:
         return f'Circular reference detected with {artifacts[ref].aid}'
 
@@ -80,9 +76,8 @@ def gather_ansestors(
     return None
 
 
-def build_tree(config: Config, artifacts: ArtifactMap) -> list[str]:
+def build_tree(config: Config, artifacts: ArtifactMap, errors: list[str]):
     full_set = set(artifacts.keys())
-    errors: list[str] = []
 
     for a in artifacts.values():
         for pid in a.pids:
@@ -105,5 +100,3 @@ def build_tree(config: Config, artifacts: ArtifactMap) -> list[str]:
         if err:
             errors.append(err)
             break
-
-    return errors
