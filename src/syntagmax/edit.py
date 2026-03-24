@@ -12,11 +12,9 @@ from syntagmax.artifact import UNDEFINED_ID
 from syntagmax.config import Config
 from syntagmax.extract import extract
 
+
 def renumber_artifacts(
-    config: Config,
-    atype: str | None = None,
-    schema_override: str | None = None,
-    dry_run: bool = False
+    config: Config, atype: str | None = None, schema_override: str | None = None, dry_run: bool = False
 ):
     artifacts_list, errors = extract(config)
     if errors:
@@ -63,10 +61,10 @@ def renumber_artifacts(
             schema = config.metamodel['artifacts'][current_atype]['attributes'].get('id', {}).get('schema')
 
         if not schema:
-            schema = "{atype}-{num:3}"
+            schema = '{atype}-{num:3}'
 
         # Substitute macro
-        new_id = schema.replace("{atype}", current_atype)
+        new_id = schema.replace('{atype}', current_atype)
 
         def replacer(match):
             padding = match.group(1)
@@ -77,19 +75,20 @@ def renumber_artifacts(
         new_id = num_pattern.sub(replacer, new_id)
 
         # Log what we are doing
-        old_id_display = artifact.aid if artifact.aid != UNDEFINED_ID else "<undefined>"
+        old_id_display = artifact.aid if artifact.aid != UNDEFINED_ID else '<undefined>'
 
         if new_id != artifact.aid:
             if dry_run:
-                lg.info(f"DRY-RUN: Would renumber {old_id_display} to {new_id} at {artifact.location}")
+                lg.info(f'DRY-RUN: Would renumber {old_id_display} to {new_id} at {artifact.location}')
             else:
-                lg.info(f"Renumbering {old_id_display} to {new_id} at {artifact.location}")
+                lg.info(f'Renumbering {old_id_display} to {new_id} at {artifact.location}')
                 updates_by_file[artifact.location.loc_file].append((artifact, new_id))
 
         project_num += 1
 
     if not dry_run:
         from syntagmax.extract import EXTRACTORS
+
         # Perform updates grouped by file
         for loc_file, updates in updates_by_file.items():
             # All artifacts in the same file should have the same driver
@@ -101,6 +100,6 @@ def renumber_artifacts(
                     # Efficient bulk update
                     extractor.update_artifacts(loc_file, updates)
                 else:
-                    lg.warning(f"Driver {driver} does not support renumbering yet")
+                    lg.warning(f'Driver {driver} does not support renumbering yet')
             else:
-                lg.error(f"Could not find input record for driver {driver}")
+                lg.error(f'Could not find input record for driver {driver}')

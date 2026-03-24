@@ -3,4 +3,6 @@ class MAVLinkManager:
     def connect(self, uri):
         # Establish encrypted session
         pass
+
+
 # >]

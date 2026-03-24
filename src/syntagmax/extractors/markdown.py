@@ -113,7 +113,7 @@ class MarkdownExtractor(Extractor):
 
                 # Re-emit YAML
                 new_yaml_content = yaml_data.to_yaml()
-                new_yaml_block = f"```yaml\n{new_yaml_content.strip()}\n```"
+                new_yaml_block = f'```yaml\n{new_yaml_content.strip()}\n```'
 
                 # Replace the YAML block in the segment
                 yaml_start = segment.find('```yaml')

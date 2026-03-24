@@ -41,9 +41,9 @@ def process(config: Config):
         try:
             populate_revisions(config, artifacts)
         except Exception as e:
-            lg.warning(f"Failed to extract git revisions: {e}")
+            lg.warning(f'Failed to extract git revisions: {e}')
     else:
-        lg.warning("Git history extraction skipped (--no-git)")
+        lg.warning('Git history extraction skipped (--no-git)')
 
     # Impact analysis
     impact_data = None

@@ -1,9 +1,11 @@
 import time
 from syntagmax.analyse import ArtifactValidator
-from syntagmax.artifact import Artifact, Location
+from syntagmax.artifact import Artifact
+
 
 class MockConfig:
     pass
+
 
 def run_benchmark():
     # Setup metamodel
@@ -15,7 +17,12 @@ def run_benchmark():
                     'status': {'name': 'status', 'presence': 'optional', 'type_info': {'type': 'string'}},
                     'priority': {'name': 'priority', 'presence': 'mandatory', 'type_info': {'type': 'string'}},
                     'author': {'name': 'author', 'presence': 'optional', 'type_info': {'type': 'string'}},
-                    'id': {'name': 'id', 'presence': 'mandatory', 'type_info': {'type': 'string'}, 'schema': 'REQ-{num:3}'}
+                    'id': {
+                        'name': 'id',
+                        'presence': 'mandatory',
+                        'type_info': {'type': 'string'},
+                        'schema': 'REQ-{num:3}',
+                    },
                 }
             }
         }
@@ -45,7 +52,8 @@ def run_benchmark():
             validator.validate(a)
     end = time.perf_counter()
 
-    print(f"Validation took {(end - start)/5:.4f} seconds per run")
+    print(f'Validation took {(end - start) / 5:.4f} seconds per run')
+
 
 if __name__ == '__main__':
     run_benchmark()

@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: MIT
 
 import tomllib
-from pathlib import Path
 from syntagmax.init_cmd import generate_toml, init_project, METAMODEL_CONTENT
+
 
 def test_generate_toml():
     toml_content = generate_toml()
@@ -26,6 +26,7 @@ def test_generate_toml():
     assert data['input'][0]['name'] == 'requirements'
     assert data['input'][0]['dir'] == 'REQ'
     assert data['input'][0]['driver'] == 'obsidian'
+
 
 def test_init_project(tmp_path):
     # Change current working directory to tmp_path or pass it to init_project
