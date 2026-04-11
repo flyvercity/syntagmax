@@ -1,4 +1,4 @@
-*This is vastly a work-in-progress*
+*This tool is still under development*
 
 # Syntagmax - Git-Based Requirements Management System
 
