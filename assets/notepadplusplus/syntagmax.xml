@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<NotepadPlus>
+    <UserLang name="syntagmax" ext="syntagmax" udlVersion="2.1">
+        <Settings>
+            <Global caseIgnored="no" escapeChar="\" />
+            <TreatAsSymbol comment="no" commentLine="yes" />
+            <Prefix words1="no" words2="no" words3="no" words4="no" />
+        </Settings>
+        <KeywordLists>
+            <Keywords name="Delimiters">&quot;00&quot; &quot;00</Keywords>
+            <Keywords name="Folder+">artifact</Keywords>
+            <Keywords name="Folder-">trace</Keywords>
+            <Keywords name="Operators">: [ ] ,</Keywords>
+            <Keywords name="Comment"> 1 2 0# 0</Keywords>
+            <Keywords name="Words1">artifact trace from to is via as parent or</Keywords>
+            <Keywords name="Words2">attribute id multiple mandatory optional commit timestamp</Keywords>
+            <Keywords name="Words3">string integer boolean reference enum</Keywords>
+            <Keywords name="Words4"></Keywords>
+        </KeywordLists>
+        <Styles>
+            <WordsStyle name="DEFAULT" styleID="11" fgColor="ABB2BF" bgColor="282C34" fontName="" fontStyle="0" />
+            <WordsStyle name="FOLDEROPEN" styleID="12" fgColor="ABB2BF" bgColor="282C34" fontName="" fontStyle="0" />
+            <WordsStyle name="FOLDERCLOSE" styleID="13" fgColor="ABB2BF" bgColor="282C34" fontName="" fontStyle="0" />
+            <WordsStyle name="KEYWORD1" styleID="5" fgColor="C678DD" bgColor="282C34" fontName="" fontStyle="1" />
+            <WordsStyle name="KEYWORD2" styleID="6" fgColor="E5C07B" bgColor="282C34" fontName="" fontStyle="1" />
+            <WordsStyle name="KEYWORD3" styleID="7" fgColor="56B6C2" bgColor="282C34" fontName="" fontStyle="1" />
+            <WordsStyle name="KEYWORD4" styleID="8" fgColor="ABB2BF" bgColor="282C34" fontName="" fontStyle="0" />
+            <WordsStyle name="COMMENT" styleID="1" fgColor="5C6370" bgColor="282C34" fontName="" fontStyle="2" />
+            <WordsStyle name="COMMENT LINE" styleID="2" fgColor="5C6370" bgColor="282C34" fontName="" fontStyle="2" />
+            <WordsStyle name="NUMBER" styleID="4" fgColor="D19A66" bgColor="282C34" fontName="" fontStyle="0" />
+            <WordsStyle name="OPERATOR" styleID="10" fgColor="ABB2BF" bgColor="282C34" fontName="" fontStyle="1" />
+            <WordsStyle name="DELIMITER1" styleID="14" fgColor="98C379" bgColor="282C34" fontName="" fontStyle="0" />
+            <WordsStyle name="DELIMITER2" styleID="15" fgColor="ABB2BF" bgColor="282C34" fontName="" fontStyle="0" />
+            <WordsStyle name="DELIMITER3" styleID="16" fgColor="ABB2BF" bgColor="282C34" fontName="" fontStyle="0" />
+        </Styles>
+    </UserLang>
+</NotepadPlus>
+

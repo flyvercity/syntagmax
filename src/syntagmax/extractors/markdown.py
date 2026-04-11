@@ -27,11 +27,18 @@ class MarkdownTransformer(Transformer):
     def AID(self, t):
         return str(t).lower()
 
-    def yaml_content(self, t):
-        return str(t[0])
-
     def yaml_block(self, t):
-        return {'text': str(t[0]) if t else ''}
+        # yaml_block: _YAML_BEGIN [YAML_CONTENT] _YAML_END
+        # children: [YAML_CONTENT]
+        return {'text': str(t[0]) if t else '', 'type': 'yaml'}
+
+    def terminator(self, t):
+        # terminator: yaml_block | _REQ_END
+        # If yaml_block matches, t[0] is its result.
+        # If _REQ_END matches, t is empty because _ tokens are ignored.
+        if not t:
+            return {'type': 'slash_req'}
+        return t[0]
 
     def contents(self, t):
         return {'text': ''.join(str(c) for c in t) if t else ''}
@@ -45,30 +52,28 @@ class MarkdownTransformer(Transformer):
             text = str(t[1])
         return {'field': {'marker': marker, 'contents': {'text': text.strip()}}}
 
-    def fields(self, t):
-        return {'list': list(t)}
-
     def _NL(self, t):
         return None
 
     def req(self, t):
-        # req: _REQ_BEGIN (contents | field)* yaml_block
-        # children: (contents | field)* yaml_block
-        all_contents = []
+        # req: _REQ_BEGIN _NL? [contents] field* terminator
+        # children: [contents], field*, terminator
+        contents_text = ''
         all_fields = []
-        yaml_data = t[-1]
+        terminator = t[-1]
 
         for child in t[:-1]:
-            if 'text' in child:
-                all_contents.append(child['text'])
-            elif 'field' in child:
-                all_fields.append(child)
+            if isinstance(child, dict):
+                if 'text' in child:
+                    contents_text = child['text']
+                elif 'field' in child:
+                    all_fields.append(child)
 
         return {
             'req': {
-                'contents': {'text': ''.join(all_contents)},
+                'contents': {'text': contents_text},
                 'fields': {'list': all_fields},
-                'yaml': yaml_data,
+                'yaml': terminator if terminator.get('type') == 'yaml' else None,
             }
         }
 
@@ -104,7 +109,7 @@ class MarkdownExtractor(Extractor):
             # - add/update id attribute in the yaml_data dict
             # - re-emit a full yaml block
 
-            if isinstance(artifact, MarkdownArtifact) and artifact.yaml_data is not None:
+            if isinstance(artifact, MarkdownArtifact) and artifact.yaml_data is not None and artifact.yaml_data:
                 yaml_data = artifact.yaml_data
                 if yaml_data.get('attrs') is None:
                     yaml_data['attrs'] = {}
@@ -121,12 +126,24 @@ class MarkdownExtractor(Extractor):
                     yaml_end = segment.find('```', yaml_start + 7)
                     if yaml_end != -1:
                         segment = segment[:yaml_start] + new_yaml_block + segment[yaml_end + 3 :]
+                else:
+                    # No yaml block found but we have yaml_data? 
+                    # This could happen if it was terminated by [/REQ] and we want to ADD YAML.
+                    # For now, let's append before [/REQ] if it exists, or at the end.
+                    slash_req_pos = segment.rfind('[/REQ]')
+                    if slash_req_pos != -1:
+                        segment = segment[:slash_req_pos] + '\n' + new_yaml_block + '\n' + segment[slash_req_pos:]
+                    else:
+                        segment = segment.strip() + '\n\n' + new_yaml_block + '\n'
+                
+                # Also update [id] format if it exists in the markdown
+                segment = re.sub(r'\[id\]\s*[a-zA-Z0-9-{}:]*', f'[id] {new_id}', segment, flags=re.IGNORECASE)
             else:
                 # Fallback to old method if no yaml_data
                 # Update [id] format
                 segment = re.sub(r'\[id\]\s*[a-zA-Z0-9-{}:]*', f'[id] {new_id}', segment, flags=re.IGNORECASE)
 
-                # Update YAML block
+                # Update YAML block if exists
                 yaml_start = segment.find('```yaml')
                 if yaml_start != -1:
                     yaml_end = segment.find('```', yaml_start + 7)
@@ -168,23 +185,31 @@ class MarkdownExtractor(Extractor):
 
             start_pos = match.start()
 
-            # Find the end marker of the YAML block
-            yaml_end_marker = '```'
+            # Find the end marker: either ```yaml...``` or [/REQ]
             yaml_start_pos = markdown.find('```yaml', start_pos)
+            
+            # Search for [/REQ]
+            slash_req_match = re.search(r'\[/REQ\]', markdown[start_pos:], re.IGNORECASE)
+            slash_req_pos = (start_pos + slash_req_match.start()) if slash_req_match else -1
 
-            if yaml_start_pos == -1:
-                # No YAML block, skip or report error
+            segment_end = -1
+            
+            # Determine which terminator comes first
+            if yaml_start_pos != -1 and (slash_req_pos == -1 or yaml_start_pos < slash_req_pos):
+                # YAML block comes first
+                yaml_end_marker = '```'
+                end_pos = markdown.find(yaml_end_marker, yaml_start_pos + 7)
+                if end_pos != -1:
+                    segment_end = end_pos + len(yaml_end_marker)
+            elif slash_req_pos != -1:
+                # [/REQ] comes first
+                segment_end = slash_req_pos + len('[/REQ]')
+
+            if segment_end == -1:
+                # No terminator found, skip
                 pos = match.end()
                 continue
 
-            end_pos = markdown.find(yaml_end_marker, yaml_start_pos + 7)
-
-            if end_pos == -1:
-                # Malformed YAML block
-                pos = yaml_start_pos + 7
-                continue
-
-            segment_end = end_pos + len(yaml_end_marker)
             segment = markdown[start_pos:segment_end]
             start_line = markdown.count('\n', 0, start_pos) + 1
             end_line = markdown.count('\n', 0, segment_end) + 1
@@ -198,25 +223,24 @@ class MarkdownExtractor(Extractor):
 
                 contents = req.get_str('req.contents.text')
                 fields = req.get_list('req.fields.list')
-                yaml_text = req.get('req.yaml.text')
+                yaml_info = req.get('req.yaml')
+                yaml_text = yaml_info.get('text') if yaml_info else None
 
                 if not yaml_text:
-                    error = f'Missing YAML in metadata at line {start_line}'
-                    lg.error(error)
-                    errors.append(error)
-                    pos = segment_end
-                    continue
+                    # Allow missing YAML if terminated by [/REQ] or if we have other fields
+                    yaml_dict = benedict({'attrs': {}})
+                    yaml_attrs = {}
+                else:
+                    yaml_dict = benedict.from_yaml(yaml_text)
 
-                yaml_dict = benedict.from_yaml(yaml_text)
+                    if 'attrs' not in yaml_dict:
+                        error = f'Invalid metadata in YAML at line {start_line}'
+                        lg.error(error)
+                        errors.append(error)
+                        pos = segment_end
+                        continue
+                    yaml_attrs = yaml_dict.get_dict('attrs')
 
-                if 'attrs' not in yaml_dict:
-                    error = f'Invalid metadata in YAML at line {start_line}'
-                    lg.error(error)
-                    errors.append(error)
-                    pos = segment_end
-                    continue
-
-                yaml_attrs = yaml_dict.get_dict('attrs')
 
                 # Merged dict for ID/AType extraction, YAML takes precedence
                 temp_attrs = {

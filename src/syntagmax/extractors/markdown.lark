@@ -1,18 +1,21 @@
 // src/syntagmax/extractors/markdown.lark
 ?start: req
 
-req: _REQ_BEGIN _NL? (contents | field)* yaml_block
+req: _REQ_BEGIN _NL? [contents] field* terminator
 
 _REQ_BEGIN: /\[REQ\]/i
+_REQ_END: /\[\/REQ\]/i
 
 contents: (CONTENT_LINE)+
-CONTENT_LINE: /(?!(?:\[|```yaml)).*\r?\n/
+CONTENT_LINE: /(?!(?:\[|```yaml|\[\/REQ\])).*\r?\n/i
 
 field: _LSQB AID _RSQB [FIELD_TEXT] _NL
 FIELD_TEXT: /[^\r\n]+/
 
-yaml_block: _YAML_BEGIN [yaml_content] _YAML_END
-yaml_content: /(.|\n)+?(?=```)/s
+terminator: yaml_block | _REQ_END
+
+yaml_block: _YAML_BEGIN [YAML_CONTENT] _YAML_END
+YAML_CONTENT: /(.|\n)+?(?=```)/s
 
 _LSQB: "["
 _RSQB: "]"
