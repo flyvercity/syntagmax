@@ -219,13 +219,9 @@ class ArtifactValidator:
             if parent_artifact:
                 actual_parents.append(parent_artifact)
 
-        # 1. Forbidden undeclared traces (against ALL rules, or just active ones?)
-        # User said: "Example A: trace from REQ to SYS is mandatory if not derived; trace from REQ to SYS is optional"
-        # If 'derived' is true, only 'optional' rule is active.
-        # If 'derived' is false, both 'mandatory' and 'optional' are active.
-        # It's safer to check forbidden traces against ALL possible rules for this source atype.
+        # 1. Forbidden undeclared traces
         allowed_target_types = set()
-        for rule in all_trace_rules:
+        for rule in active_trace_rules:
             allowed_target_types.update(rule['targets'])
 
         for parent in actual_parents:

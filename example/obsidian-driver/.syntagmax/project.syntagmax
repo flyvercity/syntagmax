@@ -13,7 +13,7 @@ artifact REQ:
     id is string
     attribute contents is mandatory string
     attribute title is mandatory string
-    attribute parent is optional reference to parent
+    attribute parent is optional reference to parent if not derived
     attribute status is mandatory enum [draft, active, retired]
     attribute priority is mandatory enum [critical, high, medium, low]
     attribute verify is optional string
