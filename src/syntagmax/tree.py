@@ -32,34 +32,55 @@ def populate_pids(config: Config, artifacts: ArtifactMap, errors: list[str]):
         if a.atype not in config.metamodel['artifacts']:
             continue
 
-        rules = config.metamodel['artifacts'][a.atype]['attributes']
-        for attr_name, rule in rules.items():
-            type_info = rule.get('type_info', {})
-            if type_info.get('type') == 'reference' and type_info.get('to_parent'):
-                val = a.fields.get(attr_name)
-                if not val:
-                    continue
+        artifact_rules = config.metamodel['artifacts'][a.atype]['attributes']
+        for attr_name, rules in artifact_rules.items():
+            if isinstance(rules, dict):
+                rules = [rules]
+            
+            for rule in rules:
+                # We skip conditional pids for now or we evaluate them?
+                # Actually, pids are usually from mandatory/optional reference attributes.
+                # If it's conditional, we should probably evaluate it.
+                # But wait, populate_pids is called BEFORE ArtifactValidator.
+                # We can use a simple evaluation here too if we want to be strict.
+                
+                # For now, let's just check if it's a reference to parent
+                type_info = rule.get('type_info', {})
+                if type_info.get('type') == 'reference' and type_info.get('to_parent'):
+                    val = a.fields.get(attr_name)
+                    if not val:
+                        continue
 
-                refs = val if rule.get('multiple') else [val]
-                for ref_str in refs:
-                    try:
-                        parts = ref_str.split('@')
-                        aid = parts[0]
-                        nominal_revision = parts[1] if len(parts) > 1 else None
+                    # If there are multiple rules for the same attribute, they should be consistent
+                    # about 'multiple' flag.
+                    is_multiple = rule.get('multiple', False)
+                    refs = val if is_multiple else [val]
+                    if not isinstance(refs, list):
+                        refs = [refs]
+                        
+                    for ref_str in refs:
+                        try:
+                            parts = ref_str.split('@')
+                            aid = parts[0]
+                            nominal_revision = parts[1] if len(parts) > 1 else None
 
-                        parent_artifact = artifacts.get(aid)
-                        if parent_artifact:
-                            # Find trace mode from a.atype to parent_artifact.atype
-                            trace_mode = config.get_trace_mode(a.atype, parent_artifact.atype)
-                            if trace_mode == 'timestamp' and not nominal_revision:
-                                nominal_revision = 'older'
+                            parent_artifact = artifacts.get(aid)
+                            if parent_artifact:
+                                trace_mode = config.get_trace_mode(a.atype, parent_artifact.atype)
+                                if trace_mode == 'timestamp' and not nominal_revision:
+                                    nominal_revision = 'older'
 
-                        a.parent_links.append(ParentLink(pid=aid, nominal_revision=nominal_revision))
+                            a.parent_links.append(ParentLink(pid=aid, nominal_revision=nominal_revision))
 
-                        if aid not in a.pids:
-                            a.pids.append(aid)
-                    except Exception as e:
-                        errors.append(f"Error processing parent link '{ref_str}' for artifact '{a.aid}': {e}")
+                            if aid not in a.pids:
+                                a.pids.append(aid)
+                        except Exception as e:
+                            errors.append(f"Error processing parent link '{ref_str}' for artifact '{a.aid}': {e}")
+                
+                # If we processed one rule for this attribute that matched, 
+                # do we need to process others? 
+                # If they are different pids (e.g. multiple rules for different parents), maybe.
+                # But usually it's just one set of pids per attribute.
 
 
 def gather_ansestors(artifacts: ArtifactMap, ref: str, depth: int = 0) -> str | None:

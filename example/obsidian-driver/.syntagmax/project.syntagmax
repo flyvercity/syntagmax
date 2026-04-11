@@ -20,8 +20,10 @@ artifact REQ:
     attribute version is optional integer
     attribute tag is optional multiple string
     attribute related is optional multiple reference
+    attribute derived is mandatory boolean
+    attribute justification is mandatory string if derived
 
-trace from REQ to SYS is mandatory
+trace from REQ to SYS is mandatory if not derived
 
 # Source code
 artifact SRC:

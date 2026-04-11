@@ -15,20 +15,32 @@ from syntagmax.errors import FatalError
 class DSLTransformer(Transformer):
     def artifact(self, children):
         # children[0] is ARTIFACT token, children[1] is name
-        attrs = {c['name']: c for c in children[2:] if isinstance(c, dict) and 'name' in c}
+        # We need to allow multiple rules for the same attribute name
+        attrs = {}
+        for c in children[2:]:
+            if isinstance(c, dict) and 'name' in c:
+                name = c['name']
+                if name not in attrs:
+                    attrs[name] = []
+                attrs[name].append(c)
         return {'type': 'artifact', 'artifact_name': str(children[1]), 'attributes': attrs}
 
     def rule(self, children):
         # Handle the "attribute" rule
-        # If the first child is the "attribute" token (implicitly handled by rule grammar)
-        # or if it has a type, it's a regular attribute.
+        # rule: "attribute" name "is" PRESENCE [MULTIPLE] type [condition] _NL
         if hasattr(children[0], 'type') and children[0].type == 'WORD':
-            # children: name, presence, (multiple_token | None), type_info
+            # children: name, presence, (multiple_token | None), type_info, [condition]
+            name = str(children[0])
+            presence = str(children[1])
+            multiple = children[2] is not None
+            type_info = children[3]
+            condition = children[4] if len(children) > 4 else None
             return {
-                'name': str(children[0]),
-                'presence': str(children[1]),
-                'multiple': children[2] is not None,
-                'type_info': children[3],
+                'name': name,
+                'presence': presence,
+                'multiple': multiple,
+                'type_info': type_info,
+                'condition': condition,
                 'id_rule': False,
             }
         # Handle the "id" rule
@@ -44,16 +56,46 @@ class DSLTransformer(Transformer):
                 'id_rule': True,
             }
 
+    def condition(self, children):
+        # condition: "if" [NOT] anchor
+        negated = False
+        anchor = None
+        for child in children:
+            if hasattr(child, 'type') and child.type == 'NOT':
+                negated = True
+            else:
+                anchor = str(child)
+        return {'anchor': anchor, 'negated': negated}
+
+    def anchor(self, children):
+        return str(children[0])
+
     def trace(self, children):
-        # trace: "trace" "from" name "to" target_list "is" PRESENCE ["via" TRACE_MODE] _NL
-        # TRACE_MODE is "commit" or "timestamp"
-        mode = str(children[3]) if len(children) > 3 and children[3] is not None else 'timestamp'
+        # trace: "trace" "from" name "to" target_list "is" PRESENCE ["via" TRACE_MODE] [condition] _NL
+        # children: source, targets, presence, [mode], [condition]
+        
+        mode = 'timestamp'
+        condition = None
+        
+        presence = str(children[2])
+        
+        if len(children) > 3:
+            # children[3] could be TRACE_MODE or condition
+            if isinstance(children[3], dict) and 'anchor' in children[3]:
+                condition = children[3]
+            elif children[3] is not None:
+                mode = str(children[3])
+                
+        if len(children) > 4 and children[4] is not None:
+            condition = children[4]
+
         return {
             'type': 'trace',
             'source': str(children[0]),
             'targets': children[1],
-            'presence': str(children[2]),
+            'presence': presence,
             'mode': mode,
+            'condition': condition,
         }
 
     def target_list(self, children):
@@ -124,39 +166,12 @@ def load_metamodel(model_filename: Path, errors, validate=True):
     artifact_defs = {a['artifact_name']: a for a in metamodel if a['type'] == 'artifact'}
     trace_rules = {}
 
-    # Consistency checks variables
-    # To check consistency we track properties per target for a given source
-    # properties: {source: {target: {'presence': p, 'mode': m}}}
-    trace_props: dict[str, dict[str, dict[str, str]]] = {}
-
     for t in metamodel:
         if t['type'] == 'trace':
             source = t['source']
             if source not in trace_rules:
                 trace_rules[source] = []
             trace_rules[source].append(t)
-
-            # Check consistency of rules
-            if source not in trace_props:
-                trace_props[source] = {}
-            for target in t['targets']:
-                if target in trace_props[source]:
-                    existing = trace_props[source][target]
-                    if existing['presence'] != t['presence']:
-                        errors.append(
-                            f'Inconsistent trace rules for {source} -> {target}: '
-                            f"presence is both '{existing['presence']}' and '{t['presence']}'"
-                        )
-                    if existing['mode'] != t['mode']:
-                        errors.append(
-                            f'Inconsistent trace rules for {source} -> {target}: '
-                            f"mode is both '{existing['mode']}' and '{t['mode']}'"
-                        )
-                else:
-                    trace_props[source][target] = {
-                        'presence': t['presence'],
-                        'mode': t['mode'],
-                    }
 
     metamodel = {'artifacts': artifact_defs, 'traces': trace_rules}
 
@@ -170,38 +185,76 @@ def load_metamodel(model_filename: Path, errors, validate=True):
 
 def validate_metamodel(metamodel: dict, errors: list[str]):
     for artifact_def in metamodel['artifacts'].values():
-        attributes = artifact_def['attributes']
+        attributes = artifact_def['attributes']  # name -> list of rules
         artifact_name = artifact_def['artifact_name']
 
-        # Check for regular attributes named 'id'
-        # The parser now distinguishes between 'id is ...' and 'attribute name is ...'
-        # but if someone does 'attribute id is ...' it might still come through as a regular rule.
-        # Actually, the grammar I wrote is:
-        # rule: "attribute" name "is" PRESENCE [MULTIPLE] type _NL
-        #    | "id" "is" type ["as" SCHEMA] _NL
-        # So "attribute id is ..." will match the first branch.
+        for attr_name, rules in attributes.items():
+            for rule in rules:
+                # Forbid definitions of "regular" attributes named 'id'.
+                if attr_name == 'id' and not rule.get('id_rule', False):
+                    errors.append(
+                        f"Artifact '{artifact_name}' has a regular attribute named 'id'. Use 'id is ...' instead."
+                    )
+                
+                # Check condition's anchor
+                condition = rule.get('condition')
+                if condition:
+                    anchor_name = condition['anchor']
+                    # Requirement: the attribute shall be boolean
+                    # Requirement: the attribute shall not be conditional
+                    # If it's boolean, its type_info['type'] is 'boolean'
+                    
+                    if anchor_name not in attributes:
+                        errors.append(f"Artifact '{artifact_name}' has rule for '{attr_name}' with unknown anchor '{anchor_name}'")
+                    else:
+                        anchor_rules = attributes[anchor_name]
+                        # Must have at least one rule that is boolean AND not conditional
+                        found_valid_anchor = False
+                        for ar in anchor_rules:
+                            if ar.get('type_info', {}).get('type') == 'boolean' and ar.get('condition') is None:
+                                found_valid_anchor = True
+                                break
+                        
+                        if not found_valid_anchor:
+                            errors.append(f"Artifact '{artifact_name}' has rule for '{attr_name}' with invalid anchor '{anchor_name}': must be a non-conditional boolean attribute")
 
-        # Let's check if any regular attribute (not from the "id" rule) is named 'id'
-        # In our transformer, the "id" rule results in a dict with 'name': 'id' and possibly 'schema'.
-        # The regular rule results in a dict with 'name': str(children[0]).
-
-        # Actually, let's just check if there's more than one 'id' or if it doesn't have the expected mandatory properties.
-
-        # Forbid definitions of "regular" attributes named 'id'.
-        # All attributes named 'id' must come from the "id" rule.
-        for attr_name, attr_def in attributes.items():
-            if attr_name == 'id' and not attr_def.get('id_rule', False):
-                errors.append(
-                    f"Artifact '{artifact_name}' has a regular attribute named 'id'. Use 'id is ...' instead."
-                )
-
-        id_attr = attributes.get('id')
-        if not id_attr:
+        # id must have at least one mandatory rule (usually only one)
+        id_rules = attributes.get('id', [])
+        if not id_rules:
             errors.append(f"Artifact '{artifact_name}' is missing an id attribute")
-        elif id_attr.get('presence') != 'mandatory':
-            errors.append(f"Artifact '{artifact_name}' id attribute is not mandatory")
+        else:
+            has_mandatory_id = any(r.get('presence') == 'mandatory' and r.get('condition') is None for r in id_rules)
+            if not has_mandatory_id:
+                errors.append(f"Artifact '{artifact_name}' id attribute is not mandatory (or is conditional)")
 
-        if 'contents' not in attributes:
+        # contents must have at least one mandatory rule
+        contents_rules = attributes.get('contents', [])
+        if not contents_rules:
             errors.append(f"Artifact '{artifact_name}' is missing a contents attribute")
-        elif attributes['contents']['presence'] != 'mandatory':
-            errors.append(f"Artifact '{artifact_def['artifact_name']}' contents attribute is not mandatory")
+        else:
+            has_mandatory_contents = any(r.get('presence') == 'mandatory' and r.get('condition') is None for r in contents_rules)
+            if not has_mandatory_contents:
+                errors.append(f"Artifact '{artifact_name}' contents attribute is not mandatory (or is conditional)")
+
+    # Validate traces
+    for source_atype, rules in metamodel['traces'].items():
+        for rule in rules:
+            condition = rule.get('condition')
+            if condition:
+                anchor_name = condition['anchor']
+                if source_atype not in metamodel['artifacts']:
+                    # Source atype unknown? Should have been caught by target_list or similar if we checked that.
+                    continue
+                
+                source_attrs = metamodel['artifacts'][source_atype]['attributes']
+                if anchor_name not in source_attrs:
+                    errors.append(f"Trace from '{source_atype}' has unknown anchor '{anchor_name}'")
+                else:
+                    anchor_rules = source_attrs[anchor_name]
+                    found_valid_anchor = False
+                    for ar in anchor_rules:
+                        if ar.get('type_info', {}).get('type') == 'boolean' and ar.get('condition') is None:
+                            found_valid_anchor = True
+                            break
+                    if not found_valid_anchor:
+                        errors.append(f"Trace from '{source_atype}' has invalid anchor '{anchor_name}': must be a non-conditional boolean attribute")

@@ -41,8 +41,8 @@ def test_populate_pids_from_metamodel():
     art.fields = {'mainpid': '1', 'pids': ['2', '3'], 'link': 'REQ-2'}
 
     artifacts = {'1': art}
-    populate_pids(config, artifacts)
-
+    errors = []
+    populate_pids(config, artifacts, errors)
     expected_pids = ['1', '2', '3']
     assert len(art.pids) == 3
     for p in expected_pids:

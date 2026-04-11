@@ -56,4 +56,4 @@ def test_valid_id_schemas(tmp_path, valid_schema):
 
     # The stored schema should have quotes stripped if they were present
     expected = valid_schema.strip('"')
-    assert mm['artifacts']['REQ']['attributes']['id']['schema'] == expected
+    assert mm['artifacts']['REQ']['attributes']['id'][0]['schema'] == expected

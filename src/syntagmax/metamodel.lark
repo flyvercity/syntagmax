@@ -1,11 +1,15 @@
 start: (artifact | trace | _NL)+
 
 artifact: ARTIFACT name ":" _NL _INDENT (rule | _NL)* _DEDENT
-rule: "attribute" name "is" PRESENCE [MULTIPLE] type _NL
+rule: "attribute" name "is" PRESENCE [MULTIPLE] type [condition] _NL
     | "id" "is" type ["as" schema_value] _NL
 
-trace: "trace" "from" name "to" target_list "is" PRESENCE ["via" TRACE_MODE] _NL
+trace: "trace" "from" name "to" target_list "is" PRESENCE ["via" TRACE_MODE] [condition] _NL
 target_list: name ("or" name)*
+
+condition: "if" [NOT] anchor
+anchor: WORD
+NOT: "not"
 
 ?type: "string" -> type_string
      | "integer" -> type_integer

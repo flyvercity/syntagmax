@@ -133,9 +133,17 @@ class ArtifactBuilder:
         multiple = False
         if self._metamodel and self.artifact.atype in self._metamodel.get('artifacts', {}):
             atype_def = self._metamodel['artifacts'][self.artifact.atype]
-            attr_def = atype_def.get('attributes', {}).get(field)
-            if attr_def:
-                multiple = attr_def.get('multiple', False)
+            attr_rules = atype_def.get('attributes', {}).get(field, [])
+            
+            # Handle both list (new) and dict (old/mock) for backward compatibility in tests
+            if isinstance(attr_rules, dict):
+                attr_rules = [attr_rules]
+                
+            # If ANY rule says it's multiple, we treat it as multiple
+            for rule in attr_rules:
+                if rule.get('multiple', False):
+                    multiple = True
+                    break
 
         if multiple:
             if field not in self.artifact.fields:
@@ -169,8 +177,11 @@ class ArtifactBuilder:
         # Ensure all multiple fields are present as lists
         if self._metamodel and self.artifact.atype in self._metamodel.get('artifacts', {}):
             atype_def = self._metamodel['artifacts'][self.artifact.atype]
-            for attr_name, attr_def in atype_def.get('attributes', {}).items():
-                if attr_def.get('multiple', False):
+            for attr_name, attr_rules in atype_def.get('attributes', {}).items():
+                if isinstance(attr_rules, dict):
+                    attr_rules = [attr_rules]
+                is_multiple = any(r.get('multiple', False) for r in attr_rules)
+                if is_multiple:
                     if attr_name not in self.artifact.fields:
                         self.artifact.fields[attr_name] = []
 

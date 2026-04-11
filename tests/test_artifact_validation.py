@@ -25,7 +25,8 @@ def test_build_artifact_map_success():
     a2.location = MockLocation('file2.md')
 
     artifacts_list = [a1, a2]
-    artifact_map, errors = build_artifact_map(artifacts_list)
+    errors = []
+    artifact_map = build_artifact_map(artifacts_list, errors)
 
     assert len(errors) == 0
     assert len(artifact_map) == 2
@@ -41,7 +42,8 @@ def test_build_artifact_map_no_id():
     a1.location = MockLocation('file1.md')
 
     artifacts_list = [a1]
-    artifact_map, errors = build_artifact_map(artifacts_list)
+    errors = []
+    artifact_map = build_artifact_map(artifacts_list, errors)
 
     assert len(errors) == 1
     assert 'has no ID' in errors[0]
@@ -62,7 +64,8 @@ def test_build_artifact_map_duplicate_id():
     a2.location = MockLocation('file2.md')
 
     artifacts_list = [a1, a2]
-    artifact_map, errors = build_artifact_map(artifacts_list)
+    errors = []
+    artifact_map = build_artifact_map(artifacts_list, errors)
 
     assert len(errors) == 1
     assert 'Duplicate artifact ID' in errors[0]
