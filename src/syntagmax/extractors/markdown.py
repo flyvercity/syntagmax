@@ -83,12 +83,12 @@ class MarkdownExtractor(Extractor):
         super().__init__(config, record, metamodel)
         grammar_path = Path(__file__).parent / 'markdown.lark'
         grammar = grammar_path.read_text(encoding='utf-8')
-        
+
         # Replace placeholders with actual marker
         marker = self._record.marker
         grammar = grammar.replace('_TOKEN_BEGIN', f'"[{marker}]"i')
         grammar = grammar.replace('_TOKEN_END', f'"[/{marker}]"i')
-        
+
         self._parser = Lark(grammar, parser='lalr', maybe_placeholders=False)
         self._transformer = MarkdownTransformer()
 
@@ -136,7 +136,7 @@ class MarkdownExtractor(Extractor):
                     if yaml_end != -1:
                         segment = segment[:yaml_start] + new_yaml_block + segment[yaml_end + 3 :]
                 else:
-                    # No yaml block found but we have yaml_data? 
+                    # No yaml block found but we have yaml_data?
                     # This could happen if it was terminated by [/{marker}] and we want to ADD YAML.
                     # For now, let's append before [/{marker}] if it exists, or at the end.
                     slash_req_pos = segment.rfind(f'[/{marker}]')
@@ -144,7 +144,7 @@ class MarkdownExtractor(Extractor):
                         segment = segment[:slash_req_pos] + '\n' + new_yaml_block + '\n' + segment[slash_req_pos:]
                     else:
                         segment = segment.strip() + '\n\n' + new_yaml_block + '\n'
-                
+
                 # Also update [id] format if it exists in the markdown
                 segment = re.sub(r'\[id\]\s*[a-zA-Z0-9-{}:]*', f'[id] {new_id}', segment, flags=re.IGNORECASE)
             else:
@@ -198,13 +198,13 @@ class MarkdownExtractor(Extractor):
 
             # Find the end marker: either ```yaml...``` or [/{marker}]
             yaml_start_pos = markdown.find('```yaml', start_pos)
-            
+
             # Search for [/{marker}]
             slash_req_match = re.search(rf'\[/{marker}\]', markdown[start_pos:], re.IGNORECASE)
             slash_req_pos = (start_pos + slash_req_match.start()) if slash_req_match else -1
 
             segment_end = -1
-            
+
             # Determine which terminator comes first
             if yaml_start_pos != -1 and (slash_req_pos == -1 or yaml_start_pos < slash_req_pos):
                 # YAML block comes first
@@ -252,7 +252,6 @@ class MarkdownExtractor(Extractor):
                         continue
                     yaml_attrs = yaml_dict.get_dict('attrs')
 
-
                 # Merged dict for ID/AType extraction, YAML takes precedence
                 temp_attrs = {
                     **{field.get_str('field.marker'): field.get_str('field.contents.text').strip() for field in fields},
@@ -266,6 +265,11 @@ class MarkdownExtractor(Extractor):
                     lg.warning(error)
                     pos = segment_end
                     aid = UNDEFINED_ID
+
+                if 'atype' in temp_attrs:
+                    lg.warning(
+                        f'Using the system attribute `atype` in {filepath} at line {start_line}. Use `marker` instead.'
+                    )
 
                 atype = temp_attrs.get('atype') or self._record.default_atype
 
