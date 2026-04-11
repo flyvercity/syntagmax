@@ -35,7 +35,7 @@ def config(params, config_file):
 
 @pytest.fixture
 def input_record(tmp_path):
-    return InputRecord(name='test', record_base=tmp_path, filepaths=[], driver='ipynb', default_atype='requirement')
+    return InputRecord(name='test', record_base=tmp_path, filepaths=[], driver='ipynb', default_atype='requirement', marker='REQ')
 
 
 def test_ipynb_extractor_basic(config, input_record, tmp_path):

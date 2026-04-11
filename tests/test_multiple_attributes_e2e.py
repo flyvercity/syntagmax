@@ -66,7 +66,7 @@ def metamodel():
 
 @pytest.fixture
 def input_record(tmp_path):
-    return InputRecord(name='test', record_base=tmp_path, filepaths=[], driver='text', default_atype='REQ')
+    return InputRecord(name='test', record_base=tmp_path, filepaths=[], driver='text', default_atype='REQ', marker='REQ')
 
 
 def test_text_extractor_multiple_attributes(config, input_record, metamodel, tmp_path):

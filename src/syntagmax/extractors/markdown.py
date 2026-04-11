@@ -82,7 +82,14 @@ class MarkdownExtractor(Extractor):
     def __init__(self, config: Config, record: InputRecord, metamodel: dict | None = None):
         super().__init__(config, record, metamodel)
         grammar_path = Path(__file__).parent / 'markdown.lark'
-        self._parser = Lark.open(grammar_path, rel_to=__file__, parser='lalr', maybe_placeholders=False)
+        grammar = grammar_path.read_text(encoding='utf-8')
+        
+        # Replace placeholders with actual marker
+        marker = self._record.marker
+        grammar = grammar.replace('_TOKEN_BEGIN', f'"[{marker}]"i')
+        grammar = grammar.replace('_TOKEN_END', f'"[/{marker}]"i')
+        
+        self._parser = Lark(grammar, parser='lalr', maybe_placeholders=False)
         self._transformer = MarkdownTransformer()
 
     def update_artifacts(self, loc_file: str, updates: list[tuple[Artifact, str]]):
@@ -95,6 +102,8 @@ class MarkdownExtractor(Extractor):
 
         # Apply updates in reverse order of line numbers to avoid offset shifts
         updates.sort(key=lambda u: u[0].location.loc_lines[0], reverse=True)  # type: ignore
+
+        marker = self._record.marker
 
         for artifact, new_id in updates:
             if not isinstance(artifact.location, LineLocation):
@@ -128,9 +137,9 @@ class MarkdownExtractor(Extractor):
                         segment = segment[:yaml_start] + new_yaml_block + segment[yaml_end + 3 :]
                 else:
                     # No yaml block found but we have yaml_data? 
-                    # This could happen if it was terminated by [/REQ] and we want to ADD YAML.
-                    # For now, let's append before [/REQ] if it exists, or at the end.
-                    slash_req_pos = segment.rfind('[/REQ]')
+                    # This could happen if it was terminated by [/{marker}] and we want to ADD YAML.
+                    # For now, let's append before [/{marker}] if it exists, or at the end.
+                    slash_req_pos = segment.rfind(f'[/{marker}]')
                     if slash_req_pos != -1:
                         segment = segment[:slash_req_pos] + '\n' + new_yaml_block + '\n' + segment[slash_req_pos:]
                     else:
@@ -173,8 +182,10 @@ class MarkdownExtractor(Extractor):
         artifacts: list[Artifact] = []
         errors: list[str] = []
 
-        # Find all [REQ] segments manually
-        start_marker = re.compile(r'\[REQ\]', re.IGNORECASE)
+        marker = self._record.marker
+
+        # Find all [MARKER] segments manually
+        start_marker = re.compile(rf'\[{marker}\]', re.IGNORECASE)
         pos = 0
 
         while True:
@@ -185,11 +196,11 @@ class MarkdownExtractor(Extractor):
 
             start_pos = match.start()
 
-            # Find the end marker: either ```yaml...``` or [/REQ]
+            # Find the end marker: either ```yaml...``` or [/{marker}]
             yaml_start_pos = markdown.find('```yaml', start_pos)
             
-            # Search for [/REQ]
-            slash_req_match = re.search(r'\[/REQ\]', markdown[start_pos:], re.IGNORECASE)
+            # Search for [/{marker}]
+            slash_req_match = re.search(rf'\[/{marker}\]', markdown[start_pos:], re.IGNORECASE)
             slash_req_pos = (start_pos + slash_req_match.start()) if slash_req_match else -1
 
             segment_end = -1
@@ -202,8 +213,8 @@ class MarkdownExtractor(Extractor):
                 if end_pos != -1:
                     segment_end = end_pos + len(yaml_end_marker)
             elif slash_req_pos != -1:
-                # [/REQ] comes first
-                segment_end = slash_req_pos + len('[/REQ]')
+                # [/{marker}] comes first
+                segment_end = slash_req_pos + len(f'[/{marker}]')
 
             if segment_end == -1:
                 # No terminator found, skip

@@ -3,11 +3,11 @@
 
 req: _REQ_BEGIN _NL? [contents] field* terminator
 
-_REQ_BEGIN: /\[REQ\]/i
-_REQ_END: /\[\/REQ\]/i
+_REQ_BEGIN: _TOKEN_BEGIN
+_REQ_END: _TOKEN_END
 
 contents: (CONTENT_LINE)+
-CONTENT_LINE: /(?!(?:\[|```yaml|\[\/REQ\])).*\r?\n/i
+CONTENT_LINE: /(?!(?:\[|```yaml|\[\/)).*\r?\n/i
 
 field: _LSQB AID _RSQB [FIELD_TEXT] _NL
 FIELD_TEXT: /[^\r\n]+/

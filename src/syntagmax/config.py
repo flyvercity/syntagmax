@@ -26,6 +26,7 @@ class InputRecord:
     filepaths: list[Path]
     driver: str
     default_atype: str
+    marker: str
 
 
 DEFAULT_FILTERS = {'obsidian': '**/*.md', 'ipynb': '**/*.ipynb', 'markdown': '**/*.md'}
@@ -39,6 +40,7 @@ class InputConfig(BaseModel):
         default=None, description='File filter pattern (glob). If omitted, driver-specific defaults are used.'
     )
     atype: str = Field('REQ', description='Default artifact type for this input source')
+    marker: str | None = Field(default=None, description='Custom marker for artifacts (e.g., "REQ"). Defaults to atype.')
 
 
 class MetricsConfig(BaseModel):
@@ -194,6 +196,7 @@ class Config:
                     filepaths=list(filepaths),
                     driver=input_config.driver,
                     default_atype=input_config.atype,
+                    marker=input_config.marker or input_config.atype,
                 )
             )
 
