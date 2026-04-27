@@ -54,7 +54,8 @@ def test_populate_revisions_file_location(config, git_repo):
     art1.location = FileLocation('test.txt')
     artifacts['ART-1'] = art1
 
-    populate_revisions(config, artifacts)
+    errors = []
+    populate_revisions(config, artifacts, errors)
 
     assert len(art1.revisions) == 1
     rev = list(art1.revisions)[0]
@@ -79,7 +80,8 @@ def test_populate_revisions_line_location(config, git_repo):
     art2.location = LineLocation('test.txt', (1, 1))  # line 1 was changed in first commit
     artifacts['ART-3'] = art2
 
-    populate_revisions(config, artifacts)
+    errors = []
+    populate_revisions(config, artifacts, errors)
 
     # Line 2 should have the second commit
     assert len(art1.revisions) == 1
@@ -131,9 +133,11 @@ atype = "requirement"
 
     artifacts = {}
     art1 = Artifact(config)
+    art1.aid = 'ART-1'
     art1.location = FileLocation('test.txt')
     artifacts['ART-1'] = art1
 
-    populate_revisions(config, artifacts)
+    errors = []
+    populate_revisions(config, artifacts, errors)
     assert len(art1.revisions) == 0
-    assert 'Not a git repository, skipping revision extraction.' in caplog.text
+    assert any('Not a git repository' in e for e in errors)
