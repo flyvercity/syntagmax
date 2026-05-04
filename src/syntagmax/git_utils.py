@@ -126,6 +126,8 @@ def populate_revisions(config: Config, artifacts: ArtifactMap, errors: list[str]
 
                 lg.debug(f'Found {len(revisions)} revisions for {artifact.aid}')
         except Exception as e:
-            lg.error(f'Error extracting revisions for {artifact.aid}: {e}')
+            message = f'Error extracting revisions for {artifact.aid}: {e}'
+            lg.error(message)
+            errors.append(message)
 
         artifact.revisions = revisions
