@@ -56,7 +56,7 @@ class RepoCache:
             self.repo_roots[art_base] = repo_root
             return repo, repo_root
 
-        except git.InvalidGitRepositoryError:
+        except (git.InvalidGitRepositoryError, git.NoSuchPathError):
             errors.append(f'Not a git repository, skipping revision extraction for {artifact.aid}.')
             return None, None
 
