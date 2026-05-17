@@ -76,6 +76,7 @@ def perform_impact_analysis(config: Config, artifacts: ArtifactMap, errors: list
         impact_data['suspicious_tree'] = _generate_suspicious_tree(artifacts, suspicious_aids, updated_aids)
 
     _render_impact_report(impact_data, config)
+    return impact_data
 
 
 CONST_I_CHAR = '│'

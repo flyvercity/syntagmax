@@ -12,6 +12,17 @@ from syntagmax.artifact import ArtifactMap, Revision, LineLocation, FileLocation
 from syntagmax.config import Config
 
 
+def is_dirty(config: Config) -> bool:
+    """
+    Check if the repository is dirty.
+    """
+    try:
+        repo = git.Repo(config.base_dir(), search_parent_directories=True)
+        return repo.is_dirty() or len(repo.untracked_files) > 0
+    except (git.InvalidGitRepositoryError, git.NoSuchPathError):
+        return False
+
+
 class RepoCache:
     def __init__(self, config: Config):
         self.config = config
@@ -32,10 +43,10 @@ class RepoCache:
         try:
             lg.info(f'Derived git repo: {art_base}')
             repo = git.Repo(art_base, search_parent_directories=True)
-            is_dirty = repo.is_dirty() or len(repo.untracked_files) > 0
+            dirty = repo.is_dirty() or len(repo.untracked_files) > 0
 
             # Check for dirty worktree
-            if is_dirty and not self.config.params.get('allow_dirty_worktree', False):
+            if dirty and not self.config.params.get('allow_dirty_worktree', False):
                 errors.append(
                     f'The repository for the base {art_base} is dirty. Commit your changes or use --allow-dirty-worktree.'
                 )
@@ -45,7 +56,7 @@ class RepoCache:
             self.repo_roots[art_base] = repo_root
             return repo, repo_root
 
-        except git.InvalidGitRepositoryError:
+        except (git.InvalidGitRepositoryError, git.NoSuchPathError):
             errors.append(f'Not a git repository, skipping revision extraction for {artifact.aid}.')
             return None, None
 
@@ -70,39 +81,17 @@ def populate_revisions(config: Config, artifacts: ArtifactMap, errors: list[str]
         base_dir = Path(config.base_dir())
         lg.debug(f'Processing revisions for artifact {artifact.aid} at {artifact.location}')
 
-        if isinstance(artifact.location, LineLocation):
-            # Paths in artifacts are relative to config.base_dir()
-            # We need them relative to repo_root for git
-            abs_path = (base_dir / artifact.location.loc_file).absolute().resolve()
-
-            rel_repo_path = abs_path.relative_to(repo_root)
-            start, end = artifact.location.loc_lines
-            lg.debug(f'Blaming {rel_repo_path} lines {start}-{end}')
-            # git blame returns a list of (Commit, list of lines)
-            for commit, _ in repo.blame(None, str(rel_repo_path), L=f'{start},{end}'):
-                revisions.add(
-                    Revision(
-                        hash_long=commit.hexsha,
-                        hash_short=commit.hexsha[:7],
-                        timestamp=datetime.fromtimestamp(commit.committed_date),
-                        author_email=commit.author.email,
-                    )
-                )
-            lg.debug(f'Found {len(revisions)} revisions for {artifact.aid}')
-
-        elif isinstance(artifact.location, FileLocation):
-            # Last commit for the file itself
-            paths = [artifact.location.loc_file]
-            if artifact.location.loc_sidecar:
-                paths.append(artifact.location.loc_sidecar)
-
-            for path in paths:
-                abs_path = (base_dir / path).absolute().resolve()
+        try:
+            if isinstance(artifact.location, LineLocation):
+                # Paths in artifacts are relative to config.base_dir()
+                # We need them relative to repo_root for git
+                abs_path = (base_dir / artifact.location.loc_file).absolute().resolve()
 
                 rel_repo_path = abs_path.relative_to(repo_root)
-                lg.debug(f'Getting history for {rel_repo_path}')
-                # Use repo.iter_commits('HEAD', paths=path, max_count=1) for both the file and its sidecar
-                for commit in repo.iter_commits('HEAD', paths=str(rel_repo_path), max_count=1):
+                start, end = artifact.location.loc_lines
+                lg.debug(f'Blaming {rel_repo_path} lines {start}-{end}')
+                # git blame returns a list of (Commit, list of lines)
+                for commit, _ in repo.blame(None, str(rel_repo_path), L=f'{start},{end}'):
                     revisions.add(
                         Revision(
                             hash_long=commit.hexsha,
@@ -111,7 +100,34 @@ def populate_revisions(config: Config, artifacts: ArtifactMap, errors: list[str]
                             author_email=commit.author.email,
                         )
                     )
+                lg.debug(f'Found {len(revisions)} revisions for {artifact.aid}')
 
-            lg.debug(f'Found {len(revisions)} revisions for {artifact.aid}')
+            elif isinstance(artifact.location, FileLocation):
+                # Last commit for the file itself
+                paths = [artifact.location.loc_file]
+                if artifact.location.loc_sidecar:
+                    paths.append(artifact.location.loc_sidecar)
+
+                for path in paths:
+                    abs_path = (base_dir / path).absolute().resolve()
+
+                    rel_repo_path = abs_path.relative_to(repo_root)
+                    lg.debug(f'Getting history for {rel_repo_path}')
+                    # Use repo.iter_commits('HEAD', paths=path, max_count=1) for both the file and its sidecar
+                    for commit in repo.iter_commits('HEAD', paths=str(rel_repo_path), max_count=1):
+                        revisions.add(
+                            Revision(
+                                hash_long=commit.hexsha,
+                                hash_short=commit.hexsha[:7],
+                                timestamp=datetime.fromtimestamp(commit.committed_date),
+                                author_email=commit.author.email,
+                            )
+                        )
+
+                lg.debug(f'Found {len(revisions)} revisions for {artifact.aid}')
+        except Exception as e:
+            message = f'Error extracting revisions for {artifact.aid}: {e}'
+            lg.error(message)
+            errors.append(message)
 
         artifact.revisions = revisions

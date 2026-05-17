@@ -28,7 +28,6 @@ enabled = true
 
     params = Params(verbose=False, render_tree=False, ai=False, cwd=str(tmp_path), no_git=False)
     config = Config(params, config_path)
-    config.impact.enabled = True
 
     # Mock metamodel with timestamp trace
     config.metamodel = {

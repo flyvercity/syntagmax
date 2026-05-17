@@ -13,6 +13,7 @@ from syntagmax.config import Config
 def mock_config():
     config = MagicMock(spec=Config)
     config.base_dir.return_value = '/mock/repo'
+    config.params = {'allow_dirty_worktree': True}
     return config
 
 
@@ -29,6 +30,8 @@ def test_populate_revisions_line_location(mock_repo_class, mock_config, mock_art
     mock_repo = MagicMock()
     mock_repo_class.return_value = mock_repo
     mock_repo.working_tree_dir = '/mock/repo'
+    mock_repo.is_dirty.return_value = False
+    mock_repo.untracked_files = []
 
     mock_artifact.location = LineLocation('file.md', (1, 10))
 
@@ -41,7 +44,8 @@ def test_populate_revisions_line_location(mock_repo_class, mock_config, mock_art
     mock_repo.blame.return_value = [(mock_commit, ['line1', 'line2'])]
 
     artifacts = {'REQ-001': mock_artifact}
-    populate_revisions(mock_config, artifacts)
+    errors = []
+    populate_revisions(mock_config, artifacts, errors)
 
     assert len(mock_artifact.revisions) == 1
     rev = list(mock_artifact.revisions)[0]
@@ -58,6 +62,8 @@ def test_populate_revisions_file_location(mock_repo_class, mock_config, mock_art
     mock_repo = MagicMock()
     mock_repo_class.return_value = mock_repo
     mock_repo.working_tree_dir = '/mock/repo'
+    mock_repo.is_dirty.return_value = False
+    mock_repo.untracked_files = []
 
     mock_artifact.location = FileLocation('file.md')
 
@@ -69,7 +75,8 @@ def test_populate_revisions_file_location(mock_repo_class, mock_config, mock_art
     mock_repo.iter_commits.return_value = [mock_commit]
 
     artifacts = {'REQ-001': mock_artifact}
-    populate_revisions(mock_config, artifacts)
+    errors = []
+    populate_revisions(mock_config, artifacts, errors)
 
     assert len(mock_artifact.revisions) == 1
     rev = list(mock_artifact.revisions)[0]
@@ -84,6 +91,8 @@ def test_populate_revisions_file_location_with_sidecar(mock_repo_class, mock_con
     mock_repo = MagicMock()
     mock_repo_class.return_value = mock_repo
     mock_repo.working_tree_dir = '/mock/repo'
+    mock_repo.is_dirty.return_value = False
+    mock_repo.untracked_files = []
 
     mock_artifact.location = FileLocation('file.md', 'file.md.stmx')
 
@@ -101,7 +110,8 @@ def test_populate_revisions_file_location_with_sidecar(mock_repo_class, mock_con
     mock_repo.iter_commits.side_effect = [[mock_commit1], [mock_commit2]]
 
     artifacts = {'REQ-001': mock_artifact}
-    populate_revisions(mock_config, artifacts)
+    errors = []
+    populate_revisions(mock_config, artifacts, errors)
 
     assert len(mock_artifact.revisions) == 2
     hashes = {r.hash_long for r in mock_artifact.revisions}
@@ -117,11 +127,13 @@ def test_populate_revisions_invalid_repo(mock_repo_class, mock_config, mock_arti
 
     mock_artifact.location = FileLocation('file.md')
     artifacts = {'REQ-001': mock_artifact}
+    errors = []
 
     # Should not raise exception
-    populate_revisions(mock_config, artifacts)
+    populate_revisions(mock_config, artifacts, errors)
 
     assert len(mock_artifact.revisions) == 0
+    assert any('Not a git repository' in e for e in errors)
 
 
 @patch('git.Repo')
@@ -129,13 +141,16 @@ def test_populate_revisions_exception_handling(mock_repo_class, mock_config, moc
     mock_repo = MagicMock()
     mock_repo_class.return_value = mock_repo
     mock_repo.working_tree_dir = '/mock/repo'
+    mock_repo.is_dirty.return_value = False
+    mock_repo.untracked_files = []
 
     mock_artifact.location = FileLocation('file.md')
     mock_repo.iter_commits.side_effect = Exception('Git error')
 
     artifacts = {'REQ-001': mock_artifact}
+    errors = []
 
     # Should not raise exception
-    populate_revisions(mock_config, artifacts)
+    populate_revisions(mock_config, artifacts, errors)
 
     assert len(mock_artifact.revisions) == 0
