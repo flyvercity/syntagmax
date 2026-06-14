@@ -8,7 +8,10 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from syntagmax.errors import RMSException
-from syntagmax.config import Config
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from syntagmax.config import Config, InputRecord
 
 
 class ValidationError(RMSException):
@@ -80,10 +83,11 @@ UNDEFINED_ID = '<undefined>'
 
 
 class Artifact:
-    def __init__(self, config: Config):
+    def __init__(self, config: 'Config'):
         self._config = config
         self.location: Location | None = None
         self.driver: str = ''
+        self.record: 'InputRecord | None' = None
         self.atype: str = ''
         self.aid: str = ''
         self.pids: list[str] = []
@@ -110,14 +114,16 @@ class Artifact:
 class ArtifactBuilder:
     def __init__(
         self,
-        config: Config,
+        config: 'Config',
         ArtifactClass: type[Artifact],
         driver: str,
         location: Location,
         metamodel: dict | None = None,
+        record: 'InputRecord | None' = None,
     ):
         self.artifact = ArtifactClass(config)
         self.artifact.driver = driver
+        self.artifact.record = record
         self.artifact.location = location
         self._metamodel = metamodel
 
