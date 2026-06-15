@@ -81,7 +81,9 @@ class SidecarExtractor(Extractor):
 
         location = FileLocation(self._config.derive_path(filepath), self._config.derive_path(sidecar_path))
 
-        builder = ArtifactBuilder(self._config, Artifact, self.driver(), location, self._metamodel)
+        builder = ArtifactBuilder(
+            self._config, Artifact, self.driver(), location, self._metamodel, record=self._record
+        )
 
         try:
             builder.add_id(aid, atype)

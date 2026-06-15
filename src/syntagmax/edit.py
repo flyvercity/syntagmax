@@ -16,7 +16,8 @@ from syntagmax.extract import extract
 def renumber_artifacts(
     config: Config, atype: str | None = None, schema_override: str | None = None, dry_run: bool = False
 ):
-    artifacts_list, errors = extract(config)
+    errors = []
+    artifacts_list = extract(config, errors)
     if errors:
         for error in errors:
             lg.error(error)
@@ -58,7 +59,13 @@ def renumber_artifacts(
         elif schema_override:
             schema = schema_override
         elif config.metamodel and current_atype in config.metamodel.get('artifacts', {}):
-            schema = config.metamodel['artifacts'][current_atype]['attributes'].get('id', {}).get('schema')
+            attr_rules = config.metamodel['artifacts'][current_atype]['attributes'].get('id', [])
+            if isinstance(attr_rules, dict):
+                attr_rules = [attr_rules]
+            for rule in attr_rules:
+                if 'schema' in rule:
+                    schema = rule['schema']
+                    break
 
         if not schema:
             schema = '{atype}-{num:3}'
@@ -91,10 +98,10 @@ def renumber_artifacts(
 
         # Perform updates grouped by file
         for loc_file, updates in updates_by_file.items():
-            # All artifacts in the same file should have the same driver
-            driver = updates[0][0].driver
-            record = next((r for r in config.input_records() if r.driver == driver), None)
+            # All artifacts in the same file should belong to the same record
+            record = updates[0][0].record
             if record:
+                driver = record.driver
                 extractor = EXTRACTORS[driver](config, record, config.metamodel)
                 if hasattr(extractor, 'update_artifacts'):
                     # Efficient bulk update

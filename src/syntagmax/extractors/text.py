@@ -164,7 +164,9 @@ class TextExtractor(Extractor):
                 tree = self._parser.parse(segment)
                 section = self._transformer.transform(tree)
 
-                builder = ArtifactBuilder(self._config, TextArtifact, 'text', location, self._metamodel)
+                builder = ArtifactBuilder(
+                    self._config, TextArtifact, 'text', location, self._metamodel, record=self._record
+                )
 
                 aid: str | None = None
                 atype: str | None = self._record.default_atype

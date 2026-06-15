@@ -47,7 +47,8 @@ Each input defines a source of requirements or artifacts:
 | `dir` | Yes | — | Subdirectory relative to base directory |
 | `driver` | Yes | — | Driver type: `obsidian`, `ipynb`, `markdown`, etc. |
 | `filter` | No | Driver-specific | File filter pattern (glob). Defaults: `obsidian` → `**/*.md`, `ipynb` → `**/*.ipynb`, `markdown` → `**/*.md` |
-| `atype` | No | `REQ` | Default artifact type |
+| `atype` | No | `REQ` | Default artifact type for this source |
+| `marker` | No | *atype* | Custom marker for artifacts (e.g., `[SYS]` in Markdown). Defaults to `atype`. |
 
 ### Metrics (`[metrics]`)
 
