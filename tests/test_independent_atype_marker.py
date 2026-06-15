@@ -1,11 +1,9 @@
 
-import pytest
-from pathlib import Path
-from syntagmax.config import Config, Params
-from syntagmax.extract import extract
-from syntagmax.edit import renumber_artifacts
-import logging as lg
 import textwrap
+
+from syntagmax.config import Config, Params
+from syntagmax.edit import renumber_artifacts
+from syntagmax.extract import extract
 
 def test_independent_atype_marker(tmp_path):
     # Setup project structure

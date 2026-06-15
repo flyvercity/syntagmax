@@ -1,10 +1,9 @@
 
-import pytest
-from pathlib import Path
-from syntagmax.config import Config, Params
-from syntagmax.extract import extract
-from syntagmax.edit import renumber_artifacts
 import textwrap
+
+from syntagmax.config import Config, Params
+from syntagmax.edit import renumber_artifacts
+from syntagmax.extract import extract
 
 def test_multiple_records_same_driver(tmp_path):
     project_dir = tmp_path / "project"
