@@ -45,10 +45,10 @@ class ArtifactValidator:
     def _evaluate_condition(self, artifact: Artifact, condition: dict | None) -> bool:
         if not condition:
             return True
-        
+
         anchor_name = condition['anchor']
         negated = condition['negated']
-        
+
         value = artifact.fields.get(anchor_name)
         if value is None:
             # if the attribute is absent, the condition evaluates to False
@@ -56,8 +56,21 @@ class ArtifactValidator:
         else:
             # the attribute shall be boolean
             truthy = {'true', 'yes', '1'}
+
+            # Use custom truthy values if defined in the metamodel
+            if artifact.atype in self._artifacts:
+                anchor_rules = self._artifacts[artifact.atype]['attributes'].get(anchor_name, [])
+                if isinstance(anchor_rules, dict):
+                    anchor_rules = [anchor_rules]
+
+                for rule in anchor_rules:
+                    type_info = rule.get('type_info', {})
+                    if type_info.get('type') == 'boolean' and 'custom_values' in type_info:
+                        truthy = {v.lower() for v in type_info['custom_values']['true']}
+                        break
+
             res = str(value).lower() in truthy
-        
+
         return not res if negated else res
 
     def _validate_id_schema(self, artifact: Artifact):
@@ -173,11 +186,18 @@ class ArtifactValidator:
                 )
 
         elif expected_type == 'boolean':
-            truthy = {'true', 'yes', '1'}
-            falsy = {'false', 'no', '0'}
+            if 'custom_values' in type_info:
+                truthy = {v.lower() for v in type_info['custom_values']['true']}
+                falsy = {v.lower() for v in type_info['custom_values']['false']}
+                expected_str = f"expected {', '.join(type_info['custom_values']['true'])} / {', '.join(type_info['custom_values']['false'])}"
+            else:
+                truthy = {'true', 'yes', '1'}
+                falsy = {'false', 'no', '0'}
+                expected_str = 'expected true/false, yes/no, 1/0'
+
             if str(val).lower() not in truthy | falsy:
                 self.errors.append(
-                    f"Attribute '{attr_name}' value '{val}' is not a valid boolean (expected true/false, yes/no, 1/0) ({artifact})"
+                    f"Attribute '{attr_name}' value '{val}' is not a valid boolean ({expected_str}) ({artifact})"
                 )
 
         elif expected_type == 'enum':
