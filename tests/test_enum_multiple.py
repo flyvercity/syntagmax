@@ -18,7 +18,7 @@ def metamodel_file(tmp_path):
         artifact REQ:
             id is string
             attribute contents is mandatory string
-            attribute allocation is optional enum multiple [HW, SW, FW]
+            attribute allocation is optional multiple enum [HW, SW, FW]
             attribute mytags is optional multiple enum [tagone, tagtwo]
     """)
     f = tmp_path / "test.smx"

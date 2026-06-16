@@ -259,7 +259,7 @@ Python-style comments (`# ...`) are supported.
 - `boolean`: `true` or `false`.
 - `reference [to parent]`: A reference to another artifact (e.g., `SRS-001`). The optional `to parent` modifier marks the attribute as a parent indicator, used for building the artifact hierarchy. 
   - **Nominal Revision**: For "via commit" traces, you can specify a parent's revision using the `@` symbol: `parent: SRS-001@c2d94e4`. This allows for impact analysis to identify if a requirement is outdated relative to its parent.
-- `enum [multiple] [<values>]`: A fixed set of allowed values (comma-separated). The optional `multiple` modifier (which can also be placed before `enum` as in `multiple enum`) allows the attribute to have multiple values.
+- `[multiple] enum [<values>]`: A fixed set of allowed values (comma-separated). The optional `multiple` modifier allows the attribute to have multiple values.
 
 ### Multiple Enum Extraction
 
