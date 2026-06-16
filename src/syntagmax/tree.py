@@ -61,15 +61,15 @@ def populate_pids(config: Config, artifacts: ArtifactMap, errors: list[str]):
                     for ref_str in refs:
                         # Support comma-separated references in a single string
                         if isinstance(ref_str, str):
-                            sub_refs = [r.strip() for r in ref_str.split(',')]
+                            sub_refs = [r.strip() for r in ref_str.split(',') if r.strip()]
                         else:
                             sub_refs = [ref_str]
 
                         for actual_ref in sub_refs:
                             try:
-                                parts = actual_ref.split('@')
-                                aid = parts[0]
-                                nominal_revision = parts[1] if len(parts) > 1 else None
+                                aid, sep, nominal_revision = actual_ref.partition('@')
+                                aid = aid.strip()
+                                nominal_revision = nominal_revision.strip() or None if sep else None
 
                                 parent_artifact = artifacts.get(aid)
                                 if parent_artifact:

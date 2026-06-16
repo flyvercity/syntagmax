@@ -153,8 +153,8 @@ class ArtifactBuilder:
                 if rule.get('type_info', {}).get('type') == 'reference':
                     is_reference = True
 
-        if is_reference and ',' in value:
-            values = [v.strip() for v in value.split(',')]
+        if is_reference and multiple and ',' in value:
+            values = [v.strip() for v in value.split(',') if v.strip()]
         else:
             values = [value]
 

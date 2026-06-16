@@ -1,6 +1,4 @@
 import textwrap
-import pytest
-from pathlib import Path
 from syntagmax.metamodel import load_metamodel
 from syntagmax.params import Params
 from syntagmax.config import Config, InputRecord

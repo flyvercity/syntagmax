@@ -1,9 +1,7 @@
 # SPDX-License-Identifier: MIT
-import pytest
-from pathlib import Path
-from syntagmax.metamodel import load_metamodel
-from syntagmax.artifact import Artifact, ArtifactBuilder, FileLocation
 from syntagmax.analyse import ArtifactValidator
+from syntagmax.artifact import Artifact, FileLocation
+from syntagmax.metamodel import load_metamodel
 
 def test_custom_boolean_parsing(tmp_path):
     model_file = tmp_path / "model.syntagmax"
