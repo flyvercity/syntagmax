@@ -38,7 +38,7 @@ class TextTransformer(Transformer):
         return str(t)
 
     def VALUE(self, t):
-        return str(t)
+        return str(t).strip()
 
     def REVISION(self, t):
         return str(t)

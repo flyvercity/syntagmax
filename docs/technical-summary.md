@@ -19,6 +19,7 @@ Syntagmax supports a variety of input formats through a modular driver system:
 The system uses a custom Domain-Specific Language (DSL) to define the project's data model:
 - **Artifact Definition:** Define custom artifact types (e.g., REQ, SYS, ARCH).
 - **Attribute Validation:** Specify mandatory/optional attributes with types (string, integer, boolean, enum, reference).
+- **Multivalued Enums:** Support for enum types that allow multiple selections (e.g., `attribute allocation is mandatory multiple enum [HW, SW]`).
 - **Schema Enforcement:** Validate artifact IDs against custom patterns (e.g., `REQ-{num:3}`).
 - **Multiple Values:** Support for attributes with multiple values (e.g., tags, authors).
 

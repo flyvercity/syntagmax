@@ -15,7 +15,7 @@ attr_directive: NAME "=" VALUE
 AID: /[a-zA-Z0-9_-]+/
 ATYPE: /[a-zA-Z0-9_-]+/
 NAME: /[a-zA-Z0-9_-]+/
-VALUE: /[^ \t\n\r>\[\]]+/
+VALUE: /[^\r\n>\[\]]+/
 REVISION: /[a-zA-Z0-9-]+/
 
 body: ">>>" [body_content]

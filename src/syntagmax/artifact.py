@@ -158,8 +158,24 @@ class ArtifactBuilder:
                 # ensure it's a list for multiple field
                 self.artifact.fields[field] = [self.artifact.fields[field]]
 
-            # The current field is already checked to be list in the block above or is new
-            self.artifact.fields[field].append(value)  # type: ignore
+            # Special case for enum types: support comma-separated values in a single field
+            is_enum = False
+            if self._metamodel and self.artifact.atype in self._metamodel.get('artifacts', {}):
+                atype_def = self._metamodel['artifacts'][self.artifact.atype]
+                attr_rules = atype_def.get('attributes', {}).get(field, [])
+                if isinstance(attr_rules, dict):
+                    attr_rules = [attr_rules]
+                for rule in attr_rules:
+                    if rule.get('type_info', {}).get('type') == 'enum':
+                        is_enum = True
+                        break
+
+            if is_enum and ',' in value:
+                parts = [v.strip() for v in value.split(',')]
+                self.artifact.fields[field].extend(parts)  # type: ignore
+            else:
+                # The current field is already checked to be list in the block above or is new
+                self.artifact.fields[field].append(value)  # type: ignore
         else:
             if field in self.artifact.fields:
                 raise ValidationError(self._build_error(f'Duplicate field "{field}"'))
