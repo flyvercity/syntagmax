@@ -35,6 +35,10 @@ class DSLTransformer(Transformer):
             multiple = children[2] is not None
             type_info = children[3]
             condition = children[4] if len(children) > 4 else None
+            # If type_info explicitly says multiple (e.g. enum multiple), override the rule's multiple flag
+            if type_info.get('multiple'):
+                multiple = True
+
             return {
                 'name': name,
                 'presence': presence,
@@ -129,9 +133,15 @@ class DSLTransformer(Transformer):
         to_parent = len(children) > 0 and children[0] is not None
         return {'type': 'reference', 'to_parent': to_parent}
 
-    def type_enum(self, values):
-        # values are now clean strings because of ?value
-        return {'type': 'enum', 'allowed': [str(v).strip('"') for v in values]}
+    def type_enum(self, children):
+        # children: [MULTIPLE_token], values*
+        multiple = False
+        values = children
+        if children and hasattr(children[0], 'type') and children[0].type == 'MULTIPLE':
+            multiple = True
+            values = children[1:]
+
+        return {'type': 'enum', 'allowed': [str(v).strip('"') for v in values], 'multiple': multiple}
 
     def start(self, items):
         # filter out any leading/trailing _NL tokens
