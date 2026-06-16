@@ -146,11 +146,11 @@ class MarkdownExtractor(Extractor):
                         segment = segment.strip() + '\n\n' + new_yaml_block + '\n'
 
                 # Also update [id] format if it exists in the markdown
-                segment = re.sub(r'\[id\]\s*[a-zA-Z0-9-{}:]*', f'[id] {new_id}', segment, flags=re.IGNORECASE)
+                segment = re.sub(r'\[id\]\s*[a-zA-Z0-9_{}:-]*', f'[id] {new_id}', segment, flags=re.IGNORECASE)
             else:
                 # Fallback to old method if no yaml_data
                 # Update [id] format
-                segment = re.sub(r'\[id\]\s*[a-zA-Z0-9-{}:]*', f'[id] {new_id}', segment, flags=re.IGNORECASE)
+                segment = re.sub(r'\[id\]\s*[a-zA-Z0-9_{}:-]*', f'[id] {new_id}', segment, flags=re.IGNORECASE)
 
                 # Update YAML block if exists
                 yaml_start = segment.find('```yaml')
