@@ -257,6 +257,7 @@ Python-style comments (`# ...`) are supported.
 - `string`: Any text.
 - `integer`: A whole number.
 - `boolean`: `true` or `false`.
+  - **Custom Values**: You can define custom truthy and falsy values: `boolean [true: "yes", "on", false: "no", "off"]`. If custom values are defined, validation becomes exhaustive (standard `true`/`false` will be rejected unless explicitly included). Comparison is case-insensitive.
 - `reference [to parent]`: A reference to another artifact (e.g., `SRS-001`). The optional `to parent` modifier marks the attribute as a parent indicator, used for building the artifact hierarchy. 
   - **Nominal Revision**: For "via commit" traces, you can specify a parent's revision using the `@` symbol: `parent: SRS-001@c2d94e4`. This allows for impact analysis to identify if a requirement is outdated relative to its parent.
 - `[multiple] enum [<values>]`: A fixed set of allowed values (comma-separated). The optional `multiple` modifier allows the attribute to have multiple values.

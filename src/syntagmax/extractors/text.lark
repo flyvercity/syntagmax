@@ -12,10 +12,10 @@ id_directive: ("ID" | "id") "=" AID
 type_directive: ("TYPE" | "type") "=" ATYPE
 attr_directive: NAME "=" VALUE
 
-AID: /[a-zA-Z0-9-]+/
-ATYPE: /[a-zA-Z0-9-]+/
+AID: /[a-zA-Z0-9_-]+/
+ATYPE: /[a-zA-Z0-9_-]+/
 NAME: /[a-zA-Z0-9_-]+/
-VALUE: /[^\r\n>\]]+/
+VALUE: /[^\r\n>\[\]]+/
 REVISION: /[a-zA-Z0-9-]+/
 
 body: ">>>" [body_content]
