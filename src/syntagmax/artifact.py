@@ -137,20 +137,32 @@ class ArtifactBuilder:
 
     def add_field(self, field: str, value: str):
         multiple = False
+        is_reference = False
         if self._metamodel and self.artifact.atype in self._metamodel.get('artifacts', {}):
             atype_def = self._metamodel['artifacts'][self.artifact.atype]
             attr_rules = atype_def.get('attributes', {}).get(field, [])
-            
+
             # Handle both list (new) and dict (old/mock) for backward compatibility in tests
             if isinstance(attr_rules, dict):
                 attr_rules = [attr_rules]
-                
+
             # If ANY rule says it's multiple, we treat it as multiple
             for rule in attr_rules:
                 if rule.get('multiple', False):
                     multiple = True
-                    break
+                if rule.get('type_info', {}).get('type') == 'reference':
+                    is_reference = True
 
+        if is_reference and ',' in value:
+            values = [v.strip() for v in value.split(',')]
+        else:
+            values = [value]
+
+        for val in values:
+            self._add_field_internal(field, val, multiple)
+        return self
+
+    def _add_field_internal(self, field: str, value: str, multiple: bool):
         if multiple:
             if field not in self.artifact.fields:
                 self.artifact.fields[field] = []
@@ -181,7 +193,6 @@ class ArtifactBuilder:
                 raise ValidationError(self._build_error(f'Duplicate field "{field}"'))
 
             self.artifact.fields[field] = value
-        return self
 
     def _build_error(self, message: str) -> str:
         return f'Driver "{self.artifact.driver}": {self.artifact.location}: {message}'
