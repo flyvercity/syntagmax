@@ -122,8 +122,27 @@ class DSLTransformer(Transformer):
     def type_integer(self, _):
         return {'type': 'integer'}
 
-    def type_boolean(self, _):
+    def type_boolean(self, children):
+        if children and children[0] is not None:
+            return {'type': 'boolean', 'custom_values': children[0]}
         return {'type': 'boolean'}
+
+    def boolean_values(self, children):
+        # children: TRUE_KW, value+, FALSE_KW, value+
+        true_list = []
+        false_list = []
+        target = None
+        for c in children:
+            if hasattr(c, 'type'):
+                if c.type == 'TRUE_KW':
+                    target = true_list
+                    continue
+                elif c.type == 'FALSE_KW':
+                    target = false_list
+                    continue
+            if target is not None:
+                true_list.append(str(c).strip('"')) if target is true_list else false_list.append(str(c).strip('"'))
+        return {'true': true_list, 'false': false_list}
 
     def type_reference(self, children):
         to_parent = len(children) > 0 and children[0] is not None
