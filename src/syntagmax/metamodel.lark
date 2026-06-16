@@ -8,7 +8,7 @@ trace: "trace" "from" name "to" target_list "is" PRESENCE ["via" TRACE_MODE] [co
 target_list: name ("or" name)*
 
 condition: "if" [NOT] anchor
-anchor: WORD
+anchor: name
 NOT: "not"
 
 ?type: "string" -> type_string
@@ -33,10 +33,11 @@ QUOTED_PART: /[^"{]+/
 ARTIFACT: "artifact"
 MULTIPLE: "multiple"
 %import common.INT
-?name: WORD
+IDENTIFIER: /[a-zA-Z][a-zA-Z0-9_-]*/
+?name: IDENTIFIER
 PRESENCE: "mandatory" | "optional"
 TRACE_MODE: "commit" | "timestamp"
-?value: ESCAPED_STRING | WORD
+?value: ESCAPED_STRING | IDENTIFIER
 
 %import common.WORD
 %import common.ESCAPED_STRING

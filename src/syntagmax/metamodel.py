@@ -28,7 +28,7 @@ class DSLTransformer(Transformer):
     def rule(self, children):
         # Handle the "attribute" rule
         # rule: "attribute" name "is" PRESENCE [MULTIPLE] type [condition] _NL
-        if hasattr(children[0], 'type') and children[0].type == 'WORD':
+        if hasattr(children[0], 'type') and children[0].type in ('WORD', 'IDENTIFIER'):
             # children: name, presence, (multiple_token | None), type_info, [condition]
             name = str(children[0])
             presence = str(children[1])
