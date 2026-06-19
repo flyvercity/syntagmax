@@ -253,6 +253,14 @@ class MarkdownExtractor(Extractor):
                 yaml_info = req.get('req.yaml')
                 yaml_text = yaml_info.get('text') if yaml_info else None
 
+                # NBSP detection
+                if ' ' in segment:
+                    error = f'Non-breaking space (NBSP) detected in requirement at line {start_line} in {filepath}'
+                    lg.error(error)
+                    errors.append(error)
+                    pos = segment_end
+                    continue
+
                 if not yaml_text:
                     # Allow missing YAML if terminated by [/REQ] or if we have other fields
                     yaml_dict = benedict({'attrs': {}})

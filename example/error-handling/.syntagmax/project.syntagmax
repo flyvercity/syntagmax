@@ -1,0 +1,5 @@
+artifact REQ:
+    id is string as "REQ-{num:3}"
+    attribute contents is mandatory string
+    attribute status is mandatory enum [draft, active, retired]
+    attribute priority is optional enum [low, medium, high, critical]
