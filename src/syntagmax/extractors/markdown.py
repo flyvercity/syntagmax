@@ -44,13 +44,12 @@ class MarkdownTransformer(Transformer):
         return {'text': ''.join(str(c) for c in t) if t else ''}
 
     def field(self, t):
-        # field: _LSQB AID _RSQB [FIELD_TEXT] _NL
-        # children: AID, [FIELD_TEXT]
+        # field: _LSQB AID _RSQB [FIELD_TEXT] _NL FIELD_CONT*
+        # children: AID, [FIELD_TEXT], [FIELD_CONT...]
         marker = str(t[0])
-        text = ''
-        if len(t) > 1:
-            text = str(t[1])
-        return {'field': {'marker': marker, 'contents': {'text': text.strip()}}}
+        parts = [str(c).strip() for c in t[1:] if str(c).strip()]
+        text = '\n'.join(parts)
+        return {'field': {'marker': marker, 'contents': {'text': text}}}
 
     def _NL(self, t):
         return None
@@ -91,6 +90,14 @@ class MarkdownExtractor(Extractor):
 
         self._parser = Lark(grammar, parser='lalr', maybe_placeholders=False)
         self._transformer = MarkdownTransformer()
+
+    def _is_multiple_attr(self, atype: str, attr_name: str) -> bool:
+        if not self._metamodel:
+            return False
+        attrs = self._metamodel.get('artifacts', {}).get(atype, {}).get('attributes', {}).get(attr_name, [])
+        if isinstance(attrs, dict):
+            attrs = [attrs]
+        return any(rule.get('multiple', False) for rule in attrs)
 
     def update_artifacts(self, loc_file: str, updates: list[tuple[Artifact, str]]):
         from syntagmax.artifact import LineLocation
@@ -313,6 +320,9 @@ class MarkdownExtractor(Extractor):
                     if isinstance(value, list):
                         for v in value:
                             builder.add_field(name, str(v))
+                    elif self._is_multiple_attr(atype, name) and ',' in str(value):
+                        for v in str(value).split(','):
+                            builder.add_field(name, v.strip())
                     else:
                         builder.add_field(name, str(value))
 

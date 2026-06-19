@@ -169,3 +169,51 @@ def test_mandatory_multiple_attribute_missing(config, input_record, metamodel, t
     # If the user wants mandatory to mean "not empty", validator needs to change.
     # For now, let's see what happens.
     assert len(val_errors) == 0
+
+
+
+def test_obsidian_extractor_comma_separated_yaml(config, input_record, metamodel, tmp_path):
+    contents = textwrap.dedent("""
+    [REQ]
+    Test comma-separated YAML values.
+    ```yaml
+    attrs:
+      id: REQ-4
+      tag: tagX, tagY, tagZ
+    ```
+    """).strip()
+    filepath = tmp_path / 'test_comma.md'
+    filepath.write_text(contents, encoding='utf-8')
+
+    extractor = ObsidianExtractor(config, input_record, metamodel=metamodel)
+    artifacts, errors = extractor.extract_from_file(filepath)
+
+    assert len(errors) == 0
+    assert len(artifacts) == 1
+    artifact = artifacts[0]
+    assert artifact.aid == 'REQ-4'
+    assert artifact.fields['tag'] == ['tagX', 'tagY', 'tagZ']
+
+
+def test_obsidian_extractor_non_multiple_not_split(config, input_record, metamodel, tmp_path):
+    contents = textwrap.dedent("""
+    [REQ]
+    Non-multiple attribute with comma should not be split.
+    ```yaml
+    attrs:
+      id: REQ-5
+      tag: single-tag
+      priority: high, urgent
+    ```
+    """).strip()
+    filepath = tmp_path / 'test_no_split.md'
+    filepath.write_text(contents, encoding='utf-8')
+
+    extractor = ObsidianExtractor(config, input_record, metamodel=metamodel)
+    artifacts, errors = extractor.extract_from_file(filepath)
+
+    assert len(errors) == 0
+    assert len(artifacts) == 1
+    artifact = artifacts[0]
+    assert artifact.aid == 'REQ-5'
+    assert artifact.fields['priority'] == 'high, urgent'

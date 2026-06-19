@@ -1,0 +1,1 @@
+Place new specification documents in the `docs/specs` folder.

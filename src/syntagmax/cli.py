@@ -59,9 +59,11 @@ def init(ctx: click.Context):
     default='.syntagmax/config.toml',
 )
 @click.option('--allow-dirty-worktree', is_flag=True, help='Allow analysis on a dirty git worktree')
+@click.option('--suppress-tracing', is_flag=True, help='Suppress tracing model errors')
 @click.argument('step', type=click.Choice(public_steps()), default='metrics')
-def analyze(obj: Params, config_file: Path, allow_dirty_worktree: bool, step: str):
+def analyze(obj: Params, config_file: Path, allow_dirty_worktree: bool, suppress_tracing: bool, step: str):
     obj['allow_dirty_worktree'] = allow_dirty_worktree
+    obj['suppress_tracing'] = suppress_tracing
     config = Config(obj, config_file)
     process(step, config)
 

@@ -13,3 +13,4 @@ class Params(TypedDict):
     ai: bool
     cwd: str
     no_git: bool
+    suppress_tracing: bool

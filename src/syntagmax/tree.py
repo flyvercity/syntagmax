@@ -4,6 +4,8 @@
 # Created: 2025-04-06
 # Description: Builds a tree of artifacts.
 
+import logging as lg
+
 from syntagmax.config import Config
 from syntagmax.artifact import ArtifactMap, Artifact, Location, ParentLink
 
@@ -106,19 +108,29 @@ def gather_ansestors(artifacts: ArtifactMap, ref: str, depth: int = 0) -> str | 
 
 def build_tree(config: Config, artifacts: ArtifactMap, errors: list[str]):
     full_set = set(artifacts.keys())
+    suppress = config.params.get('suppress_tracing', False)
 
     for a in artifacts.values():
         for pid in a.pids:
             if pid not in full_set:
-                errors.append(f'Missing parent: {pid} at {a}')
+                if suppress:
+                    lg.warning(f'Missing parent: {pid} at {a} (suppressed)')
+                else:
+                    errors.append(f'Missing parent: {pid} at {a}')
             else:
                 artifacts[pid].children.add(a.aid)
 
-    top_level = {a.aid: a for a in artifacts.values() if a.pids == []}
+    top_level = set()
+    for a in artifacts.values():
+        if a.pids == []:
+            top_level.add(a.aid)
+        elif suppress and not any(pid in full_set for pid in a.pids):
+            top_level.add(a.aid)
+
     root = RootArtifact(config)
 
-    for a in top_level.values():
-        root.children.add(a.aid)
+    for aid in top_level:
+        root.children.add(aid)
 
     artifacts[root.aid] = root
 

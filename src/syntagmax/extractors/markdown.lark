@@ -9,8 +9,9 @@ _REQ_END: _TOKEN_END
 contents: (CONTENT_LINE)+
 CONTENT_LINE: /(?!(?:\[|```yaml|\[\/)).*\r?\n/i
 
-field: _LSQB AID _RSQB [FIELD_TEXT] _NL
+field: _LSQB AID _RSQB [FIELD_TEXT] _NL FIELD_CONT*
 FIELD_TEXT: /[^\r\n]+/
+FIELD_CONT: /(?!(?:\[|```yaml|\[\/)).*\r?\n/i
 
 terminator: yaml_block | _REQ_END
 
