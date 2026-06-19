@@ -59,23 +59,30 @@ def populate_pids(config: Config, artifacts: ArtifactMap, errors: list[str]):
                         refs = [refs]
                         
                     for ref_str in refs:
-                        try:
-                            parts = ref_str.split('@')
-                            aid = parts[0]
-                            nominal_revision = parts[1] if len(parts) > 1 else None
+                        # Support comma-separated references in a single string
+                        if isinstance(ref_str, str):
+                            sub_refs = [r.strip() for r in ref_str.split(',') if r.strip()]
+                        else:
+                            sub_refs = [ref_str]
 
-                            parent_artifact = artifacts.get(aid)
-                            if parent_artifact:
-                                trace_mode = config.get_trace_mode(a.atype, parent_artifact.atype)
-                                if trace_mode == 'timestamp' and not nominal_revision:
-                                    nominal_revision = 'older'
+                        for actual_ref in sub_refs:
+                            try:
+                                aid, sep, nominal_revision = actual_ref.partition('@')
+                                aid = aid.strip()
+                                nominal_revision = nominal_revision.strip() or None if sep else None
 
-                            a.parent_links.append(ParentLink(pid=aid, nominal_revision=nominal_revision))
+                                parent_artifact = artifacts.get(aid)
+                                if parent_artifact:
+                                    trace_mode = config.get_trace_mode(a.atype, parent_artifact.atype)
+                                    if trace_mode == 'timestamp' and not nominal_revision:
+                                        nominal_revision = 'older'
 
-                            if aid not in a.pids:
-                                a.pids.append(aid)
-                        except Exception as e:
-                            errors.append(f"Error processing parent link '{ref_str}' for artifact '{a.aid}': {e}")
+                                a.parent_links.append(ParentLink(pid=aid, nominal_revision=nominal_revision))
+
+                                if aid not in a.pids:
+                                    a.pids.append(aid)
+                            except Exception as e:
+                                errors.append(f"Error processing parent link '{actual_ref}' for artifact '{a.aid}': {e}")
                 
                 # If we processed one rule for this attribute that matched, 
                 # do we need to process others? 

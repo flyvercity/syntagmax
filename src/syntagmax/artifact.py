@@ -137,20 +137,32 @@ class ArtifactBuilder:
 
     def add_field(self, field: str, value: str):
         multiple = False
+        is_reference = False
         if self._metamodel and self.artifact.atype in self._metamodel.get('artifacts', {}):
             atype_def = self._metamodel['artifacts'][self.artifact.atype]
             attr_rules = atype_def.get('attributes', {}).get(field, [])
-            
+
             # Handle both list (new) and dict (old/mock) for backward compatibility in tests
             if isinstance(attr_rules, dict):
                 attr_rules = [attr_rules]
-                
+
             # If ANY rule says it's multiple, we treat it as multiple
             for rule in attr_rules:
                 if rule.get('multiple', False):
                     multiple = True
-                    break
+                if rule.get('type_info', {}).get('type') == 'reference':
+                    is_reference = True
 
+        if is_reference and multiple and ',' in value:
+            values = [v.strip() for v in value.split(',') if v.strip()]
+        else:
+            values = [value]
+
+        for val in values:
+            self._add_field_internal(field, val, multiple)
+        return self
+
+    def _add_field_internal(self, field: str, value: str, multiple: bool):
         if multiple:
             if field not in self.artifact.fields:
                 self.artifact.fields[field] = []
@@ -158,14 +170,29 @@ class ArtifactBuilder:
                 # ensure it's a list for multiple field
                 self.artifact.fields[field] = [self.artifact.fields[field]]
 
-            # The current field is already checked to be list in the block above or is new
-            self.artifact.fields[field].append(value)  # type: ignore
+            # Special case for enum types: support comma-separated values in a single field
+            is_enum = False
+            if self._metamodel and self.artifact.atype in self._metamodel.get('artifacts', {}):
+                atype_def = self._metamodel['artifacts'][self.artifact.atype]
+                attr_rules = atype_def.get('attributes', {}).get(field, [])
+                if isinstance(attr_rules, dict):
+                    attr_rules = [attr_rules]
+                for rule in attr_rules:
+                    if rule.get('type_info', {}).get('type') == 'enum':
+                        is_enum = True
+                        break
+
+            if is_enum and ',' in value:
+                parts = [v.strip() for v in value.split(',')]
+                self.artifact.fields[field].extend(parts)  # type: ignore
+            else:
+                # The current field is already checked to be list in the block above or is new
+                self.artifact.fields[field].append(value)  # type: ignore
         else:
             if field in self.artifact.fields:
                 raise ValidationError(self._build_error(f'Duplicate field "{field}"'))
 
             self.artifact.fields[field] = value
-        return self
 
     def _build_error(self, message: str) -> str:
         return f'Driver "{self.artifact.driver}": {self.artifact.location}: {message}'

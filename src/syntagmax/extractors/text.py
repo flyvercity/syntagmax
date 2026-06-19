@@ -38,7 +38,7 @@ class TextTransformer(Transformer):
         return str(t)
 
     def VALUE(self, t):
-        return str(t)
+        return str(t).strip()
 
     def REVISION(self, t):
         return str(t)
@@ -108,7 +108,7 @@ class TextExtractor(Extractor):
 
             # Update the ID field in the segment
             # Try to replace ID=AID or id=AID
-            segment = re.sub(r'(\b[Ii][Dd]\s*=\s*)[a-zA-Z0-9-{}:]+', rf'\g<1>{new_id}', segment)
+            segment = re.sub(r'(\b[Ii][Dd]\s*=\s*)[a-zA-Z0-9_{}:-]+', rf'\g<1>{new_id}', segment)
 
             # Replace the segment in the lines list
             lines[start_line - 1 : end_line] = [segment]

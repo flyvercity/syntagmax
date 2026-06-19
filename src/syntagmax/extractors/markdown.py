@@ -118,7 +118,8 @@ class MarkdownExtractor(Extractor):
             # - add/update id attribute in the yaml_data dict
             # - re-emit a full yaml block
 
-            if isinstance(artifact, MarkdownArtifact) and artifact.yaml_data is not None and ('attrs' in artifact.yaml_data or artifact.yaml_data):
+            if isinstance(artifact, MarkdownArtifact) and artifact.yaml_data is not None and ('attrs' in artifact.yaml_data or artifact.yaml_data):
+
                 yaml_data = artifact.yaml_data
                 if yaml_data.get('attrs') is None:
                     yaml_data['attrs'] = {}
@@ -146,11 +147,11 @@ class MarkdownExtractor(Extractor):
                         segment = segment.strip() + '\n\n' + new_yaml_block + '\n'
 
                 # Also update [id] format if it exists in the markdown
-                segment = re.sub(r'\[id\]\s*[a-zA-Z0-9-{}:]*', f'[id] {new_id}', segment, flags=re.IGNORECASE)
+                segment = re.sub(r'\[id\]\s*[a-zA-Z0-9_{}:-]*', f'[id] {new_id}', segment, flags=re.IGNORECASE)
             else:
                 # Fallback to old method if no yaml_data
                 # Update [id] format
-                segment = re.sub(r'\[id\]\s*[a-zA-Z0-9-{}:]*', f'[id] {new_id}', segment, flags=re.IGNORECASE)
+                segment = re.sub(r'\[id\]\s*[a-zA-Z0-9_{}:-]*', f'[id] {new_id}', segment, flags=re.IGNORECASE)
 
                 # Update YAML block if exists
                 yaml_start = segment.find('```yaml')
@@ -175,6 +176,14 @@ class MarkdownExtractor(Extractor):
 
         if 'id' in fields:
             self.update_artifacts(artifact.location.loc_file, [(artifact, fields['id'])])
+
+
+        markdown = filepath.read_text(encoding='utf-8')
+
+        def location_builder(start, end):
+            return LineLocation(loc_file=self._config.derive_path(filepath), loc_lines=(start, end))
+
+        return self._extract_from_markdown(filepath, markdown, location_builder)
 
     def _extract_from_markdown(
         self, filepath: Path, markdown: str, location_builder: Callable[[int, int], Location]
@@ -239,7 +248,8 @@ class MarkdownExtractor(Extractor):
 
                 if not yaml_text:
                     # Allow missing YAML if terminated by [/REQ] or if we have other fields
-                    yaml_dict = benedict({'attrs': {}})
+                    yaml_dict = benedict({'attrs': {}})
+
                     yaml_attrs = {}
                 else:
                     yaml_dict = benedict.from_yaml(yaml_text)
@@ -268,8 +278,10 @@ class MarkdownExtractor(Extractor):
 
                 if 'atype' in temp_attrs:
                     lg.warning(
-                        f'Overriding default atype with `atype` attribute in {filepath} at line {start_line}. '
-                        'To change the type for all artifacts in this source, use the `atype` setting in config.toml.'
+                        f'Overriding default atype with `atype` attribute in {filepath} at line {start_line}. '
+
+                        'To change the type for all artifacts in this source, use the `atype` setting in config.toml.'
+
                     )
 
                 atype = temp_attrs.get('atype') or self._record.default_atype
@@ -280,7 +292,8 @@ class MarkdownExtractor(Extractor):
                     driver=self.driver(),
                     location=location_builder(start_line, end_line),
                     metamodel=self._metamodel,
-                    record=self._record,
+                    record=self._record,
+
                 )
 
                 builder.add_id(aid, atype)
