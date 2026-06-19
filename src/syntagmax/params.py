@@ -14,3 +14,4 @@ class Params(TypedDict):
     cwd: str
     no_git: bool
     suppress_tracing: bool
+    error_output: str
