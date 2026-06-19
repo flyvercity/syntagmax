@@ -317,6 +317,8 @@ class MarkdownExtractor(Extractor):
                 for name, value in yaml_attrs.items():
                     if name.lower() in ['id', 'atype']:
                         continue
+                    if value is None:
+                        continue
                     if isinstance(value, list):
                         for v in value:
                             builder.add_field(name, str(v))
