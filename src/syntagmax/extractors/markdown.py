@@ -233,7 +233,13 @@ class MarkdownExtractor(Extractor):
                 segment_end = slash_req_pos + len(f'[/{marker}]')
 
             if segment_end == -1:
-                # No terminator found, skip
+                start_line = markdown.count('\n', 0, start_pos) + 1
+                if yaml_start_pos != -1:
+                    error = f'Unclosed YAML block in requirement at line {start_line} in {filepath}'
+                else:
+                    error = f'Unterminated requirement at line {start_line} in {filepath}'
+                lg.error(error)
+                errors.append(error)
                 pos = match.end()
                 continue
 
