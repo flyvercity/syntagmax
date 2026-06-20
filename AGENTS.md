@@ -29,6 +29,8 @@ Syntagmax is a lightweight, git-friendly requirement management system designed 
     - `utils.py`: Shared utilities including the topological execution plan resolver.
     - `extract.py`: Artifact extraction logic using various drivers.
     - `extractors/`: Driver-specific extractors (`text`, `obsidian`, `ipynb`).
+    - `blocks.py`: Block tree data model (`TextBlock`, `ArtifactBlock`, `FileRecord`, `InputBlock`, `BlockTree`).
+    - `publish.py`: Block tree construction and markdown rendering for the `publish` command.
     - `tree.py`: Logic for building the artifact relationship tree.
     - `analyse.py`: Tree validation and analysis.
     - `render.py`: Output rendering (tree view).

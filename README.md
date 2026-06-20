@@ -378,6 +378,29 @@ The ID schema can include the following macros:
 
 Example schema: `myproject-{atype}-{num:4}`
 
+## Publishing
+
+Syntagmax can combine all project inputs into a single structured markdown document, preserving both artifact content and surrounding non-artifact text (headings, rationale, design notes, etc.).
+
+```bash
+uv run syntagmax publish output.md
+```
+
+The publish command:
+- Processes all input records from the project config
+- Preserves non-artifact text blocks (context, rationale, notes) alongside requirements
+- Renders each artifact in a normalized format: heading + body + metadata table
+- Sorts files within each input record lexicographically by relative path
+
+### Options
+
+```bash
+uv run syntagmax publish <output-file> [-f <config-file>]
+```
+
+- `<output-file>`: Path to the output markdown file (required)
+- `-f, --config-file`: Path to config file (default: `.syntagmax/config.toml`)
+
 ## Required Improvements
 
 - Implement automatic change propagation
