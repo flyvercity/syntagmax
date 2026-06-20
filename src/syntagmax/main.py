@@ -12,7 +12,7 @@ from syntagmax.report import Report
 
 from syntagmax.extract import extract, build_artifact_map
 from syntagmax.tree import build_tree, populate_pids
-from syntagmax.render import print_arttree, render_tree_markdown
+from syntagmax.render import render_tree_markdown
 from syntagmax.analyse import analyse_tree
 from syntagmax.metrics import calculate_metrics
 from syntagmax.ai import ai_analyze
