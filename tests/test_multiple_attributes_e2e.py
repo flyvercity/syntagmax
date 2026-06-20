@@ -10,7 +10,7 @@ from syntagmax.params import Params
 
 @pytest.fixture
 def params():
-    return Params(verbose=False, render_tree=False, ai=False)
+    return Params(verbose=False, render_tree=False, ai=False, output='console')
 
 
 @pytest.fixture

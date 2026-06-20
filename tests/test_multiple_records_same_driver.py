@@ -47,7 +47,7 @@ def test_multiple_records_same_driver(tmp_path):
     req_md = req_dir / "req.md"
     req_md.write_text("[REQ]\nContent\n[id] OLD-REQ\n[/REQ]\n", encoding="utf-8")
 
-    params = Params(verbose=True, render_tree=False, cwd=str(project_dir), no_git=True)
+    params = Params(verbose=True, render_tree=False, cwd=str(project_dir), no_git=True, output='console')
     config = Config(params, config_file)
 
     # Extraction

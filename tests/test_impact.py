@@ -26,7 +26,7 @@ enabled = true
         encoding='utf-8',
     )
 
-    params = Params(verbose=False, render_tree=False, ai=False, cwd=str(tmp_path), no_git=False)
+    params = Params(verbose=False, render_tree=False, ai=False, cwd=str(tmp_path), no_git=False, output='console')
     config = Config(params, config_path)
 
     # Mock metamodel with timestamp trace
@@ -76,7 +76,7 @@ enabled = true
         encoding='utf-8',
     )
 
-    params = Params(verbose=False, render_tree=False, ai=False, cwd=str(tmp_path), no_git=False)
+    params = Params(verbose=False, render_tree=False, ai=False, cwd=str(tmp_path), no_git=False, output='console')
     config = Config(params, config_path)
 
     now = datetime.now()
@@ -110,7 +110,7 @@ def test_trace_mode_validation_errors(tmp_path):
 
     config_path = tmp_path / 'config.toml'
     config_path.write_text("base = '.'\ninput = []", encoding='utf-8')
-    params = Params(verbose=False, render_tree=False, ai=False, cwd=str(tmp_path), no_git=False)
+    params = Params(verbose=False, render_tree=False, ai=False, cwd=str(tmp_path), no_git=False, output='console')
     config = Config(params, config_path)
 
     # 1. timestamp trace forbids @revision

@@ -1,0 +1,65 @@
+# Analysis Report
+{% if report.errors %}
+
+## Errors
+
+Total errors: {{ report.errors | length }}
+
+{% for error in report.errors %}
+{{ loop.index }}. {{ error }}
+{% endfor %}
+{% endif %}
+{% if report.tree_text %}
+
+## Artifact Tree
+
+```text
+{{ report.tree_text }}
+```
+{% endif %}
+{% if report.metrics %}
+
+## Metrics
+
+Total Requirements: {{ report.metrics.total_requirements }}
+
+### Requirements by Status
+
+| Status | Count |
+|--------|-------|
+{% for row in report.metrics.requirements_by_status %}| {{ row.status }} | {{ row.count }} |
+{% endfor %}
+
+Requirements without verification (%): {{ "%.1f" | format(report.metrics.requirements_without_verify_pct) }}%
+Requirements with TBD (%): {{ "%.1f" | format(report.metrics.requirements_with_tbd_pct) }}%
+{% endif %}
+{% if report.impact %}
+
+## Impact Analysis
+
+Total suspicious links: {{ report.impact.total_suspicious }}
+{% if report.impact.total_suspicious > 0 %}
+
+| Artifact | Parent | Required Revision | Actual Revision |
+|----------|--------|-------------------|-----------------|
+{% for link in report.impact.suspicious_links %}| {{ link.artifact_atype }}:{{ link.artifact_aid }} | {{ link.parent_atype }}:{{ link.parent_aid }} | {{ link.nominal_revision }} | {{ link.actual_revision }} |
+{% endfor %}
+{% if report.impact.suspicious_tree %}
+
+### Suspicious Tree
+
+```text
+{{ report.impact.suspicious_tree }}
+```
+{% endif %}
+{% endif %}
+{% endif %}
+{% if report.ai_results %}
+
+## AI Analysis
+
+| Artifact | Ambiguity | Completeness | Verifiability | Singularity |
+|----------|-----------|--------------|---------------|-------------|
+{% for r in report.ai_results %}| {{ r.atype }}:{{ r.aid }} | {{ r.ambiguity }} | {{ r.completeness }} | {{ r.verifiability }} | {{ r.singularity }} |
+{% endfor %}
+{% endif %}

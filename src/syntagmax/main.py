@@ -8,10 +8,11 @@ import logging as lg
 
 from syntagmax.config import Config
 from syntagmax.errors import FatalError
+from syntagmax.report import Report
 
 from syntagmax.extract import extract, build_artifact_map
 from syntagmax.tree import build_tree, populate_pids
-from syntagmax.render import print_arttree
+from syntagmax.render import render_tree_markdown
 from syntagmax.analyse import analyse_tree
 from syntagmax.metrics import calculate_metrics
 from syntagmax.ai import ai_analyze
@@ -55,7 +56,8 @@ def public_steps():
     ]
 
 
-def process(requested_step, config: Config):
+def process(requested_step, config: Config) -> Report:
+    report = Report()
     errors: list[str] = []
     artifacts_list = None
     artifacts = None
@@ -70,19 +72,27 @@ def process(requested_step, config: Config):
             case 'build_artifact_map':
                 if artifacts_list is None:
                     raise FatalError(f'Artifacts list not initialized for step {step}')
-
                 artifacts = build_artifact_map(artifacts_list, errors)
+            case 'metrics':
+                if artifacts is None:
+                    raise FatalError(f'Artifacts not initialized for step {step}')
+                report.metrics = calculate_metrics(config, artifacts, errors)
+            case 'impact':
+                if artifacts is None:
+                    raise FatalError(f'Artifacts not initialized for step {step}')
+                report.impact = perform_impact_analysis(config, artifacts, errors)
+            case 'ai':
+                if artifacts is None:
+                    raise FatalError(f'Artifacts not initialized for step {step}')
+                report.ai_results = ai_analyze(config, artifacts, errors)
             case _:
                 if artifacts is None:
                     raise FatalError(f'Artifacts not initialized for step {step}')
-
                 STEPS[step](config, artifacts, errors)
 
     if config.params['render_tree']:
-        if not artifacts or 'ROOT' not in artifacts:
-            lg.warning('No tree was built, skipping tree rendering')
-        else:
-            print_arttree(artifacts, 'ROOT', verbose=config.params['verbose'])
+        if artifacts and 'ROOT' in artifacts:
+            report.tree_text = render_tree_markdown(artifacts)
 
-    if errors:
-        raise FatalError(errors)
+    report.errors = errors
+    return report

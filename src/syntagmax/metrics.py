@@ -9,11 +9,9 @@ import polars as pl
 
 from syntagmax.artifact import ArtifactMap
 from syntagmax.config import Config
-from syntagmax.render import print_metrics
-from syntagmax.publish import publish_metrics
 
 
-def calculate_metrics(config: Config, artifacts: ArtifactMap, errors: list[str]):
+def calculate_metrics(config: Config, artifacts: ArtifactMap, errors: list[str]) -> benedict:
     metrics = benedict()
 
     df = pl.DataFrame(
@@ -36,7 +34,7 @@ def calculate_metrics(config: Config, artifacts: ArtifactMap, errors: list[str])
     req_count = requirements.height
 
     if req_count == 0:
-        errors.append('No requirements found')
+        errors.append('Metrics: No requirements found')
         return metrics
 
     metrics['total_requirements'] = req_count
@@ -62,9 +60,4 @@ def calculate_metrics(config: Config, artifacts: ArtifactMap, errors: list[str])
         * 100.0
     )
 
-    if config.metrics.output_format == 'rich':
-        print_metrics(metrics)
-    elif config.metrics.output_format == 'markdown':
-        publish_metrics(metrics, config)
-    else:
-        raise ValueError(f'Invalid output format: {config.metrics.output_format}')
+    return metrics

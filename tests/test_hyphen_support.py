@@ -91,7 +91,7 @@ def test_text_extractor_with_hyphens(tmp_path):
     config_file = tmp_path / "config.toml"
     config_file.write_text(config_content)
 
-    params = Params(verbose=False, render_tree=False, ai=False, cwd=str(tmp_path), no_git=True)
+    params = Params(verbose=False, render_tree=False, ai=False, cwd=str(tmp_path), no_git=True, output='console')
     config = Config(params, config_file)
     record = config.input_records()[0]
 
@@ -139,7 +139,7 @@ def test_markdown_extractor_with_hyphens(tmp_path):
     config_file = tmp_path / "config.toml"
     config_file.write_text(config_content)
 
-    params = Params(verbose=False, render_tree=False, ai=False, cwd=str(tmp_path), no_git=True)
+    params = Params(verbose=False, render_tree=False, ai=False, cwd=str(tmp_path), no_git=True, output='console')
     config = Config(params, config_file)
     record = config.input_records()[0]
 

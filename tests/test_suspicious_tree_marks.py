@@ -6,7 +6,7 @@ from syntagmax.config import Config, Params
 def test_generate_suspicious_tree_with_updated(tmp_path):
     config_file = tmp_path / 'config.toml'
     config_file.write_text('input = []', encoding='utf-8')
-    params = Params(verbose=False, render_tree=False, ai=False, cwd=str(tmp_path), no_git=True)
+    params = Params(verbose=False, render_tree=False, ai=False, cwd=str(tmp_path), no_git=True, output='console')
     config = Config(params, config_file)
 
     root = Artifact(config)
@@ -38,7 +38,7 @@ def test_generate_suspicious_tree_with_updated(tmp_path):
 def test_generate_suspicious_tree_both_marks(tmp_path):
     config_file = tmp_path / 'config.toml'
     config_file.write_text('input = []', encoding='utf-8')
-    params = Params(verbose=False, render_tree=False, ai=False, cwd=str(tmp_path), no_git=True)
+    params = Params(verbose=False, render_tree=False, ai=False, cwd=str(tmp_path), no_git=True, output='console')
     config = Config(params, config_file)
 
     root = Artifact(config)

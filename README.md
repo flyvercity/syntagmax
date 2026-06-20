@@ -59,10 +59,6 @@ Each input defines a source of requirements or artifacts:
 | `status_field` | No | `status` | Status attribute name |
 | `verify_field` | No | `verify` | Verify attribute name |
 | `tbd_marker` | No | `TBD` | TBD detection marker |
-| `output_format` | No | `rich` | Output format: `rich` or `markdown` |
-| `output_file` | No | `console` | Output file name (`console` for stdout) |
-| `template` | No | — | Path to custom Jinja template |
-| `locale` | No | `en` | Locale code for localization |
 
 ### Impact Analysis (`[impact]`)
 
@@ -71,10 +67,6 @@ Impact analysis helps identify potentially outdated artifacts by comparing their
 | Field | Required | Default | Description |
 |-------|----------|---------|-------------|
 | `enabled` | No | `false` | Enable impact analysis |
-| `output_format` | No | `rich` | Output format: `rich` or `markdown` |
-| `output_file` | No | `console` | Output file name (`console` for stdout) |
-| `template` | No | — | Path to custom Jinja template |
-| `locale` | No | `en` | Locale code for localization |
 
 ### Metamodel (`[metamodel]`)
 
@@ -157,8 +149,6 @@ filter = "**/*.kt"
 
 [metrics]
 enabled = true
-output_format = "markdown"
-output_file = "output/metrics.md"
 
 [metamodel]
 filename = "project.syntagmax"
@@ -216,6 +206,24 @@ Example:
 ```bash
 # Run impact analysis only
 uv run syntagmax analyze .syntagmax/config.toml impact
+```
+
+## Report Output
+
+All analysis outputs (errors, metrics, impact, AI analysis, and optionally the artifact tree) are combined into a single Markdown report file.
+
+- **Default location:** `.syntagmax/reports/report.md`
+- **Override with:** `--output <path>` or `--output console` to print to stdout
+- **Tree inclusion:** Pass `--render-tree` to include the artifact tree in the report
+- **Section order:** Errors → Artifact Tree → Metrics → Impact Analysis → AI Analysis
+
+Example:
+```bash
+# Generate report with tree to default location
+uv run syntagmax --render-tree analyze
+
+# Print report to stdout
+uv run syntagmax --output console --render-tree analyze
 ```
 
 ## Metamodel DSL

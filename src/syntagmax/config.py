@@ -12,7 +12,7 @@ import json
 from dataclasses import dataclass
 
 from benedict import benedict
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from syntagmax.params import Params
 from syntagmax.metamodel import load_metamodel
@@ -44,27 +44,17 @@ class InputConfig(BaseModel):
 
 
 class MetricsConfig(BaseModel):
+    model_config = ConfigDict(extra='ignore')
     requirement_type: str = Field(
         default='REQ', description='The artifact type to treat as a "requirement" for metrics'
     )
     status_field: str = Field(default='status', description='Name of the attribute used to track artifact status')
     verify_field: str = Field(default='verify', description='Name of the attribute used to track verification status')
     tbd_marker: str = Field(default='TBD', description='String marker used to identify "To Be Defined" items')
-    output_format: str = Field(
-        default='rich', description='Format for the metrics report (rich or markdown)', pattern='^(rich|markdown)$'
-    )
-    output_file: str = Field(default='console', description='Output destination: "console" or a file path')
-    template: str | None = Field(default=None, description='Optional path to a custom Jinja2 template for the report')
-    locale: str = Field(default='en', description='Locale code for localized reports (e.g., "en", "ru")')
 
 
 class ImpactConfig(BaseModel):
-    output_format: str = Field(
-        default='rich', description='Format for the impact report (rich or markdown)', pattern='^(rich|markdown)$'
-    )
-    output_file: str = Field(default='console', description='Output destination: "console" or a file path')
-    template: str | None = Field(default=None, description='Optional path to a custom Jinja2 template for the report')
-    locale: str = Field(default='en', description='Locale code for localized reports (e.g., "en", "ru")')
+    model_config = ConfigDict(extra='ignore')
 
 
 class AIConfig(BaseModel):

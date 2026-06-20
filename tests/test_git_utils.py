@@ -39,7 +39,7 @@ atype = "requirement"
 """,
         encoding='utf-8',
     )
-    params = Params(verbose=False, render_tree=False, ai=False)
+    params = Params(verbose=False, render_tree=False, ai=False, output='console')
     return Config(params=params, config_filename=cfg_path)
 
 
@@ -108,7 +108,7 @@ atype = "requirement"
 """,
         encoding='utf-8',
     )
-    params = Params(verbose=False, render_tree=False, ai=False)
+    params = Params(verbose=False, render_tree=False, ai=False, output='console')
     config = Config(params=params, config_filename=cfg_path)
 
     assert not is_dirty(config)
@@ -128,7 +128,7 @@ atype = "requirement"
 """,
         encoding='utf-8',
     )
-    params = Params(verbose=False, render_tree=False, ai=False)
+    params = Params(verbose=False, render_tree=False, ai=False, output='console')
     config = Config(params=params, config_filename=cfg_path)
 
     artifacts = {}
