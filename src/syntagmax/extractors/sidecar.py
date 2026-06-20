@@ -12,6 +12,7 @@ from syntagmax.config import Config, InputRecord
 from syntagmax.artifact import ArtifactBuilder, Artifact, FileLocation, ValidationError
 from syntagmax.extractors.extractor import Extractor, ExtractorResult
 from syntagmax.artifact import UNDEFINED_ID
+from syntagmax.blocks import Block, ArtifactBlock
 
 
 class SidecarExtractor(Extractor):
@@ -100,3 +101,16 @@ class SidecarExtractor(Extractor):
 
         except ValidationError as e:
             return [], [f'{self.driver()} :: Validation error in {sidecar_path}: {e}']
+
+    def extract_blocks_from_file(self, filepath: Path) -> list[Block]:
+        try:
+            artifacts, errors = self.extract_from_file(filepath)
+            if not artifacts:
+                return []
+            stmx_path = filepath.with_name(f'{filepath.name}.stmx')
+            syntagmax_path = filepath.with_name(f'{filepath.name}.syntagmax')
+            sidecar_path = stmx_path if stmx_path.exists() else syntagmax_path
+            raw_text = sidecar_path.read_text(encoding='utf-8')
+            return [ArtifactBlock(artifact=artifacts[0], raw_text=raw_text)]
+        except Exception:
+            return []

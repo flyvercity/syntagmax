@@ -4,12 +4,17 @@
 # Created: 2025-03-29
 # Description: Base class for all extractors.
 
+from __future__ import annotations
+
 from pathlib import Path
-from typing import Sequence
+from typing import TYPE_CHECKING, Sequence
 import logging as lg
 
 from syntagmax.config import InputRecord, Config
 from syntagmax.artifact import Artifact
+
+if TYPE_CHECKING:
+    from syntagmax.blocks import Block
 
 type ExtractorResult = tuple[Sequence[Artifact], list[str]]
 
@@ -40,6 +45,9 @@ class Extractor:
                 lg.debug(f'Successfully processed file: {filepath}')
 
         return artifacts, errors
+
+    def extract_blocks_from_file(self, filepath: Path) -> list['Block']:
+        return []
 
     def update_artifact(self, artifact: Artifact, fields: dict[str, str]): ...
 

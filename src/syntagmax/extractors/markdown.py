@@ -14,6 +14,7 @@ from benedict import benedict
 from syntagmax.extractors.extractor import Extractor, ExtractorResult
 from syntagmax.config import Config, InputRecord
 from syntagmax.artifact import ArtifactBuilder, Artifact, Location, UNDEFINED_ID
+from syntagmax.blocks import Block, TextBlock, ArtifactBlock
 
 
 class MarkdownArtifact(Artifact):
@@ -361,3 +362,65 @@ class MarkdownExtractor(Extractor):
             pos = segment_end
 
         return artifacts, errors
+
+    def _extract_blocks_from_markdown(self, filepath: Path, markdown: str) -> list[Block]:
+        blocks: list[Block] = []
+        marker = self._record.marker
+        start_marker = re.compile(rf'\[{marker}\]', re.IGNORECASE)
+        pos = 0
+
+        while True:
+            match = start_marker.search(markdown, pos)
+            if not match:
+                break
+
+            start_pos = match.start()
+
+            # Capture text before this segment
+            text_before = markdown[pos:start_pos]
+            if text_before.strip():
+                blocks.append(TextBlock(content=text_before))
+
+            # Find segment end (same logic as _extract_from_markdown)
+            yaml_start_pos = markdown.find('```yaml', start_pos)
+            slash_req_match = re.search(rf'\[/{marker}\]', markdown[start_pos:], re.IGNORECASE)
+            slash_req_pos = (start_pos + slash_req_match.start()) if slash_req_match else -1
+            segment_end = -1
+
+            if yaml_start_pos != -1 and (slash_req_pos == -1 or yaml_start_pos < slash_req_pos):
+                end_pos = markdown.find('```', yaml_start_pos + 7)
+                if end_pos != -1:
+                    segment_end = end_pos + 3
+            elif slash_req_pos != -1:
+                segment_end = slash_req_pos + len(f'[/{marker}]')
+
+            if segment_end == -1:
+                pos = match.end()
+                continue
+
+            segment = markdown[start_pos:segment_end]
+            start_line = markdown.count('\n', 0, start_pos) + 1
+            end_line = markdown.count('\n', 0, segment_end) + 1
+
+            loc_file = self._config.derive_path(filepath)
+
+            def location_builder(s=start_line, e=end_line):
+                from syntagmax.artifact import LineLocation
+                return LineLocation(loc_file=loc_file, loc_lines=(s, e))
+
+            artifacts, _ = self._extract_from_markdown(filepath, segment, location_builder)
+            if artifacts:
+                blocks.append(ArtifactBlock(artifact=artifacts[0], raw_text=segment))
+
+            pos = segment_end
+
+        # Capture trailing text
+        text_after = markdown[pos:]
+        if text_after.strip():
+            blocks.append(TextBlock(content=text_after))
+
+        return blocks
+
+    def extract_blocks_from_file(self, filepath: Path) -> list[Block]:
+        markdown = filepath.read_text(encoding='utf-8')
+        return self._extract_blocks_from_markdown(filepath, markdown)

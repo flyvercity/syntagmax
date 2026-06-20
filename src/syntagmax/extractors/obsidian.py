@@ -9,6 +9,7 @@ from pathlib import Path
 from syntagmax.extractors.markdown import MarkdownExtractor
 from syntagmax.extractors.extractor import ExtractorResult
 from syntagmax.artifact import LineLocation
+from syntagmax.blocks import Block
 
 
 class ObsidianExtractor(MarkdownExtractor):
@@ -23,3 +24,6 @@ class ObsidianExtractor(MarkdownExtractor):
             return LineLocation(loc_file=loc_file, loc_lines=(start, end))
 
         return self._extract_from_markdown(filepath, markdown, location_builder)
+
+    def extract_blocks_from_file(self, filepath: Path) -> list[Block]:
+        return super().extract_blocks_from_file(filepath)

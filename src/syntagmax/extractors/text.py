@@ -15,6 +15,7 @@ from syntagmax.config import Config, InputRecord
 from syntagmax.artifact import ArtifactBuilder, Artifact, ValidationError, LineLocation
 from syntagmax.extractors.extractor import Extractor, ExtractorResult
 from syntagmax.artifact import UNDEFINED_ID
+from syntagmax.blocks import Block, TextBlock, ArtifactBlock
 
 
 class IdRef:
@@ -214,3 +215,82 @@ class TextExtractor(Extractor):
         While analyzing {section_start_string}
         Reason: {message}
         """
+
+    def extract_blocks_from_file(self, filepath: Path) -> list[Block]:
+        blocks: list[Block] = []
+        try:
+            text = filepath.read_text(encoding='utf-8')
+        except (UnicodeDecodeError, OSError):
+            return []
+        file_location = self._config.derive_path(filepath)
+
+        start_marker = '[<'
+        end_marker = '>]'
+        pos = 0
+
+        while True:
+            start_pos = text.find(start_marker, pos)
+
+            if start_pos == -1:
+                break
+
+            # Text before this artifact
+            gap = text[pos:start_pos]
+            if gap.strip():
+                blocks.append(TextBlock(content=gap))
+
+            end_pos = text.find(end_marker, start_pos)
+            if end_pos == -1:
+                break
+
+            segment_end = end_pos + len(end_marker)
+            segment = text[start_pos:segment_end]
+            start_line = text.count('\n', 0, start_pos) + 1
+            end_line = text.count('\n', 0, segment_end) + 1
+            location = LineLocation(loc_file=file_location, loc_lines=(start_line, end_line))
+
+            try:
+                tree = self._parser.parse(segment)
+                section = self._transformer.transform(tree)
+
+                builder = ArtifactBuilder(
+                    self._config, TextArtifact, 'text', location, self._metamodel, record=self._record
+                )
+
+                aid: str | None = None
+                atype: str | None = self._record.default_atype
+                header = section['header']
+                body = section['body'] or ''
+
+                for item in header:
+                    if isinstance(item, IdRef):
+                        aid = item.value
+                    if isinstance(item, ATypeRef):
+                        atype = item.value
+
+                if aid is None:
+                    aid = UNDEFINED_ID
+
+                builder.add_id(aid, atype)
+                builder.add_field('id', aid)
+                builder.add_field('contents', body.strip())
+
+                for item in header:
+                    if isinstance(item, tuple):
+                        builder.add_field(item[0], item[1])
+
+                artifact = builder.build()
+                blocks.append(ArtifactBlock(artifact=artifact, raw_text=segment))
+
+            except (exceptions.ParseError, exceptions.UnexpectedToken, ValidationError):
+                # On parse failure, treat the segment as text
+                blocks.append(TextBlock(content=segment))
+
+            pos = segment_end
+
+        # Text after the last artifact
+        gap = text[pos:]
+        if gap.strip():
+            blocks.append(TextBlock(content=gap))
+
+        return blocks

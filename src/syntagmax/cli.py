@@ -86,6 +86,21 @@ def analyze(obj: Params, config_file: Path, allow_dirty_worktree: bool, suppress
         u.pprint(f'[{color}]{summary}[/{color}]')
 
 
+@rms.command(help='Publish project to a single markdown document')
+@click.pass_obj
+@click.option('-f', '--config-file', type=click.Path(exists=True), default='.syntagmax/config.toml')
+@click.argument('output_file', type=click.Path())
+def publish(obj: Params, config_file: Path, output_file: str):
+    from syntagmax.publish import build_block_tree, render_block_tree
+    config = Config(obj, Path(config_file))
+    tree = build_block_tree(config)
+    markdown = render_block_tree(tree)
+    output_path = Path(output_file)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(markdown, encoding='utf-8')
+    u.pprint(f'[green]Published to {output_path}[/green]')
+
+
 @rms.group(help='Project Editing Commands')
 def edit():
     pass
