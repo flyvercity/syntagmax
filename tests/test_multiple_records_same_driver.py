@@ -35,7 +35,11 @@ def test_multiple_records_same_driver(tmp_path):
     """).strip(), encoding="utf-8")
 
     metamodel_file = project_dir / "project.syntagmax"
-    metamodel_file.write_text("artifact SYS:\n    id is string\n    attribute contents is mandatory string\nartifact REQ:\n    id is string\n    attribute contents is mandatory string\n", encoding="utf-8")
+    metamodel_file.write_text(
+        "artifact SYS:\n    id is string\n    attribute contents is mandatory string\n"
+        "artifact REQ:\n    id is string\n    attribute contents is mandatory string\n",
+        encoding="utf-8",
+    )
 
     sys_md = sys_dir / "sys.md"
     sys_md.write_text("[SYS]\nContent\n[id] OLD-SYS\n[/SYS]\n", encoding="utf-8")

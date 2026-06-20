@@ -73,19 +73,19 @@ class DSLTransformer(Transformer):
     def trace(self, children):
         # trace: "trace" "from" name "to" target_list "is" PRESENCE ["via" TRACE_MODE] [condition] _NL
         # children: source, targets, presence, [mode], [condition]
-        
+
         mode = 'timestamp'
         condition = None
-        
+
         presence = str(children[2])
-        
+
         if len(children) > 3:
             # children[3] could be TRACE_MODE or condition
             if isinstance(children[3], dict) and 'anchor' in children[3]:
                 condition = children[3]
             elif children[3] is not None:
                 mode = str(children[3])
-                
+
         if len(children) > 4 and children[4] is not None:
             condition = children[4]
 
@@ -214,7 +214,7 @@ def validate_metamodel(metamodel: dict, errors: list[str]):
                     errors.append(
                         f"Artifact '{artifact_name}' has a regular attribute named 'id'. Use 'id is ...' instead."
                     )
-                
+
                 # Check condition's anchor
                 condition = rule.get('condition')
                 if condition:
@@ -222,7 +222,7 @@ def validate_metamodel(metamodel: dict, errors: list[str]):
                     # Requirement: the attribute shall be boolean
                     # Requirement: the attribute shall not be conditional
                     # If it's boolean, its type_info['type'] is 'boolean'
-                    
+
                     if anchor_name not in attributes:
                         errors.append(f"Artifact '{artifact_name}' has rule for '{attr_name}' with unknown anchor '{anchor_name}'")
                     else:
@@ -233,9 +233,12 @@ def validate_metamodel(metamodel: dict, errors: list[str]):
                             if ar.get('type_info', {}).get('type') == 'boolean' and ar.get('condition') is None:
                                 found_valid_anchor = True
                                 break
-                        
+
                         if not found_valid_anchor:
-                            errors.append(f"Artifact '{artifact_name}' has rule for '{attr_name}' with invalid anchor '{anchor_name}': must be a non-conditional boolean attribute")
+                            errors.append(
+                                f"Artifact '{artifact_name}' has rule for '{attr_name}'"
+                                f" with invalid anchor '{anchor_name}': must be a non-conditional boolean attribute"
+                            )
 
         # id must have at least one mandatory rule (usually only one)
         id_rules = attributes.get('id', [])
@@ -264,7 +267,7 @@ def validate_metamodel(metamodel: dict, errors: list[str]):
                 if source_atype not in metamodel['artifacts']:
                     # Source atype unknown? Should have been caught by target_list or similar if we checked that.
                     continue
-                
+
                 source_attrs = metamodel['artifacts'][source_atype]['attributes']
                 if anchor_name not in source_attrs:
                     errors.append(f"Trace from '{source_atype}' has unknown anchor '{anchor_name}'")

@@ -1,6 +1,6 @@
 import time
 from syntagmax.analyse import ArtifactValidator
-from syntagmax.artifact import Artifact, Location
+from syntagmax.artifact import Artifact
 
 
 class MockConfig:

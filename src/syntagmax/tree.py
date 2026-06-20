@@ -38,14 +38,14 @@ def populate_pids(config: Config, artifacts: ArtifactMap, errors: list[str]):
         for attr_name, rules in artifact_rules.items():
             if isinstance(rules, dict):
                 rules = [rules]
-            
+
             for rule in rules:
                 # We skip conditional pids for now or we evaluate them?
                 # Actually, pids are usually from mandatory/optional reference attributes.
                 # If it's conditional, we should probably evaluate it.
                 # But wait, populate_pids is called BEFORE ArtifactValidator.
                 # We can use a simple evaluation here too if we want to be strict.
-                
+
                 # For now, let's just check if it's a reference to parent
                 type_info = rule.get('type_info', {})
                 if type_info.get('type') == 'reference' and type_info.get('to_parent'):
@@ -59,7 +59,7 @@ def populate_pids(config: Config, artifacts: ArtifactMap, errors: list[str]):
                     refs = val if is_multiple else [val]
                     if not isinstance(refs, list):
                         refs = [refs]
-                        
+
                     for ref_str in refs:
                         # Support comma-separated references in a single string
                         if isinstance(ref_str, str):
@@ -85,9 +85,9 @@ def populate_pids(config: Config, artifacts: ArtifactMap, errors: list[str]):
                                     a.pids.append(aid)
                             except Exception as e:
                                 errors.append(f"Error processing parent link '{actual_ref}' for artifact '{a.aid}': {e}")
-                
-                # If we processed one rule for this attribute that matched, 
-                # do we need to process others? 
+
+                # If we processed one rule for this attribute that matched,
+                # do we need to process others?
                 # If they are different pids (e.g. multiple rules for different parents), maybe.
                 # But usually it's just one set of pids per attribute.
 

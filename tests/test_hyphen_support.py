@@ -1,7 +1,7 @@
 import textwrap
 from syntagmax.metamodel import load_metamodel
 from syntagmax.params import Params
-from syntagmax.config import Config, InputRecord
+from syntagmax.config import Config
 
 def test_hyphenated_and_underscored_names(tmp_path):
     model_content = textwrap.dedent("""

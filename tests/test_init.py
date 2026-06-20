@@ -1,7 +1,6 @@
 # SPDX-License-Identifier: MIT
 
 import tomllib
-from pathlib import Path
 from syntagmax.init_cmd import generate_toml, init_project, METAMODEL_CONTENT
 
 

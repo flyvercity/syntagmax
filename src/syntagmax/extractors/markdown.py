@@ -184,14 +184,6 @@ class MarkdownExtractor(Extractor):
         if 'id' in fields:
             self.update_artifacts(artifact.location.loc_file, [(artifact, fields['id'])])
 
-
-        markdown = filepath.read_text(encoding='utf-8')
-
-        def location_builder(start, end):
-            return LineLocation(loc_file=self._config.derive_path(filepath), loc_lines=(start, end))
-
-        return self._extract_from_markdown(filepath, markdown, location_builder)
-
     def _extract_from_markdown(
         self, filepath: Path, markdown: str, location_builder: Callable[[int, int], Location]
     ) -> ExtractorResult:

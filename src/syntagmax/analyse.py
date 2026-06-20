@@ -151,12 +151,12 @@ class ArtifactValidator:
             if is_mandatory and attr_name not in actual_names:
                 self.errors.append(f"Missing mandatory attribute: '{attr_name}' ({artifact})")
                 continue
-            
+
             if attr_name not in actual_names:
                 continue
-            
+
             value = artifact.fields[attr_name]
-            
+
             for rule in active_rules:
                 self._check_rule(artifact, attr_name, value, rule)
 
@@ -234,7 +234,7 @@ class ArtifactValidator:
 
     def _validate_traces(self, artifact: Artifact):
         all_trace_rules = self._traces.get(artifact.atype, [])
-        
+
         # Evaluate conditions on the FROM artifact
         active_trace_rules = [r for r in all_trace_rules if self._evaluate_condition(artifact, r.get('condition'))]
 
