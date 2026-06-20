@@ -116,3 +116,7 @@ def init_project(cwd: str | None = None) -> None:
     metamodel_file = syntagmax_dir / 'project.syntagmax'
     with open(metamodel_file, 'w', encoding='utf-8') as f:
         f.write(METAMODEL_CONTENT)
+
+    gitignore_file = syntagmax_dir / '.gitignore'
+    with open(gitignore_file, 'w', encoding='utf-8') as f:
+        f.write('reports/\n')
