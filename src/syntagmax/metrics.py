@@ -34,7 +34,7 @@ def calculate_metrics(config: Config, artifacts: ArtifactMap, errors: list[str])
     req_count = requirements.height
 
     if req_count == 0:
-        errors.append('No requirements found')
+        errors.append('Metrics: No requirements found')
         return metrics
 
     metrics['total_requirements'] = req_count
