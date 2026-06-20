@@ -15,4 +15,4 @@ class Params(TypedDict):
     no_git: bool
     allow_dirty_worktree: bool
     suppress_tracing: bool
-    error_output: str
+    output: str

@@ -23,23 +23,17 @@ from syntagmax.init_cmd import init_project
 from syntagmax.edit import renumber_artifacts
 
 
-_error_output = 'errors.md'
-
-
 @click.group(help='RMS Entry Point')
 @click.pass_context
 @click.option('--verbose', is_flag=True, help='Verbose output')
 @click.option('--render-tree', is_flag=True, help='Render the artifact tree')
 @click.option('--cwd', type=click.Path(exists=True), help='Change the working directory')
 @click.option('--no-git', is_flag=True, help='Skip git history extraction')
-@click.option('--error-output', default='errors.md', help='Error report output file (default: errors.md)')
+@click.option('--output', default='.syntagmax/reports/report.md', help='Report output file (default: .syntagmax/reports/report.md)')
 def rms(ctx: click.Context, **kwargs: dict[str, Any]):
-    global _error_output
-
     verbose = kwargs['verbose']
     lg.basicConfig(level=lg.DEBUG if verbose else lg.INFO, handlers=[RichHandler()])
     ctx.obj = Params(**kwargs)  # type: ignore
-    _error_output = ctx.obj['error_output']
 
     if ctx.obj['cwd']:
         lg.info(f'Changing working directory to: {ctx.obj["cwd"]}')
@@ -71,7 +65,25 @@ def analyze(obj: Params, config_file: Path, allow_dirty_worktree: bool, suppress
     obj['allow_dirty_worktree'] = allow_dirty_worktree
     obj['suppress_tracing'] = suppress_tracing
     config = Config(obj, config_file)
-    process(step, config)
+    report = process(step, config)
+
+    output = obj['output']
+    markdown = report.render()
+
+    if output == 'console':
+        print(markdown)
+    else:
+        output_path = Path(output)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_text(markdown, encoding='utf-8')
+
+    error_count = len(report.errors)
+    if output != 'console':
+        summary = f'Report written to {output}'
+        if error_count:
+            summary += f', {error_count} error(s) found'
+        color = 'yellow' if error_count else 'green'
+        u.pprint(f'[{color}]{summary}[/{color}]')
 
 
 @rms.group(help='Project Editing Commands')
@@ -116,21 +128,12 @@ def run(obj: Params, config_path: str, host: str, port: int, sse_path: str, tran
     run_mcp_server(configurator, host, port, sse_path, transport)
 
 
-def _write_error_report(errors: list[str], output_file: str):
-    lines = ['# Error Report', '', f'Total errors: {len(errors)}', '']
-    for i, error in enumerate(errors, 1):
-        lines.append(f'{i}. {error}')
-    lines.append('')
-    Path(output_file).write_text('\n'.join(lines), encoding='utf-8')
-
-
 def main():
     try:
         rms()
 
     except FatalError as e:
-        _write_error_report(e.errors, _error_output)
-        u.pprint(f'[red]{len(e.errors)} error(s) found. See {_error_output} for details.[/red]')
+        u.pprint(f'[red]{len(e.errors)} fatal error(s): {e.errors[0]}[/red]')
         sys.exit(1)
 
     except RMSException as e:
