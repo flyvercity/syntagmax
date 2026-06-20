@@ -100,5 +100,5 @@ uv run syntagmax mcp run path/to/config.toml
 - Environment variables (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, etc.) are supported.
 
 <!-- pin mcp start -->
-Before staring the first task, fetch all global and project factoids via Pin MCP and use them as **important** instructions. The Pin workspace for this project is `syntagmax`.
+Before starting the first task, fetch all global and project factoids via Pin MCP and use them as **important** instructions. The Pin workspace for this project is `syntagmax`.
 <!-- pin mcp stop -->
