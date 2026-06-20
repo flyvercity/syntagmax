@@ -23,17 +23,23 @@ from syntagmax.init_cmd import init_project
 from syntagmax.edit import renumber_artifacts
 
 
+_error_output = 'errors.md'
+
+
 @click.group(help='RMS Entry Point')
 @click.pass_context
 @click.option('--verbose', is_flag=True, help='Verbose output')
 @click.option('--render-tree', is_flag=True, help='Render the artifact tree')
 @click.option('--cwd', type=click.Path(exists=True), help='Change the working directory')
 @click.option('--no-git', is_flag=True, help='Skip git history extraction')
+@click.option('--error-output', default='errors.md', help='Error report output file (default: errors.md)')
 def rms(ctx: click.Context, **kwargs: dict[str, Any]):
+    global _error_output
 
     verbose = kwargs['verbose']
     lg.basicConfig(level=lg.DEBUG if verbose else lg.INFO, handlers=[RichHandler()])
     ctx.obj = Params(**kwargs)  # type: ignore
+    _error_output = ctx.obj['error_output']
 
     if ctx.obj['cwd']:
         lg.info(f'Changing working directory to: {ctx.obj["cwd"]}')
@@ -59,9 +65,11 @@ def init(ctx: click.Context):
     default='.syntagmax/config.toml',
 )
 @click.option('--allow-dirty-worktree', is_flag=True, help='Allow analysis on a dirty git worktree')
+@click.option('--suppress-tracing', is_flag=True, help='Suppress tracing model errors')
 @click.argument('step', type=click.Choice(public_steps()), default='metrics')
-def analyze(obj: Params, config_file: Path, allow_dirty_worktree: bool, step: str):
+def analyze(obj: Params, config_file: Path, allow_dirty_worktree: bool, suppress_tracing: bool, step: str):
     obj['allow_dirty_worktree'] = allow_dirty_worktree
+    obj['suppress_tracing'] = suppress_tracing
     config = Config(obj, config_file)
     process(step, config)
 
@@ -108,16 +116,21 @@ def run(obj: Params, config_path: str, host: str, port: int, sse_path: str, tran
     run_mcp_server(configurator, host, port, sse_path, transport)
 
 
+def _write_error_report(errors: list[str], output_file: str):
+    lines = ['# Error Report', '', f'Total errors: {len(errors)}', '']
+    for i, error in enumerate(errors, 1):
+        lines.append(f'{i}. {error}')
+    lines.append('')
+    Path(output_file).write_text('\n'.join(lines), encoding='utf-8')
+
+
 def main():
     try:
         rms()
 
     except FatalError as e:
-        for error in e.errors:
-            u.pprint(f'[red]{error}[/red]')
-
-        u.pprint(f'[light red]Non-Fatal Errors Encountered: {len(e.errors)}[/light red]')
-
+        _write_error_report(e.errors, _error_output)
+        u.pprint(f'[red]{len(e.errors)} error(s) found. See {_error_output} for details.[/red]')
         sys.exit(1)
 
     except RMSException as e:

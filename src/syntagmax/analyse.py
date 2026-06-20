@@ -14,7 +14,7 @@ _NUM_PATTERN = re.compile(r'\{num(?::(\d+))?\}')
 
 
 class ArtifactValidator:
-    def __init__(self, metamodel, artifacts: ArtifactMap, errors: list[str] | None = None):
+    def __init__(self, metamodel, artifacts: ArtifactMap, errors: list[str] | None = None, suppress_tracing: bool = False):
         # Index rules by artifact name for fast lookup
         if metamodel is not None and 'artifacts' in metamodel:
             self._artifacts = metamodel['artifacts']
@@ -27,6 +27,7 @@ class ArtifactValidator:
         self.errors = errors if errors is not None else []
         self._artifacts_map = artifacts
         self._id_schema_cache = {}
+        self._suppress_tracing = suppress_tracing
 
     def validate(self, artifact: Artifact):
         if self._artifacts is None or not self._artifacts:
@@ -38,7 +39,8 @@ class ArtifactValidator:
 
         self._validate_attributes(artifact)
         self._validate_id_schema(artifact)
-        self._validate_traces(artifact)
+        if not self._suppress_tracing:
+            self._validate_traces(artifact)
 
         return self.errors
 
@@ -149,12 +151,12 @@ class ArtifactValidator:
             if is_mandatory and attr_name not in actual_names:
                 self.errors.append(f"Missing mandatory attribute: '{attr_name}' ({artifact})")
                 continue
-            
+
             if attr_name not in actual_names:
                 continue
-            
+
             value = artifact.fields[attr_name]
-            
+
             for rule in active_rules:
                 self._check_rule(artifact, attr_name, value, rule)
 
@@ -209,24 +211,30 @@ class ArtifactValidator:
 
         elif expected_type == 'reference':
             if not isinstance(val, str):
-                self.errors.append(
-                    f"Attribute '{attr_name}' value '{val}' is a malformed reference (expected ID string) ({artifact})"
-                )
+                msg = f"Attribute '{attr_name}' value '{val}' is a malformed reference (expected ID string) ({artifact})"
+                if self._suppress_tracing:
+                    lg.warning(msg)
+                else:
+                    self.errors.append(msg)
             else:
                 aid = val.split('@')[0] if '@' in val else val
                 ref_artifact = self._artifacts_map.get(aid)
                 if not ref_artifact:
-                    self.errors.append(
-                        f"Attribute '{attr_name}' value '{val}' refers to an unknown artifact ID '{aid}' ({artifact})"
-                    )
+                    msg = f"Attribute '{attr_name}' value '{val}' refers to an unknown artifact ID '{aid}' ({artifact})"
+                    if self._suppress_tracing:
+                        lg.warning(msg)
+                    else:
+                        self.errors.append(msg)
                 elif ref_artifact.atype not in self._artifacts:
-                    self.errors.append(
-                        f"Attribute '{attr_name}' value '{val}' refers to an artifact with unknown type '{ref_artifact.atype}' ({artifact})"
-                    )
+                    msg = f"Attribute '{attr_name}' value '{val}' refers to an artifact with unknown type '{ref_artifact.atype}' ({artifact})"
+                    if self._suppress_tracing:
+                        lg.warning(msg)
+                    else:
+                        self.errors.append(msg)
 
     def _validate_traces(self, artifact: Artifact):
         all_trace_rules = self._traces.get(artifact.atype, [])
-        
+
         # Evaluate conditions on the FROM artifact
         active_trace_rules = [r for r in all_trace_rules if self._evaluate_condition(artifact, r.get('condition'))]
 
@@ -281,7 +289,8 @@ class ArtifactValidator:
 
 
 def analyse_tree(config: Config, artifacts: ArtifactMap, errors: list[str]):
-    validator = ArtifactValidator(config.metamodel, artifacts, errors)
+    suppress = config.params.get('suppress_tracing', False)
+    validator = ArtifactValidator(config.metamodel, artifacts, errors, suppress_tracing=suppress)
 
     for artifact in artifacts.values():
         # Skipping the root pseudo-artifact

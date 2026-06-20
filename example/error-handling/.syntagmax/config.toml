@@ -1,0 +1,10 @@
+base = ".."
+
+[[input]]
+name = "requirements"
+dir = "REQ"
+driver = "obsidian"
+atype = "REQ"
+
+[metamodel]
+filename = "project.syntagmax"

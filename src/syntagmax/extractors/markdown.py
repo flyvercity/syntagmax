@@ -44,13 +44,12 @@ class MarkdownTransformer(Transformer):
         return {'text': ''.join(str(c) for c in t) if t else ''}
 
     def field(self, t):
-        # field: _LSQB AID _RSQB [FIELD_TEXT] _NL
-        # children: AID, [FIELD_TEXT]
+        # field: _LSQB AID _RSQB [FIELD_TEXT] _NL FIELD_CONT*
+        # children: AID, [FIELD_TEXT], [FIELD_CONT...]
         marker = str(t[0])
-        text = ''
-        if len(t) > 1:
-            text = str(t[1])
-        return {'field': {'marker': marker, 'contents': {'text': text.strip()}}}
+        parts = [str(c).strip() for c in t[1:] if str(c).strip()]
+        text = '\n'.join(parts)
+        return {'field': {'marker': marker, 'contents': {'text': text}}}
 
     def _NL(self, t):
         return None
@@ -91,6 +90,14 @@ class MarkdownExtractor(Extractor):
 
         self._parser = Lark(grammar, parser='lalr', maybe_placeholders=False)
         self._transformer = MarkdownTransformer()
+
+    def _is_multiple_attr(self, atype: str, attr_name: str) -> bool:
+        if not self._metamodel:
+            return False
+        attrs = self._metamodel.get('artifacts', {}).get(atype, {}).get('attributes', {}).get(attr_name, [])
+        if isinstance(attrs, dict):
+            attrs = [attrs]
+        return any(rule.get('multiple', False) for rule in attrs)
 
     def update_artifacts(self, loc_file: str, updates: list[tuple[Artifact, str]]):
         from syntagmax.artifact import LineLocation
@@ -177,14 +184,6 @@ class MarkdownExtractor(Extractor):
         if 'id' in fields:
             self.update_artifacts(artifact.location.loc_file, [(artifact, fields['id'])])
 
-
-        markdown = filepath.read_text(encoding='utf-8')
-
-        def location_builder(start, end):
-            return LineLocation(loc_file=self._config.derive_path(filepath), loc_lines=(start, end))
-
-        return self._extract_from_markdown(filepath, markdown, location_builder)
-
     def _extract_from_markdown(
         self, filepath: Path, markdown: str, location_builder: Callable[[int, int], Location]
     ) -> ExtractorResult:
@@ -226,7 +225,13 @@ class MarkdownExtractor(Extractor):
                 segment_end = slash_req_pos + len(f'[/{marker}]')
 
             if segment_end == -1:
-                # No terminator found, skip
+                start_line = markdown.count('\n', 0, start_pos) + 1
+                if yaml_start_pos != -1:
+                    error = f'Unclosed YAML block in requirement at line {start_line} in {filepath}'
+                else:
+                    error = f'Unterminated requirement at line {start_line} in {filepath}'
+                lg.error(error)
+                errors.append(error)
                 pos = match.end()
                 continue
 
@@ -245,6 +250,14 @@ class MarkdownExtractor(Extractor):
                 fields = req.get_list('req.fields.list')
                 yaml_info = req.get('req.yaml')
                 yaml_text = yaml_info.get('text') if yaml_info else None
+
+                # NBSP detection
+                if ' ' in segment:
+                    error = f'Non-breaking space (NBSP) detected in requirement at line {start_line} in {filepath}'
+                    lg.error(error)
+                    errors.append(error)
+                    pos = segment_end
+                    continue
 
                 if not yaml_text:
                     # Allow missing YAML if terminated by [/REQ] or if we have other fields
@@ -310,9 +323,14 @@ class MarkdownExtractor(Extractor):
                 for name, value in yaml_attrs.items():
                     if name.lower() in ['id', 'atype']:
                         continue
+                    if value is None:
+                        continue
                     if isinstance(value, list):
                         for v in value:
                             builder.add_field(name, str(v))
+                    elif self._is_multiple_attr(atype, name) and ',' in str(value):
+                        for v in str(value).split(','):
+                            builder.add_field(name, v.strip())
                     else:
                         builder.add_field(name, str(value))
 

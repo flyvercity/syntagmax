@@ -13,3 +13,6 @@ class Params(TypedDict):
     ai: bool
     cwd: str
     no_git: bool
+    allow_dirty_worktree: bool
+    suppress_tracing: bool
+    error_output: str
