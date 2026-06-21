@@ -104,7 +104,7 @@ class SidecarExtractor(Extractor):
 
     def extract_blocks_from_file(self, filepath: Path) -> list[Block]:
         try:
-            artifacts, errors = self.extract_from_file(filepath)
+            artifacts, _ = self.extract_from_file(filepath)
             if not artifacts:
                 return []
             stmx_path = filepath.with_name(f'{filepath.name}.stmx')

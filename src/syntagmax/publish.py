@@ -50,7 +50,7 @@ def render_block_tree(tree: BlockTree) -> str:
                     if fields:
                         parts.append('| Field | Value |\n|-------|-------|\n')
                         for k, v in fields.items():
-                            display = ', '.join(v) if isinstance(v, list) else str(v)
+                            display = ', '.join(str(i) for i in v) if isinstance(v, list) else str(v)
                             parts.append(f'| {k} | {display} |\n')
                         parts.append('\n')
 

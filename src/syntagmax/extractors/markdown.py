@@ -378,7 +378,7 @@ class MarkdownExtractor(Extractor):
 
             # Capture text before this segment
             text_before = markdown[pos:start_pos]
-            if text_before.strip():
+            if text_before:
                 blocks.append(TextBlock(content=text_before))
 
             # Find segment end (same logic as _extract_from_markdown)
@@ -395,6 +395,7 @@ class MarkdownExtractor(Extractor):
                 segment_end = slash_req_pos + len(f'[/{marker}]')
 
             if segment_end == -1:
+                blocks.append(TextBlock(content=markdown[start_pos:match.end()]))
                 pos = match.end()
                 continue
 
@@ -404,19 +405,21 @@ class MarkdownExtractor(Extractor):
 
             loc_file = self._config.derive_path(filepath)
 
-            def location_builder(s=start_line, e=end_line):
+            def location_builder(_s=None, _e=None, s=start_line, e=end_line):
                 from syntagmax.artifact import LineLocation
                 return LineLocation(loc_file=loc_file, loc_lines=(s, e))
 
             artifacts, _ = self._extract_from_markdown(filepath, segment, location_builder)
             if artifacts:
                 blocks.append(ArtifactBlock(artifact=artifacts[0], raw_text=segment))
+            else:
+                blocks.append(TextBlock(content=segment))
 
             pos = segment_end
 
         # Capture trailing text
         text_after = markdown[pos:]
-        if text_after.strip():
+        if text_after:
             blocks.append(TextBlock(content=text_after))
 
         return blocks

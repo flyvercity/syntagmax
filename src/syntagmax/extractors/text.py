@@ -236,7 +236,7 @@ class TextExtractor(Extractor):
 
             # Text before this artifact
             gap = text[pos:start_pos]
-            if gap.strip():
+            if gap:
                 blocks.append(TextBlock(content=gap))
 
             end_pos = text.find(end_marker, start_pos)
@@ -290,7 +290,7 @@ class TextExtractor(Extractor):
 
         # Text after the last artifact
         gap = text[pos:]
-        if gap.strip():
+        if gap:
             blocks.append(TextBlock(content=gap))
 
         return blocks
