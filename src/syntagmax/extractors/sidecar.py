@@ -12,6 +12,7 @@ from syntagmax.config import Config, InputRecord
 from syntagmax.artifact import ArtifactBuilder, Artifact, FileLocation, ValidationError
 from syntagmax.extractors.extractor import Extractor, ExtractorResult
 from syntagmax.artifact import UNDEFINED_ID
+from syntagmax.blocks import Block, ArtifactBlock, ErrorBlock
 
 
 class SidecarExtractor(Extractor):
@@ -39,13 +40,11 @@ class SidecarExtractor(Extractor):
                 original_path = sidecar_path.with_name(original_name)
 
                 if not original_path.exists():
-                    errors.append(
-                        f'{self.driver()} :: Orphaned sidecar file {sidecar_path} without matching original file'
-                    )
+                    errors.append(f'{self.driver()} :: Orphaned sidecar file {sidecar_path} without matching original file')
 
         return artifacts, errors
 
-    def extract_from_file(self, filepath: Path) -> ExtractorResult:
+    def extract_blocks_from_file(self, filepath: Path) -> list[Block]:
         lg.debug(f'Processing sidecar driver for original file: {filepath}')
 
         stmx_path = filepath.with_name(f'{filepath.name}.stmx')
@@ -55,10 +54,12 @@ class SidecarExtractor(Extractor):
         syntagmax_exists = syntagmax_path.exists()
 
         if stmx_exists and syntagmax_exists:
-            return [], [f'{self.driver()} :: Both .stmx and .syntagmax sidecars are present for {filepath}']
+            msg = f'{self.driver()} :: Both .stmx and .syntagmax sidecars are present for {filepath}'
+            return [ErrorBlock(message=msg, raw_text='')]
 
         if not stmx_exists and not syntagmax_exists:
-            return [], [f'{self.driver()} :: Missing sidecar file for {filepath}']
+            msg = f'{self.driver()} :: Missing sidecar file for {filepath}'
+            return [ErrorBlock(message=msg, raw_text='')]
 
         sidecar_path = stmx_path if stmx_exists else syntagmax_path
 
@@ -66,24 +67,26 @@ class SidecarExtractor(Extractor):
             with open(sidecar_path, 'r', encoding='utf-8') as f:
                 data = yaml.safe_load(f)
         except yaml.YAMLError as e:
-            return [], [f'{self.driver()} :: Malformed YAML in sidecar {sidecar_path}: {e}']
+            msg = f'{self.driver()} :: Malformed YAML in sidecar {sidecar_path}: {e}'
+            return [ErrorBlock(message=msg, raw_text='')]
         except Exception as e:
-            return [], [f'{self.driver()} :: Could not read sidecar {sidecar_path}: {e}']
+            msg = f'{self.driver()} :: Could not read sidecar {sidecar_path}: {e}'
+            return [ErrorBlock(message=msg, raw_text='')]
 
         if not isinstance(data, dict):
-            return [], [f'{self.driver()} :: Sidecar {sidecar_path} does not contain a valid YAML dictionary']
+            msg = f'{self.driver()} :: Sidecar {sidecar_path} does not contain a valid YAML dictionary'
+            return [ErrorBlock(message=msg, raw_text='')]
 
         if 'id' not in data:
-            return [], [f'{self.driver()} :: Missing required "id" field in sidecar {sidecar_path}']
+            msg = f'{self.driver()} :: Missing required "id" field in sidecar {sidecar_path}'
+            return [ErrorBlock(message=msg, raw_text='')]
 
         aid = str(data.pop('id', UNDEFINED_ID))
         atype = str(data.pop('atype', self._record.default_atype))
 
         location = FileLocation(self._config.derive_path(filepath), self._config.derive_path(sidecar_path))
 
-        builder = ArtifactBuilder(
-            self._config, Artifact, self.driver(), location, self._metamodel, record=self._record
-        )
+        builder = ArtifactBuilder(self._config, Artifact, self.driver(), location, self._metamodel, record=self._record)
 
         try:
             builder.add_id(aid, atype)
@@ -96,7 +99,10 @@ class SidecarExtractor(Extractor):
                 else:
                     builder.add_field(key, value)
 
-            return [builder.build()], []
+            artifact = builder.build()
+            raw_text = sidecar_path.read_text(encoding='utf-8')
+            return [ArtifactBlock(artifact=artifact, raw_text=raw_text)]
 
         except ValidationError as e:
-            return [], [f'{self.driver()} :: Validation error in {sidecar_path}: {e}']
+            msg = f'{self.driver()} :: Validation error in {sidecar_path}: {e}'
+            return [ErrorBlock(message=msg, raw_text='')]
