@@ -1,3 +1,9 @@
+# SPDX-License-Identifier: MIT
+
+# Author: Boris Resnick
+# Created: 2026-06-20
+# Description: Block tree data model for publishing.
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field

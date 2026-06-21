@@ -9,7 +9,7 @@ The current extraction pipeline only produces artifacts, discarding non-requirem
 1. Block tree preserves the structure of inputs: ROOT → Input Records → Blocks (Text/Artifact)
 2. Files within each record sorted lexicographically by relative path to record base
 3. Blocks within each file in natural (positional) order
-4. All drivers participate (obsidian/markdown, text, sidecar, ipynb)
+4. All drivers participate (obsidian, text, sidecar, ipynb)
 5. Artifacts rendered in normalized markdown format (heading + body + metadata table)
 6. Text blocks rendered as-is
 7. New CLI command: `publish <output-file>` reusing `.syntagmax/config.toml`
@@ -107,8 +107,4 @@ BlockTree
 - Test: Test render output matches expected markdown structure.
 - Demo: `uv run pytest tests/test_publish.py` passes with rendering tests.
 
-### Task 7: Add the `publish` CLI command
-
-- Add `publish` command to `cli.py` that takes an output file argument, builds the block tree, renders it, and writes to the output file. Reuses the existing config file option.
-- Test: End-to-end test using the example project (`example/obsidian-driver`).
-- Demo: `uv run syntagmax publish output.md --cwd ./example/obsidian-driver` produces a valid markdown file combining all inputs.
+- Demo: `uv run syntagmax --cwd ./example/obsidian-driver publish output.md` produces a valid markdown file combining all inputs.
