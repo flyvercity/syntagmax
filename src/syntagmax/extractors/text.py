@@ -7,15 +7,14 @@
 import logging as lg
 import re
 from pathlib import Path
-from typing import Sequence
 
 from lark import Lark, Transformer, exceptions
 
 from syntagmax.config import Config, InputRecord
 from syntagmax.artifact import ArtifactBuilder, Artifact, ValidationError, LineLocation
-from syntagmax.extractors.extractor import Extractor, ExtractorResult
+from syntagmax.extractors.extractor import Extractor
 from syntagmax.artifact import UNDEFINED_ID
-from syntagmax.blocks import Block, TextBlock, ArtifactBlock
+from syntagmax.blocks import Block, TextBlock, ArtifactBlock, ErrorBlock
 
 
 class IdRef:
@@ -127,89 +126,6 @@ class TextExtractor(Extractor):
         if 'id' in fields:
             self.update_artifacts(artifact.location.loc_file, [(artifact, fields['id'])])
 
-    def extract_from_file(self, filepath: Path) -> ExtractorResult:
-        artifacts: Sequence[Artifact] = []
-        errors: list[str] = []
-        text = filepath.read_text(encoding='utf-8')
-        file_location = self._config.derive_path(filepath)
-
-        # Use a simple search for the start marker
-        start_marker = '[<'
-        pos = 0
-
-        while True:
-            start_pos = text.find(start_marker, pos)
-
-            if start_pos == -1:
-                break
-
-            # Find the end marker to extract the segment
-            end_marker = '>]'
-            end_pos = text.find(end_marker, start_pos)
-
-            if end_pos == -1:
-                # Malformed segment, but we might want to report it
-                break
-
-            segment_end = end_pos + len(end_marker)
-            segment = text[start_pos:segment_end]
-            start_line = text.count('\n', 0, start_pos) + 1
-            end_line = text.count('\n', 0, segment_end) + 1
-            section_start_string = segment.split('\n', 1)[0]
-
-            lg.debug(f'Found section at line {start_line}, parsing: {section_start_string}')
-
-            location = LineLocation(loc_file=file_location, loc_lines=(start_line, end_line))
-
-            try:
-                tree = self._parser.parse(segment)
-                section = self._transformer.transform(tree)
-
-                builder = ArtifactBuilder(
-                    self._config, TextArtifact, 'text', location, self._metamodel, record=self._record
-                )
-
-                aid: str | None = None
-                atype: str | None = self._record.default_atype
-
-                header = section['header']
-                body = section['body'] or ''
-
-                for item in header:  # type: ignore
-                    if isinstance(item, IdRef):
-                        aid = item.value
-                    if isinstance(item, ATypeRef):
-                        atype = item.value
-
-                if aid is None:
-                    error = self._format_error('Missing ID', location, section_start_string, 'ID is required')
-                    lg.warning(error)
-                    pos = segment_end
-                    aid = UNDEFINED_ID
-
-                builder.add_id(aid, atype)
-                builder.add_field('id', aid)
-                builder.add_field('contents', body.strip())
-
-                for item in header:  # type: ignore
-                    if isinstance(item, tuple):
-                        builder.add_field(item[0], item[1])
-
-                artifact = builder.build()
-                artifacts.append(artifact)
-
-            except (exceptions.ParseError, exceptions.UnexpectedToken) as e:
-                error = self._format_error('Parse Error', location, section_start_string, str(e))
-                errors.append(error)
-
-            except ValidationError as e:
-                error = self._format_error('Malformed artifact', location, section_start_string, str(e))
-                errors.append(error)
-
-            pos = segment_end
-
-        return artifacts, errors
-
     def _format_error(self, error_type: str, location: LineLocation, section_start_string: str, message: str) -> str:
         return f"""Driver "text": {error_type} in {location}
         While analyzing {section_start_string}
@@ -247,15 +163,16 @@ class TextExtractor(Extractor):
             segment = text[start_pos:segment_end]
             start_line = text.count('\n', 0, start_pos) + 1
             end_line = text.count('\n', 0, segment_end) + 1
+            section_start_string = segment.split('\n', 1)[0]
             location = LineLocation(loc_file=file_location, loc_lines=(start_line, end_line))
+
+            lg.debug(f'Found section at line {start_line}, parsing: {section_start_string}')
 
             try:
                 tree = self._parser.parse(segment)
                 section = self._transformer.transform(tree)
 
-                builder = ArtifactBuilder(
-                    self._config, TextArtifact, 'text', location, self._metamodel, record=self._record
-                )
+                builder = ArtifactBuilder(self._config, TextArtifact, 'text', location, self._metamodel, record=self._record)
 
                 aid: str | None = None
                 atype: str | None = self._record.default_atype
@@ -269,6 +186,8 @@ class TextExtractor(Extractor):
                         atype = item.value
 
                 if aid is None:
+                    error = self._format_error('Missing ID', location, section_start_string, 'ID is required')
+                    lg.warning(error)
                     aid = UNDEFINED_ID
 
                 builder.add_id(aid, atype)
@@ -282,9 +201,15 @@ class TextExtractor(Extractor):
                 artifact = builder.build()
                 blocks.append(ArtifactBlock(artifact=artifact, raw_text=segment))
 
-            except (exceptions.ParseError, exceptions.UnexpectedToken, ValidationError):
-                # On parse failure, treat the segment as text
-                blocks.append(TextBlock(content=segment))
+            except (exceptions.ParseError, exceptions.UnexpectedToken) as e:
+                error = self._format_error('Parse Error', location, section_start_string, str(e))
+                lg.warning(error)
+                blocks.append(ErrorBlock(message=error, raw_text=segment))
+
+            except ValidationError as e:
+                error = self._format_error('Malformed artifact', location, section_start_string, str(e))
+                lg.warning(error)
+                blocks.append(ErrorBlock(message=error, raw_text=segment))
 
             pos = segment_end
 

@@ -27,7 +27,13 @@ class Extractor:
 
     def driver(self) -> str: ...
 
-    def extract_from_file(self, filepath: Path) -> ExtractorResult: ...
+    def extract_from_file(self, filepath: Path) -> ExtractorResult:
+        from syntagmax.blocks import ArtifactBlock, ErrorBlock
+
+        blocks = self.extract_blocks_from_file(filepath)
+        artifacts = [b.artifact for b in blocks if isinstance(b, ArtifactBlock)]
+        errors = [b.message for b in blocks if isinstance(b, ErrorBlock)]
+        return artifacts, errors
 
     def extract(self) -> ExtractorResult:
         errors: list[str] = []

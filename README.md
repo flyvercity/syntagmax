@@ -12,6 +12,12 @@ Run example analysis with:
 uv run syntagmax --render-tree --cwd ./example/obsidian-driver/ analyze
 ```
 
+Run example publishing with:
+
+```bash
+uv run syntagmax --cwd ./example/obsidian-driver publish .syntagmax/reports/output.md
+```
+
 ## Getting Started
 
 To initialize a new Syntagmax project in the current directory:

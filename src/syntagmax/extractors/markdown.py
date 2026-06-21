@@ -14,7 +14,7 @@ from benedict import benedict
 from syntagmax.extractors.extractor import Extractor, ExtractorResult
 from syntagmax.config import Config, InputRecord
 from syntagmax.artifact import ArtifactBuilder, Artifact, Location, UNDEFINED_ID
-from syntagmax.blocks import Block, TextBlock, ArtifactBlock
+from syntagmax.blocks import Block, TextBlock, ArtifactBlock, ErrorBlock
 
 
 class MarkdownArtifact(Artifact):
@@ -127,7 +127,6 @@ class MarkdownExtractor(Extractor):
             # - re-emit a full yaml block
 
             if isinstance(artifact, MarkdownArtifact) and artifact.yaml_data is not None and ('attrs' in artifact.yaml_data or artifact.yaml_data):
-
                 yaml_data = artifact.yaml_data
                 if yaml_data.get('attrs') is None:
                     yaml_data['attrs'] = {}
@@ -185,44 +184,49 @@ class MarkdownExtractor(Extractor):
         if 'id' in fields:
             self.update_artifacts(artifact.location.loc_file, [(artifact, fields['id'])])
 
-    def _extract_from_markdown(
-        self, filepath: Path, markdown: str, location_builder: Callable[[int, int], Location]
-    ) -> ExtractorResult:
-        artifacts: list[Artifact] = []
-        errors: list[str] = []
+    def _extract_from_markdown(self, filepath: Path, markdown: str, location_builder: Callable[[int, int], Location]) -> ExtractorResult:
+        blocks = self._extract_blocks_from_markdown(filepath, markdown, location_builder)
+        artifacts = [b.artifact for b in blocks if isinstance(b, ArtifactBlock)]
+        errors = [b.message for b in blocks if isinstance(b, ErrorBlock)]
+        return artifacts, errors
 
+    def _extract_blocks_from_markdown(self, filepath: Path, markdown: str, location_builder: Callable[[int, int], Location] | None = None) -> list[Block]:
+        from syntagmax.artifact import LineLocation
+
+        blocks: list[Block] = []
         marker = self._record.marker
-
-        # Find all [MARKER] segments manually
-        start_marker = re.compile(rf'\[{marker}\]', re.IGNORECASE)
+        start_marker_re = re.compile(rf'\[{marker}\]', re.IGNORECASE)
         pos = 0
 
-        while True:
-            match = start_marker.search(markdown, pos)
+        if location_builder is None:
+            loc_file = self._config.derive_path(filepath)
 
+            def location_builder(start, end):
+                return LineLocation(loc_file=loc_file, loc_lines=(start, end))
+
+        while True:
+            match = start_marker_re.search(markdown, pos)
             if not match:
                 break
 
             start_pos = match.start()
 
-            # Find the end marker: either ```yaml...``` or [/{marker}]
-            yaml_start_pos = markdown.find('```yaml', start_pos)
+            # Capture text before this segment
+            text_before = markdown[pos:start_pos]
+            if text_before:
+                blocks.append(TextBlock(content=text_before))
 
-            # Search for [/{marker}]
+            # Find segment end
+            yaml_start_pos = markdown.find('```yaml', start_pos)
             slash_req_match = re.search(rf'\[/{marker}\]', markdown[start_pos:], re.IGNORECASE)
             slash_req_pos = (start_pos + slash_req_match.start()) if slash_req_match else -1
-
             segment_end = -1
 
-            # Determine which terminator comes first
             if yaml_start_pos != -1 and (slash_req_pos == -1 or yaml_start_pos < slash_req_pos):
-                # YAML block comes first
-                yaml_end_marker = '```'
-                end_pos = markdown.find(yaml_end_marker, yaml_start_pos + 7)
+                end_pos = markdown.find('```', yaml_start_pos + 7)
                 if end_pos != -1:
-                    segment_end = end_pos + len(yaml_end_marker)
+                    segment_end = end_pos + 3
             elif slash_req_pos != -1:
-                # [/{marker}] comes first
                 segment_end = slash_req_pos + len(f'[/{marker}]')
 
             if segment_end == -1:
@@ -232,7 +236,8 @@ class MarkdownExtractor(Extractor):
                 else:
                     error = f'Unterminated requirement at line {start_line} in {filepath}'
                 lg.error(error)
-                errors.append(error)
+                raw = markdown[start_pos : match.end()]
+                blocks.append(ErrorBlock(message=error, raw_text=raw))
                 pos = match.end()
                 continue
 
@@ -253,17 +258,15 @@ class MarkdownExtractor(Extractor):
                 yaml_text = yaml_info.get('text') if yaml_info else None
 
                 # NBSP detection
-                if ' ' in segment:
+                if '\xa0' in segment:
                     error = f'Non-breaking space (NBSP) detected in requirement at line {start_line} in {filepath}'
                     lg.error(error)
-                    errors.append(error)
+                    blocks.append(ErrorBlock(message=error, raw_text=segment))
                     pos = segment_end
                     continue
 
                 if not yaml_text:
-                    # Allow missing YAML if terminated by [/REQ] or if we have other fields
                     yaml_dict = benedict({'attrs': {}})
-
                     yaml_attrs = {}
                 else:
                     yaml_dict = benedict.from_yaml(yaml_text)
@@ -271,7 +274,7 @@ class MarkdownExtractor(Extractor):
                     if 'attrs' not in yaml_dict:
                         error = f'Invalid metadata in YAML at line {start_line}'
                         lg.error(error)
-                        errors.append(error)
+                        blocks.append(ErrorBlock(message=error, raw_text=segment))
                         pos = segment_end
                         continue
                     yaml_attrs = yaml_dict.get_dict('attrs')
@@ -293,9 +296,7 @@ class MarkdownExtractor(Extractor):
                 if 'atype' in temp_attrs:
                     lg.warning(
                         f'Overriding default atype with `atype` attribute in {filepath} at line {start_line}. '
-
                         'To change the type for all artifacts in this source, use the `atype` setting in config.toml.'
-
                     )
 
                 atype = temp_attrs.get('atype') or self._record.default_atype
@@ -307,7 +308,6 @@ class MarkdownExtractor(Extractor):
                     location=location_builder(start_line, end_line),
                     metamodel=self._metamodel,
                     record=self._record,
-
                 )
 
                 builder.add_id(aid, atype)
@@ -315,10 +315,10 @@ class MarkdownExtractor(Extractor):
 
                 # Add fields found in markdown individually
                 for field in fields:
-                    marker = field.get_str('field.marker')
-                    if marker.lower() in ['id', 'atype']:
+                    field_marker = field.get_str('field.marker')
+                    if field_marker.lower() in ['id', 'atype']:
                         continue
-                    builder.add_field(marker, field.get_str('field.contents.text').strip())
+                    builder.add_field(field_marker, field.get_str('field.contents.text').strip())
 
                 # Add fields found in YAML individually
                 for name, value in yaml_attrs.items():
@@ -341,79 +341,22 @@ class MarkdownExtractor(Extractor):
                 artifact = builder.build()
                 if isinstance(artifact, MarkdownArtifact):
                     artifact.yaml_data = yaml_dict
-                    # Record source for each field
                     for field in fields:
                         artifact.source_metadata[field.get_str('field.marker').lower()] = 'markdown'
                     for name in yaml_attrs.keys():
                         artifact.source_metadata[name.lower()] = 'yaml'
 
-                artifacts.append(artifact)
+                blocks.append(ArtifactBlock(artifact=artifact, raw_text=segment))
 
             except (exceptions.ParseError, exceptions.UnexpectedToken) as e:
                 lg.exception(e)
                 error = f'Parse error in requirement at line {start_line} in {filepath}'
-                errors.append(error)
+                blocks.append(ErrorBlock(message=error, raw_text=segment))
 
             except Exception as e:
                 lg.exception(e)
                 error = f'Error processing requirement at line {start_line} in {filepath}'
-                errors.append(error)
-
-            pos = segment_end
-
-        return artifacts, errors
-
-    def _extract_blocks_from_markdown(self, filepath: Path, markdown: str) -> list[Block]:
-        blocks: list[Block] = []
-        marker = self._record.marker
-        start_marker = re.compile(rf'\[{marker}\]', re.IGNORECASE)
-        pos = 0
-
-        while True:
-            match = start_marker.search(markdown, pos)
-            if not match:
-                break
-
-            start_pos = match.start()
-
-            # Capture text before this segment
-            text_before = markdown[pos:start_pos]
-            if text_before:
-                blocks.append(TextBlock(content=text_before))
-
-            # Find segment end (same logic as _extract_from_markdown)
-            yaml_start_pos = markdown.find('```yaml', start_pos)
-            slash_req_match = re.search(rf'\[/{marker}\]', markdown[start_pos:], re.IGNORECASE)
-            slash_req_pos = (start_pos + slash_req_match.start()) if slash_req_match else -1
-            segment_end = -1
-
-            if yaml_start_pos != -1 and (slash_req_pos == -1 or yaml_start_pos < slash_req_pos):
-                end_pos = markdown.find('```', yaml_start_pos + 7)
-                if end_pos != -1:
-                    segment_end = end_pos + 3
-            elif slash_req_pos != -1:
-                segment_end = slash_req_pos + len(f'[/{marker}]')
-
-            if segment_end == -1:
-                blocks.append(TextBlock(content=markdown[start_pos:match.end()]))
-                pos = match.end()
-                continue
-
-            segment = markdown[start_pos:segment_end]
-            start_line = markdown.count('\n', 0, start_pos) + 1
-            end_line = markdown.count('\n', 0, segment_end) + 1
-
-            loc_file = self._config.derive_path(filepath)
-
-            def location_builder(_s=None, _e=None, s=start_line, e=end_line):
-                from syntagmax.artifact import LineLocation
-                return LineLocation(loc_file=loc_file, loc_lines=(s, e))
-
-            artifacts, _ = self._extract_from_markdown(filepath, segment, location_builder)
-            if artifacts:
-                blocks.append(ArtifactBlock(artifact=artifacts[0], raw_text=segment))
-            else:
-                blocks.append(TextBlock(content=segment))
+                blocks.append(ErrorBlock(message=error, raw_text=segment))
 
             pos = segment_end
 

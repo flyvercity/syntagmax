@@ -24,6 +24,12 @@ class ArtifactBlock(Block):
 
 
 @dataclass
+class ErrorBlock(Block):
+    message: str
+    raw_text: str
+
+
+@dataclass
 class FileRecord:
     path: str
     blocks: list[Block] = field(default_factory=list)

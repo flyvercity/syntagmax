@@ -9,108 +9,37 @@ import json
 import re
 
 from syntagmax.extractors.markdown import MarkdownExtractor
-from syntagmax.extractors.extractor import ExtractorResult
 from syntagmax.artifact import NotebookLocation
-from syntagmax.blocks import Block, TextBlock, ArtifactBlock
+from syntagmax.blocks import Block, TextBlock, ErrorBlock
 
 
 class IPynbExtractor(MarkdownExtractor):
     def driver(self):
         return 'ipynb'
 
-    def extract_from_file(self, filepath):
+    def extract_blocks_from_file(self, filepath: Path) -> list[Block]:
         try:
             notebook = json.loads(filepath.read_text(encoding='utf-8'))
-            loc_file = self._config.derive_path(filepath)
-            artifacts = []
-            errors = []
-
-            for i, cell in enumerate(notebook['cells']):
-                if cell['cell_type'] == 'markdown':
-                    markdown = ''.join(cell['source'])
-
-                    def location_builder(start, end, idx=i):
-                        return NotebookLocation(loc_file=loc_file, loc_lines=(start, end), loc_cell=idx)
-
-                    cell_artifacts, cell_errors = self._extract_from_markdown(filepath, markdown, location_builder)
-                    errors.extend(cell_errors)
-                    artifacts.extend(cell_artifacts)
-
-            return artifacts, errors
-
         except Exception as e:
-            message = f'Error extracting from {filepath}: {e}'
-            return [], [message]
-
-    def extract_blocks_from_file(self, filepath):
-        try:
-            notebook = json.loads(filepath.read_text(encoding='utf-8'))
-        except Exception:
-            return []
+            return [ErrorBlock(message=f'Error extracting from {filepath}: {e}', raw_text='')]
 
         loc_file = self._config.derive_path(filepath)
-        blocks = []
+        blocks: list[Block] = []
         marker = self._record.marker
         marker_pattern = re.compile(rf'\[{marker}\]', re.IGNORECASE)
 
         for cell_idx, cell in enumerate(notebook.get('cells', [])):
             source = ''.join(cell.get('source', []))
+
             if cell.get('cell_type') == 'markdown' and marker_pattern.search(source):
-                blocks.extend(self._extract_blocks_from_markdown_cell(filepath, loc_file, source, cell_idx))
+
+                def location_builder(start, end, ci=cell_idx):
+                    return NotebookLocation(loc_file=loc_file, loc_lines=(start, end), loc_cell=ci)
+
+                cell_blocks = self._extract_blocks_from_markdown(filepath, source, location_builder)
+                blocks.extend(cell_blocks)
             else:
-                blocks.append(TextBlock(content=source))
-
-        return blocks
-
-    def _extract_blocks_from_markdown_cell(self, filepath, loc_file, markdown, cell_idx):
-        marker = self._record.marker
-        marker_pattern = re.compile(rf'\[{marker}\]', re.IGNORECASE)
-        blocks = []
-        pos = 0
-
-        while pos < len(markdown):
-            match = marker_pattern.search(markdown, pos)
-            if not match:
-                remaining = markdown[pos:]
-                if remaining:
-                    blocks.append(TextBlock(content=remaining))
-                break
-
-            if match.start() > pos:
-                before = markdown[pos:match.start()]
-                if before:
-                    blocks.append(TextBlock(content=before))
-
-            start_pos = match.start()
-            yaml_start = markdown.find('' + '`yaml', start_pos)
-            slash_match = re.search(rf'\[/{marker}\]', markdown[start_pos:], re.IGNORECASE)
-            slash_pos = (start_pos + slash_match.start()) if slash_match else -1
-
-            segment_end = -1
-            if yaml_start != -1 and (slash_pos == -1 or yaml_start < slash_pos):
-                end_pos = markdown.find('' + '`', yaml_start + 7)
-                if end_pos != -1:
-                    segment_end = end_pos + 3
-            elif slash_pos != -1:
-                segment_end = slash_pos + len(f'[/{marker}]')
-
-            if segment_end == -1:
-                blocks.append(TextBlock(content=markdown[start_pos:]))
-                break
-
-            raw_text = markdown[start_pos:segment_end]
-            start_line = markdown.count('\n', 0, start_pos) + 1
-            end_line = markdown.count('\n', 0, segment_end) + 1
-
-            def location_builder(s, e, ci=cell_idx):
-                return NotebookLocation(loc_file=loc_file, loc_lines=(s, e), loc_cell=ci)
-
-            artifacts, _ = self._extract_from_markdown(filepath, raw_text, location_builder)
-            if artifacts:
-                blocks.append(ArtifactBlock(artifact=artifacts[0], raw_text=raw_text))
-            else:
-                blocks.append(TextBlock(content=raw_text))
-
-            pos = segment_end
+                if source:
+                    blocks.append(TextBlock(content=source))
 
         return blocks
