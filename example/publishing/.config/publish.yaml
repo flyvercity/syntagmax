@@ -1,0 +1,42 @@
+start_level: 1
+include_plain_text: true
+remove_numeric_prefixes_in_headers: true
+
+ignore_plain_text_prefixes:
+  - "#"
+  - ">"
+  - "!"
+
+requirement:
+  text_block: REQ
+
+render:
+  sections:
+    - type: table
+      attributes:
+        - id:
+            alias: "ID"
+        - type:
+            alias: "ObjType"
+        - parent:
+            alias: "SoR"
+        - safety:
+            alias: "SFTY"
+        - func:
+           alias: "Function"
+        # - alloc:
+        #    alias: "Component"
+
+    - type: text
+      mode: separate
+      attributes:
+        - REQ:
+            alias: "Requirement"
+
+    - type: text
+      mode: inline
+      attributes:
+        - RATIO:
+            alias: "Rationale"
+        - COMMENT:
+            alias: "Comment"
