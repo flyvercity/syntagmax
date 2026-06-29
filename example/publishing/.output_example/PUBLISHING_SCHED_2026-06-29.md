@@ -113,9 +113,9 @@ After onboarding, the user lands on the Calendar month view for the current mont
 
 ### Calendar and Event Management
 
-The calendar module is the primary time-management surface of Personal Scheduler. It handles the creation, storage, display, and editing of time-bound entries called *events*. An event has at minimum a title and a start time; all other fields are optional.  
+**Comment**: The calendar module is the primary time-management surface of Personal Scheduler. It handles the creation, storage, display, and editing of time-bound entries called *events*. An event has at minimum a title and a start time; all other fields are optional.
   
-Recurring events follow the RFC 5545 (iCalendar) recurrence rule syntax to ensure interoperability with third-party calendar applications. Event instances are materialized in the local store only when the relevant time window is displayed or queried, to avoid unbounded storage growth.  
+**Comment**: Recurring events follow the RFC 5545 (iCalendar) recurrence rule syntax to ensure interoperability with third-party calendar applications. Event instances are materialized in the local store only when the relevant time window is displayed or queried, to avoid unbounded storage growth.
   
 <req_table_spacing>
 
@@ -162,7 +162,7 @@ The application **shall** allow a user to create a calendar event by specifying 
 The application **shall** support recurring events defined by a recurrence rule conforming to RFC 5545, including DAILY, WEEKLY, MONTHLY, and YEARLY frequency values, with optional UNTIL and COUNT termination conditions.
 
   
-When the user edits a single instance of a recurring event, the application must offer three choices: edit only this instance, edit this and all following instances, or edit all instances. This prevents accidental modification of the entire recurrence series.  
+**Comment**: When the user edits a single instance of a recurring event, the application must offer three choices: edit only this instance, edit this and all following instances, or edit all instances. This prevents accidental modification of the entire recurrence series.
   
 <req_table_spacing>
 

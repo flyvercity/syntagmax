@@ -11,7 +11,7 @@ requirement:
   text_block: REQ
 
 render:
-  sections:
+  REQ:
     - type: table
       attributes:
         - id:
@@ -40,3 +40,7 @@ render:
             alias: "Rationale"
         - COMMENT:
             alias: "Comment"
+  COM:
+    - type: text
+      mode: block
+      alias: "Comment"
