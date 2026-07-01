@@ -33,3 +33,7 @@ This is a sample preamble text. [COM]This is a special comment text [/COM].
 Some more text
 [SYS]This is a text for the requirement[ID]SYS-000[/SYS]
 ```
+
+## Follow-up tasks
+- Amend the obsidian example to showcase the capability
+- Amend REAME.md

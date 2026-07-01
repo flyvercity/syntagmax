@@ -1,1 +1,1 @@
-Save the spec in `docs\specs`, but don't implement it yet.
+Save the spec in `docs/specs`, but don't implement it yet.
