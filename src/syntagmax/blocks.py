@@ -21,6 +21,7 @@ class Block:
 @dataclass
 class TextBlock(Block):
     content: str
+    marker: str | None = None
 
 
 @dataclass

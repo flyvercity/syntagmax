@@ -5,6 +5,7 @@ name = "system-requirements"
 dir = "SYS"
 driver = "obsidian"
 atype = "SYS"
+markers = ["COM", "NOTE"]
 
 [[input]]
 name = "system-diagrams"

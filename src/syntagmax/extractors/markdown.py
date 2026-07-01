@@ -190,6 +190,39 @@ class MarkdownExtractor(Extractor):
         errors = [b.message for b in blocks if isinstance(b, ErrorBlock)]
         return artifacts, errors
 
+    def _split_text_block_by_markers(self, text_block: TextBlock) -> list[Block]:
+        """Split a TextBlock into marked and unmarked fragments based on configured markers."""
+        markers = self._record.markers
+        if not markers:
+            return [text_block]
+
+        escaped = '|'.join(re.escape(m) for m in markers)
+        pattern = re.compile(rf'\[({escaped})\](.*?)\[/\1\]', re.IGNORECASE | re.DOTALL)
+
+        result: list[Block] = []
+        content = text_block.content
+        pos = 0
+
+        for match in pattern.finditer(content):
+            # Text before this marker
+            before = content[pos:match.start()]
+            if before:
+                result.append(TextBlock(content=before, marker=None))
+
+            # Marked fragment
+            marker_name = match.group(1).upper()
+            marker_content = match.group(2)
+            result.append(TextBlock(content=marker_content, marker=marker_name))
+
+            pos = match.end()
+
+        # Trailing text
+        after = content[pos:]
+        if after:
+            result.append(TextBlock(content=after, marker=None))
+
+        return result if result else [text_block]
+
     def _extract_blocks_from_markdown(self, filepath: Path, markdown: str, location_builder: Callable[[int, int], Location] | None = None) -> list[Block]:
         from syntagmax.artifact import LineLocation
 
@@ -364,6 +397,16 @@ class MarkdownExtractor(Extractor):
         text_after = markdown[pos:]
         if text_after:
             blocks.append(TextBlock(content=text_after))
+
+        # Post-process: split TextBlocks by fragment markers
+        if self._record.markers:
+            split_blocks: list[Block] = []
+            for block in blocks:
+                if isinstance(block, TextBlock) and block.marker is None:
+                    split_blocks.extend(self._split_text_block_by_markers(block))
+                else:
+                    split_blocks.append(block)
+            blocks = split_blocks
 
         return blocks
 
