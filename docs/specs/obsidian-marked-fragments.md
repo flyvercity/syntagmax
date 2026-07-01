@@ -8,10 +8,13 @@ Add support for non-artifact marked fragments (e.g. `[COM]...[/COM]`, `[NOTE]...
 
 - Markers are configured via a `markers` list on the input record (config level)
 - Markers are case-insensitive
+- Marker names must be non-empty, unique, and follow the pattern `^[a-zA-Z0-9_-]+$`
 - No nesting or overlap between fragment markers
 - Fragment markers must not collide with the artifact marker — collision is a fatal config error
+- Fragment markers are only allowed when the driver is `"obsidian"`
 - `TextBlock` gains a `marker: str | None` field (`None` = regular unmarked text)
 - Obsidian driver only in this version
+- Stored `marker` values in `TextBlock` will be canonicalized to uppercase
 
 ## Example
 
@@ -73,7 +76,11 @@ Extracted blocks:
 - **Implementation:**
   - Add `markers: list[str] = Field(default_factory=list)` to `InputConfig`
   - Add `markers: list[str]` to `InputRecord` dataclass
-  - In `Config._read_input_records()`, pass markers through and validate: if any marker (case-insensitive) equals the artifact marker, raise `FatalError`
+  - In `Config._read_input_records()`, pass markers through and validate:
+    - If `markers` is non-empty and `driver` is not `"obsidian"`, raise `FatalError`
+    - If any marker is empty or contains non-alphanumeric/hyphen/underscore characters, raise `FatalError`
+    - If there are duplicate markers (case-insensitive) in the list, raise `FatalError`
+    - If any marker (case-insensitive) equals the artifact marker, raise `FatalError`
 - **Test:** Unit test that a config with colliding markers raises `FatalError`; config with valid markers loads successfully.
 - **Demo:** Loading a config with `markers = ["COM"]` and `marker = "REQ"` succeeds; loading with `markers = ["REQ"]` and `marker = "REQ"` fails fatally.
 
@@ -82,8 +89,10 @@ Extracted blocks:
 - **Objective:** After artifact extraction, split inter-artifact text by configured fragment markers into marked and unmarked `TextBlock`s.
 - **Implementation:**
   - In `_extract_blocks_from_markdown()`, after the main loop produces the `blocks` list, add a post-processing step:
-    - For each `TextBlock` in the list, scan its `content` for `[MARKER]...[/MARKER]` patterns (case-insensitive) using the configured `self._record.markers`
-    - Split into a sequence of `TextBlock(content=..., marker=None)` and `TextBlock(content=..., marker='COM')` etc.
+    - If `self._record.markers` is empty, skip post-processing.
+    - Otherwise, build a single regex: `re.compile(rf'\[({escaped_markers})\](.*?)\[/\1\]', re.IGNORECASE | re.DOTALL)` where `escaped_markers` is the pipe-joined escaped marker names.
+    - For each `TextBlock` in the list, find all matches. Split the content into unmarked text segments and marked segments.
+    - For marked segments, set `marker` to the matched marker name, canonicalized to uppercase.
     - Replace the original `TextBlock` with the split sequence
   - This keeps the artifact extraction logic untouched and cleanly separates concerns.
 - **Test:** Unit test with markdown containing `[COM]comment[/COM]` between artifacts; verify the block list contains marked `TextBlock`s with correct marker values and content.
