@@ -5,11 +5,12 @@
 # Description: Configuration for the Syntagmax RMS.
 
 import os
+import re
 from pathlib import Path
 import tomllib
 import logging as lg
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from benedict import benedict
 from pydantic import BaseModel, ConfigDict, Field
@@ -27,6 +28,7 @@ class InputRecord:
     driver: str
     default_atype: str
     marker: str
+    markers: list[str] = field(default_factory=list)
 
 
 DEFAULT_FILTERS = {'obsidian': '**/*.md', 'ipynb': '**/*.ipynb', 'markdown': '**/*.md'}
@@ -41,6 +43,7 @@ class InputConfig(BaseModel):
     )
     atype: str = Field('REQ', description='Default artifact type for this input source')
     marker: str | None = Field(default=None, description='Custom marker for artifacts (e.g., "REQ"). Defaults to atype.')
+    markers: list[str] = Field(default_factory=list, description='Fragment markers for non-artifact text blocks (e.g., ["COM", "NOTE"]). Obsidian driver only.')
 
 
 class MetricsConfig(BaseModel):
@@ -167,6 +170,8 @@ class Config:
             raise FatalError(errors)
 
     def _read_input_records(self, input_configs: list[InputConfig]):
+        errors: list[str] = []
+
         for input_config in input_configs:
             name = input_config.name
             record_base = Path(self._base_dir, input_config.dir)
@@ -179,6 +184,44 @@ class Config:
             lg.debug(f'Adding input files from {name} with filter {glob}')
             filepaths = Path(record_base).glob(glob)
 
+            artifact_marker = input_config.marker or input_config.atype
+            fragment_markers = input_config.markers
+
+            # Validate fragment markers
+            if fragment_markers:
+                if input_config.driver != 'obsidian':
+                    errors.append(
+                        f'Input "{name}": markers are only supported for the obsidian driver, '
+                        f'got driver "{input_config.driver}"'
+                    )
+
+                marker_pattern = re.compile(r'^[a-zA-Z0-9_-]+$')
+                seen_markers: set[str] = set()
+
+                for m in fragment_markers:
+                    if not m:
+                        errors.append(f'Input "{name}": marker names must not be empty')
+                        continue
+
+                    if not marker_pattern.match(m):
+                        errors.append(
+                            f'Input "{name}": invalid marker name "{m}" '
+                            '(must match ^[a-zA-Z0-9_-]+$)'
+                        )
+                        continue
+
+                    m_upper = m.upper()
+
+                    if m_upper in seen_markers:
+                        errors.append(f'Input "{name}": duplicate marker "{m}" (case-insensitive)')
+                    seen_markers.add(m_upper)
+
+                    if m_upper == artifact_marker.upper():
+                        errors.append(
+                            f'Input "{name}": fragment marker "{m}" collides with '
+                            f'artifact marker "{artifact_marker}"'
+                        )
+
             self._input_records.append(
                 InputRecord(
                     name=name,
@@ -186,9 +229,13 @@ class Config:
                     filepaths=list(filepaths),
                     driver=input_config.driver,
                     default_atype=input_config.atype,
-                    marker=input_config.marker or input_config.atype,
+                    marker=artifact_marker,
+                    markers=[m.upper() for m in fragment_markers],
                 )
             )
+
+        if errors:
+            raise FatalError(errors)
 
         for input_record in self._input_records:
             lg.info(f'Input record: {input_record.name}')
