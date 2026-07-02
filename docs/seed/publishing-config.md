@@ -49,7 +49,7 @@ render:
     - type: text
       mode: block
       attributes:
-        - REQ:
+        - contents:
             alias: "Requirement"
   COM:
     - type: text
