@@ -1,0 +1,334 @@
+{
+  "$defs": {
+    "AIConfig": {
+      "properties": {
+        "provider": {
+          "default": "ollama",
+          "description": "AI provider to use (ollama, anthropic, openai, gemini, bedrock)",
+          "title": "Provider",
+          "type": "string"
+        },
+        "model": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Model name to use (e.g., \"gpt-4o\", \"claude-3-5-sonnet\")",
+          "title": "Model"
+        },
+        "anthropic_api_key": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Anthropic API Key. Can also be set via ANTHROPIC_API_KEY env var.",
+          "title": "Anthropic Api Key"
+        },
+        "openai_api_key": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "OpenAI API Key. Can also be set via OPENAI_API_KEY env var.",
+          "title": "Openai Api Key"
+        },
+        "gemini_api_key": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Google Gemini API Key. Can also be set via GEMINI_API_KEY env var.",
+          "title": "Gemini Api Key"
+        },
+        "aws_access_key_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "AWS Access Key ID for Bedrock.",
+          "title": "Aws Access Key Id"
+        },
+        "aws_secret_access_key": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "AWS Secret Access Key for Bedrock.",
+          "title": "Aws Secret Access Key"
+        },
+        "aws_session_token": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "AWS Session Token for Bedrock (optional).",
+          "title": "Aws Session Token"
+        },
+        "aws_region_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "AWS Region for Bedrock (e.g., \"us-east-1\").",
+          "title": "Aws Region Name"
+        },
+        "aws_api_key": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "AWS Bedrock API Key (if applicable).",
+          "title": "Aws Api Key"
+        },
+        "ollama_host": {
+          "default": "http://localhost:11434",
+          "description": "Host URL for the Ollama API",
+          "title": "Ollama Host",
+          "type": "string"
+        },
+        "timeout_s": {
+          "default": 60.0,
+          "description": "Timeout in seconds for AI provider requests",
+          "title": "Timeout S",
+          "type": "number"
+        }
+      },
+      "title": "AIConfig",
+      "type": "object"
+    },
+    "ImpactConfig": {
+      "properties": {
+        "enabled": {
+          "default": false,
+          "description": "Enable impact analysis",
+          "title": "Enabled",
+          "type": "boolean"
+        }
+      },
+      "title": "ImpactConfig",
+      "type": "object"
+    },
+    "InputConfig": {
+      "properties": {
+        "name": {
+          "description": "Input source name (e.g., \"requirements\")",
+          "title": "Name",
+          "type": "string"
+        },
+        "dir": {
+          "description": "Subdirectory relative to the base directory where artifacts are located",
+          "title": "Dir",
+          "type": "string"
+        },
+        "driver": {
+          "description": "Driver type for processing (e.g., \"obsidian\", \"text\")",
+          "title": "Driver",
+          "type": "string"
+        },
+        "filter": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "File filter pattern (glob). If omitted, driver-specific defaults are used.",
+          "title": "Filter"
+        },
+        "atype": {
+          "default": "REQ",
+          "description": "Default artifact type for this input source",
+          "title": "Atype",
+          "type": "string"
+        },
+        "marker": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Custom marker for artifacts (e.g., \"REQ\"). Defaults to atype.",
+          "title": "Marker"
+        },
+        "markers": {
+          "description": "Fragment markers for non-artifact text blocks (e.g., [\"COM\", \"NOTE\"]). Obsidian driver only.",
+          "items": {
+            "type": "string"
+          },
+          "title": "Markers",
+          "type": "array"
+        },
+        "publish": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Path to publish configuration file relative to the project directory or config folder",
+          "title": "Publish"
+        }
+      },
+      "required": [
+        "name",
+        "dir",
+        "driver"
+      ],
+      "title": "InputConfig",
+      "type": "object"
+    },
+    "Metamodel": {
+      "properties": {
+        "filename": {
+          "default": null,
+          "description": "Path to the .syntagmax file defining the project metamodel",
+          "title": "Filename",
+          "type": "string"
+        }
+      },
+      "title": "Metamodel",
+      "type": "object"
+    },
+    "MetricsConfig": {
+      "properties": {
+        "enabled": {
+          "default": false,
+          "description": "Enable metrics collection",
+          "title": "Enabled",
+          "type": "boolean"
+        },
+        "requirement_type": {
+          "default": "REQ",
+          "description": "The artifact type to treat as a \"requirement\" for metrics",
+          "title": "Requirement Type",
+          "type": "string"
+        },
+        "status_field": {
+          "default": "status",
+          "description": "Name of the attribute used to track artifact status",
+          "title": "Status Field",
+          "type": "string"
+        },
+        "verify_field": {
+          "default": "verify",
+          "description": "Name of the attribute used to track verification status",
+          "title": "Verify Field",
+          "type": "string"
+        },
+        "tbd_marker": {
+          "default": "TBD",
+          "description": "String marker used to identify \"To Be Defined\" items",
+          "title": "Tbd Marker",
+          "type": "string"
+        }
+      },
+      "title": "MetricsConfig",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "base": {
+      "default": "..",
+      "description": "Base directory for relative paths, relative to this config file",
+      "title": "Base",
+      "type": "string"
+    },
+    "input": {
+      "description": "List of input sources to process",
+      "items": {
+        "$ref": "#/$defs/InputConfig"
+      },
+      "title": "Input",
+      "type": "array"
+    },
+    "metrics": {
+      "$ref": "#/$defs/MetricsConfig",
+      "default": {
+        "enabled": false,
+        "requirement_type": "REQ",
+        "status_field": "status",
+        "verify_field": "verify",
+        "tbd_marker": "TBD"
+      },
+      "description": "Configuration for metrics collection"
+    },
+    "impact": {
+      "$ref": "#/$defs/ImpactConfig",
+      "default": {
+        "enabled": false
+      },
+      "description": "Configuration for impact analysis"
+    },
+    "metamodel": {
+      "$ref": "#/$defs/Metamodel",
+      "default": {
+        "filename": null
+      },
+      "description": "Configuration for the artifact metamodel"
+    },
+    "ai": {
+      "$ref": "#/$defs/AIConfig",
+      "description": "Configuration for AI-powered analysis"
+    }
+  },
+  "required": [
+    "input"
+  ],
+  "title": "ConfigFile",
+  "type": "object"
+}
