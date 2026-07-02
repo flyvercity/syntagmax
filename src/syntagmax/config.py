@@ -52,6 +52,7 @@ class InputConfig(BaseModel):
 
 class MetricsConfig(BaseModel):
     model_config = ConfigDict(extra='ignore')
+    enabled: bool = Field(default=False, description='Enable metrics collection')
     requirement_type: str = Field(default='REQ', description='The artifact type to treat as a "requirement" for metrics')
     status_field: str = Field(default='status', description='Name of the attribute used to track artifact status')
     verify_field: str = Field(default='verify', description='Name of the attribute used to track verification status')
@@ -60,6 +61,7 @@ class MetricsConfig(BaseModel):
 
 class ImpactConfig(BaseModel):
     model_config = ConfigDict(extra='ignore')
+    enabled: bool = Field(default=False, description='Enable impact analysis')
 
 
 class AIConfig(BaseModel):

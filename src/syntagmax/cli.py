@@ -249,6 +249,15 @@ def schema_publish():
     print(json.dumps(schema_dict, indent=2))
 
 
+@schema.command(name='config', help='Generate JSON Schema for the main project configuration (config.toml)')
+def schema_config():
+    import json
+    from syntagmax.config import ConfigFile
+
+    schema_dict = ConfigFile.model_json_schema()
+    print(json.dumps(schema_dict, indent=2))
+
+
 def main():
     try:
         rms()
