@@ -135,7 +135,7 @@ def publish(obj: Params, records: tuple[str, ...], publish_all: bool, single: bo
 
     if output_path is None:
         if single:
-            output_path = '.syntagmax/reports/report.md'
+            output_path = '.syntagmax/reports/published.md'
         else:
             output_path = '.syntagmax/reports/'
 
