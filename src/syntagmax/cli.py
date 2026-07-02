@@ -92,6 +92,24 @@ def analyze(obj: Params, config_file: Path, allow_dirty_worktree: bool, suppress
         u.pprint(f'[{color}]{summary}[/{color}]')
 
 
+def _run_pandoc_conversion(md_path: Path, docx: bool, pdf: bool):
+    """Run Pandoc conversion for the given Markdown file."""
+    from syntagmax.pandoc import convert
+
+    formats = []
+    if docx:
+        formats.append(('docx', md_path.with_suffix('.docx')))
+    if pdf:
+        formats.append(('pdf', md_path.with_suffix('.pdf')))
+
+    for fmt, out_path in formats:
+        success, message = convert(md_path, out_path, fmt)
+        if success:
+            u.pprint(f'[green]Converted to {fmt.upper()}: {out_path}[/green]')
+        else:
+            u.pprint(f'[yellow]Pandoc conversion to {fmt.upper()} failed: {message}[/yellow]')
+
+
 @rms.command(help='Publish project to markdown document(s)')
 @click.pass_obj
 @click.argument('records', nargs=-1)
@@ -100,7 +118,9 @@ def analyze(obj: Params, config_file: Path, allow_dirty_worktree: bool, suppress
 @click.option('--output', 'output_path', type=click.Path(), default=None, help='Output directory or file path')
 @click.option('-f', '--config-file', type=click.Path(), default='.syntagmax/config.toml')
 @click.option('--date-suffix', is_flag=True, help='Append date suffix to filenames (only valid when publishing separate files)')
-def publish(obj: Params, records: tuple[str, ...], publish_all: bool, single: bool, output_path: str | None, config_file: Path, date_suffix: bool):
+@click.option('--docx', is_flag=True, help='Convert output to DOCX via Pandoc')
+@click.option('--pdf', is_flag=True, help='Convert output to PDF via Pandoc')
+def publish(obj: Params, records: tuple[str, ...], publish_all: bool, single: bool, output_path: str | None, config_file: Path, date_suffix: bool, docx: bool, pdf: bool):
     from datetime import datetime
     from syntagmax.publish import build_block_tree, render_block_tree
     from syntagmax.blocks import ArtifactBlock, TextBlock
@@ -139,6 +159,15 @@ def publish(obj: Params, records: tuple[str, ...], publish_all: bool, single: bo
         else:
             output_path = '.syntagmax/reports/'
 
+    # Check Pandoc availability once if conversion is requested
+    pandoc_available = False
+    if docx or pdf:
+        from syntagmax.pandoc import check_pandoc
+        pandoc_available = check_pandoc()
+        if not pandoc_available:
+            lg.warning('pandoc executable not found in PATH')
+            u.pprint('[yellow]Warning: pandoc not found in PATH. DOCX/PDF conversion will be skipped.[/yellow]')
+
     out_p = Path(output_path)
 
     if single:
@@ -162,6 +191,9 @@ def publish(obj: Params, records: tuple[str, ...], publish_all: bool, single: bo
                         num_text_blocks += 1
 
         u.pprint(f'[green]Published consolidated report to {out_p} ({num_artifacts} artifacts, {num_text_blocks} text blocks)[/green]')
+
+        if pandoc_available:
+            _run_pandoc_conversion(out_p, docx, pdf)
     else:
         out_p.mkdir(parents=True, exist_ok=True)
         date_str = datetime.now().strftime('%Y-%m-%d')
@@ -196,6 +228,9 @@ def publish(obj: Params, records: tuple[str, ...], publish_all: bool, single: bo
                             num_text_blocks += 1
 
             u.pprint(f'[green]Published {record.name} to {file_path} ({num_artifacts} artifacts, {num_text_blocks} text blocks)[/green]')
+
+            if pandoc_available:
+                _run_pandoc_conversion(file_path, docx, pdf)
 
 
 @rms.group(help='Project Editing Commands')

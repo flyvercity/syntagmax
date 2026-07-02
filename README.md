@@ -448,6 +448,30 @@ uv run syntagmax publish <output-file> [-f <config-file>]
 - `<output-file>`: Path to the output markdown file (required)
 - `-f, --config-file`: Path to config file (default: `.syntagmax/config.toml`)
 
+### DOCX/PDF Export (Pandoc Integration)
+
+The `publish` command can optionally convert the generated Markdown to DOCX and/or PDF using [Pandoc](https://pandoc.org/).
+
+```bash
+# Publish all records and convert to Word
+uv run syntagmax publish --all --docx
+
+# Publish consolidated document as PDF
+uv run syntagmax publish --all --single --pdf
+
+# Produce both DOCX and PDF alongside Markdown
+uv run syntagmax publish --all --docx --pdf --output ./reports/
+```
+
+**Requirements:**
+- Pandoc must be installed and available in your `PATH`.
+- For PDF output, a LaTeX engine (e.g., `xelatex`, `pdflatex`) must also be installed.
+
+**Behavior:**
+- The Markdown file is always generated first, regardless of conversion success.
+- DOCX/PDF files are placed alongside the Markdown with the same base name (e.g., `rec1.md` → `rec1.docx`).
+- If Pandoc is not found or conversion fails, a warning is logged with the exit status, the Markdown file is preserved, and the command exits successfully.
+
 ## Required Improvements
 
 - Implement automatic change propagation
