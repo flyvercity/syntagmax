@@ -12,7 +12,7 @@ The current `publish` command renders block trees using a hardcoded format. We n
 - `render` section maps artifact types and markers to rendering rules (table/text sections with attribute aliases)
 - CLI: `syntagmax publish [RECORDS...] [--all] [--single] [--output <path-or-dir>] [-f <config-file>] [--date-suffix]`
 - Output naming and compilation:
-  - If `--single` is specified, compile all published records sequentially into a single file. In this case, `--output` represents a filename (default: `.syntagmax/reports/report.md`).
+  - If `--single` is specified, compile all published records sequentially into a single file. In this case, `--output` represents a filename (default: `.syntagmax/reports/published.md`).
   - If `--single` is not specified, publish each record to a separate file. In this case, `--output` represents a directory (default: `.syntagmax/reports/`).
   - Filename naming for separate records: `<output_dir>/<INPUT_RECORD_NAME>.md` (no date by default).
   - The date suffix `_<YYYY-MM-DD>` is only appended to separate filenames (e.g. `<INPUT_RECORD_NAME>_<YYYY-MM-DD>.md`) if the optional `--date-suffix` CLI flag is provided.
@@ -156,7 +156,7 @@ uv run syntagmax publish [RECORDS...] [--all] [--single] [--output <path-or-dir>
 | `RECORDS` | No* | One or more input record names to publish |
 | `--all` | No* | Publish all input records |
 | `--single` | No | Compile all published records sequentially into a single file |
-| `--output <path-or-dir>` | No | Output directory or file path. Defaults to `.syntagmax/reports/` (if separate files) or `.syntagmax/reports/report.md` (if `--single`). |
+| `--output <path-or-dir>` | No | Output directory or file path. Defaults to `.syntagmax/reports/` (if separate files) or `.syntagmax/reports/published.md` (if `--single`). |
 | `-f, --config-file` | No | Path to config file (default: `.syntagmax/config.toml`) |
 | `--date-suffix` | No | Append date suffix `_<YYYY-MM-DD>` to output filenames (only valid when publishing separate files, i.e., without `--single`). |
 
