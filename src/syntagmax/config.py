@@ -22,6 +22,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from syntagmax.params import Params
 from syntagmax.metamodel import load_metamodel
 from syntagmax.errors import FatalError
+from syntagmax.plugin import PluginConfig
 
 
 @dataclass
@@ -91,6 +92,7 @@ class ConfigFile(BaseModel):
     impact: ImpactConfig = Field(ImpactConfig(), description='Configuration for impact analysis')
     metamodel: Metamodel = Field(Metamodel(), description='Configuration for the artifact metamodel')
     ai: AIConfig = Field(default_factory=AIConfig, description='Configuration for AI-powered analysis')
+    plugin: list[PluginConfig] = Field(default_factory=list, description='List of plugin configurations')
 
 
 class Config:
@@ -106,6 +108,7 @@ class Config:
         self.impact = ImpactConfig()
         self.ai = AIConfig()
         self._input_records: list[InputRecord] = []
+        self._plugins = []
         self._read_config(config_filename)
 
     def _read_config(self, config_filename: Path):
@@ -165,6 +168,11 @@ class Config:
 
         if errors:
             raise FatalError(errors)
+
+        # Load plugins
+        from syntagmax.plugin import load_plugins
+
+        self._plugins = load_plugins(config_model.plugin, self._root_dir)
 
     def _read_input_records(self, input_configs: list[InputConfig]):
         errors: list[str] = []
@@ -256,6 +264,9 @@ class Config:
 
     def input_records(self) -> list[InputRecord]:
         return self._input_records
+
+    def plugins(self):
+        return self._plugins
 
     def get_trace_mode(self, source_atype: str, target_atype: str) -> str:
         if not self.metamodel:

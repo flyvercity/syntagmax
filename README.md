@@ -472,6 +472,97 @@ uv run syntagmax publish --all --docx --pdf --output ./reports/
 - DOCX/PDF files are placed alongside the Markdown with the same base name (e.g., `rec1.md` → `rec1.docx`).
 - If Pandoc is not found or conversion fails, a warning is logged with the exit status, the Markdown file is preserved, and the command exits successfully.
 
+## Plugins
+
+Syntagmax supports a plugin system that allows custom transformations during the publish pipeline. Plugins are distributed separately from the core project — either as local Python files or as installable packages.
+
+### Configuration
+
+Plugins are declared in `config.toml` via `[[plugin]]` blocks. They execute in the order listed.
+
+```toml
+[[plugin]]
+name = "add-header"
+source = "local"
+enabled = true
+
+[plugin.params]
+title = "My Document"
+version = "2.0"
+
+[[plugin]]
+name = "syntagmax-company-plugin"
+source = "package"
+
+[plugin.params]
+company = "Acme Corp"
+```
+
+| Field | Required | Default | Description |
+|-------|----------|---------|-------------|
+| `name` | Yes | — | Plugin name (used for discovery) |
+| `source` | Yes | — | `"local"` or `"package"` |
+| `enabled` | No | `true` | Set to `false` to disable without removing |
+| `params` | No | `{}` | Plugin-specific parameters |
+
+### Plugin Hooks
+
+A plugin is a Python module exposing one or both of:
+
+```python
+from syntagmax.blocks import BlockTree
+from syntagmax.config import Config
+
+def transform_blocks(tree: BlockTree, config: Config, params: dict) -> BlockTree:
+    """Called after block tree is built, before rendering."""
+    ...
+
+def transform_markdown(markdown: str, config: Config, params: dict) -> str:
+    """Called after markdown is rendered, before writing to file."""
+    ...
+```
+
+Hooks are called in config order. Each hook must return the correct type (`BlockTree` or `str`); returning `None` or a wrong type halts the pipeline with an error.
+
+### Local Plugins
+
+Place Python files in `.syntagmax/plugins/` relative to the config file:
+
+```
+.syntagmax/
+├── config.toml
+└── plugins/
+    ├── my-transform.py           # Single-file plugin
+    └── complex-transform/        # Directory plugin
+        ├── __init__.py
+        └── helpers.py
+```
+
+### Package Plugins
+
+Install a Python package that registers an entry-point:
+
+```toml
+# In the plugin package's pyproject.toml:
+[project.entry-points."syntagmax.plugins"]
+my-plugin-name = "my_plugin_module"
+```
+
+Then reference it in your config with `source = "package"`.
+
+### Error Handling
+
+- If a plugin cannot be found or loaded, the pipeline halts immediately.
+- If a hook raises an exception, the full traceback is logged at DEBUG level, and the pipeline halts with a clear error message naming the plugin.
+
+### Example
+
+See `example/plugin-demo/` for a working example with two local plugins demonstrating both hook types.
+
+```bash
+uv run syntagmax --cwd ./example/plugin-demo publish .syntagmax/reports/output.md
+```
+
 ## Required Improvements
 
 - Implement automatic change propagation
