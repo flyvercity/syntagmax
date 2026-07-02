@@ -1,6 +1,5 @@
 # SPDX-License-Identifier: MIT
 import pytest
-from pathlib import Path
 
 from syntagmax.config import Config, InputRecord
 from syntagmax.extractors.obsidian import ObsidianExtractor
@@ -12,8 +11,14 @@ from syntagmax.errors import FatalError
 @pytest.fixture
 def params():
     return Params(
-        verbose=False, render_tree=False, ai=False, output='console',
-        cwd='.', no_git=True, allow_dirty_worktree=True, suppress_tracing=True,
+        verbose=False,
+        render_tree=False,
+        ai=False,
+        output='console',
+        cwd='.',
+        no_git=True,
+        allow_dirty_worktree=True,
+        suppress_tracing=True,
     )
 
 
@@ -30,8 +35,13 @@ def obsidian_config(params, tmp_path):
 @pytest.fixture
 def input_record_with_markers(tmp_path):
     return InputRecord(
-        name='test', record_base=tmp_path, filepaths=[], driver='obsidian',
-        default_atype='SYS', marker='SYS', markers=['COM', 'NOTE'],
+        name='test',
+        record_base=tmp_path,
+        filepaths=[],
+        driver='obsidian',
+        default_atype='SYS',
+        marker='SYS',
+        markers=['COM', 'NOTE'],
     )
 
 

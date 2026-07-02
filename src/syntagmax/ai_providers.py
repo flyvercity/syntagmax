@@ -412,9 +412,7 @@ class BedrockProvider(AIProvider):
             try:
                 import boto3  # type: ignore
             except ImportError:
-                raise AIError(
-                    "boto3 is required for AWS Bedrock support. Please install it with: pip install 'syntagmax[bedrock]'"
-                )
+                raise AIError("boto3 is required for AWS Bedrock support. Please install it with: pip install 'syntagmax[bedrock]'")
 
             body = json.dumps(body_dict)
 

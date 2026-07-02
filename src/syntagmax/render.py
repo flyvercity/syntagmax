@@ -64,9 +64,7 @@ def print_artifact(artifact: Artifact, indent: str, last: bool, top: bool, has_c
         u.pprint(f'{detail_indent}  - {field}: {field_str}')
 
 
-def print_arttree(
-    artifacts: ArtifactMap, ref: str, indent: str = '', last: bool = True, top: bool = True, verbose: bool = False
-):
+def print_arttree(artifacts: ArtifactMap, ref: str, indent: str = '', last: bool = True, top: bool = True, verbose: bool = False):
     artifact = artifacts[ref]
     children = list(sorted(artifact.children, key=lambda c: artifacts[c].aid))
     print_artifact(artifact, indent, last, top, bool(children), verbose)
@@ -77,8 +75,6 @@ def print_arttree(
 
     if children:
         print_arttree(artifacts, children[-1], indent, True, False, verbose)
-
-
 
 
 def render_tree_markdown(artifacts: ArtifactMap, ref: str = 'ROOT', verbose: bool = False) -> str:

@@ -1,0 +1,153 @@
+{
+  "$defs": {
+    "AttributeRender": {
+      "properties": {
+        "alias": {
+          "title": "Alias",
+          "type": "string"
+        }
+      },
+      "required": [
+        "alias"
+      ],
+      "title": "AttributeRender",
+      "type": "object"
+    },
+    "MarkerRenderSection": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "text",
+          "title": "Type",
+          "type": "string"
+        },
+        "mode": {
+          "enum": [
+            "block",
+            "inline"
+          ],
+          "title": "Mode",
+          "type": "string"
+        },
+        "alias": {
+          "title": "Alias",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "mode",
+        "alias"
+      ],
+      "title": "MarkerRenderSection",
+      "type": "object"
+    },
+    "TableSection": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "table",
+          "title": "Type",
+          "type": "string"
+        },
+        "attributes": {
+          "items": {
+            "additionalProperties": {
+              "$ref": "#/$defs/AttributeRender"
+            },
+            "type": "object"
+          },
+          "title": "Attributes",
+          "type": "array"
+        }
+      },
+      "required": [
+        "type",
+        "attributes"
+      ],
+      "title": "TableSection",
+      "type": "object"
+    },
+    "TextSection": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "text",
+          "title": "Type",
+          "type": "string"
+        },
+        "mode": {
+          "enum": [
+            "block",
+            "inline"
+          ],
+          "title": "Mode",
+          "type": "string"
+        },
+        "attributes": {
+          "items": {
+            "additionalProperties": {
+              "$ref": "#/$defs/AttributeRender"
+            },
+            "type": "object"
+          },
+          "title": "Attributes",
+          "type": "array"
+        }
+      },
+      "required": [
+        "type",
+        "mode",
+        "attributes"
+      ],
+      "title": "TextSection",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "start_level": {
+      "default": 1,
+      "title": "Start Level",
+      "type": "integer"
+    },
+    "remove_numeric_prefixes_in_headers": {
+      "default": true,
+      "title": "Remove Numeric Prefixes In Headers",
+      "type": "boolean"
+    },
+    "include_plain_text": {
+      "default": true,
+      "title": "Include Plain Text",
+      "type": "boolean"
+    },
+    "ignore_plain_text_prefixes": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Ignore Plain Text Prefixes",
+      "type": "array"
+    },
+    "render": {
+      "additionalProperties": {
+        "items": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TableSection"
+            },
+            {
+              "$ref": "#/$defs/TextSection"
+            },
+            {
+              "$ref": "#/$defs/MarkerRenderSection"
+            }
+          ]
+        },
+        "type": "array"
+      },
+      "title": "Render",
+      "type": "object"
+    }
+  },
+  "title": "PublishConfig",
+  "type": "object"
+}

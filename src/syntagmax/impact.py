@@ -4,7 +4,6 @@
 # Created: 2026-03-21
 # Description: Impact analysis for a tree of artifacts.
 
-import logging as lg
 
 from benedict import benedict
 
@@ -35,10 +34,7 @@ def perform_impact_analysis(config: Config, artifacts: ArtifactMap, errors: list
             elif link.nominal_revision:
                 # via commit
                 if parent.latest_revision:
-                    if (
-                        link.nominal_revision != parent.latest_revision.hash_short
-                        and link.nominal_revision != parent.latest_revision.hash_long
-                    ):
+                    if link.nominal_revision != parent.latest_revision.hash_short and link.nominal_revision != parent.latest_revision.hash_long:
                         link.is_suspicious = True
 
             if link.is_suspicious:

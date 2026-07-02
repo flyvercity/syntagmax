@@ -7,11 +7,8 @@ ignore_plain_text_prefixes:
   - ">"
   - "!"
 
-requirement:
-  text_block: REQ
-
 render:
-  REQ:
+  SRS:
     - type: table
       attributes:
         - id:
@@ -23,16 +20,12 @@ render:
         - safety:
             alias: "SFTY"
         - func:
-           alias: "Function"
-        # - alloc:
-        #    alias: "Component"
-
+            alias: "Function"
     - type: text
-      mode: separate
+      mode: block
       attributes:
-        - REQ:
+        - contents:
             alias: "Requirement"
-
     - type: text
       mode: inline
       attributes:

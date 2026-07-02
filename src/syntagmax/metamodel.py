@@ -211,9 +211,7 @@ def validate_metamodel(metamodel: dict, errors: list[str]):
             for rule in rules:
                 # Forbid definitions of "regular" attributes named 'id'.
                 if attr_name == 'id' and not rule.get('id_rule', False):
-                    errors.append(
-                        f"Artifact '{artifact_name}' has a regular attribute named 'id'. Use 'id is ...' instead."
-                    )
+                    errors.append(f"Artifact '{artifact_name}' has a regular attribute named 'id'. Use 'id is ...' instead.")
 
                 # Check condition's anchor
                 condition = rule.get('condition')

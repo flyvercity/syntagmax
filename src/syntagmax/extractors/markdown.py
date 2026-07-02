@@ -191,32 +191,62 @@ class MarkdownExtractor(Extractor):
         return artifacts, errors
 
     def _split_text_block_by_markers(self, text_block: TextBlock) -> list[Block]:
-        """Split a TextBlock into marked and unmarked fragments based on configured markers."""
+        """Split a TextBlock into marked and unmarked fragments based on configured markers.
+
+        Supports two marker formats:
+        1. Paired: [MARKER]content[/MARKER]
+        2. Line-prefix: [MARKER] content (paragraph terminated by blank line or end-of-string)
+           Also handles [MARKER N] numbered variants.
+        """
         markers = self._record.markers
         if not markers:
             return [text_block]
 
-        escaped = '|'.join(re.escape(m) for m in markers)
-        pattern = re.compile(rf'\[({escaped})\](.*?)\[/\1\]', re.IGNORECASE | re.DOTALL)
-
-        result: list[Block] = []
         content = text_block.content
-        pos = 0
 
-        for match in pattern.finditer(content):
-            # Text before this marker
-            before = content[pos:match.start()]
+        # First pass: try paired markers [MARKER]...[/MARKER]
+        escaped = '|'.join(re.escape(m) for m in markers)
+        paired_pattern = re.compile(rf'\[({escaped})\](.*?)\[/\1\]', re.IGNORECASE | re.DOTALL)
+
+        paired_matches = list(paired_pattern.finditer(content))
+        if paired_matches:
+            result: list[Block] = []
+            pos = 0
+            for match in paired_matches:
+                before = content[pos : match.start()]
+                if before:
+                    result.append(TextBlock(content=before, marker=None))
+                marker_name = match.group(1).upper()
+                marker_content = match.group(2)
+                result.append(TextBlock(content=marker_content, marker=marker_name))
+                pos = match.end()
+            after = content[pos:]
+            if after:
+                result.append(TextBlock(content=after, marker=None))
+            return result if result else [text_block]
+
+        # Second pass: line-prefix markers [MARKER] or [MARKER N] at start of paragraph
+        # A paragraph is delimited by double newlines or start/end of string
+        prefix_pattern = re.compile(
+            rf'^\[({escaped})(?:\s+\d+)?\]\s*(.*?)(?=\n\n|\Z)',
+            re.IGNORECASE | re.DOTALL | re.MULTILINE,
+        )
+
+        prefix_matches = list(prefix_pattern.finditer(content))
+        if not prefix_matches:
+            return [text_block]
+
+        result = []
+        pos = 0
+        for match in prefix_matches:
+            before = content[pos : match.start()]
             if before:
                 result.append(TextBlock(content=before, marker=None))
-
-            # Marked fragment
             marker_name = match.group(1).upper()
-            marker_content = match.group(2)
+            marker_content = match.group(2).strip()
             result.append(TextBlock(content=marker_content, marker=marker_name))
-
             pos = match.end()
 
-        # Trailing text
         after = content[pos:]
         if after:
             result.append(TextBlock(content=after, marker=None))
