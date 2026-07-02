@@ -172,10 +172,15 @@ def publish(obj: Params, records: tuple[str, ...], publish_all: bool, single: bo
 
             markdown = render_block_tree(tree, config)
 
+            safe_record_name = Path(record.name).name.replace('/', '_').replace('\\', '_')
+            if safe_record_name in ('.', '..') or not safe_record_name:
+                u.pprint(f'[red]Error: Invalid record name for output filename: "{record.name}".[/red]')
+                sys.exit(1)
+
             if date_suffix:
-                filename = f'{record.name}_{date_str}.md'
+                filename = f'{safe_record_name}_{date_str}.md'
             else:
-                filename = f'{record.name}.md'
+                filename = f'{safe_record_name}.md'
 
             file_path = out_p / filename
             file_path.write_text(markdown, encoding='utf-8')
