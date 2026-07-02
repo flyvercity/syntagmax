@@ -1,6 +1,6 @@
 # Publishing to MS Word and PDF via Pandoc
 
-Expand publishing to produce MS Work and PDF documents.
+Expand publishing to produce MS Word and PDF documents.
 
 ## New CLI Options
 
@@ -14,5 +14,5 @@ Expand publishing to produce MS Work and PDF documents.
 3. If Pandoc is available, run it to convert the Markdown to DOCX and/or PDF.
 4. If Pandoc is absent or fails, log the error to the publication log, preserve the successfully generated Markdown file, and exit successfully (do not crash).
   
-## Additionale Logging:
+## Additional Logging:
   - Pandoc exit status
