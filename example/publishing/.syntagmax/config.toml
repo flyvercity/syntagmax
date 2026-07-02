@@ -1,0 +1,23 @@
+base = ".."
+
+[[input]]
+name = "Personal Scheduler App"
+dir = "Personal Scheduler App"
+driver = "obsidian"
+atype = "SRS"
+marker = "REQ"
+markers = ["COM"]
+
+[metrics]
+enabled = true
+requirement_type = "REQ"
+status_field = "status"
+verify_field = "verify"
+tbd_marker = "TBD"
+
+[impact]
+enabled = true
+
+[metamodel]
+filename = "project.syntagmax"
+

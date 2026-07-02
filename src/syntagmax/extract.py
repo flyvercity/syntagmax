@@ -29,12 +29,7 @@ def get_available_extractors() -> Sequence[str]:
 
 
 def print_artifact(artifact: Artifact):
-    pprint(
-        f'[magenta]{artifact.driver}[/magenta] :: '
-        f'[cyan]{artifact.atype}[/cyan] :: '
-        f'[green]{artifact.aid}[/green]'
-        f' (parents: {len(artifact.pids)})'
-    )
+    pprint(f'[magenta]{artifact.driver}[/magenta] :: [cyan]{artifact.atype}[/cyan] :: [green]{artifact.aid}[/green] (parents: {len(artifact.pids)})')
 
 
 def extract(config: Config, errors) -> list[Artifact]:
@@ -64,9 +59,7 @@ def build_artifact_map(artifacts_list: list[Artifact], errors) -> dict[str, Arti
             errors.append(f'Artifact {a.atype} at {a.location} has no ID')
             continue
         if a.aid in artifacts:
-            errors.append(
-                f'Duplicate artifact ID: {a.aid} at {a.location} (already defined at {artifacts[a.aid].location})'
-            )
+            errors.append(f'Duplicate artifact ID: {a.aid} at {a.location} (already defined at {artifacts[a.aid].location})')
             continue
         artifacts[a.aid] = a
 

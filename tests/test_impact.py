@@ -9,9 +9,7 @@ from syntagmax.impact import perform_impact_analysis
 
 class MockRevision(Revision):
     def __init__(self, hash_short, timestamp):
-        super().__init__(
-            hash_long=hash_short * 4, hash_short=hash_short, timestamp=timestamp, author_email='test@example.com'
-        )
+        super().__init__(hash_long=hash_short * 4, hash_short=hash_short, timestamp=timestamp, author_email='test@example.com')
 
 
 def test_impact_analysis_timestamp(tmp_path):

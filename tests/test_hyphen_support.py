@@ -3,6 +3,7 @@ from syntagmax.metamodel import load_metamodel
 from syntagmax.params import Params
 from syntagmax.config import Config
 
+
 def test_hyphenated_and_underscored_names(tmp_path):
     model_content = textwrap.dedent("""
         artifact system-req:
@@ -65,6 +66,7 @@ def test_hyphenated_and_underscored_names(tmp_path):
     assert trace['targets'] == ['sub_component']
     assert trace['condition']['anchor'] == 'secret_flag'
 
+
 def test_text_extractor_with_hyphens(tmp_path):
     from syntagmax.extractors.text import TextExtractor
 
@@ -88,7 +90,7 @@ def test_text_extractor_with_hyphens(tmp_path):
         [metamodel]
         filename = "model.smx"
     """)
-    config_file = tmp_path / "config.toml"
+    config_file = tmp_path / 'config.toml'
     config_file.write_text(config_content)
 
     params = Params(verbose=False, render_tree=False, ai=False, cwd=str(tmp_path), no_git=True, output='console')
@@ -102,15 +104,16 @@ def test_text_extractor_with_hyphens(tmp_path):
         // Requirement contents
         // >]
     """)
-    code_file = tmp_path / "test.cpp"
+    code_file = tmp_path / 'test.cpp'
     code_file.write_text(code_content)
 
     artifacts, errors = extractor.extract_from_file(code_file)
 
     assert not errors
     assert len(artifacts) == 1
-    assert artifacts[0].aid == "SR-001"
-    assert artifacts[0].fields["doors-id"] == "D-101"
+    assert artifacts[0].aid == 'SR-001'
+    assert artifacts[0].fields['doors-id'] == 'D-101'
+
 
 def test_markdown_extractor_with_hyphens(tmp_path):
     from syntagmax.extractors.markdown import MarkdownExtractor
@@ -136,7 +139,7 @@ def test_markdown_extractor_with_hyphens(tmp_path):
         [metamodel]
         filename = "model.smx"
     """)
-    config_file = tmp_path / "config.toml"
+    config_file = tmp_path / 'config.toml'
     config_file.write_text(config_content)
 
     params = Params(verbose=False, render_tree=False, ai=False, cwd=str(tmp_path), no_git=True, output='console')
@@ -152,16 +155,17 @@ def test_markdown_extractor_with_hyphens(tmp_path):
         [doors-id] D-101
         [/REQ]
     """)
-    md_file = tmp_path / "test.md"
+    md_file = tmp_path / 'test.md'
     md_file.write_text(md_content)
 
     from syntagmax.artifact import LineLocation
+
     def location_builder(start, end):
-        return LineLocation(loc_file="test.md", loc_lines=(start, end))
+        return LineLocation(loc_file='test.md', loc_lines=(start, end))
 
     artifacts, errors = extractor._extract_from_markdown(md_file, md_content, location_builder)
 
     assert not errors
     assert len(artifacts) == 1
-    assert artifacts[0].aid == "SR-001"
-    assert artifacts[0].fields["doors-id"] == "D-101"
+    assert artifacts[0].aid == 'SR-001'
+    assert artifacts[0].fields['doors-id'] == 'D-101'

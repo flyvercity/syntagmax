@@ -55,16 +55,22 @@ def init(ctx: click.Context):
 @click.option(
     '-f',
     '--config-file',
-    type=click.Path(exists=True),
+    type=click.Path(),
     default='.syntagmax/config.toml',
 )
 @click.option('--allow-dirty-worktree', is_flag=True, help='Allow analysis on a dirty git worktree')
 @click.option('--suppress-tracing', is_flag=True, help='Suppress tracing model errors')
 @click.argument('step', type=click.Choice(public_steps()), default='metrics')
 def analyze(obj: Params, config_file: Path, allow_dirty_worktree: bool, suppress_tracing: bool, step: str):
+    import sys
+
+    cfg_path = Path(config_file)
+    if not cfg_path.exists():
+        u.pprint(f'[red]Error: Configuration file "{cfg_path}" does not exist.[/red]')
+        sys.exit(1)
     obj['allow_dirty_worktree'] = allow_dirty_worktree
     obj['suppress_tracing'] = suppress_tracing
-    config = Config(obj, config_file)
+    config = Config(obj, cfg_path)
     report = process(step, config)
 
     output = obj['output']
@@ -86,19 +92,110 @@ def analyze(obj: Params, config_file: Path, allow_dirty_worktree: bool, suppress
         u.pprint(f'[{color}]{summary}[/{color}]')
 
 
-@rms.command(help='Publish project to a single markdown document')
+@rms.command(help='Publish project to markdown document(s)')
 @click.pass_obj
-@click.option('-f', '--config-file', type=click.Path(exists=True), default='.syntagmax/config.toml')
-@click.argument('output_file', type=click.Path())
-def publish(obj: Params, config_file: Path, output_file: str):
+@click.argument('records', nargs=-1)
+@click.option('--all', 'publish_all', is_flag=True, help='Publish all input records')
+@click.option('--single', is_flag=True, help='Compile all published records sequentially into a single file')
+@click.option('--output', 'output_path', type=click.Path(), default=None, help='Output directory or file path')
+@click.option('-f', '--config-file', type=click.Path(), default='.syntagmax/config.toml')
+@click.option('--date-suffix', is_flag=True, help='Append date suffix to filenames (only valid when publishing separate files)')
+def publish(obj: Params, records: tuple[str, ...], publish_all: bool, single: bool, output_path: str | None, config_file: Path, date_suffix: bool):
+    from datetime import datetime
     from syntagmax.publish import build_block_tree, render_block_tree
-    config = Config(obj, Path(config_file))
-    tree = build_block_tree(config)
-    markdown = render_block_tree(tree)
-    output_path = Path(output_file)
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_text(markdown, encoding='utf-8')
-    u.pprint(f'[green]Published to {output_path}[/green]')
+    from syntagmax.blocks import ArtifactBlock, TextBlock
+    import sys
+
+    if not records and not publish_all:
+        u.pprint('[red]Error: Either RECORD names or --all must be specified.[/red]')
+        sys.exit(1)
+
+    if single and date_suffix:
+        u.pprint('[red]Error: --date-suffix cannot be combined with --single.[/red]')
+        sys.exit(1)
+
+    cfg_path = Path(config_file)
+    if not cfg_path.exists():
+        u.pprint(f'[red]Error: Configuration file "{cfg_path}" does not exist.[/red]')
+        sys.exit(1)
+
+    config = Config(obj, cfg_path)
+
+    available_records = {r.name: r for r in config.input_records()}
+    selected_records = []
+
+    if publish_all:
+        selected_records = list(config.input_records())
+    else:
+        for r_name in records:
+            if r_name not in available_records:
+                u.pprint(f'[red]Error: Input record "{r_name}" not found in config.[/red]')
+                sys.exit(1)
+            selected_records.append(available_records[r_name])
+
+    if output_path is None:
+        if single:
+            output_path = '.syntagmax/reports/published.md'
+        else:
+            output_path = '.syntagmax/reports/'
+
+    out_p = Path(output_path)
+
+    if single:
+        tree = build_block_tree(config)
+        selected_names = {r.name for r in selected_records}
+        tree.inputs = [inp for inp in tree.inputs if inp.name in selected_names]
+
+        markdown = render_block_tree(tree, config)
+
+        out_p.parent.mkdir(parents=True, exist_ok=True)
+        out_p.write_text(markdown, encoding='utf-8')
+
+        num_artifacts = 0
+        num_text_blocks = 0
+        for inp in tree.inputs:
+            for f in inp.files:
+                for b in f.blocks:
+                    if isinstance(b, ArtifactBlock):
+                        num_artifacts += 1
+                    elif isinstance(b, TextBlock):
+                        num_text_blocks += 1
+
+        u.pprint(f'[green]Published consolidated report to {out_p} ({num_artifacts} artifacts, {num_text_blocks} text blocks)[/green]')
+    else:
+        out_p.mkdir(parents=True, exist_ok=True)
+        date_str = datetime.now().strftime('%Y-%m-%d')
+
+        for record in selected_records:
+            tree = build_block_tree(config)
+            tree.inputs = [inp for inp in tree.inputs if inp.name == record.name]
+
+            markdown = render_block_tree(tree, config)
+
+            safe_record_name = Path(record.name).name.replace('/', '_').replace('\\', '_')
+            if safe_record_name in ('.', '..') or not safe_record_name:
+                u.pprint(f'[red]Error: Invalid record name for output filename: "{record.name}".[/red]')
+                sys.exit(1)
+
+            if date_suffix:
+                filename = f'{safe_record_name}_{date_str}.md'
+            else:
+                filename = f'{safe_record_name}.md'
+
+            file_path = out_p / filename
+            file_path.write_text(markdown, encoding='utf-8')
+
+            num_artifacts = 0
+            num_text_blocks = 0
+            for inp in tree.inputs:
+                for f in inp.files:
+                    for b in f.blocks:
+                        if isinstance(b, ArtifactBlock):
+                            num_artifacts += 1
+                        elif isinstance(b, TextBlock):
+                            num_text_blocks += 1
+
+            u.pprint(f'[green]Published {record.name} to {file_path} ({num_artifacts} artifacts, {num_text_blocks} text blocks)[/green]')
 
 
 @rms.group(help='Project Editing Commands')
@@ -141,6 +238,29 @@ def mcp():
 def run(obj: Params, config_path: str, host: str, port: int, sse_path: str, transport: str):
     configurator = Config(obj, Path(config_path))
     run_mcp_server(configurator, host, port, sse_path, transport)
+
+
+@rms.group(help='Schema Management Commands')
+def schema():
+    pass
+
+
+@schema.command(name='publish', help='Generate JSON Schema for the publishing configuration')
+def schema_publish():
+    import json
+    from syntagmax.publish_config import PublishConfig
+
+    schema_dict = PublishConfig.model_json_schema()
+    print(json.dumps(schema_dict, indent=2))
+
+
+@schema.command(name='config', help='Generate JSON Schema for the main project configuration (config.toml)')
+def schema_config():
+    import json
+    from syntagmax.config import ConfigFile
+
+    schema_dict = ConfigFile.model_json_schema()
+    print(json.dumps(schema_dict, indent=2))
 
 
 def main():

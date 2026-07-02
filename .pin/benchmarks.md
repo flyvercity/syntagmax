@@ -1,1 +1,0 @@
-Put all performance benchmark scripts into the `benchmarks` folder.

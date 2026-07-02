@@ -102,4 +102,3 @@ artifact REQ:
     metamodel = load_metamodel(model_file, errors)
     assert not errors
     assert metamodel['artifacts']['REQ']['attributes']['id'][0]['schema'] == 'Project REQ-{num:3}'
-

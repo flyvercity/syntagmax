@@ -1,0 +1,13 @@
+# System-level requirements
+artifact SRS:
+    id is string as SCHED-{atype}-{num:3}
+    attribute contents is mandatory string
+    attribute parent is mandatory multiple reference to parent if not derive
+    attribute func is optional string
+    attribute safety is mandatory boolean [true: "yes", false: "no"]
+    attribute derive is optional boolean [true: "yes", false: "no"]
+    attribute alloc is optional string
+    attribute doors-id is optional string
+    attribute comment is optional multiple string
+    attribute ratio is optional multiple string
+

@@ -13,9 +13,7 @@ from syntagmax.config import Config
 from syntagmax.extract import extract
 
 
-def renumber_artifacts(
-    config: Config, atype: str | None = None, schema_override: str | None = None, dry_run: bool = False
-):
+def renumber_artifacts(config: Config, atype: str | None = None, schema_override: str | None = None, dry_run: bool = False):
     errors = []
     artifacts_list = extract(config, errors)
     if errors:

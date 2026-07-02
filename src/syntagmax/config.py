@@ -5,11 +5,16 @@
 # Description: Configuration for the Syntagmax RMS.
 
 import os
+import re
 from pathlib import Path
 import tomllib
 import logging as lg
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from syntagmax.publish_config import PublishConfig
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from benedict import benedict
 from pydantic import BaseModel, ConfigDict, Field
@@ -27,6 +32,8 @@ class InputRecord:
     driver: str
     default_atype: str
     marker: str
+    markers: list[str] = field(default_factory=list)
+    publish_config: str | None = None
 
 
 DEFAULT_FILTERS = {'obsidian': '**/*.md', 'ipynb': '**/*.ipynb', 'markdown': '**/*.md'}
@@ -36,18 +43,17 @@ class InputConfig(BaseModel):
     name: str = Field(..., description='Input source name (e.g., "requirements")')
     dir: str = Field(..., description='Subdirectory relative to the base directory where artifacts are located')
     driver: str = Field(..., description='Driver type for processing (e.g., "obsidian", "text")')
-    filter: str | None = Field(
-        default=None, description='File filter pattern (glob). If omitted, driver-specific defaults are used.'
-    )
+    filter: str | None = Field(default=None, description='File filter pattern (glob). If omitted, driver-specific defaults are used.')
     atype: str = Field('REQ', description='Default artifact type for this input source')
     marker: str | None = Field(default=None, description='Custom marker for artifacts (e.g., "REQ"). Defaults to atype.')
+    markers: list[str] = Field(default_factory=list, description='Fragment markers for non-artifact text blocks (e.g., ["COM", "NOTE"]). Obsidian driver only.')
+    publish: str | None = Field(default=None, description='Path to publish configuration file relative to the project directory or config folder')
 
 
 class MetricsConfig(BaseModel):
     model_config = ConfigDict(extra='ignore')
-    requirement_type: str = Field(
-        default='REQ', description='The artifact type to treat as a "requirement" for metrics'
-    )
+    enabled: bool = Field(default=False, description='Enable metrics collection')
+    requirement_type: str = Field(default='REQ', description='The artifact type to treat as a "requirement" for metrics')
     status_field: str = Field(default='status', description='Name of the attribute used to track artifact status')
     verify_field: str = Field(default='verify', description='Name of the attribute used to track verification status')
     tbd_marker: str = Field(default='TBD', description='String marker used to identify "To Be Defined" items')
@@ -55,23 +61,16 @@ class MetricsConfig(BaseModel):
 
 class ImpactConfig(BaseModel):
     model_config = ConfigDict(extra='ignore')
+    enabled: bool = Field(default=False, description='Enable impact analysis')
 
 
 class AIConfig(BaseModel):
-    provider: str = Field(
-        default='ollama', description='AI provider to use (ollama, anthropic, openai, gemini, bedrock)'
-    )
+    provider: str = Field(default='ollama', description='AI provider to use (ollama, anthropic, openai, gemini, bedrock)')
     model: str | None = Field(default=None, description='Model name to use (e.g., "gpt-4o", "claude-3-5-sonnet")')
     # Provider-specific configurations
-    anthropic_api_key: str | None = Field(
-        default=None, description='Anthropic API Key. Can also be set via ANTHROPIC_API_KEY env var.'
-    )
-    openai_api_key: str | None = Field(
-        default=None, description='OpenAI API Key. Can also be set via OPENAI_API_KEY env var.'
-    )
-    gemini_api_key: str | None = Field(
-        default=None, description='Google Gemini API Key. Can also be set via GEMINI_API_KEY env var.'
-    )
+    anthropic_api_key: str | None = Field(default=None, description='Anthropic API Key. Can also be set via ANTHROPIC_API_KEY env var.')
+    openai_api_key: str | None = Field(default=None, description='OpenAI API Key. Can also be set via OPENAI_API_KEY env var.')
+    gemini_api_key: str | None = Field(default=None, description='Google Gemini API Key. Can also be set via GEMINI_API_KEY env var.')
     aws_access_key_id: str | None = Field(default=None, description='AWS Access Key ID for Bedrock.')
     aws_secret_access_key: str | None = Field(default=None, description='AWS Secret Access Key for Bedrock.')
     aws_session_token: str | None = Field(default=None, description='AWS Session Token for Bedrock (optional).')
@@ -102,6 +101,7 @@ class Config:
 
     def __init__(self, params: Params, config_filename: Path):
         self.params = params
+        self._root_dir = Path(config_filename).parent.absolute()
         self.metrics = MetricsConfig()
         self.impact = ImpactConfig()
         self.ai = AIConfig()
@@ -167,6 +167,8 @@ class Config:
             raise FatalError(errors)
 
     def _read_input_records(self, input_configs: list[InputConfig]):
+        errors: list[str] = []
+
         for input_config in input_configs:
             name = input_config.name
             record_base = Path(self._base_dir, input_config.dir)
@@ -179,6 +181,35 @@ class Config:
             lg.debug(f'Adding input files from {name} with filter {glob}')
             filepaths = Path(record_base).glob(glob)
 
+            artifact_marker = input_config.marker or input_config.atype
+            fragment_markers = input_config.markers
+
+            # Validate fragment markers
+            if fragment_markers:
+                if input_config.driver != 'obsidian':
+                    errors.append(f'Input "{name}": markers are only supported for the obsidian driver, got driver "{input_config.driver}"')
+
+                marker_pattern = re.compile(r'^[a-zA-Z0-9_-]+$')
+                seen_markers: set[str] = set()
+
+                for m in fragment_markers:
+                    if not m:
+                        errors.append(f'Input "{name}": marker names must not be empty')
+                        continue
+
+                    if not marker_pattern.match(m):
+                        errors.append(f'Input "{name}": invalid marker name "{m}" (must match ^[a-zA-Z0-9_-]+$)')
+                        continue
+
+                    m_upper = m.upper()
+
+                    if m_upper in seen_markers:
+                        errors.append(f'Input "{name}": duplicate marker "{m}" (case-insensitive)')
+                    seen_markers.add(m_upper)
+
+                    if m_upper == artifact_marker.upper():
+                        errors.append(f'Input "{name}": fragment marker "{m}" collides with artifact marker "{artifact_marker}"')
+
             self._input_records.append(
                 InputRecord(
                     name=name,
@@ -186,13 +217,35 @@ class Config:
                     filepaths=list(filepaths),
                     driver=input_config.driver,
                     default_atype=input_config.atype,
-                    marker=input_config.marker or input_config.atype,
+                    marker=artifact_marker,
+                    markers=[m.upper() for m in fragment_markers],
+                    publish_config=input_config.publish,
                 )
             )
+
+        if errors:
+            raise FatalError(errors)
 
         for input_record in self._input_records:
             lg.info(f'Input record: {input_record.name}')
             lg.debug(f'Input files: {len(input_record.filepaths)}')
+
+    def load_publish_config(self, record: InputRecord) -> 'PublishConfig':
+        from syntagmax.publish_config import load_publish_config
+
+        if record.publish_config:
+            p = Path(record.publish_config)
+            return load_publish_config(p, self._root_dir)
+        p1 = self._root_dir / 'publish.yaml'
+        if p1.exists():
+            return load_publish_config(Path('publish.yaml'), self._root_dir)
+        p2 = self._root_dir / '.syntagmax' / 'publish.yaml'
+        if p2.exists():
+            return load_publish_config(Path('.syntagmax/publish.yaml'), self._root_dir)
+        p3 = self._root_dir.parent / '.syntagmax' / 'publish.yaml'
+        if p3.exists():
+            return load_publish_config(Path('.syntagmax/publish.yaml'), self._root_dir.parent)
+        return load_publish_config(None, self._root_dir)
 
     def base_dir(self):
         return self._base_dir

@@ -119,9 +119,7 @@ class ArtifactValidator:
                 self._id_schema_cache[cache_key] = compiled_pattern
 
             if not compiled_pattern.match(artifact.aid):
-                self.errors.append(
-                    f"Artifact ID '{artifact.aid}' does not match schema '{schema}' for type '{artifact.atype}' ({artifact})"
-                )
+                self.errors.append(f"Artifact ID '{artifact.aid}' does not match schema '{schema}' for type '{artifact.atype}' ({artifact})")
 
     def _validate_attributes(self, artifact: Artifact):
         artifact_rules = self._artifacts[artifact.atype]['attributes']
@@ -183,31 +181,25 @@ class ArtifactValidator:
             try:
                 int(val)
             except (ValueError, TypeError):
-                self.errors.append(
-                    f"Attribute '{attr_name}' value '{val}' cannot be converted to an integer ({artifact})"
-                )
+                self.errors.append(f"Attribute '{attr_name}' value '{val}' cannot be converted to an integer ({artifact})")
 
         elif expected_type == 'boolean':
             if 'custom_values' in type_info:
                 truthy = {v.lower() for v in type_info['custom_values']['true']}
                 falsy = {v.lower() for v in type_info['custom_values']['false']}
-                expected_str = f"expected {', '.join(type_info['custom_values']['true'])} / {', '.join(type_info['custom_values']['false'])}"
+                expected_str = f'expected {", ".join(type_info["custom_values"]["true"])} / {", ".join(type_info["custom_values"]["false"])}'
             else:
                 truthy = {'true', 'yes', '1'}
                 falsy = {'false', 'no', '0'}
                 expected_str = 'expected true/false, yes/no, 1/0'
 
             if str(val).lower() not in truthy | falsy:
-                self.errors.append(
-                    f"Attribute '{attr_name}' value '{val}' is not a valid boolean ({expected_str}) ({artifact})"
-                )
+                self.errors.append(f"Attribute '{attr_name}' value '{val}' is not a valid boolean ({expected_str}) ({artifact})")
 
         elif expected_type == 'enum':
             allowed = type_info['allowed']
             if val not in allowed:
-                self.errors.append(
-                    f"Attribute '{attr_name}' value '{val}' is invalid. Allowed values: {allowed} ({artifact})"
-                )
+                self.errors.append(f"Attribute '{attr_name}' value '{val}' is invalid. Allowed values: {allowed} ({artifact})")
 
         elif expected_type == 'reference':
             if not isinstance(val, str):
@@ -268,11 +260,7 @@ class ArtifactValidator:
                     # Validate mode
                     link = next((pl for pl in artifact.parent_links if pl.pid == parent.aid), None)
                     if link:
-                        if (
-                            mode == 'timestamp'
-                            and link.nominal_revision != 'older'
-                            and link.nominal_revision is not None
-                        ):
+                        if mode == 'timestamp' and link.nominal_revision != 'older' and link.nominal_revision is not None:
                             self.errors.append(
                                 f"Trace from '{artifact.atype}' to '{parent.atype}' is 'by timestamp', "
                                 f"but revision was specified: '{link.pid}@{link.nominal_revision}' ({artifact})"

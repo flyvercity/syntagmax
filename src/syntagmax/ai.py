@@ -55,14 +55,16 @@ def ai_analyze(config: Config, artifacts: ArtifactMap, errors: list[str]) -> lis
 
         try:
             result = provider.analyze_requirement(artifact.contents())
-            results.append({
-                'aid': artifact.aid,
-                'atype': artifact.atype,
-                'ambiguity': result['metrics']['ambiguity'],
-                'completeness': result['metrics']['completeness'],
-                'verifiability': result['metrics']['verifiability'],
-                'singularity': result['metrics']['singularity'],
-            })
+            results.append(
+                {
+                    'aid': artifact.aid,
+                    'atype': artifact.atype,
+                    'ambiguity': result['metrics']['ambiguity'],
+                    'completeness': result['metrics']['completeness'],
+                    'verifiability': result['metrics']['verifiability'],
+                    'singularity': result['metrics']['singularity'],
+                }
+            )
         except Exception as e:
             errors.append(f'AI analysis failed for {artifact}: {e}')
 

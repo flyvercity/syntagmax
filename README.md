@@ -55,6 +55,47 @@ Each input defines a source of requirements or artifacts:
 | `filter` | No | Driver-specific | File filter pattern (glob). Defaults: `obsidian` → `**/*.md`, `ipynb` → `**/*.ipynb`, `markdown` → `**/*.md` |
 | `atype` | No | `REQ` | Default artifact type for this source |
 | `marker` | No | *atype* | Custom marker for artifacts (e.g., `[SYS]` in Markdown). Defaults to `atype`. |
+| `markers` | No | `[]` | List of fragment markers for non-artifact text blocks (e.g., `["COM", "NOTE"]`). Obsidian driver only. |
+
+### Marked Fragments (Obsidian driver)
+
+The `markers` option allows tagging non-artifact text blocks with named markers such as `[COM]...[/COM]` or `[NOTE]...[/NOTE]`. These marked fragments are extracted as `TextBlock`s with a `marker` field set, which can later influence publication filtering.
+
+**Rules:**
+- Markers are case-insensitive (`[com]...[/COM]` is valid)
+- Marker values are stored in uppercase (e.g., `COM`, `NOTE`)
+- Fragment markers must not collide with the artifact marker (fatal config error)
+- No nesting or overlap between markers
+- Only supported for the `obsidian` driver
+
+**Example config:**
+
+```toml
+[[input]]
+name = "system-requirements"
+dir = "SYS"
+driver = "obsidian"
+markers = ["COM", "NOTE"]
+```
+
+**Example markdown:**
+
+```text
+This is a preamble. [COM]This is a comment.[/COM]
+[note]This is a note.[/note]
+Some more text.
+[SYS]
+Requirement body
+[id] SYS-001
+[/SYS]
+```
+
+This produces the following blocks:
+- Regular text: `This is a preamble. `
+- Comment fragment (marker=`COM`): `This is a comment.`
+- Regular text: `\nSome more text.\n`
+- Note fragment (marker=`NOTE`): `This is a note.`
+- Artifact: `SYS-001`
 
 ### Metrics (`[metrics]`)
 

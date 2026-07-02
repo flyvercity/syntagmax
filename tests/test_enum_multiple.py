@@ -8,9 +8,11 @@ from syntagmax.analyse import ArtifactValidator
 from syntagmax.params import Params
 from syntagmax.metamodel import load_metamodel
 
+
 @pytest.fixture
 def params():
     return Params(verbose=False, render_tree=False, ai=False, output='console')
+
 
 @pytest.fixture
 def metamodel_file(tmp_path):
@@ -21,19 +23,22 @@ def metamodel_file(tmp_path):
             attribute allocation is optional multiple enum [HW, SW, FW]
             attribute mytags is optional multiple enum [tagone, tagtwo]
     """)
-    f = tmp_path / "test.smx"
+    f = tmp_path / 'test.smx'
     f.write_text(content)
     return f
+
 
 @pytest.fixture
 def metamodel(metamodel_file):
     errors = []
     return load_metamodel(metamodel_file, errors, validate=True)
 
+
 @pytest.fixture
 def config(params, tmp_path, metamodel_file):
     cfg_path = tmp_path / 'config.toml'
-    cfg_path.write_text(f"""
+    cfg_path.write_text(
+        f"""
 base = "."
 [metamodel]
 filename = "{metamodel_file.name}"
@@ -42,8 +47,11 @@ name = "test"
 dir = "."
 driver = "text"
 atype = "REQ"
-""", encoding='utf-8')
+""",
+        encoding='utf-8',
+    )
     return Config(params=params, config_filename=cfg_path)
+
 
 def test_text_extractor_enum_multiple(config, metamodel, tmp_path):
     contents = """
@@ -81,6 +89,7 @@ def test_text_extractor_enum_multiple(config, metamodel, tmp_path):
     assert artifacts[1].fields['allocation'] == ['FW', 'HW']
     assert artifacts[1].fields['mytags'] == ['tagone', 'tagtwo']
 
+
 def test_markdown_extractor_enum_multiple(config, metamodel, tmp_path):
     contents = textwrap.dedent("""
     [REQ]
@@ -104,10 +113,13 @@ def test_markdown_extractor_enum_multiple(config, metamodel, tmp_path):
     assert artifacts[0].fields['allocation'] == ['HW', 'FW']
     assert artifacts[0].fields['mytags'] == ['tagone', 'tagtwo']
 
+
 def test_enum_multiple_validation(metamodel):
     from syntagmax.artifact import Artifact
+
     class MockConfig:
-        def base_dir(self): return Path(".")
+        def base_dir(self):
+            return Path('.')
 
     config = MockConfig()
     validator = ArtifactValidator(metamodel, {})
@@ -125,7 +137,7 @@ def test_enum_multiple_validation(metamodel):
     a2.aid = 'REQ-2'
     a2.fields = {'id': 'REQ-2', 'contents': 'test', 'allocation': ['HW', 'INVALID']}
     errors = validator.validate(a2)
-    assert any("is invalid. Allowed values" in e for e in errors)
+    assert any('is invalid. Allowed values' in e for e in errors)
 
     # Not a list
     a3 = Artifact(config)
@@ -133,4 +145,4 @@ def test_enum_multiple_validation(metamodel):
     a3.aid = 'REQ-3'
     a3.fields = {'id': 'REQ-3', 'contents': 'test', 'allocation': 'HW'}
     errors = validator.validate(a3)
-    assert any("must be a list" in e for e in errors)
+    assert any('must be a list' in e for e in errors)
