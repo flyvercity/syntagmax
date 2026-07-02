@@ -29,6 +29,7 @@ driver = "obsidian"
 atype = "SYS"
 publish = "publish-sys-reqs.yaml
 ```
+
 ### Publishing Configuration
 
 Specifies the styling, layout, and structure-level properties for document assembly.
@@ -54,8 +55,6 @@ render:
     - type: text
       mode: block
       alias: "Comment"
-  TABLE:
-    - type: text
 ```
 
 #### Global Parameters
@@ -80,11 +79,12 @@ Every section definition shall have an `attributes` definition as following:
 ```yaml
 render:
   <atype>:
+    - type: text
       attributes:
         - id:
-            alias: "Identifier"
+          alias: "Identifier"
         - parent:
-            alias: "Parent"
+          alias: "Parent"
 ```
 
 Here:
@@ -95,72 +95,53 @@ For text sections: `mode` field (enum: `block`, `inline`) defines if output on t
 
 ### Non-Artifact Text Block Render Configuration
 
-Text blocks are also rendered as a set of sections. Attributes definition is similar to airfacts.
+Text blocks are also rendered as a set of sections. For this version, the only section type supported is `text` in `block` and `inline` modes.
 
-**[REFINE] What is `TABLE` marker here?**
+Block example with `alias = "Comment"`:
+```text
+**Comment**
 
----
+Comment's text.
+```
+
+Inline example:
+```text
+**Comment**: Comment's text.
+```
 
 ## Input/Output Layout & File Naming
-
-**[TBD]**
 
 Assembled documents are stored in the output directory (defaults to `.syntagmax/reports/` or configured output folder).
 
 Naming convention:
 ```
 <output_dir>/
-    <VAULT>_<SECTION>_<YYYY-MM-DD>.md    ← Assembled Markdown document
-    <VAULT>_<SECTION>_<YYYY-MM-DD>.docx  ← Final Word document (optional, generated if --docx is requested)
+    <INPUT_RECORD_NAME>_<YYYY-MM-DD>.md    ← Assembled Markdown document
 ```
 
 ## Command-Line Interface (CLI)
 
-**[TBD]**
-
 The publishing workflow is invoked via the `publish` command.
 
-### 5.1. Syntax
+### Syntax
 ```bash
-publish <section> [options]
+uv run syntagmax publish <section> [options]
 ```
 
-### Parameters
+### Parameters for `publish` Command
 
-**[TBD]**
-
-- **`<section>`** *(Mandatory)*: The name of the vault section to compile.
-- **`--config <file>`** *(Optional)*: Path to an override configuration file.
+- **`<input-record-name>`** *(Mandatory)*: The name of the vault section to compile.
 - **`--output <directory>`** *(Optional)*: Path to override the default output directory.
-- **`--docx`** *(Optional)*: Attempts to run Pandoc to compile a Word document alongside the Markdown.
-- **`--doors`** *(Optional)*: Activates identifier and attribute replacement mode.
-- **`--mapping <csv>`** *(Optional)*: Path to the CSV file mapping keys to replacement values for DOORS mode.
-- **`--verbose`** *(Optional)*: Enables verbose console logging and trace output.
 
-## 6. Detailed Workflows
+## Detailed Workflows
 
-**[TBD]**
+### Standard Document Assembly
 
-### 6.1. Standard Document Assembly
-1. Locate the target section. Ensure the project is parsed and the section exists in the vault.
-2. Read the files belonging to the section in lexicographical order.
+2. Read the files belonging to the input record in lexicographical order.
 3. Extract blocks in their natural order from the files.
 4. Normalize structure (adjusting header offsets using `start_level`, formatting lists, and clearing prefixes according to configuration).
-5. Apply block templates from `publish.yaml` to format requirements and other structured blocks.
+5. Apply block templates from `publish.yaml` to format requirements and text blocks.
 6. Output a single cohesive Markdown file.
-
-### 6.2. DOCX Export (Pandoc Integration)
-1. Generate the standard Markdown output file.
-2. If the `--docx` flag is present, check for the presence of the `pandoc` executable.
-3. If Pandoc is available, run it to convert the Markdown to DOCX.
-4. If Pandoc is absent or fails, log the error to the publication log, preserve the successfully generated Markdown file, and exit successfully (do not crash).
-
-### 6.3. DOORS Replacement Mode
-1. When `--doors` and `--mapping <csv>` are provided, load the CSV mapping table.
-2. Iterate through parsed blocks.
-3. Replace requirement IDs, object IDs, and designated attribute values using the mapping.
-4. If a value does not exist in the mapping file, preserve the original value.
-5. Record the number of successful replacements in the publication log.
 
 ## Non-Functional Requirements & Constraints
 
@@ -171,7 +152,6 @@ publish <section> [options]
   - Target section name
   - Execution options and parameters
   - Statistics (number of documents, requirements, tables, and images processed)
-  - Details on DOORS replacements and Pandoc exit status
   - Any warnings or errors encountered
 
 ## Additional Tasks
