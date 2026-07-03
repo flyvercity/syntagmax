@@ -1,0 +1,23 @@
+base = ".."
+
+[[input]]
+name = "requirements"
+dir = "requirements"
+driver = "obsidian"
+atype = "REQ"
+
+[[plugin]]
+name = "add-header"
+source = "local"
+
+[plugin.params]
+title = "ACME Corp Requirements"
+version = "1.0"
+
+[[plugin]]
+name = "strip-marker"
+source = "local"
+enabled = true
+
+[plugin.params]
+marker = "INTERNAL"

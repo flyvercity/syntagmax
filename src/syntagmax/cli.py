@@ -124,6 +124,7 @@ def publish(obj: Params, records: tuple[str, ...], publish_all: bool, single: bo
     from datetime import datetime
     from syntagmax.publish import build_block_tree, render_block_tree
     from syntagmax.blocks import ArtifactBlock, TextBlock
+    from syntagmax.plugin import run_block_transforms, run_markdown_transforms
     import sys
 
     if not records and not publish_all:
@@ -175,7 +176,13 @@ def publish(obj: Params, records: tuple[str, ...], publish_all: bool, single: bo
         selected_names = {r.name for r in selected_records}
         tree.inputs = [inp for inp in tree.inputs if inp.name in selected_names]
 
+        # Run plugin block transforms
+        tree = run_block_transforms(config.plugins(), tree, config)
+
         markdown = render_block_tree(tree, config)
+
+        # Run plugin markdown transforms
+        markdown = run_markdown_transforms(config.plugins(), markdown, config)
 
         out_p.parent.mkdir(parents=True, exist_ok=True)
         out_p.write_text(markdown, encoding='utf-8')
@@ -202,7 +209,13 @@ def publish(obj: Params, records: tuple[str, ...], publish_all: bool, single: bo
             tree = build_block_tree(config)
             tree.inputs = [inp for inp in tree.inputs if inp.name == record.name]
 
+            # Run plugin block transforms
+            tree = run_block_transforms(config.plugins(), tree, config)
+
             markdown = render_block_tree(tree, config)
+
+            # Run plugin markdown transforms
+            markdown = run_markdown_transforms(config.plugins(), markdown, config)
 
             safe_record_name = Path(record.name).name.replace('/', '_').replace('\\', '_')
             if safe_record_name in ('.', '..') or not safe_record_name:

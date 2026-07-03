@@ -41,7 +41,7 @@ Syntagmax is a lightweight, git-friendly requirement management system designed 
     - `git_utils.py`: Git-related utilities.
     - `mcp/`: MCP server implementation.
     - `resources/`: Shared resources, Jinja templates, and localizations.
-- `docs/`: Project documentation, including `INTERNALS.md`.
+- `docs/`: Project documentation, including `internal.md`.
 - `scripts/`: Development and maintenance scripts.
 - `pyproject.toml`: Project metadata and dependencies.
 
@@ -103,5 +103,6 @@ uv run syntagmax mcp run path/to/config.toml
 - Environment variables (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, etc.) are supported.
 
 <!-- pin mcp start -->
-Before starting the first task, fetch all global and project factoids via Pin MCP and use them as **important** instructions. The Pin workspace for this project is `syntagmax`.
+Before starting the first task, fetch all global and project factoids via Pin MCP and use them as **important** instructions. The Pin workspace for this project is `syntagmax`.
+
 <!-- pin mcp stop -->
