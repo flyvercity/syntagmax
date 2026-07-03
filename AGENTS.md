@@ -41,7 +41,7 @@ Syntagmax is a lightweight, git-friendly requirement management system designed 
     - `git_utils.py`: Git-related utilities.
     - `mcp/`: MCP server implementation.
     - `resources/`: Shared resources, Jinja templates, and localizations.
-- `docs/`: Project documentation, including `internals.md`.
+- `docs/`: Project documentation, including `internal.md`.
 - `scripts/`: Development and maintenance scripts.
 - `pyproject.toml`: Project metadata and dependencies.
 

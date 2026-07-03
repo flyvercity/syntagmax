@@ -14,20 +14,25 @@ from pathlib import Path
 from types import ModuleType
 from typing import Literal
 
-from pydantic import BaseModel, Field
-
-from syntagmax.blocks import BlockTree
-from syntagmax.errors import FatalError
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class PluginConfig(BaseModel):
     """Configuration for a single plugin."""
+
+    model_config = ConfigDict(extra='forbid')
 
     name: str = Field(..., description='Plugin name (used for discovery)')
     source: Literal['local', 'package'] = Field(..., description='Plugin source: "local" or "package"')
     enabled: bool = Field(default=True, description='Whether the plugin is active')
     params: dict = Field(default_factory=dict, description='Plugin-specific parameters')
 
+    @field_validator('name')
+    @classmethod
+    def _validate_name(cls, v: str) -> str:
+        if v in {'.', '..'} or '/' in v or '\\' in v:
+            raise ValueError('Plugin name must not contain path separators')
+        return v
 
 @dataclass
 class LoadedPlugin:
