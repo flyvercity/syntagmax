@@ -83,8 +83,17 @@ class TestLoadLocalPlugin:
         plugins_dir = tmp_path / 'plugins'
         pkg_dir = plugins_dir / 'dir_plugin'
         pkg_dir.mkdir(parents=True)
+
+        helpers_file = pkg_dir / 'helpers.py'
+        helpers_file.write_text('VALUE = 1\n', encoding='utf-8')
+
         init_file = pkg_dir / '__init__.py'
-        init_file.write_text('def transform_blocks(tree, config, params):\n    return tree\n')
+        init_file.write_text(
+            'from .helpers import VALUE\n\n'
+            'def transform_blocks(tree, config, params):\n'
+            '    return tree\n',
+            encoding='utf-8',
+        )
 
         pc = PluginConfig(name='dir_plugin', source='local')
         module = load_plugin(pc, tmp_path)
