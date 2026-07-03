@@ -1,7 +1,7 @@
 """Plugin: strip-marker
 
 Demonstrates the transform_blocks hook.
-Removes all TextBlocks whose content contains [MARKER]...[/MARKER] tags
+Removes all [MARKER]...[/MARKER] tagged regions from TextBlock content
 where MARKER matches the configured 'marker' param.
 """
 
