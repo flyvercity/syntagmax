@@ -79,7 +79,7 @@ Options:
 - If missing, add it with the provided value (or `TBD` if no value is specified)
 - **If `--name` is omitted**: look up all mandatory attributes from the metamodel for the artifact's type and add any that are missing, using `TBD` as the value for each. This requires a metamodel to be loaded; if none is available, exit with an error.
 - For YAML attrs: inserts a new key in the `attrs:` block
-- For inline fields: appends `[name] value` line before the closing `[/MARKER]` tag
+- For inline fields: appends `[name] value` line before the closing `[/MARKER]` tag, ensuring a preceding newline and indentation matching the surrounding fields
 
 #### `del`
 - Removes the named attribute from all artifacts where it exists
@@ -87,9 +87,9 @@ Options:
 - For inline fields: removes the `[name] value` line entirely
 
 #### `replace`
-- If the attribute exists, update its value
-- If the attribute is missing, add it (upsert)
-- Equivalent to `del` + `add`, but in a single pass
+- If the attribute exists, update its value **in-place** (preserving its original position in the file)
+- If the attribute is missing, add it (append before closing tag for inline fields, insert key for YAML)
+- For inline fields: uses regex substitution to replace the value portion while keeping the field at its original location; only appends if the field was not found
 
 ### CSV Mapping
 
@@ -99,8 +99,9 @@ When `--csv` is provided, the value for each artifact is looked up from the CSV 
 2. Build a mapping: `csv[id_column]` → `csv[value_column]`
 3. For each artifact, look up its `aid` in the mapping
 4. If found, use the mapped value for the operation
-5. If not found, skip that artifact and log a `WARNING` with the artifact ID and file location
-6. In dry-run mode, list all unmatched artifact IDs in the summary
+5. If not found and `--value` is also provided, fall back to the literal `--value` for that artifact
+6. If not found and no `--value` fallback is available, skip that artifact and log a `WARNING` with the artifact ID and file location
+7. In dry-run mode, list all unmatched artifact IDs (and whether fallback was used) in the summary
 
 This allows bulk import of data from external tools (e.g., DOORS IDs, external status values).
 
@@ -112,7 +113,7 @@ File reads, segment identification, and block updates are **delegated to the Ext
 2. Instantiate the appropriate extractor for the input record's driver
 3. Call `extractor.update_artifact_attributes(loc_file, updates)` where each update is a `(artifact, attrs_delta, operation)` tuple
 4. The extractor implementation handles:
-   - **YAML attributes** (`--type attr`): Modify the `attrs` dict in-place on the parsed representation and re-serialize. Note: standard YAML re-emission via `benedict.to_yaml()` discards comments — warn users in `--dry-run` output if YAML blocks contain comments.
+   - **YAML attributes** (`--type attr`): Modify the `attrs` dict in-place on the parsed representation and re-serialize. Note: standard YAML re-emission via `benedict.to_yaml()` discards comments. Scan the raw YAML block segment text with a regex (`(?m)^\s*#`) to detect comment lines before parsing and issue a `WARNING` log in both dry-run and normal execution modes.
    - **Inline fields** (`--type field`): Use a multiline-safe regex that handles field continuation lines (matching the `FIELD_CONT*` grammar rule). The field name must be escaped with `re.escape()`:
      ```python
      pattern = re.compile(
@@ -150,6 +151,7 @@ If the metamodel defines the attribute with a constrained type (e.g., `enum`, `b
 - If `--csv` file doesn't exist or is malformed, exit with error
 - If `--name` is omitted for `del` or `replace`, exit with error
 - If `--name` is omitted for `add` and no metamodel is loaded, exit with error
+- If `--name` is omitted for `add` and `--value` is explicitly provided, exit with error (metamodel-driven add always uses `TBD`)
 - If `--value` is missing for `replace` without `--csv`, exit with error
 
 ## Example Usage
@@ -218,9 +220,9 @@ Summary: 3 artifacts would be modified, 1 skipped
       ```python
       pattern = re.compile(rf'(?mi)^\[{re.escape(name)}\][^\r\n]*(?:\r?\n(?!(?:\[|```yaml)).*)*')
       ```
-      For `add`: if pattern doesn't match, insert `[name] value` before `[/MARKER]`; for `del`: remove matches; for `replace`: remove + insert
+      For `add`: if pattern doesn't match, insert `[name] value` before `[/MARKER]` (ensuring a preceding newline and matching surrounding indentation); for `del`: remove matches; for `replace`: if pattern matches, substitute the value portion in-place preserving position; if not found, append before `[/MARKER]`
   - Detect file line endings (`\r\n` vs `\n`) and use matching separator for insertions
-  - Return the modified content as a string (do not write — caller handles I/O)
+  - Return the modified content as a string (do not write — caller handles I/O). Note: this differs from the existing `update_artifacts()` which writes directly to disk. The string-return pattern is intentional here to support atomic writes and dry-run without side effects. Document this choice in the code.
 - Other extractors: raise `NotImplementedError` (Obsidian-only for this version)
 
 **Test requirements:**
