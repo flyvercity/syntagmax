@@ -17,6 +17,7 @@ Users need to add, remove, or replace attributes (YAML `attrs` fields) and inlin
 - Supports `--dry-run` to preview changes without writing
 - Must preserve file structure: non-artifact text, headings, comments, and markers remain untouched
 - Must be idempotent: running the same command twice produces the same result
+- Only the Obsidian driver is supported in this version; other drivers exit with a clear error
 
 ## Background
 
@@ -63,6 +64,7 @@ Options:
 | `--csv` | No | — | Path to a CSV file for value lookup. Columns: `id` (artifact ID) and `value` (value to set). |
 | `--csv-id-column` | No | `id` | Column name in the CSV used to match artifacts |
 | `--csv-value-column` | No | `value` | Column name in the CSV used as the attribute value |
+| `-d, --csv-delimiter` | No | `,` | CSV column delimiter (e.g., `,`, `\t`, `;`) |
 | `--dry-run` | No | `false` | Preview changes without modifying files |
 | `-f, --config-file` | No | `.syntagmax/config.toml` | Path to the config file |
 
@@ -90,34 +92,60 @@ Options:
 
 When `--csv` is provided, the value for each artifact is looked up from the CSV file based on the artifact's ID:
 
-1. Load the CSV file with the specified delimiter (auto-detected or comma)
+1. Load the CSV file using the delimiter specified by `--csv-delimiter` (defaults to `,`)
 2. Build a mapping: `csv[id_column]` → `csv[value_column]`
 3. For each artifact, look up its `aid` in the mapping
 4. If found, use the mapped value for the operation
-5. If not found, skip that artifact (log a warning at DEBUG level)
+5. If not found, skip that artifact and log a `WARNING` with the artifact ID and file location
+6. In dry-run mode, list all unmatched artifact IDs in the summary
 
 This allows bulk import of data from external tools (e.g., DOORS IDs, external status values).
 
 ### File Modification Strategy
 
+File reads, segment identification, and block updates are **delegated to the Extractor interface** — the `edit_attrs` module does not manipulate file content directly. This preserves driver encapsulation and reuses existing segment-handling logic. Only the Obsidian (Markdown) extractor provides a concrete implementation in this version.
+
 1. Group artifacts by file (same approach as `renumber_artifacts`)
-2. For each file, read content and parse artifact segments
-3. For YAML-based attributes (`--type attr`):
-   - Access `MarkdownArtifact.yaml_data`
-   - Modify the `attrs` dict in-place
-   - Re-emit the YAML block via `.to_yaml()`
-   - Replace the segment in the file
-4. For inline fields (`--type field`):
-   - Use regex to find/remove `[name] value` lines within the artifact segment
-   - For `add`/`replace`: insert `[name] value` before the closing marker if adding
-5. Write the modified file content back
+2. Instantiate the appropriate extractor for the input record's driver
+3. Call `extractor.update_artifact_attributes(loc_file, updates)` where each update is a `(artifact, attrs_delta, operation)` tuple
+4. The extractor implementation handles:
+   - **YAML attributes** (`--type attr`): Modify the `attrs` dict in-place on the parsed representation and re-serialize. Note: standard YAML re-emission via `benedict.to_yaml()` discards comments — warn users in `--dry-run` output if YAML blocks contain comments.
+   - **Inline fields** (`--type field`): Use a multiline-safe regex that handles field continuation lines (matching the `FIELD_CONT*` grammar rule). The field name must be escaped with `re.escape()`:
+     ```python
+     pattern = re.compile(
+         rf'(?mi)^\[{re.escape(name)}\][^\r\n]*(?:\r?\n(?!(?:\[|```yaml)).*)*'
+     )
+     ```
+     This matches the `[name]` header line and all subsequent continuation lines up to the next field marker (`[`) or YAML block.
+   - **Line ending preservation**: Detect the file's line ending style (`\r\n` vs `\n`) before editing and use the matching separator when formatting new inline fields.
+5. All modifications are computed in memory first (see Atomic Write Strategy below)
+6. Write modified file content back only after all files have been validated
+
+### Atomic Write Strategy
+
+To prevent leaving the workspace in a partially modified state:
+
+1. **Validation pass**: Load config, extract artifacts, load CSV (if any), resolve all values. If any validation fails, abort before any file I/O.
+2. **Computation pass**: Compute all modifications in memory. Each file produces a `(path, new_content)` pair. No files are written during this phase.
+3. **Write pass**: Only after all modifications are computed successfully, write all files in sequence. If a write fails, log the error and report which files were and were not written.
+
+This ensures that parse errors, missing CSV mappings, or regex failures are caught before any file is touched.
+
+### Metamodel Validation
+
+If a metamodel is loaded and the target attribute name (`--name`) is not defined for the artifact type being modified:
+- Log a `WARNING` indicating the attribute is not in the metamodel
+- In `--dry-run` mode, include this in the summary
+- Do **not** block the operation (the user may intentionally add attributes ahead of metamodel updates)
+
+If the metamodel defines the attribute with a constrained type (e.g., `enum`, `boolean`), validate the provided value against the type and warn if it does not conform.
 
 ### Error Handling
 
 - If the specified `--section` does not exist in config, exit with error
+- If the section's driver is not `obsidian`, exit with error (only the Obsidian driver is supported in this version)
 - If `--csv` file doesn't exist or is malformed, exit with error
 - If `--value` is missing for `add`/`replace` without `--csv`, exit with error
-- If the extractor for the driver doesn't support attribute updates, log a warning and skip
 
 ## Example Usage
 
@@ -154,58 +182,81 @@ Summary: 3 artifacts would be modified, 1 skipped
 
 ## Task Breakdown
 
-### Task 1: Core manipulation logic
+### Task 1: Extend the Extractor interface with `update_artifact_attributes`
 
-**Objective:** Implement the attribute manipulation engine that operates on extracted artifacts.
+**Objective:** Add a generic attribute update method to the Extractor base class, with a concrete implementation in the Obsidian/Markdown extractor.
 
 **Implementation guidance:**
-- Create `src/syntagmax/edit_attrs.py` with the core logic
-- Define a function `manipulate_attributes(config: Config, section: str, operation: str, target_type: str, name: str, value: str | None, csv_mapping: dict[str, str] | None, dry_run: bool) -> None`
-- Filter artifacts by input record name (matching `--section`)
-- Group by file, sort updates in reverse line order (same pattern as `renumber_artifacts`)
-- For YAML attrs:
-  - `add`: if key not in `yaml_data['attrs']`, set it
-  - `del`: pop key from `yaml_data['attrs']` if present
-  - `replace`: always set the key to the new value
-  - Re-emit YAML and replace segment in file
-- For inline fields:
-  - `add`: if `[name]` line not found in segment, insert before `[/MARKER]`
-  - `del`: remove `[name] ...` line from segment via regex
-  - `replace`: remove existing `[name]` line if present, then insert new one
-- Print summary: N modified, M skipped
+- In `src/syntagmax/extractors/extractor.py`, add an abstract method:
+  ```python
+  def update_artifact_attributes(
+      self, loc_file: str,
+      updates: list[tuple[Artifact, dict[str, str | None], str]]
+  ) -> str:
+      """Apply attribute updates to artifacts in a file. Returns the modified file content.
+      Each update is (artifact, {attr_name: value_or_None}, operation).
+      operation is 'add', 'del', or 'replace'. value=None means deletion."""
+      raise NotImplementedError
+  ```
+- In `src/syntagmax/extractors/markdown.py`, implement the method:
+  - Read the file, split into lines
+  - Sort updates in reverse line order to avoid offset drift
+  - For each artifact segment:
+    - **YAML attrs**: modify `yaml_data['attrs']` dict, re-emit via `.to_yaml()`, replace the YAML block in the segment
+    - **Inline fields**: use a multiline-safe regex:
+      ```python
+      pattern = re.compile(rf'(?mi)^\[{re.escape(name)}\][^\r\n]*(?:\r?\n(?!(?:\[|```yaml)).*)*')
+      ```
+      For `add`: if pattern doesn't match, insert `[name] value` before `[/MARKER]`; for `del`: remove matches; for `replace`: remove + insert
+  - Detect file line endings (`\r\n` vs `\n`) and use matching separator for insertions
+  - Return the modified content as a string (do not write — caller handles I/O)
+- Other extractors: raise `NotImplementedError` (Obsidian-only for this version)
 
 **Test requirements:**
-- Test `add` operation on artifact without the attribute (YAML)
-- Test `add` operation skips artifact that already has the attribute
-- Test `del` operation removes existing attribute
-- Test `del` operation is no-op when attribute is absent
-- Test `replace` updates existing and adds missing
-- Test inline field operations (`[field] value` format)
-- Test dry-run produces no file changes
-- Test CSV mapping applies correct values per artifact
+- Test YAML attr add/del/replace produces correct modified content
+- Test inline field add/del/replace with multiline fields
+- Test line ending preservation (CRLF files stay CRLF)
+- Test that continuation lines of inline fields are fully removed on `del`
+- Test that YAML comment loss warning is logged
 
-**Demo:** `uv run pytest tests/test_edit_attrs.py` passes.
+**Demo:** `uv run pytest tests/test_edit_attrs.py` passes extractor-level tests.
 
 ---
 
-### Task 2: CSV loading utility
+### Task 2: Core orchestration logic and CSV loading
 
-**Objective:** Implement CSV file loading and mapping construction.
+**Objective:** Implement the orchestration layer that coordinates extraction, CSV mapping, metamodel validation, and delegates to the extractor.
 
 **Implementation guidance:**
-- In `src/syntagmax/edit_attrs.py`, add `load_csv_mapping(csv_path: Path, id_column: str, value_column: str) -> dict[str, str]`
-- Use Python's `csv.DictReader`
-- Validate that both columns exist in the header; raise `FatalError` if not
-- Return a dict mapping ID values to attribute values
-- Handle encoding (UTF-8 with BOM detection)
+- Create `src/syntagmax/edit_attrs.py` with:
+  - `load_csv_mapping(csv_path: Path, id_column: str, value_column: str, delimiter: str) -> dict[str, str]`
+    - Use `csv.DictReader` with explicit delimiter
+    - Validate columns exist; raise `FatalError` if not
+    - Handle UTF-8 with BOM detection
+    - Duplicate IDs: last value wins, log WARNING
+  - `manipulate_attributes(config: Config, section: str, operation: str, target_type: str, name: str, value: str | None, csv_mapping: dict[str, str] | None, dry_run: bool) -> None`
+    - Validate section exists and uses the `obsidian` driver
+    - Extract artifacts, filter by section
+    - If metamodel is loaded, check if `name` is defined for the artifact type; warn if not
+    - Resolve values (literal or CSV lookup per artifact); log WARNING for unmatched IDs
+    - **Atomic write strategy**:
+      1. Compute all modifications in memory via `extractor.update_artifact_attributes()`
+      2. Collect `(path, new_content)` pairs
+      3. In dry-run: print planned changes + summary (modified / skipped / unmatched)
+      4. Otherwise: write all files in final pass
+- Print summary: N modified, M skipped, K unmatched (if CSV)
 
 **Test requirements:**
-- Test loading a valid CSV produces correct mapping
-- Test missing column raises `FatalError`
-- Test empty CSV returns empty dict
-- Test duplicate IDs: last value wins (with a warning)
+- Test `add` skips artifacts that already have the attribute
+- Test `del` is no-op when attribute absent
+- Test `replace` upserts
+- Test CSV mapping applies correct per-artifact values
+- Test WARNING logged for unmatched CSV IDs
+- Test dry-run produces no file writes
+- Test non-obsidian driver section raises error
+- Test metamodel warning for undefined attribute
 
-**Demo:** `uv run pytest tests/test_edit_attrs.py` passes CSV loading tests.
+**Demo:** `uv run pytest tests/test_edit_attrs.py` passes.
 
 ---
 
@@ -214,44 +265,34 @@ Summary: 3 artifacts would be modified, 1 skipped
 **Objective:** Add the `edit attrs` subcommand to the CLI.
 
 **Implementation guidance:**
-- In `cli.py`, add a new command under the `edit` group: `@edit.command('attrs')`
-- Options: `-o/--operation` (choice: add/del/replace, default: add), `-t/--type` (choice: attr/field, default: attr), `-n/--name` (required), `-l/--value`, `-s/--section` (required), `--csv`, `--csv-id-column` (default: id), `--csv-value-column` (default: value), `--dry-run`, `-f/--config-file`
-- Validate: if operation is `add` or `replace` and neither `--value` nor `--csv` is provided, error
+- In `cli.py`, add `@edit.command('attrs')` with options:
+  - `-o, --operation` (choice: add/del/replace, default: add)
+  - `-t, --type` (choice: attr/field, default: attr)
+  - `-n, --name` (required)
+  - `-l, --value` (optional)
+  - `-s, --section` (required)
+  - `--csv` (optional path)
+  - `--csv-id-column` (default: `id`)
+  - `--csv-value-column` (default: `value`)
+  - `-d, --csv-delimiter` (default: `,`)
+  - `--dry-run` (flag)
+  - `-f, --config-file` (default: `.syntagmax/config.toml`)
+- Validation: if operation is `add` or `replace` and neither `--value` nor `--csv` is provided, exit with error
 - Load config, optionally load CSV mapping, call `manipulate_attributes()`
 
 **Test requirements:**
 - Integration test: end-to-end with a temp project, verify attribute added to file
 - Test error when `--section` doesn't exist
+- Test error when section uses non-obsidian driver
 - Test error when `--value` missing for `add` without `--csv`
 - Test `--dry-run` produces output but no file changes
+- Test `--csv-delimiter` is passed through correctly
 
 **Demo:** `uv run syntagmax edit attrs -s requirements -n status -l draft --dry-run` works on the example project.
 
 ---
 
-### Task 4: Inline field manipulation support
-
-**Objective:** Extend the manipulation engine to handle `[FIELD] value` format (non-YAML attributes).
-
-**Implementation guidance:**
-- Add regex-based manipulation for inline fields within artifact segments
-- Pattern to match: `^\[{name}\]\s*.*$` (case-insensitive)
-- For `add`: check if pattern exists; if not, insert `[{name}] {value}` before `[/{marker}]`
-- For `del`: remove matching lines
-- For `replace`: remove matching lines, then insert new line
-- Handle the case where the artifact uses both YAML and inline fields (operate on the specified type only)
-
-**Test requirements:**
-- Test add/del/replace on inline `[field] value` format
-- Test that YAML block is not affected when `--type field` is used
-- Test that inline fields are not affected when `--type attr` is used
-- Test artifact with no closing marker (error handling)
-
-**Demo:** `uv run pytest tests/test_edit_attrs.py` passes inline field tests.
-
----
-
-### Task 5: Documentation and example
+### Task 4: Documentation and example
 
 **Objective:** Update README.md with the new `edit attrs` command documentation.
 
@@ -259,6 +300,7 @@ Summary: 3 artifacts would be modified, 1 skipped
 - Add `edit attrs` to the "Editing and Renumbering" section of README.md (or create a broader "Editing" section)
 - Document all options with examples
 - Include a CSV mapping example
+- Note Obsidian-only limitation for this version
 - Add a quick demo command in the appropriate section
 
 **Test requirements:**
@@ -271,5 +313,7 @@ Summary: 3 artifacts would be modified, 1 skipped
 - **Idempotency**: Running the same `add` command twice must not duplicate the attribute.
 - **Input Immutability (dry-run)**: With `--dry-run`, no files are modified.
 - **Determinism**: Same inputs produce identical file modifications regardless of execution order.
+- **Atomicity**: All file writes happen after all computations succeed; partial writes are avoided.
 - **Performance**: File I/O is grouped per file (single read + single write per file, not per artifact).
 - **Backward Compatibility**: Existing `edit renumber` command is unaffected.
+- **Driver Scope**: Only the Obsidian driver is supported in this version. Other drivers will raise a clear error message.
