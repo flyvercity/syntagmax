@@ -284,6 +284,14 @@ def trace(
         for err in errors:
             u.pprint(f'[yellow]Warning: {err}[/yellow]')
 
+    # Validate child and parent types against metamodel if available
+    if config.metamodel and 'artifacts' in config.metamodel:
+        valid_types = config.metamodel['artifacts'].keys()
+        if child not in valid_types:
+            u.pprint(f'[yellow]Warning: Child artifact type "{child}" is not defined in the metamodel.[/yellow]')
+        if parent not in valid_types:
+            u.pprint(f'[yellow]Warning: Parent artifact type "{parent}" is not defined in the metamodel.[/yellow]')
+
     # Determine direction
     direction = 'forward' if forward else 'reverse'
 

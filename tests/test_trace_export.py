@@ -323,3 +323,45 @@ class TestRunTraceExport:
 
         with pytest.raises(FatalError, match='export_trace raised an exception'):
             run_trace_export(plugin, matrix, mock_config)
+
+
+# --- CLI Validation tests ---
+
+
+class TestTraceCliValidation:
+    def test_trace_warning_on_invalid_types(self, tmp_path):
+        from click.testing import CliRunner
+        from syntagmax.cli import rms
+
+        # Create default .syntagmax directory
+        dot_syntagmax = tmp_path / '.syntagmax'
+        dot_syntagmax.mkdir()
+
+        # Write config.toml
+        cfg = dot_syntagmax / 'config.toml'
+        cfg_content = (
+            'base = ".."\n'
+            '[[input]]\n'
+            'name="rec1"\n'
+            'dir="SYS"\n'
+            'driver="text"\n'
+            'atype="SYS"\n'
+            '[metamodel]\n'
+            'filename="project.syntagmax"\n'
+        )
+        cfg.write_text(cfg_content, encoding='utf-8')
+
+        # Write project.syntagmax metamodel
+        meta = dot_syntagmax / 'project.syntagmax'
+        meta.write_text('artifact SYS:\n    id is string\n    attribute contents is mandatory string\n', encoding='utf-8')
+
+        # Create input dir
+        sys_dir = tmp_path / 'SYS'
+        sys_dir.mkdir()
+
+        runner = CliRunner()
+        result = runner.invoke(rms, ['--cwd', str(tmp_path), 'trace', '--child', 'INVALID_CHILD', '--parent', 'INVALID_PARENT', '--output', 'console'])
+        assert result.exit_code == 0
+        assert 'Warning: Child artifact type "INVALID_CHILD" is not defined in the metamodel.' in result.output
+        assert 'Warning: Parent artifact type "INVALID_PARENT" is not defined in the metamodel.' in result.output
+
