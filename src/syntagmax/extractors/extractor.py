@@ -61,3 +61,23 @@ class Extractor:
         # Default implementation for bulk updates
         for artifact, new_id in updates:
             self.update_artifact(artifact, {'id': new_id})
+
+    def update_artifact_attributes(
+        self,
+        loc_file: str,
+        updates: list[tuple['Artifact', dict[str, 'str | None'], str]],
+        target_type: str = 'attr',
+    ) -> str:
+        """Apply attribute updates to artifacts in a file. Returns the modified file content.
+
+        Unlike update_artifacts() which writes directly to disk, this method returns
+        the modified content as a string to support atomic writes and dry-run without
+        side effects.
+
+        Each update is (artifact, {attr_name: value_or_None}, operation).
+        operation is 'add', 'del', or 'replace'. value=None means deletion.
+        target_type is 'attr' (YAML) or 'field' (inline [FIELD] markers).
+        """
+        raise NotImplementedError(
+            f'Driver "{self._record.driver}" does not support attribute manipulation'
+        )

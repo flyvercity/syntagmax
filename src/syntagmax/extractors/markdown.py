@@ -184,6 +184,192 @@ class MarkdownExtractor(Extractor):
         if 'id' in fields:
             self.update_artifacts(artifact.location.loc_file, [(artifact, fields['id'])])
 
+    def update_artifact_attributes(
+        self,
+        loc_file: str,
+        updates: list[tuple[Artifact, dict[str, str | None], str]],
+        target_type: str = 'attr',
+    ) -> str:
+        """Apply attribute updates to artifacts in a file. Returns modified content as string.
+
+        Each update is (artifact, {attr_name: value_or_None}, operation).
+        operation: 'add', 'del', 'replace'. value=None means deletion.
+        target_type: 'attr' (YAML attrs block) or 'field' (inline [FIELD] markers).
+        """
+        from syntagmax.artifact import LineLocation
+
+        filepath = self._config.base_dir() / loc_file
+        text = filepath.read_text(encoding='utf-8')
+
+        # Detect line endings
+        if '\r\n' in text:
+            newline = '\r\n'
+        else:
+            newline = '\n'
+
+        lines = text.splitlines(keepends=True)
+        marker = self._record.marker
+
+        # Sort updates in reverse line order to avoid offset drift
+        updates.sort(key=lambda u: u[0].location.loc_lines[0], reverse=True)  # type: ignore
+
+        for artifact, attrs_delta, operation in updates:
+            if not isinstance(artifact.location, LineLocation):
+                continue
+
+            start_line, end_line = artifact.location.loc_lines
+            segment_lines = lines[start_line - 1: end_line]
+            segment = ''.join(segment_lines)
+
+            if target_type == 'attr':
+                segment = self._update_yaml_attrs(artifact, segment, attrs_delta, operation, marker, newline)
+            elif target_type == 'field':
+                segment = self._update_inline_fields(segment, attrs_delta, operation, marker, newline)
+
+            lines[start_line - 1: end_line] = [segment]
+
+        return ''.join(lines)
+
+    def _update_yaml_attrs(
+        self,
+        artifact: Artifact,
+        segment: str,
+        attrs_delta: dict[str, str | None],
+        operation: str,
+        marker: str,
+        newline: str,
+    ) -> str:
+        """Update YAML attrs block within an artifact segment."""
+        # Check for comments in raw YAML block and warn
+        yaml_start = segment.find('```yaml')
+        yaml_end = -1
+        if yaml_start != -1:
+            yaml_end = segment.find('```', yaml_start + 7)
+            if yaml_end != -1:
+                raw_yaml = segment[yaml_start + 7: yaml_end]
+                if re.search(r'(?m)^\s*#', raw_yaml):
+                    lg.warning(
+                        f'YAML block in {artifact.aid} contains comments that will be lost during re-emission'
+                    )
+
+        # Get or create yaml_data
+        if isinstance(artifact, MarkdownArtifact) and artifact.yaml_data is not None:
+            yaml_data = artifact.yaml_data
+        else:
+            # Try to parse existing YAML block
+            if yaml_start != -1 and yaml_end != -1:
+                raw_yaml = segment[yaml_start + 7: yaml_end]
+                yaml_data = benedict.from_yaml(raw_yaml)
+            else:
+                yaml_data = benedict({'attrs': {}})
+
+        if yaml_data.get('attrs') is None:
+            yaml_data['attrs'] = {}
+
+        for attr_name, attr_value in attrs_delta.items():
+            if operation == 'add':
+                # Only add if not already present
+                current_attrs = yaml_data.get('attrs', {})
+                if attr_name not in current_attrs:
+                    yaml_data[f'attrs.{attr_name}'] = attr_value
+            elif operation == 'del':
+                current_attrs = yaml_data.get('attrs', {})
+                if attr_name in current_attrs:
+                    del current_attrs[attr_name]
+                    yaml_data['attrs'] = current_attrs
+            elif operation == 'replace':
+                if attr_value is not None:
+                    yaml_data[f'attrs.{attr_name}'] = attr_value
+                else:
+                    current_attrs = yaml_data.get('attrs', {})
+                    current_attrs.pop(attr_name, None)
+                    yaml_data['attrs'] = current_attrs
+
+        # Re-emit YAML
+        new_yaml_content = yaml_data.to_yaml()
+        new_yaml_block = f'```yaml{newline}{new_yaml_content.strip()}{newline}```'
+
+        if yaml_start != -1 and yaml_end != -1:
+            segment = segment[:yaml_start] + new_yaml_block + segment[yaml_end + 3:]
+        else:
+            # No YAML block exists - add one before [/MARKER] or at end
+            slash_pos = segment.rfind(f'[/{marker}]')
+            if slash_pos != -1:
+                segment = segment[:slash_pos] + newline + new_yaml_block + newline + segment[slash_pos:]
+            else:
+                segment = segment.rstrip() + newline + newline + new_yaml_block + newline
+
+        return segment
+
+    def _update_inline_fields(
+        self,
+        segment: str,
+        attrs_delta: dict[str, str | None],
+        operation: str,
+        marker: str,
+        newline: str,
+    ) -> str:
+        """Update inline [FIELD] markers within an artifact segment."""
+        for attr_name, attr_value in attrs_delta.items():
+            # Multiline-safe regex: matches [name] line and any continuation lines
+            escaped_name = re.escape(attr_name)
+            pattern = re.compile(
+                rf'(?mi)^\[{escaped_name}\][^\r\n]*(?:\r?\n(?!(?:\[|```yaml)).*)*'
+            )
+
+            match = pattern.search(segment)
+
+            if operation == 'add':
+                if not match:
+                    # Append before closing marker
+                    segment = self._insert_inline_field(segment, attr_name, attr_value or '', marker, newline)
+            elif operation == 'del':
+                if match:
+                    # Remove the matched field (and trailing newline if present)
+                    start, end = match.start(), match.end()
+                    # Also consume trailing newline
+                    if end < len(segment) and segment[end] == '\n':
+                        end += 1
+                    elif end + 1 < len(segment) and segment[end: end + 2] == '\r\n':
+                        end += 2
+                    segment = segment[:start] + segment[end:]
+            elif operation == 'replace':
+                if match:
+                    # In-place replacement: keep position, replace value
+                    new_field = f'[{attr_name}] {attr_value or ""}'
+                    segment = segment[:match.start()] + new_field + segment[match.end():]
+                else:
+                    # Field not found - append
+                    segment = self._insert_inline_field(segment, attr_name, attr_value or '', marker, newline)
+
+        return segment
+
+    def _insert_inline_field(
+        self, segment: str, name: str, value: str, marker: str, newline: str
+    ) -> str:
+        """Insert an inline field before [/MARKER] or before the YAML block."""
+        new_field_line = f'[{name}] {value}'
+
+        # Try to insert before [/MARKER]
+        slash_pos = segment.rfind(f'[/{marker}]')
+        if slash_pos != -1:
+            # Ensure preceding newline
+            insert_pos = slash_pos
+            if insert_pos > 0 and segment[insert_pos - 1] != '\n':
+                new_field_line = newline + new_field_line
+            return segment[:insert_pos] + new_field_line + newline + segment[insert_pos:]
+
+        # Try to insert before ```yaml
+        yaml_pos = segment.find('```yaml')
+        if yaml_pos != -1:
+            insert_pos = yaml_pos
+            if insert_pos > 0 and segment[insert_pos - 1] != '\n':
+                new_field_line = newline + new_field_line
+            return segment[:insert_pos] + new_field_line + newline + segment[insert_pos:]
+
+        # Fallback: append at end
+        return segment.rstrip() + newline + new_field_line + newline
+
     def _extract_from_markdown(self, filepath: Path, markdown: str, location_builder: Callable[[int, int], Location]) -> ExtractorResult:
         blocks = self._extract_blocks_from_markdown(filepath, markdown, location_builder)
         artifacts = [b.artifact for b in blocks if isinstance(b, ArtifactBlock)]

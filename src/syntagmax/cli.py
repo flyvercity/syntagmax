@@ -21,6 +21,7 @@ from syntagmax.main import process, public_steps
 from syntagmax.mcp.server import run_mcp_server
 from syntagmax.init_cmd import init_project
 from syntagmax.edit import renumber_artifacts
+from syntagmax.edit_attrs import manipulate_attributes, load_csv_mapping
 
 
 @click.group(help='RMS Entry Point')
@@ -353,6 +354,72 @@ def renumber(obj: Params, config_path: Path, renumber_all: bool, atype: str | No
 
     configurator = Config(obj, Path(config_path))
     renumber_artifacts(configurator, atype, schema, dry_run)
+
+
+@edit.command('attrs', help='Add, remove, or replace attributes on artifacts in bulk')
+@click.pass_obj
+@click.option(
+    '-f', '--config-file',
+    type=click.Path(exists=True),
+    default='.syntagmax/config.toml',
+    help='Path to config file',
+)
+@click.option('-o', '--operation', type=click.Choice(['add', 'del', 'replace']), default='add', help='Operation to perform')
+@click.option('-t', '--type', 'target_type', type=click.Choice(['attr', 'field']), default='attr', help='Target type: attr (YAML) or field (inline)')
+@click.option('-n', '--name', default=None, help='Attribute name (omit for add to use metamodel mandatory attrs)')
+@click.option('-l', '--value', default=None, help='Attribute value (defaults to TBD for add)')
+@click.option('-s', '--section', required=True, help='Input record name')
+@click.option('--csv', 'csv_path', type=click.Path(exists=True), default=None, help='CSV file for value lookup')
+@click.option('--csv-id-column', default='id', help='CSV column for artifact ID matching')
+@click.option('--csv-value-column', default='value', help='CSV column for attribute value')
+@click.option('-d', '--csv-delimiter', default=',', help='CSV column delimiter')
+@click.option('--dry-run', is_flag=True, help='Preview changes without modifying files')
+def attrs(
+    obj: Params,
+    config_file: Path,
+    operation: str,
+    target_type: str,
+    name: str | None,
+    value: str | None,
+    section: str,
+    csv_path: str | None,
+    csv_id_column: str,
+    csv_value_column: str,
+    csv_delimiter: str,
+    dry_run: bool,
+):
+    # Validation
+    if operation in ('del', 'replace') and name is None:
+        u.pprint('[red]--name is required for del and replace operations.[/red]')
+        return
+
+    if operation == 'add' and name is None and value is not None:
+        u.pprint('[red]Cannot specify --value without --name for metamodel-driven add.[/red]')
+        return
+
+    if operation == 'replace' and value is None and csv_path is None:
+        u.pprint('[red]--value or --csv is required for replace operation.[/red]')
+        return
+
+    configurator = Config(obj, Path(config_file))
+
+    # Load CSV mapping if provided
+    csv_mapping = None
+    if csv_path:
+        csv_mapping = load_csv_mapping(
+            Path(csv_path), csv_id_column, csv_value_column, csv_delimiter
+        )
+
+    manipulate_attributes(
+        config=configurator,
+        section=section,
+        operation=operation,
+        target_type=target_type,
+        name=name,
+        value=value,
+        csv_mapping=csv_mapping,
+        dry_run=dry_run,
+    )
 
 
 @rms.group(help='MCP Server Management')
