@@ -18,6 +18,12 @@ Run example publishing with:
 uv run syntagmax --cwd ./example/obsidian-driver publish .syntagmax/reports/output.md
 ```
 
+Run example tracing export with:
+
+```bash
+uv run syntagmax --cwd ./example/obsidian-driver trace --child REQ --parent SYS
+```
+
 ## Getting Started
 
 To initialize a new Syntagmax project in the current directory:
@@ -438,6 +444,60 @@ uv run syntagmax publish --all --docx --pdf --output ./reports/
 - DOCX/PDF files are placed alongside the Markdown with the same base name (e.g., `rec1.md` → `rec1.docx`).
 - If Pandoc is not found or conversion fails, a warning is logged with the exit status, the Markdown file is preserved, and the command exits successfully.
 
+## Tracing Export
+
+Syntagmax can export artifact traceability relationships as CSV or TSV matrices. The export uses left outer join semantics — every lead artifact appears even if it has no links to the target type.
+
+```bash
+uv run syntagmax trace [OPTIONS]
+```
+
+### Options
+
+| Option | Required | Default | Description |
+|--------|----------|---------|-------------|
+| `--child <type>` | Yes | — | Artifact type of the child (e.g., `REQ`) |
+| `--parent <type>` | Yes | — | Artifact type of the parent (e.g., `SYS`) |
+| `--forward` / `--reverse` | No | `--forward` | Direction: forward (child→parent) or reverse (parent→child) |
+| `--attribute <name>` | No | — | Additional lead artifact attributes to include (repeatable) |
+| `--flat` | No | — | Combine multiple linked IDs into semicolon-separated values |
+| `--delimiter <char>` | No | `,` | Column delimiter (auto-detects `\t` for `.tsv` output) |
+| `--plugin <name>` | No | — | Delegate export to a named plugin |
+| `--output <path>` | No | `.syntagmax/reports/trace.csv` | Output path (use `console` for stdout) |
+| `-f, --config-file` | No | `.syntagmax/config.toml` | Path to config file |
+
+### Forward vs Reverse
+
+- **Forward** (default): Lead artifacts are children. Each row shows a child ID and its linked parent ID(s).
+- **Reverse**: Lead artifacts are parents. Each row shows a parent ID and its linked child ID(s).
+
+### Left Outer Join
+
+All lead artifacts appear in the output even if they have no links to the target type. Unlinked artifacts have an empty linked ID column, making it easy to spot coverage gaps.
+
+### Flat Mode
+
+Without `--flat`, a child with multiple parents produces one row per link. With `--flat`, all linked IDs are combined into a single semicolon-separated cell.
+
+### Examples
+
+```bash
+# Forward matrix (REQ → SYS) as CSV
+uv run syntagmax trace --child REQ --parent SYS
+
+# Reverse matrix with attributes
+uv run syntagmax trace --child REQ --parent SYS --reverse --attribute title
+
+# Flat mode, TSV output
+uv run syntagmax trace --child REQ --parent SYS --flat --output .syntagmax/reports/trace.tsv
+
+# Export to stdout
+uv run syntagmax trace --child REQ --parent SYS --output console
+
+# Use a plugin for export
+uv run syntagmax trace --child REQ --parent SYS --plugin tsv-export
+```
+
 ## Plugins
 
 Syntagmax supports a plugin system that allows custom transformations during the publish pipeline. Plugins are distributed separately from the core project — either as local Python files or as installable packages.
@@ -473,7 +533,7 @@ company = "Acme Corp"
 
 ### Plugin Hooks
 
-A plugin is a Python module exposing one or both of:
+A plugin is a Python module exposing one or more of:
 
 ```python
 from syntagmax.blocks import BlockTree
@@ -488,7 +548,19 @@ def transform_markdown(markdown: str, config: Config, params: dict) -> str:
     ...
 ```
 
-Hooks are called in config order. Each hook must return the correct type (`BlockTree` or `str`); returning `None` or a wrong type halts the pipeline with an error.
+For tracing export, a plugin can implement:
+
+```python
+from syntagmax.trace import TraceMatrix
+from syntagmax.config import Config
+
+def export_trace(matrix: TraceMatrix, config: Config, params: dict) -> None:
+    """Called instead of the built-in CSV writer when --plugin is specified.
+    The plugin is responsible for writing output (file, stdout, etc.)."""
+    ...
+```
+
+Hooks are called in config order. Each hook must return the correct type (`BlockTree` or `str`); returning `None` or a wrong type halts the pipeline with an error. The `export_trace` hook returns `None` (the plugin handles output directly).
 
 ### Local Plugins
 
@@ -527,6 +599,12 @@ See `example/plugin-demo/` for a working example with two local plugins demonstr
 
 ```bash
 uv run syntagmax --cwd ./example/plugin-demo publish .syntagmax/reports/output.md
+```
+
+See `example/trace-tsv-plugin/` for a working example of the `export_trace` hook that exports as TSV.
+
+```bash
+uv run syntagmax --cwd ./example/trace-tsv-plugin trace --child REQ --parent SYS --plugin tsv-export
 ```
 
 ## Required Improvements
