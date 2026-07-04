@@ -291,6 +291,10 @@ Execution:
 **Objective:** Update README.md and docs/technical-summary.md with the new `trace` command and plugin hook.
 
 **Implementation guidance:**
+- In `README.md` "Quick Demo" section, add a tracing example alongside the existing analysis and publish examples:
+  ```bash
+  uv run syntagmax --cwd ./example/obsidian-driver trace --child REQ --parent SYS
+  ```
 - In `README.md`, add a "Tracing Export" section after "Publishing" covering:
   - Command syntax and all options
   - Forward vs reverse explanation
@@ -305,4 +309,4 @@ Execution:
 **Test requirements:**
 - No code tests, but verify docs are consistent with implementation
 
-**Demo:** README has clear usage examples for the `trace` command.
+**Demo:** README has clear usage examples for the `trace` command, including the Quick Demo entry.
