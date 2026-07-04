@@ -215,6 +215,63 @@ def run_block_transforms(plugins: list[LoadedPlugin], tree: BlockTree, config) -
     return tree
 
 
+def find_plugin_by_name(plugins: list[LoadedPlugin], name: str) -> LoadedPlugin:
+    """Find a loaded plugin by name.
+
+    Args:
+        plugins: List of loaded (enabled) plugins.
+        name: The plugin name to find.
+
+    Returns:
+        The matching LoadedPlugin.
+
+    Raises:
+        FatalError: If the plugin is not found among enabled plugins.
+    """
+    for plugin in plugins:
+        if plugin.name == name:
+            return plugin
+
+    available = [p.name for p in plugins]
+    if available:
+        raise FatalError(
+            f'Plugin "{name}" not found among enabled plugins. '
+            f'Available: {", ".join(available)}. '
+            f'Check that the plugin is configured in config.toml and enabled.'
+        )
+    else:
+        raise FatalError(
+            f'Plugin "{name}" not found. No plugins are configured or enabled in config.toml.'
+        )
+
+
+def run_trace_export(plugin: LoadedPlugin, matrix, config) -> None:
+    """Run the export_trace hook on a specific plugin.
+
+    Args:
+        plugin: The loaded plugin to invoke.
+        matrix: The TraceMatrix object to export.
+        config: The Syntagmax Config object.
+
+    Raises:
+        FatalError: If the plugin does not have an export_trace hook or if it raises.
+    """
+    if not hasattr(plugin.module, 'export_trace'):
+        raise FatalError(
+            f'Plugin "{plugin.name}" does not implement the export_trace hook'
+        )
+
+    lg.info(f'Running export_trace for plugin "{plugin.name}"')
+
+    try:
+        plugin.module.export_trace(matrix, config, plugin.params)
+    except FatalError:
+        raise
+    except Exception as e:
+        lg.debug(f'Plugin "{plugin.name}" export_trace error:\n{traceback.format_exc()}')
+        raise FatalError(f'Plugin "{plugin.name}": export_trace raised an exception: {e}')
+
+
 def run_markdown_transforms(plugins: list[LoadedPlugin], markdown: str, config) -> str:
     """Run transform_markdown hooks on all plugins in order.
 

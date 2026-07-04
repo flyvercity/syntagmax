@@ -246,6 +246,90 @@ def publish(obj: Params, records: tuple[str, ...], publish_all: bool, single: bo
                 _run_pandoc_conversion(file_path, docx, pdf)
 
 
+@rms.command(help='Export traceability matrix as CSV/TSV')
+@click.pass_obj
+@click.option('--child', required=True, help='Artifact type of the child (e.g., REQ)')
+@click.option('--parent', required=True, help='Artifact type of the parent (e.g., SYS)')
+@click.option('--forward/--reverse', default=True, help='Direction: forward (child→parent) or reverse (parent→child)')
+@click.option('--attribute', multiple=True, help='Additional lead artifact attributes to include as columns')
+@click.option('--flat', is_flag=True, help='Combine multiple linked IDs into semicolon-separated values')
+@click.option('--delimiter', default=None, help='Column delimiter (default: "," or "\\t" for .tsv files)')
+@click.option('--plugin', 'plugin_name', default=None, help='Use a named plugin for export instead of CSV')
+@click.option('--output', default='.syntagmax/reports/trace.csv', help='Output file path (use "console" for stdout)')
+@click.option('-f', '--config-file', type=click.Path(), default='.syntagmax/config.toml')
+def trace(
+    obj: Params, child: str, parent: str, forward: bool, attribute: tuple[str, ...],
+    flat: bool, delimiter: str | None, plugin_name: str | None, output: str, config_file: Path,
+):
+    from syntagmax.extract import extract, build_artifact_map
+    from syntagmax.tree import populate_pids, build_tree
+    from syntagmax.trace import build_trace_matrix, render_trace_csv
+    from syntagmax.plugin import find_plugin_by_name, run_trace_export
+
+    cfg_path = Path(config_file)
+    if not cfg_path.exists():
+        u.pprint(f'[red]Error: Configuration file "{cfg_path}" does not exist.[/red]')
+        sys.exit(1)
+
+    config = Config(obj, cfg_path)
+    errors: list[str] = []
+
+    # Run pipeline manually to retain access to ArtifactMap
+    artifacts_list = extract(config, errors)
+    artifacts = build_artifact_map(artifacts_list, errors)
+    populate_pids(config, artifacts, errors)
+    build_tree(config, artifacts, errors)
+
+    if errors:
+        for err in errors:
+            u.pprint(f'[yellow]Warning: {err}[/yellow]')
+
+    # Validate child and parent types against metamodel if available
+    if config.metamodel and 'artifacts' in config.metamodel:
+        valid_types = config.metamodel['artifacts'].keys()
+        if child not in valid_types:
+            u.pprint(f'[yellow]Warning: Child artifact type "{child}" is not defined in the metamodel.[/yellow]')
+        if parent not in valid_types:
+            u.pprint(f'[yellow]Warning: Parent artifact type "{parent}" is not defined in the metamodel.[/yellow]')
+
+    # Determine direction
+    direction = 'forward' if forward else 'reverse'
+
+    # Build the trace matrix
+    matrix = build_trace_matrix(
+        artifacts=artifacts,
+        child_type=child,
+        parent_type=parent,
+        direction=direction,
+        attributes=list(attribute),
+        flat=flat,
+    )
+
+    if plugin_name:
+        # Delegate to plugin
+        plugin = find_plugin_by_name(config.plugins(), plugin_name)
+        run_trace_export(plugin, matrix, config)
+        u.pprint(f'[green]Trace export completed via plugin "{plugin_name}"[/green]')
+    else:
+        # Determine delimiter
+        if delimiter is not None:
+            sep = delimiter.replace('\\t', '\t')
+        elif output.endswith('.tsv'):
+            sep = '\t'
+        else:
+            sep = ','
+
+        csv_output = render_trace_csv(matrix, delimiter=sep)
+
+        if output == 'console':
+            print(csv_output, end='')
+        else:
+            output_path = Path(output)
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            output_path.write_text(csv_output, encoding='utf-8')
+            u.pprint(f'[green]Trace matrix written to {output_path} ({len(matrix.records)} records)[/green]')
+
+
 @rms.group(help='Project Editing Commands')
 def edit():
     pass

@@ -28,6 +28,7 @@ The system uses a custom Domain-Specific Language (DSL) to define the project's 
 - **Revision Pinning:** Explicitly link an artifact to a specific revision of its parent (e.g., `parent: REQ-001@c2d94e4`).
 - **Impact Detection:** Automatically identifies "suspicious" links when a parent is updated without a corresponding update in the child artifact.
 - **Analysis Modes:** Supports both `via commit` (precise) and `via timestamp` (heuristic) impact analysis.
+- **Traceability Matrix Export:** Generates forward (child→parent) and reverse (parent→child) traceability matrices as CSV/TSV. Uses left outer join semantics to ensure every lead artifact appears, highlighting coverage gaps. Supports plugin-based export for custom formats.
 
 ## 5. AI Integration & MCP Server
 - **Model Context Protocol (MCP):** Exposes requirements to AI agents and LLMs via a standard protocol, enabling automated analysis and reasoning.

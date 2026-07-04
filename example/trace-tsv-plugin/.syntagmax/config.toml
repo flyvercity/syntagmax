@@ -1,0 +1,23 @@
+base = ".."
+
+[[input]]
+name = "system-requirements"
+dir = "SYS"
+driver = "obsidian"
+atype = "SYS"
+
+[[input]]
+name = "software-requirements"
+dir = "REQ"
+driver = "obsidian"
+atype = "REQ"
+
+[metamodel]
+filename = "project.syntagmax"
+
+[[plugin]]
+name = "tsv-export"
+source = "local"
+
+[plugin.params]
+output = ".syntagmax/reports/trace.tsv"
