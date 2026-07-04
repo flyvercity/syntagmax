@@ -397,6 +397,57 @@ The ID schema can include the following macros:
 
 Example schema: `myproject-{atype}-{num:4}`
 
+### Bulk Attribute Manipulation
+
+The `edit attrs` command adds, removes, or replaces attributes across all artifacts in an input section. Only the Obsidian driver is supported.
+
+```bash
+uv run syntagmax edit attrs [OPTIONS]
+```
+
+#### Options:
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `-o, --operation` | `add` | Operation: `add`, `del`, or `replace` |
+| `-t, --type` | `attr` | Target: `attr` (YAML) or `field` (inline `[FIELD]`) |
+| `-n, --name` | — | Attribute name. Omit for `add` to add all mandatory metamodel attributes. |
+| `-l, --value` | `TBD` | Attribute value. Defaults to `TBD` for `add`. |
+| `-s, --section` | — | Input record name (required) |
+| `--csv` | — | CSV file for per-artifact value lookup |
+| `--csv-id-column` | `id` | CSV column for artifact ID matching |
+| `--csv-value-column` | `value` | CSV column for attribute value |
+| `-d, --csv-delimiter` | `,` | CSV column delimiter |
+| `--dry-run` | — | Preview changes without modifying files |
+
+#### Examples:
+
+```bash
+# Add all missing mandatory attributes (from metamodel) with TBD
+uv run syntagmax --cwd ./example/obsidian-driver edit attrs -s software-requirements --dry-run
+
+# Add 'owner' attribute with TBD to all SYS requirements
+uv run syntagmax --cwd ./example/obsidian-driver edit attrs -s system-requirements -n owner
+
+# Replace 'status' to 'active' across all REQ artifacts
+uv run syntagmax edit attrs -s requirements -o replace -n status -l active
+
+# Remove 'verified' from all artifacts in a section
+uv run syntagmax edit attrs -s system-requirements -o del -n verified
+
+# Import values from a CSV file (with --value as fallback for unmatched IDs)
+uv run syntagmax edit attrs -s requirements -o replace -n doors_id --csv mapping.csv --csv-id-column ext_id --csv-value-column doors_id -l UNKNOWN
+```
+
+#### Behavior Notes:
+
+- **add**: Skips artifacts that already have the attribute. Uses `TBD` if no value given.
+- **del**: Removes the attribute wherever it exists; no-op otherwise.
+- **replace**: Updates existing values in-place (preserving field position); appends if missing.
+- **Metamodel-driven add**: Omit `--name` to add all mandatory attributes defined in the metamodel.
+- **CSV mapping**: `--csv` takes precedence; `--value` serves as fallback for unmatched IDs.
+- **Atomic writes**: All changes are computed in memory before any file is written.
+
 ## Publishing
 
 Syntagmax can combine all project inputs into a single structured markdown document, preserving both artifact content and surrounding non-artifact text (headings, rationale, design notes, etc.).
