@@ -16,6 +16,9 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from syntagmax.blocks import BlockTree
+from syntagmax.errors import FatalError
+
 
 class PluginConfig(BaseModel):
     """Configuration for a single plugin."""
