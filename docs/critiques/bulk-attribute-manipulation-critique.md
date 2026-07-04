@@ -2,7 +2,7 @@
 
 ## Executive Summary
 
-This report evaluates the proposed specification for [bulk-attribute-manipulation.md](file:///C:/Users/boris/projects/flyvercity/stmx/syntagmax/docs/specs/bulk-attribute-manipulation.md) under the Product Lens and the Engineering Lens. 
+This report evaluates the proposed specification for [bulk-attribute-manipulation.md](../specs/bulk-attribute-manipulation.md) under the Product Lens and the Engineering Lens.
 
 The updated specification addresses prior architectural concerns (such as delegating file writes to the extractor, handling multiline inline fields, and preserving line endings). However, a few critical usability gaps and technical edge cases remain:
 1. **Field Ordering Disruption**: The current definition of `replace` as `del` + `add` deletes inline fields and appends them to the end of the requirement block, which changes the user's manual ordering of fields.

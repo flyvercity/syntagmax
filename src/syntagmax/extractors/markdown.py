@@ -199,13 +199,11 @@ class MarkdownExtractor(Extractor):
         from syntagmax.artifact import LineLocation
 
         filepath = self._config.base_dir() / loc_file
-        text = filepath.read_text(encoding='utf-8')
+        with open(filepath, 'r', encoding='utf-8', newline='') as f:
+            text = f.read()
 
-        # Detect line endings
-        if '\r\n' in text:
-            newline = '\r\n'
-        else:
-            newline = '\n'
+        # Detect line endings (newline='' preserves original newlines)
+        newline = '\r\n' if '\r\n' in text else '\n'
 
         lines = text.splitlines(keepends=True)
         marker = self._record.marker
@@ -286,8 +284,8 @@ class MarkdownExtractor(Extractor):
                     yaml_data['attrs'] = current_attrs
 
         # Re-emit YAML
-        new_yaml_content = yaml_data.to_yaml()
-        new_yaml_block = f'```yaml{newline}{new_yaml_content.strip()}{newline}```'
+        new_yaml_content = yaml_data.to_yaml().strip().replace('\n', newline)
+        new_yaml_block = f'```yaml{newline}{new_yaml_content}{newline}```'
 
         if yaml_start != -1 and yaml_end != -1:
             segment = segment[:yaml_start] + new_yaml_block + segment[yaml_end + 3:]

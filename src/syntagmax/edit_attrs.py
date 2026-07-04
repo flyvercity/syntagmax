@@ -249,10 +249,18 @@ def manipulate_attributes(
 
     # --- Write pass ---
     if not dry_run:
+        write_errors: list[str] = []
         for filepath, content in file_writes:
-            with open(filepath, 'w', encoding='utf-8', newline='\n') as f:
-                f.write(content)
+            try:
+                with open(filepath, 'w', encoding='utf-8', newline='') as f:
+                    f.write(content)
+            except OSError as e:
+                msg = f'Failed to write "{filepath}": {e}'
+                write_errors.append(msg)
+                lg.error(msg)
 
+        if write_errors:
+            raise FatalError('One or more files could not be written; see logs for details')
     # --- Summary ---
     if dry_run:
         summary = f'\n[bold]Summary: {modified_count} artifacts would be modified, {skipped_count} skipped'
