@@ -442,8 +442,8 @@ class TestMarkdownExtractorUpdateAttributes:
             'test.md', [(artifact, {'status': 'draft'}, 'add')], 'attr'
         )
         # The newly inserted YAML block should use \r\n
-        assert '```yaml\r\n' in result or 'status: draft' in result
-
+        assert 'status: draft\r\n' in result
+        assert '\n' not in result.replace('\r\n', '')
     def test_yaml_comment_warning(self, setup_extractor, caplog):
         """Test that YAML blocks with comments produce a warning."""
         import logging
