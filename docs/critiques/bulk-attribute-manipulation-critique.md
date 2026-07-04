@@ -8,7 +8,6 @@ The updated specification addresses prior architectural concerns (such as delega
 1. **Field Ordering Disruption**: The current definition of `replace` as `del` + `add` deletes inline fields and appends them to the end of the requirement block, which changes the user's manual ordering of fields.
 2. **Ambiguity on CLI Option Combinations**: The behavior of combining `--value` with an omitted `--name` (for `add`), or combining `--value` with `--csv` (for `replace`), is not specified.
 3. **YAML Comment Loss Visibility**: The spec only warns about YAML comment loss in dry-run mode, leaving users vulnerable to silent comment loss during normal execution.
-4. **Metamodel Validation of `TBD`**: Initializing missing mandatory attributes to `TBD` will trigger validation warnings if those attributes are typed as integer or boolean in the metamodel.
 
 With these remaining updates applied, the specification is solid and ready for implementation.
 
@@ -26,8 +25,7 @@ With these remaining updates applied, the specification is solid and ready for i
 | P3 | Product | 💡 | Edge Cases & UX | Newly appended inline fields might lack correct spacing/indentation relative to the closing tag if appended directly. | Specify that the extractor must prepend a newline and match the surrounding indentation when appending new fields. |
 | P4 | Product | 💡 | Edge Cases & UX | Comment loss warning is only shown in `--dry-run` mode, which can lead to silent comment deletion during a real run. | Log the comment loss warning as a standard `WARNING` log in both dry-run and normal modes. |
 | E2 | Engineering | 💡 | Architecture Soundness | Standard YAML parsers discard comments during loading, making comment detection in the parsed representation impossible. | Scan the raw YAML block segment text with a simple regex like `(?m)^\s*#` to detect comments before parsing. |
-| E3 | Engineering | 💡 | Testing Strategy | Initializing mandatory attributes to `TBD` will trigger boolean/integer type validation warnings if those attributes have type constraints. | Update the validation layer or specify that `TBD` is treated as a valid temporary placeholder bypassing strict type validation. |
-| E4 | Engineering | 💡 | Architecture Soundness | The new `update_artifact_attributes` returns a modified string, while the existing `update_artifacts` writes directly to disk. | Keep the design but document the choice: returning strings allows in-memory validation and dry-runs without side effects. |
+| E3 | Engineering | 💡 | Architecture Soundness | The new `update_artifact_attributes` returns a modified string, while the existing `update_artifacts` writes directly to disk. | Keep the design but document the choice: returning strings allows in-memory validation and dry-runs without side effects. |
 
 ---
 
@@ -61,17 +59,13 @@ With these remaining updates applied, the specification is solid and ready for i
   * *Finding:* Defining `replace` as `del` + `add` deletes the field and then appends it before `[/MARKER]`. This alters the ordering of existing fields in the document.
   * *Suggestion:* For `replace`, the extractor should use the compiled regex to locate the field. If found, it should replace the value portion of the field in-place (preserving its position and formatting). Only if the field is missing should it append it to the end.
 
-* **E3: Metamodel Validation of `TBD` Values (Severity: 💡 Recommendation)**
-  * *Finding:* In bulk attribute addition, missing mandatory attributes are initialized to `TBD`. If those attributes are defined as integers or booleans in the metamodel, the subsequent validation step will flag them as errors (e.g. `"value 'TBD' is not a valid boolean"`).
-  * *Suggestion:* Specify that `TBD` is treated as a valid placeholder by the validation/analysis layer, or log a specific warning that the placeholder must be filled before validation will pass.
-
 ### Architecture Soundness
 
 * **E2: YAML Comment Detection (Severity: 💡 Recommendation)**
   * *Finding:* PyYAML and `python-benedict` discard comments when loading a YAML block. Therefore, the extractor cannot inspect the parsed dictionary to check if comments were present.
   * *Suggestion:* Scan the raw YAML text segment using a regex (e.g., `(?m)^\s*#`) to check for comment lines before parsing and warn the user.
 
-* **E4: Extractor Interface Inconsistency (Severity: 💡 Recommendation)**
+* **E3: Extractor Interface Inconsistency (Severity: 💡 Recommendation)**
   * *Finding:* The existing `update_artifacts` method in [MarkdownExtractor](file:///C:/Users/boris/projects/flyvercity/stmx/syntagmax/src/syntagmax/extractors/markdown.py) writes modified content directly to disk, whereas the new `update_artifact_attributes` returns the modified content as a string, leaving file writing to the orchestrator.
   * *Suggestion:* This is acceptable since returning a string is superior for atomic writes and dry-runs. However, this discrepancy should be documented in the code to guide future extractor updates.
 
@@ -81,8 +75,6 @@ With these remaining updates applied, the specification is solid and ready for i
 
 * **Formatting and ordering integrity (E1 × P3):**
   Updating fields in-place rather than deleting and re-appending them at the end preserves document layouts and prevents cluttering git diffs.
-* **Placeholder validation (E3 × P1):**
-  Standardizing `TBD` handling ensures that bulk additions of mandatory attributes do not generate misleading validation errors, while maintaining strictness for other custom values.
 
 ---
 
@@ -124,10 +116,4 @@ With these remaining updates applied, the specification is solid and ready for i
    * Add:
      ```markdown
      - If operation is `add`, `--name` is omitted, and `--value` is provided (other than default), exit with error.
-     ```
-
-5. **Under Proposed Solution > Metamodel Validation:**
-   * Add:
-     ```markdown
-     - Allow `TBD` as a valid temporary placeholder value for all types to avoid generating invalid type warnings during bulk initialization.
      ```
