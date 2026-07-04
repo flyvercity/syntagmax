@@ -58,8 +58,8 @@ Options:
 |--------|----------|---------|-------------|
 | `-o, --operation` | No | `add` | Operation: `add`, `del`, or `replace` |
 | `-t, --type` | No | `attr` | Target type: `attr` (YAML attribute) or `field` (inline `[FIELD]` marker) |
-| `-n, --name` | Yes | — | Name of the field or attribute to manipulate |
-| `-l, --value` | No* | — | Value for the attribute. Required for `add` and `replace` unless `--csv` is specified. |
+| `-n, --name` | No* | — | Name of the field or attribute to manipulate. If omitted for `add`, all mandatory metamodel attributes are added. |
+| `-l, --value` | No** | `TBD` | Value for the attribute. Defaults to `TBD` for `add`. Required for `replace` unless `--csv` is specified. Ignored for `del`. |
 | `-s, --section` | Yes | — | Input record name (as defined in `config.toml`) |
 | `--csv` | No | — | Path to a CSV file for value lookup. Columns: `id` (artifact ID) and `value` (value to set). |
 | `--csv-id-column` | No | `id` | Column name in the CSV used to match artifacts |
@@ -68,13 +68,16 @@ Options:
 | `--dry-run` | No | `false` | Preview changes without modifying files |
 | `-f, --config-file` | No | `.syntagmax/config.toml` | Path to the config file |
 
-*`--value` is required for `add` and `replace` operations when `--csv` is not provided. It is ignored for `del`.
+*`--name` is required for `del` and `replace` operations. If omitted for `add`, all mandatory attributes from the metamodel are added with `TBD` values.
+
+**`--value` defaults to `TBD` for `add` when not provided. Required for `replace` unless `--csv` is specified. Ignored for `del`.
 
 ### Operation Semantics
 
 #### `add`
 - If the attribute already exists on an artifact, skip it (no-op for that artifact)
-- If missing, add it with the provided value
+- If missing, add it with the provided value (or `TBD` if no value is specified)
+- **If `--name` is omitted**: look up all mandatory attributes from the metamodel for the artifact's type and add any that are missing, using `TBD` as the value for each. This requires a metamodel to be loaded; if none is available, exit with an error.
 - For YAML attrs: inserts a new key in the `attrs:` block
 - For inline fields: appends `[name] value` line before the closing `[/MARKER]` tag
 
@@ -145,7 +148,9 @@ If the metamodel defines the attribute with a constrained type (e.g., `enum`, `b
 - If the specified `--section` does not exist in config, exit with error
 - If the section's driver is not `obsidian`, exit with error (only the Obsidian driver is supported in this version)
 - If `--csv` file doesn't exist or is malformed, exit with error
-- If `--value` is missing for `add`/`replace` without `--csv`, exit with error
+- If `--name` is omitted for `del` or `replace`, exit with error
+- If `--name` is omitted for `add` and no metamodel is loaded, exit with error
+- If `--value` is missing for `replace` without `--csv`, exit with error
 
 ## Example Usage
 
@@ -164,6 +169,12 @@ uv run syntagmax edit attrs -s requirements -o replace -n doors_id --csv ../door
 
 # Dry-run to preview changes
 uv run syntagmax edit attrs -s requirements -n status -l draft --dry-run
+
+# Add 'source' attr with default TBD value (no --value needed)
+uv run syntagmax edit attrs -s requirements -n source
+
+# Add ALL mandatory metamodel attributes (with TBD) to artifacts missing them
+uv run syntagmax edit attrs -s requirements
 
 # Manipulate inline [field] format instead of YAML attrs
 uv run syntagmax edit attrs -s requirements -t field -n priority -l high
@@ -234,9 +245,11 @@ Summary: 3 artifacts would be modified, 1 skipped
     - Validate columns exist; raise `FatalError` if not
     - Handle UTF-8 with BOM detection
     - Duplicate IDs: last value wins, log WARNING
-  - `manipulate_attributes(config: Config, section: str, operation: str, target_type: str, name: str, value: str | None, csv_mapping: dict[str, str] | None, dry_run: bool) -> None`
+  - `manipulate_attributes(config: Config, section: str, operation: str, target_type: str, name: str | None, value: str | None, csv_mapping: dict[str, str] | None, dry_run: bool) -> None`
     - Validate section exists and uses the `obsidian` driver
     - Extract artifacts, filter by section
+    - If `name` is None (only valid for `add`): load metamodel, resolve all mandatory attributes for the artifact type, add each missing one with `TBD` value
+    - If `name` is given but `value` is None (only valid for `add`): use `TBD` as the default value
     - If metamodel is loaded, check if `name` is defined for the artifact type; warn if not
     - Resolve values (literal or CSV lookup per artifact); log WARNING for unmatched IDs
     - **Atomic write strategy**:
@@ -248,6 +261,9 @@ Summary: 3 artifacts would be modified, 1 skipped
 
 **Test requirements:**
 - Test `add` skips artifacts that already have the attribute
+- Test `add` with name but no value uses `TBD`
+- Test `add` with no name adds all mandatory metamodel attributes with `TBD`
+- Test `add` with no name and no metamodel raises error
 - Test `del` is no-op when attribute absent
 - Test `replace` upserts
 - Test CSV mapping applies correct per-artifact values
@@ -277,14 +293,19 @@ Summary: 3 artifacts would be modified, 1 skipped
   - `-d, --csv-delimiter` (default: `,`)
   - `--dry-run` (flag)
   - `-f, --config-file` (default: `.syntagmax/config.toml`)
-- Validation: if operation is `add` or `replace` and neither `--value` nor `--csv` is provided, exit with error
+- Validation:
+  - if operation is `del` or `replace` and `--name` is not provided, exit with error
+  - if operation is `add` and `--name` is omitted and no metamodel is loaded, exit with error
+  - if operation is `replace` and neither `--value` nor `--csv` is provided, exit with error
 - Load config, optionally load CSV mapping, call `manipulate_attributes()`
 
 **Test requirements:**
 - Integration test: end-to-end with a temp project, verify attribute added to file
 - Test error when `--section` doesn't exist
 - Test error when section uses non-obsidian driver
-- Test error when `--value` missing for `add` without `--csv`
+- Test error when `--name` missing for `del` or `replace`
+- Test error when `--name` missing for `add` with no metamodel
+- Test error when `--value` missing for `replace` without `--csv`
 - Test `--dry-run` produces output but no file changes
 - Test `--csv-delimiter` is passed through correctly
 
