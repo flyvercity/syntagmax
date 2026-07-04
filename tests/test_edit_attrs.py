@@ -1,20 +1,13 @@
 # SPDX-License-Identifier: MIT
 import pytest
-from pathlib import Path
-from unittest.mock import patch
 
-from syntagmax.config import Config, InputRecord
-from syntagmax.extractors.markdown import MarkdownExtractor, MarkdownArtifact
-from syntagmax.extractors.obsidian import ObsidianExtractor
-from syntagmax.edit_attrs import (
-    load_csv_mapping,
-    manipulate_attributes,
-    _get_mandatory_attributes,
-    _artifact_has_attr,
-)
-from syntagmax.errors import FatalError
-from syntagmax.params import Params
 from syntagmax.artifact import LineLocation
+from syntagmax.config import Config, InputRecord
+from syntagmax.edit_attrs import load_csv_mapping, manipulate_attributes, _get_mandatory_attributes
+from syntagmax.errors import FatalError
+from syntagmax.extractors.markdown import MarkdownArtifact
+from syntagmax.extractors.obsidian import ObsidianExtractor
+from syntagmax.params import Params
 
 
 @pytest.fixture
