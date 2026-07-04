@@ -89,8 +89,8 @@ def build_trace_matrix(
             for pid in lead.pids:
                 if pid in artifacts and artifacts[pid].atype == parent_type:
                     linked_ids.append(pid)
-                elif pid not in artifacts:
-                    # Unresolved reference - include as-is
+                else:
+                    # Unresolved reference or wrong-type parent - include raw ID so broken links are visible
                     linked_ids.append(pid)
 
             # Serialize attributes

@@ -29,7 +29,14 @@ def mock_config():
     return config
 
 
-def _make_artifact(config, atype: str, aid: str, pids: list[str] | None = None, children: set[str] | None = None, fields: dict | None = None):
+def _make_artifact(
+    config,
+    atype: str,
+    aid: str,
+    pids: list[str] | None = None,
+    children: set[str] | None = None,
+    fields: dict | None = None,
+):
     """Helper to create a minimal Artifact."""
     a = Artifact(config)
     a.atype = atype
@@ -307,8 +314,7 @@ class TestRunTraceExport:
         module.export_trace.assert_called_once_with(matrix, mock_config, {'key': 'val'})
 
     def test_raises_when_hook_missing(self, mock_config):
-        module = MagicMock(spec=ModuleType)
-        del module.export_trace  # Ensure attribute doesn't exist
+        module = ModuleType('no_hook')
         plugin = LoadedPlugin(name='no-hook', module=module, params={})
         matrix = TraceMatrix(direction='forward', child_type='REQ', parent_type='SYS')
 
