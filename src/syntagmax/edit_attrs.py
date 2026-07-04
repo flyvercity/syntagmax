@@ -160,8 +160,9 @@ def manipulate_attributes(
         attr_names = [name]
 
     # For 'add' without explicit value, default to TBD
-    if operation == 'add' and value is None:
+    if operation == 'add' and value is None and csv_mapping is None:
         value = 'TBD'
+
 
     # Metamodel validation: warn if attribute not defined
     if config.metamodel and name is not None:
@@ -206,6 +207,7 @@ def manipulate_attributes(
         updates: list[tuple[Artifact, dict[str, str | None], str]] = []
 
         for artifact in file_artifacts:
+            attrs_delta: dict[str, str | None] = {}
             for attr_name in attr_names:
                 # Resolve value for this artifact
                 resolved_value = _resolve_value(
@@ -234,7 +236,9 @@ def manipulate_attributes(
                         f"'{attr_name}'{val_desc} on {artifact.aid} at {loc_file}[/green]"
                     )
 
-                attrs_delta = {attr_name: resolved_value}
+                attrs_delta[attr_name] = resolved_value
+
+            if attrs_delta:
                 updates.append((artifact, attrs_delta, operation))
                 modified_count += 1
 
@@ -246,7 +250,8 @@ def manipulate_attributes(
     # --- Write pass ---
     if not dry_run:
         for filepath, content in file_writes:
-            filepath.write_text(content, encoding='utf-8')
+            with open(filepath, 'w', encoding='utf-8', newline='\n') as f:
+                f.write(content)
 
     # --- Summary ---
     if dry_run:

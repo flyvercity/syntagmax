@@ -708,3 +708,54 @@ class TestManipulateAttributes:
                 csv_mapping=None,
                 dry_run=False,
             )
+
+    def test_multi_attribute_update_on_same_artifact_no_corruption(self, params, tmp_path):
+        """Test that updating multiple attributes on the same artifact groups updates and avoids corruption."""
+        req_content = (
+            '[REQ]\n'
+            'Body text\n'
+            '[id] REQ-001\n'
+            '[/REQ]\n'
+            '[REQ]\n'
+            'Other artifact\n'
+            '[id] REQ-002\n'
+            '[/REQ]\n'
+        )
+        config, files = _make_obsidian_project(
+            params, tmp_path, {'REQ-001.md': req_content}
+        )
+        manipulate_attributes(
+            config=config,
+            section='requirements',
+            operation='add',
+            target_type='field',
+            name=None,  # metamodel-driven: will add title and status
+            value=None,
+            csv_mapping=None,
+            dry_run=False,
+        )
+        content = files['REQ-001.md'].read_text(encoding='utf-8')
+        assert '[title] TBD' in content
+        assert '[status] TBD' in content
+        assert '[id] REQ-002' in content
+        assert 'Other artifact' in content
+
+    def test_csv_fallback_skips_unmatched_on_add(self, params, tmp_path):
+        """Test that add operation skips unmatched artifacts in CSV when no fallback value is provided."""
+        config, files = _make_obsidian_project(
+            params, tmp_path, {'REQ-002.md': self.REQ_NO_STATUS}
+        )
+        csv_mapping = {'REQ-999': 'active'}  # REQ-002 is not matched
+        manipulate_attributes(
+            config=config,
+            section='requirements',
+            operation='add',
+            target_type='attr',
+            name='status',
+            value=None,  # No literal fallback
+            csv_mapping=csv_mapping,
+            dry_run=False,
+        )
+        content = files['REQ-002.md'].read_text(encoding='utf-8')
+        assert 'status' not in content
+
