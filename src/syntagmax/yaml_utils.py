@@ -58,9 +58,23 @@ def roundtrip_modify_attrs(
         data = CommentedMap()
         data['attrs'] = CommentedMap()
 
+    # Validate root is a mapping
+    if not isinstance(data, dict):
+        raise YAMLParsingError(
+            'YAML block root is not a mapping',
+            details=f'Expected a mapping, got {type(data).__name__}',
+        )
+
     # Handle missing or null attrs key
     if 'attrs' not in data or data['attrs'] is None:
         data['attrs'] = CommentedMap()
+
+    # Validate attrs is a mapping
+    if not isinstance(data['attrs'], dict):
+        raise YAMLParsingError(
+            'YAML "attrs" key is not a mapping',
+            details=f'Expected a mapping, got {type(data["attrs"]).__name__}',
+        )
 
     attrs = data['attrs']
 

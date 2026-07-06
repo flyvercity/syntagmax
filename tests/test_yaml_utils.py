@@ -169,6 +169,34 @@ class TestRoundtripModifyAttrsErrorHandling:
         with pytest.raises(YAMLParsingError):
             roundtrip_modify_attrs(raw_yaml, {'x': '1'}, 'add')
 
+    def test_scalar_root_raises_error(self):
+        """YAML that parses to a scalar should raise YAMLParsingError."""
+        raw_yaml = 'just a string value\n'
+        with pytest.raises(YAMLParsingError) as exc_info:
+            roundtrip_modify_attrs(raw_yaml, {'status': 'draft'}, 'add')
+        assert 'not a mapping' in str(exc_info.value)
+
+    def test_sequence_root_raises_error(self):
+        """YAML that parses to a sequence should raise YAMLParsingError."""
+        raw_yaml = '- item1\n- item2\n'
+        with pytest.raises(YAMLParsingError) as exc_info:
+            roundtrip_modify_attrs(raw_yaml, {'status': 'draft'}, 'add')
+        assert 'not a mapping' in str(exc_info.value)
+
+    def test_attrs_as_list_raises_error(self):
+        """attrs: [] should raise YAMLParsingError."""
+        raw_yaml = 'attrs:\n  - item1\n  - item2\n'
+        with pytest.raises(YAMLParsingError) as exc_info:
+            roundtrip_modify_attrs(raw_yaml, {'status': 'draft'}, 'add')
+        assert 'not a mapping' in str(exc_info.value)
+
+    def test_attrs_as_scalar_raises_error(self):
+        """attrs: some_string should raise YAMLParsingError."""
+        raw_yaml = 'attrs: not_a_mapping\n'
+        with pytest.raises(YAMLParsingError) as exc_info:
+            roundtrip_modify_attrs(raw_yaml, {'status': 'draft'}, 'add')
+        assert 'not a mapping' in str(exc_info.value)
+
 
 class TestRoundtripModifyAttrsMissingAttrs:
     """Tests for missing or null attrs key."""
