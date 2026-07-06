@@ -365,9 +365,12 @@ class TestTraceCliValidation:
         sys_dir = tmp_path / 'SYS'
         sys_dir.mkdir()
 
-        runner = CliRunner()
+        runner = CliRunner(env={'NO_COLOR': '1'})
         result = runner.invoke(rms, ['--cwd', str(tmp_path), 'trace', '--child', 'INVALID_CHILD', '--parent', 'INVALID_PARENT', '--output', 'console'])
         assert result.exit_code == 0
-        assert 'Warning: Child artifact type "INVALID_CHILD" is not defined in the metamodel.' in result.output
-        assert 'Warning: Parent artifact type "INVALID_PARENT" is not defined in the metamodel.' in result.output
+        # Strip ANSI escape codes — Rich Console emits colour even in test runners
+        import re
+        clean_output = re.sub(r'\x1b\[[0-9;]*m', '', result.output)
+        assert 'Warning: Child artifact type "INVALID_CHILD" is not defined in the metamodel.' in clean_output
+        assert 'Warning: Parent artifact type "INVALID_PARENT" is not defined in the metamodel.' in clean_output
 

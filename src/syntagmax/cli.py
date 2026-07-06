@@ -10,6 +10,7 @@ import os
 import traceback
 from pathlib import Path
 from typing import Any
+from imaplib.meta
 
 import click
 from rich.logging import RichHandler
@@ -121,7 +122,10 @@ def _run_pandoc_conversion(md_path: Path, docx: bool, pdf: bool):
 @click.option('--date-suffix', is_flag=True, help='Append date suffix to filenames (only valid when publishing separate files)')
 @click.option('--docx', is_flag=True, help='Convert output to DOCX via Pandoc')
 @click.option('--pdf', is_flag=True, help='Convert output to PDF via Pandoc')
-def publish(obj: Params, records: tuple[str, ...], publish_all: bool, single: bool, output_path: str | None, config_file: Path, date_suffix: bool, docx: bool, pdf: bool):
+def publish(
+    obj: Params, records: tuple[str, ...], publish_all: bool, single: bool,
+    output_path: str | None, config_file: Path, date_suffix: bool, docx: bool, pdf: bool,
+):
     from datetime import datetime
     from syntagmax.publish import build_block_tree, render_block_tree
     from syntagmax.blocks import ArtifactBlock, TextBlock
@@ -218,15 +222,22 @@ def publish(obj: Params, records: tuple[str, ...], publish_all: bool, single: bo
             # Run plugin markdown transforms
             markdown = run_markdown_transforms(config.plugins(), markdown, config)
 
-            safe_record_name = Path(record.name).name.replace('/', '_').replace('\\', '_')
-            if safe_record_name in ('.', '..') or not safe_record_name:
-                u.pprint(f'[red]Error: Invalid record name for output filename: "{record.name}".[/red]')
-                sys.exit(1)
-
+            safe_record_name = Path(record.name).name.replace('/', '_').replace('\\', '_')
+
+            if safe_record_name in ('.', '..') or not safe_record_name:
+
+                u.pprint(f'[red]Error: Invalid record name for output filename: "{record.name}".[/red]')
+
+                sys.exit(1)
+
+
+
             if date_suffix:
-                filename = f'{safe_record_name}_{date_str}.md'
+                filename = f'{safe_record_name}_{date_str}.md'
+
             else:
-                filename = f'{safe_record_name}.md'
+                filename = f'{safe_record_name}.md'
+
 
             file_path = out_p / filename
             file_path.write_text(markdown, encoding='utf-8')
