@@ -11,12 +11,10 @@ Initial public release.
 
 ### Added
 
-- Core analysis pipeline with DAG-based execution (extract → tree → impact → metrics → AI)
-- Obsidian, Markdown, Text, Sidecar, and Jupyter Notebook artifact extractors
+- Core analysis pipeline with DAG-based execution (extract → tree → impact → metrics)
+- Obsidian, Markdown, Text, and Sidecar artifact extractors
 - Metamodel DSL with attribute types: string, integer, boolean (with custom values), enum, and reference
 - Support for multiple attributes, comma-separated enums, and multi-value parent references
-- Hyphens and underscores in attribute identifiers
-- Custom `atype`/`marker` decoupling for input sources
 - Marked text fragments (Obsidian driver): `[COM]`, `[NOTE]`, etc.
 - Git revision extraction via `git blame` for artifact change history
 - Impact analysis: via-commit (revision pinning) and via-timestamp modes
@@ -29,6 +27,5 @@ Initial public release.
 - Unified Markdown report output (errors, tree, metrics, impact, AI analysis)
 - MCP server with `list_artifacts`, `search_artifacts`, and `get_artifact_content` tools
 - `syntagmax init` command for project scaffolding
-- Configurable AI providers: Ollama, Anthropic, OpenAI, Gemini, AWS Bedrock
-- Localisation support (English, Russian) via Babel
+- Localisation support via Babel
 - Project metrics: requirement coverage, TBD detection, status tracking
