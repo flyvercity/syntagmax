@@ -1,10 +1,8 @@
-*This tool is still under development*
-
 # Syntagmax - Git-Based Requirements Management System
 
 Fully git-friendly lightweight requirements management system with tracing model verification, change detection, and propagation.
 
-## Quick Demo
+## Quick Demo (Development Environment)
 
 Run example analysis with:
 
@@ -29,7 +27,7 @@ uv run syntagmax --cwd ./example/obsidian-driver trace --child REQ --parent SYS
 To initialize a new Syntagmax project in the current directory:
 
 ```bash
-uv run syntagmax init
+syntagmax init
 ```
 
 This command creates a `.syntagmax` directory with:
@@ -127,28 +125,6 @@ Impact analysis helps identify potentially outdated artifacts by comparing their
 |-------|----------|---------|-------------|
 | `filename` | No | — | Path to the `.syntagmax` file defining the project's metamodel. |
 
-### AI Configuration (`[ai]`)
-
-AI analysis configuration. Settings can also be placed in `~/.syntagmax/config` (global configuration) which are overridden by the project configuration.
-
-Environment variables can also be used for API keys (e.g. `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY`). Configuration file values take precedence.
-
-**Note on AWS Bedrock:** Currently, only Anthropic Claude models are supported on Bedrock. `boto3` must be installed manually to use Bedrock.
-
-| Field | Required | Default | Description |
-|-------|----------|---------|-------------|
-| `provider` | No | `ollama` | AI provider: `ollama`, `anthropic`, `openai`, `gemini`, `bedrock` |
-| `model` | No | *Provider Default* | Model name to use (e.g. `gpt-4o`, `claude-3-opus`) |
-| `ollama_host` | No | `http://localhost:11434` | Ollama host URL |
-| `anthropic_api_key` | No | — | Anthropic API Key |
-| `openai_api_key` | No | — | OpenAI API Key |
-| `gemini_api_key` | No | — | Google Gemini API Key |
-| `aws_access_key_id` | No | — | AWS Access Key ID |
-| `aws_secret_access_key` | No | — | AWS Secret Access Key |
-| `aws_region_name` | No | — | AWS Region Name |
-| `aws_api_key` | No | — | AWS Bedrock API Key |
-| `timeout_s` | No | `60.0` | Request timeout in seconds |
-
 ## Example Configuration
 
 ```toml
@@ -198,7 +174,7 @@ Each artifact is attached with a set of revisions. A revision includes:
 If you want to skip git history extraction (e.g., if you are not in a git repository or want to speed up analysis), use the `--no-git` flag:
 
 ```bash
-uv run syntagmax analyze .syntagmax/config.toml --no-git
+syntagmax analyze .syntagmax/config.toml --no-git
 ```
 
 ## Running Analysis
@@ -206,7 +182,7 @@ uv run syntagmax analyze .syntagmax/config.toml --no-git
 The `analyze` command is the primary way to process your project. It supports a dynamic execution pipeline where you can request a specific target step.
 
 ```bash
-uv run syntagmax analyze [CONFIG_FILE] [STEP]
+syntagmax analyze [CONFIG_FILE] [STEP]
 ```
 
 ### Target Steps
@@ -224,7 +200,7 @@ Syntagmax will automatically resolve and execute all dependencies required for t
 Example:
 ```bash
 # Run impact analysis only
-uv run syntagmax analyze .syntagmax/config.toml impact
+syntagmax analyze .syntagmax/config.toml impact
 ```
 
 ## Report Output
@@ -239,10 +215,10 @@ All analysis outputs (errors, metrics, impact, AI analysis, and optionally the a
 Example:
 ```bash
 # Generate report with tree to default location
-uv run syntagmax --render-tree analyze
+syntagmax --render-tree analyze
 
 # Print report to stdout
-uv run syntagmax --output console --render-tree analyze
+syntagmax --output console --render-tree analyze
 ```
 
 ## Metamodel DSL
@@ -379,7 +355,7 @@ uv run syntagmax --cwd ./tmp/renumber-demo edit renumber --all
 To renumber artifacts, use the `edit renumber` command:
 
 ```bash
-uv run syntagmax edit renumber --all
+syntagmax edit renumber --all
 ```
 
 #### Options:
@@ -402,7 +378,7 @@ Example schema: `myproject-{atype}-{num:4}`
 The `edit attrs` command adds, removes, or replaces attributes across all artifacts in an input section. Only the Obsidian driver is supported.
 
 ```bash
-uv run syntagmax edit attrs [OPTIONS]
+syntagmax edit attrs [OPTIONS]
 ```
 
 #### Options:
@@ -420,7 +396,7 @@ uv run syntagmax edit attrs [OPTIONS]
 | `-d, --csv-delimiter` | `,` | CSV column delimiter |
 | `--dry-run` | — | Preview changes without modifying files |
 
-#### Examples:
+#### Examples (Development Environment):
 
 ```bash
 # Add all missing mandatory attributes (from metamodel) with TBD
@@ -428,15 +404,19 @@ uv run syntagmax --cwd ./example/obsidian-driver edit attrs -s software-requirem
 
 # Add 'owner' attribute with TBD to all SYS requirements
 uv run syntagmax --cwd ./example/obsidian-driver edit attrs -s system-requirements -n owner
+```
 
+#### Examples as a Tool
+
+```bash
 # Replace 'status' to 'active' across all REQ artifacts
-uv run syntagmax edit attrs -s requirements -o replace -n status -l active
+syntagmax edit attrs -s requirements -o replace -n status -l active
 
 # Remove 'verified' from all artifacts in a section
-uv run syntagmax edit attrs -s system-requirements -o del -n verified
+syntagmax edit attrs -s system-requirements -o del -n verified
 
 # Import values from a CSV file (with --value as fallback for unmatched IDs)
-uv run syntagmax edit attrs -s requirements -o replace -n doors_id --csv mapping.csv --csv-id-column ext_id --csv-value-column doors_id -l UNKNOWN
+syntagmax edit attrs -s requirements -o replace -n doors_id --csv mapping.csv --csv-id-column ext_id --csv-value-column doors_id -l UNKNOWN
 ```
 
 #### Behavior Notes:
@@ -453,7 +433,7 @@ uv run syntagmax edit attrs -s requirements -o replace -n doors_id --csv mapping
 Syntagmax can combine all project inputs into a single structured markdown document, preserving both artifact content and surrounding non-artifact text (headings, rationale, design notes, etc.).
 
 ```bash
-uv run syntagmax publish output.md
+syntagmax publish output.md
 ```
 
 The publish command:
@@ -465,7 +445,7 @@ The publish command:
 ### Options
 
 ```bash
-uv run syntagmax publish <output-file> [-f <config-file>]
+syntagmax publish <output-file> [-f <config-file>]
 ```
 
 - `<output-file>`: Path to the output markdown file (required)
@@ -477,13 +457,13 @@ The `publish` command can optionally convert the generated Markdown to DOCX and/
 
 ```bash
 # Publish all records and convert to Word
-uv run syntagmax publish --all --docx
+syntagmax publish --all --docx
 
 # Publish consolidated document as PDF
-uv run syntagmax publish --all --single --pdf
+syntagmax publish --all --single --pdf
 
 # Produce both DOCX and PDF alongside Markdown
-uv run syntagmax publish --all --docx --pdf --output ./reports/
+syntagmax publish --all --docx --pdf --output ./reports/
 ```
 
 **Requirements:**
@@ -500,7 +480,7 @@ uv run syntagmax publish --all --docx --pdf --output ./reports/
 Syntagmax can export artifact traceability relationships as CSV or TSV matrices. The export uses left outer join semantics — every lead artifact appears even if it has no links to the target type.
 
 ```bash
-uv run syntagmax trace [OPTIONS]
+syntagmax trace [OPTIONS]
 ```
 
 ### Options
@@ -534,19 +514,19 @@ Without `--flat`, a child with multiple parents produces one row per link. With 
 
 ```bash
 # Forward matrix (REQ → SYS) as CSV
-uv run syntagmax trace --child REQ --parent SYS
+syntagmax trace --child REQ --parent SYS
 
 # Reverse matrix with attributes
-uv run syntagmax trace --child REQ --parent SYS --reverse --attribute title
+syntagmax trace --child REQ --parent SYS --reverse --attribute title
 
 # Flat mode, TSV output
-uv run syntagmax trace --child REQ --parent SYS --flat --output .syntagmax/reports/trace.tsv
+syntagmax trace --child REQ --parent SYS --flat --output .syntagmax/reports/trace.tsv
 
 # Export to stdout
-uv run syntagmax trace --child REQ --parent SYS --output console
+syntagmax trace --child REQ --parent SYS --output console
 
 # Use a plugin for export
-uv run syntagmax trace --child REQ --parent SYS --plugin tsv-export
+syntagmax trace --child REQ --parent SYS --plugin tsv-export
 ```
 
 ## Plugins
@@ -663,6 +643,28 @@ uv run syntagmax --cwd ./example/trace-tsv-plugin trace --child REQ --parent SYS
 - Implement automatic change propagation
 - Enhance AI-based analysis and tracing
 
+## AI Configuration (`[ai]`)
+
+AI analysis configuration. Settings can also be placed in `~/.syntagmax/config` (global configuration) which are overridden by the project configuration.
+
+Environment variables can also be used for API keys (e.g. `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY`). Configuration file values take precedence.
+
+**Note on AWS Bedrock:** Currently, only Anthropic Claude models are supported on Bedrock. `boto3` must be installed manually to use Bedrock.
+
+| Field | Required | Default | Description |
+|-------|----------|---------|-------------|
+| `provider` | No | `ollama` | AI provider: `ollama`, `anthropic`, `openai`, `gemini`, `bedrock` |
+| `model` | No | *Provider Default* | Model name to use (e.g. `gpt-4o`, `claude-3-opus`) |
+| `ollama_host` | No | `http://localhost:11434` | Ollama host URL |
+| `anthropic_api_key` | No | — | Anthropic API Key |
+| `openai_api_key` | No | — | OpenAI API Key |
+| `gemini_api_key` | No | — | Google Gemini API Key |
+| `aws_access_key_id` | No | — | AWS Access Key ID |
+| `aws_secret_access_key` | No | — | AWS Secret Access Key |
+| `aws_region_name` | No | — | AWS Region Name |
+| `aws_api_key` | No | — | AWS Bedrock API Key |
+| `timeout_s` | No | `60.0` | Request timeout in seconds |
+
 ## MCP Server
 
 Syntagmax includes a Model Context Protocol (MCP) server that allows LLMs to interact with your requirements directly.
@@ -678,7 +680,7 @@ Syntagmax includes a Model Context Protocol (MCP) server that allows LLMs to int
 To start the server using Server-Sent Events (SSE):
 
 ```bash
-uv run syntagmax mcp run .syntagmax/config.toml --transport sse --port 8000
+syntagmax mcp run .syntagmax/config.toml --transport sse --port 8000
 ```
 
 ### Sample Configuration
