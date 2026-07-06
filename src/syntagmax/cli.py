@@ -10,7 +10,7 @@ import os
 import traceback
 from pathlib import Path
 from typing import Any
-from imaplib.meta
+from importlib.metadata import version
 
 import click
 from rich.logging import RichHandler
@@ -26,6 +26,7 @@ from syntagmax.edit_attrs import manipulate_attributes, load_csv_mapping
 
 
 @click.group(help='RMS Entry Point')
+@click.version_option(version('syntagmax'))
 @click.pass_context
 @click.option('--verbose', is_flag=True, help='Verbose output')
 @click.option('--render-tree', is_flag=True, help='Render the artifact tree')
