@@ -113,8 +113,6 @@ class MarkdownExtractor(Extractor):
         # Apply updates in reverse order of line numbers to avoid offset shifts
         updates.sort(key=lambda u: u[0].location.loc_lines[0], reverse=True)  # type: ignore
 
-        marker = self._record.marker
-
         for artifact, new_id in updates:
             if not isinstance(artifact.location, LineLocation):
                 continue

@@ -42,9 +42,9 @@ def obsidian_config(params, tmp_path):
     metamodel_path.write_text(metamodel_content, encoding='utf-8')
 
     cfg_content = (
-        f'base = "."\n'
-        f'[[input]]\nname = "requirements"\ndir = "REQ"\ndriver = "obsidian"\natype = "REQ"\n'
-        f'[metamodel]\nfilename = "project.syntagmax"\n'
+        'base = "."\n'
+        '[[input]]\nname = "requirements"\ndir = "REQ"\ndriver = "obsidian"\natype = "REQ"\n'
+        '[metamodel]\nfilename = "project.syntagmax"\n'
     )
     cfg_path = tmp_path / 'config.toml'
     cfg_path.write_text(cfg_content, encoding='utf-8')

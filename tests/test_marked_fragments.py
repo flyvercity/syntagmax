@@ -249,7 +249,7 @@ class TestFragmentSplitting:
 
     def test_spec_example(self, obsidian_config, input_record_with_markers, tmp_path):
         """Test the example from the spec document."""
-        content = 'This is a sample preamble text. [COM]This is a special comment text [/COM].\n[note]This a a special note text[/note]\nSome more text\n[SYS]\nThis is a text for the requirement\n[ID] SYS-000\n[/SYS]\n'
+        content = 'This is a sample preamble text. [COM]This is a special comment text [/COM].\n[note]This a a special note text[/note]\nSome more text\n[SYS]\nThis is a text for the requirement\n[ID] SYS-000\n[/SYS]\n'  # noqa: E501
         blocks = self._extract_blocks(obsidian_config, input_record_with_markers, tmp_path, content)
 
         # Find all block types

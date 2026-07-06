@@ -21,7 +21,7 @@ class TestRoundtripModifyAttrsOrderPreservation:
 
         # Verify order: original keys stay in order, new key appended
         lines = result.strip().split('\n')
-        keys = [l.strip().split(':')[0] for l in lines if l.startswith('  ')]
+        keys = [line.strip().split(':')[0] for line in lines if line.startswith('  ')]
         assert keys == ['id', 'title', 'status', 'priority', 'verify', 'owner']
 
     def test_replace_preserves_order(self):
@@ -35,7 +35,7 @@ class TestRoundtripModifyAttrsOrderPreservation:
         result = roundtrip_modify_attrs(raw_yaml, {'status': 'active'}, 'replace')
 
         lines = result.strip().split('\n')
-        keys = [l.strip().split(':')[0] for l in lines if l.startswith('  ')]
+        keys = [line.strip().split(':')[0] for line in lines if line.startswith('  ')]
         assert keys == ['id', 'title', 'status', 'priority']
         assert 'status: active' in result
         assert 'status: draft' not in result
@@ -52,7 +52,7 @@ class TestRoundtripModifyAttrsOrderPreservation:
         result = roundtrip_modify_attrs(raw_yaml, {'status': None}, 'del')
 
         lines = result.strip().split('\n')
-        keys = [l.strip().split(':')[0] for l in lines if l.startswith('  ')]
+        keys = [line.strip().split(':')[0] for line in lines if line.startswith('  ')]
         assert keys == ['id', 'title', 'priority', 'verify']
         assert 'status' not in result
 
@@ -72,7 +72,7 @@ class TestRoundtripModifyAttrsOrderPreservation:
         )
 
         lines = result.strip().split('\n')
-        keys = [l.strip().split(':')[0] for l in lines if l.startswith('  ')]
+        keys = [line.strip().split(':')[0] for line in lines if line.startswith('  ')]
         assert keys == ['id', 'title', 'status', 'priority']
         assert 'title: New Title' in result
         assert 'priority: critical' in result
