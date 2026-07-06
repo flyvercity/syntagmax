@@ -1,0 +1,1 @@
+This project uses Calendar Versioning (CalVer) with the scheme YYYY.M.D (e.g. 2026.7.6).
