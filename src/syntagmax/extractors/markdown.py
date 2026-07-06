@@ -101,7 +101,9 @@ class MarkdownExtractor(Extractor):
         return any(rule.get('multiple', False) for rule in attrs)
 
     def update_artifacts(self, loc_file: str, updates: list[tuple[Artifact, str]]):
+        """Renumber artifact IDs in a file. Uses round-trip YAML to preserve attr order."""
         from syntagmax.artifact import LineLocation
+        from syntagmax.yaml_utils import roundtrip_modify_attrs, YAMLParsingError
 
         # Read the file
         filepath = self._config.base_dir() / loc_file
@@ -121,54 +123,46 @@ class MarkdownExtractor(Extractor):
             segment_lines = lines[start_line - 1 : end_line]
             segment = ''.join(segment_lines)
 
-            # Shortcut approach:
-            # - do not try to manipulate artifact's body
-            # - add/update id attribute in the yaml_data dict
-            # - re-emit a full yaml block
+            # Update YAML block using round-trip editing if present
+            yaml_start = segment.find('```yaml')
+            if yaml_start != -1:
+                yaml_end = segment.find('```', yaml_start + 7)
+                if yaml_end != -1:
+                    raw_yaml = segment[yaml_start + 7: yaml_end]
+                    # Strip leading newline
+                    if raw_yaml.startswith('\n'):
+                        raw_yaml = raw_yaml[1:]
+                    elif raw_yaml.startswith('\r\n'):
+                        raw_yaml = raw_yaml[2:]
 
-            if isinstance(artifact, MarkdownArtifact) and artifact.yaml_data is not None and ('attrs' in artifact.yaml_data or artifact.yaml_data):
-                yaml_data = artifact.yaml_data
-                if yaml_data.get('attrs') is None:
-                    yaml_data['attrs'] = {}
+                    # Detect newline style for this segment
+                    newline = '\r\n' if '\r\n' in segment else '\n'
 
-                yaml_data['attrs']['id'] = new_id
-
-                # Re-emit YAML
-                new_yaml_content = yaml_data.to_yaml()
-                new_yaml_block = f'```yaml\n{new_yaml_content.strip()}\n```'
-
-                # Replace the YAML block in the segment
-                yaml_start = segment.find('```yaml')
-                if yaml_start != -1:
-                    yaml_end = segment.find('```', yaml_start + 7)
-                    if yaml_end != -1:
-                        segment = segment[:yaml_start] + new_yaml_block + segment[yaml_end + 3 :]
-                else:
-                    # No yaml block found but we have yaml_data?
-                    # This could happen if it was terminated by [/{marker}] and we want to ADD YAML.
-                    # For now, let's append before [/{marker}] if it exists, or at the end.
-                    slash_req_pos = segment.rfind(f'[/{marker}]')
-                    if slash_req_pos != -1:
-                        segment = segment[:slash_req_pos] + '\n' + new_yaml_block + '\n' + segment[slash_req_pos:]
-                    else:
-                        segment = segment.strip() + '\n\n' + new_yaml_block + '\n'
-
-                # Also update [id] format if it exists in the markdown
-                segment = re.sub(r'\[id\]\s*[a-zA-Z0-9_{}:-]*', f'[id] {new_id}', segment, flags=re.IGNORECASE)
+                    try:
+                        modified_yaml = roundtrip_modify_attrs(raw_yaml, {'id': new_id}, 'replace')
+                        new_yaml_block = f'```yaml{newline}{modified_yaml.rstrip()}{newline}```'
+                        segment = segment[:yaml_start] + new_yaml_block + segment[yaml_end + 3:]
+                    except YAMLParsingError as e:
+                        lg.warning(
+                            f'Could not round-trip YAML for {artifact.aid}, '
+                            f'falling back to regex: {e}'
+                        )
+                        # Fallback: regex-based id replacement in YAML
+                        yaml_block = segment[yaml_start: yaml_end + 3]
+                        yaml_block = re.sub(
+                            r'^(\s*id:\s*).*$', rf'\g<1>{new_id}',
+                            yaml_block, flags=re.MULTILINE
+                        )
+                        segment = segment[:yaml_start] + yaml_block + segment[yaml_end + 3:]
             else:
-                # Fallback to old method if no yaml_data
-                # Update [id] format
-                segment = re.sub(r'\[id\]\s*[a-zA-Z0-9_{}:-]*', f'[id] {new_id}', segment, flags=re.IGNORECASE)
+                # No YAML block - fallback to regex for YAML if somehow there's inline yaml
+                pass
 
-                # Update YAML block if exists
-                yaml_start = segment.find('```yaml')
-                if yaml_start != -1:
-                    yaml_end = segment.find('```', yaml_start + 7)
-                    if yaml_end != -1:
-                        yaml_block = segment[yaml_start : yaml_end + 3]
-                        # Specific regex for id replacement in YAML to be more robust
-                        yaml_block = re.sub(r'^(\s*id:\s*).*$', rf'\g<1>{new_id}', yaml_block, flags=re.MULTILINE)
-                        segment = segment[:yaml_start] + yaml_block + segment[yaml_end + 3 :]
+            # Also update [id] format if it exists in the markdown
+            segment = re.sub(
+                r'\[id\]\s*[a-zA-Z0-9_{}:-]*',
+                f'[id] {new_id}', segment, flags=re.IGNORECASE
+            )
 
             # Replace the segment in the lines list
             lines[start_line - 1 : end_line] = [segment]
@@ -237,60 +231,52 @@ class MarkdownExtractor(Extractor):
         marker: str,
         newline: str,
     ) -> str:
-        """Update YAML attrs block within an artifact segment."""
-        # Check for comments in raw YAML block and warn
+        """Update YAML attrs block within an artifact segment.
+
+        Uses round-trip YAML parsing to preserve key order, comments, and formatting.
+        Note: The in-memory MarkdownArtifact.yaml_data is NOT synchronized after editing.
+        This is intentional since the CLI executes a single command and exits.
+        """
+        from syntagmax.yaml_utils import roundtrip_modify_attrs, YAMLParsingError
+
         yaml_start = segment.find('```yaml')
         yaml_end = -1
         if yaml_start != -1:
             yaml_end = segment.find('```', yaml_start + 7)
-            if yaml_end != -1:
-                raw_yaml = segment[yaml_start + 7: yaml_end]
-                if re.search(r'(?m)^\s*#', raw_yaml):
-                    lg.warning(
-                        f'YAML block in {artifact.aid} contains comments that will be lost during re-emission'
-                    )
-
-        # Get or create yaml_data
-        if isinstance(artifact, MarkdownArtifact) and artifact.yaml_data is not None:
-            yaml_data = artifact.yaml_data
-        else:
-            # Try to parse existing YAML block
-            if yaml_start != -1 and yaml_end != -1:
-                raw_yaml = segment[yaml_start + 7: yaml_end]
-                yaml_data = benedict.from_yaml(raw_yaml)
-            else:
-                yaml_data = benedict({'attrs': {}})
-
-        if yaml_data.get('attrs') is None:
-            yaml_data['attrs'] = {}
-
-        for attr_name, attr_value in attrs_delta.items():
-            if operation == 'add':
-                # Only add if not already present
-                current_attrs = yaml_data.get('attrs', {})
-                if attr_name not in current_attrs:
-                    yaml_data[f'attrs.{attr_name}'] = attr_value
-            elif operation == 'del':
-                current_attrs = yaml_data.get('attrs', {})
-                if attr_name in current_attrs:
-                    del current_attrs[attr_name]
-                    yaml_data['attrs'] = current_attrs
-            elif operation == 'replace':
-                if attr_value is not None:
-                    yaml_data[f'attrs.{attr_name}'] = attr_value
-                else:
-                    current_attrs = yaml_data.get('attrs', {})
-                    current_attrs.pop(attr_name, None)
-                    yaml_data['attrs'] = current_attrs
-
-        # Re-emit YAML
-        new_yaml_content = yaml_data.to_yaml().strip().replace('\n', newline)
-        new_yaml_block = f'```yaml{newline}{new_yaml_content}{newline}```'
 
         if yaml_start != -1 and yaml_end != -1:
+            # Extract raw YAML (after ```yaml newline, before closing ```)
+            raw_yaml = segment[yaml_start + 7: yaml_end]
+            # Strip leading newline that follows ```yaml
+            if raw_yaml.startswith('\n'):
+                raw_yaml = raw_yaml[1:]
+            elif raw_yaml.startswith('\r\n'):
+                raw_yaml = raw_yaml[2:]
+
+            try:
+                modified_yaml = roundtrip_modify_attrs(raw_yaml, attrs_delta, operation)
+            except YAMLParsingError as e:
+                aid = artifact.aid if hasattr(artifact, 'aid') else 'unknown'
+                lg.error(
+                    f'Error parsing YAML block in artifact {aid}: {e}'
+                    + (f' ({e.details})' if e.details else '')
+                )
+                return segment
+
+            new_yaml_block = f'```yaml{newline}{modified_yaml.rstrip()}{newline}```'
             segment = segment[:yaml_start] + new_yaml_block + segment[yaml_end + 3:]
         else:
-            # No YAML block exists - add one before [/MARKER] or at end
+            # No YAML block exists - create one from scratch using ruamel
+            try:
+                initial_yaml = f'attrs:{newline}'
+                modified_yaml = roundtrip_modify_attrs(initial_yaml, attrs_delta, operation)
+            except YAMLParsingError as e:
+                aid = artifact.aid if hasattr(artifact, 'aid') else 'unknown'
+                lg.error(f'Error creating YAML block for artifact {aid}: {e}')
+                return segment
+
+            new_yaml_block = f'```yaml{newline}{modified_yaml.rstrip()}{newline}```'
+
             slash_pos = segment.rfind(f'[/{marker}]')
             if slash_pos != -1:
                 segment = segment[:slash_pos] + newline + new_yaml_block + newline + segment[slash_pos:]

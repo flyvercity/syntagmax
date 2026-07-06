@@ -438,7 +438,7 @@ class TestMarkdownExtractorUpdateAttributes:
         assert 'status: draft\r\n' in result
         assert '\n' not in result.replace('\r\n', '')
     def test_yaml_comment_warning(self, setup_extractor, caplog):
-        """Test that YAML blocks with comments produce a warning."""
+        """Test that YAML blocks with comments are preserved (no longer lost)."""
         import logging
         config, extractor, tmp_path = setup_extractor
         content = (
@@ -454,10 +454,14 @@ class TestMarkdownExtractorUpdateAttributes:
         artifact.yaml_data = benedict({'attrs': {'id': 'REQ-001'}})
 
         with caplog.at_level(logging.WARNING, logger='syntagmax.extractors.markdown'):
-            extractor.update_artifact_attributes(
+            result = extractor.update_artifact_attributes(
                 'test.md', [(artifact, {'status': 'draft'}, 'add')], 'attr'
             )
-        assert any('comment' in r.message.lower() for r in caplog.records)
+        # Comments are now preserved by round-trip editing
+        assert '# This is a comment' in result
+        assert 'status: draft' in result
+        # No warning about comment loss should be emitted
+        assert not any('comment' in r.message.lower() for r in caplog.records)
 
 
 # ==============================================================================
