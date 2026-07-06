@@ -64,6 +64,9 @@ def roundtrip_modify_attrs(
 
     attrs = data['attrs']
 
+    if operation not in {'add', 'del', 'replace'}:
+        raise ValueError(f'Unsupported operation: {operation!r}')
+
     for attr_name, attr_value in attrs_delta.items():
         if operation == 'add':
             # Only add if not already present
