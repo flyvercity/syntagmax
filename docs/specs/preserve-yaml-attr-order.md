@@ -24,6 +24,8 @@ The `edit attrs` and `edit renumber` commands re-emit YAML blocks using `benedic
 
 Introduce a `yaml_utils.py` module that wraps `ruamel.yaml` round-trip operations (load/modify/dump). Replace both `to_yaml()` call sites in `markdown.py` to use round-trip editing: parse the raw YAML from the segment, apply the modification, dump back preserving order and comments. This avoids changing the `yaml_data` field type on `MarkdownArtifact` (which would be a much larger refactor).
 
+**Design note:** The in-memory `MarkdownArtifact.yaml_data` (benedict-based) is intentionally NOT synchronized with the written file during editing. Since the CLI executes a single command and exits, updating the written file is sufficient. This trade-off should be documented in a code comment to prevent future developers from assuming the in-memory objects stay in sync.
+
 ## Task Breakdown
 
 ### Task 1: Add `ruamel.yaml` dependency and create `yaml_utils.py` helper module
@@ -31,11 +33,18 @@ Introduce a `yaml_utils.py` module that wraps `ruamel.yaml` round-trip operation
 - **Objective:** Add `ruamel.yaml` to `pyproject.toml` and create a utility module with functions for round-trip YAML editing.
 - **Implementation guidance:**
   - Add `"ruamel.yaml>=0.18.0"` to `dependencies` in `pyproject.toml`
-  - Create `src/syntagmax/yaml_utils.py` with:
-    - `roundtrip_set_attr(raw_yaml: str, attr_name: str, attr_value: str | list) -> str` — set/add a key under `attrs:`
-    - `roundtrip_del_attr(raw_yaml: str, attr_name: str) -> str` — delete a key under `attrs:`
-    - `roundtrip_dump(raw_yaml: str, modifications: dict[str, str | None | list]) -> str` — apply a batch of add/del/replace to the `attrs:` section
-  - All functions take raw YAML text (without the `` ```yaml `` fences) and return modified YAML text
+  - Create `src/syntagmax/yaml_utils.py` with a single unified utility function:
+    - `roundtrip_modify_attrs(raw_yaml: str, attrs_delta: dict[str, Any], operation: str) -> str`
+  - Inside `roundtrip_modify_attrs`:
+    - Parse `raw_yaml` using `ruamel.yaml.YAML(typ='rt')`.
+    - Catch `ruamel.yaml.error.YAMLError` and raise a custom exception (e.g., `YAMLParsingError`) to allow callers to report clear errors.
+    - Verify if the `attrs` key is present; if missing or null, initialize it to an empty `CommentedMap`.
+    - Apply changes to `attrs` based on `operation` (`add`, `del`, `replace`):
+      - `add`: Insert key/value if not already present.
+      - `del`: Remove key if present.
+      - `replace`: Set key/value if value is not None, else remove it.
+    - Serialize the output back to a string, ensuring line endings match the format of the input.
+  - The function takes raw YAML text (without the `` ```yaml `` fences) and returns modified YAML text
 - **Test requirements:** Unit tests for `yaml_utils.py` verifying:
   - Key order is preserved when adding a new attr
   - Key order is preserved when replacing a value
@@ -49,7 +58,8 @@ Introduce a `yaml_utils.py` module that wraps `ruamel.yaml` round-trip operation
 - **Objective:** Replace the `benedict.to_yaml()` call in `_update_yaml_attrs` with the new `yaml_utils` functions, operating on the raw YAML text from the segment.
 - **Implementation guidance:**
   - Extract raw YAML from segment (between `` ```yaml\n `` and `` \n``` ``)
-  - Apply modifications using `yaml_utils.roundtrip_dump()`
+  - Apply modifications using `yaml_utils.roundtrip_modify_attrs(raw_yaml, attrs_delta, operation)`
+  - Catch `YAMLParsingError`, log a user-friendly error with the artifact's ID and filename, and skip the artifact.
   - Re-wrap with fences and inject back into segment
   - When no YAML block exists (new block creation), fall back to current behavior (building from scratch is fine since there's no order to preserve)
   - Remove the warning about comment loss (it's now preserved)
@@ -64,7 +74,8 @@ Introduce a `yaml_utils.py` module that wraps `ruamel.yaml` round-trip operation
 - **Objective:** Replace the `yaml_data.to_yaml()` call in `update_artifacts` with round-trip editing that only modifies the `id` field.
 - **Implementation guidance:**
   - Extract raw YAML from segment (same pattern as Task 2)
-  - Use `yaml_utils.roundtrip_set_attr(raw_yaml, 'id', new_id)` to update only the `id` key
+  - Use `yaml_utils.roundtrip_modify_attrs(raw_yaml, {'id': new_id}, 'replace')` to update only the `id` key
+  - Catch `YAMLParsingError`, log a user-friendly error, and skip the artifact.
   - Re-wrap and replace in segment
   - Keep the fallback path (no yaml_data, regex-based) unchanged
 - **Test requirements:**
