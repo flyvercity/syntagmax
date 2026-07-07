@@ -39,13 +39,13 @@ Referee:   confirmed 4 real bugs -> Critical: 0 | Medium: 4 | Low: 0
 
 ---
 
-### BUG-1: NameError in renumber_artifacts
+### BUG-1: NameError in renumber_artifacts ✅ FIXED
 
 **Severity:** Medium  
 **Category:** Logic  
 **File:** `syntagmax/src/syntagmax/edit.py` lines 78–85  
 **Confidence:** 95% (high)  
-**Auto-fix eligibility:** ELIGIBLE  
+**Status:** ✅ FIXED (2026-07-07)  
 
 **Description:**  
 In the `renumber_artifacts` function, the variable `driver` is defined only inside the `if record:` block (line 100: `driver = record.driver`). The `else` branch on line 107–108 references `driver` which has never been assigned in that scope, causing a `NameError` at runtime.

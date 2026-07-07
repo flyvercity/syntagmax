@@ -107,4 +107,4 @@ def renumber_artifacts(config: Config, atype: str | None = None, schema_override
                 else:
                     lg.warning(f'Driver {driver} does not support renumbering yet')
             else:
-                lg.error(f'Could not find input record for driver {driver}')
+                lg.error(f'Could not find input record for artifacts at {loc_file}')
