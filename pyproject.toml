@@ -6,7 +6,7 @@ readme = "README.md"
 license = "MIT"
 requires-python = ">=3.13"
 authors = [
-    { name = "Flyvercity", email = "info@flyver.city" },
+    { name = "Flyvercity", email = "boris@flyver.city" },
 ]
 keywords = ["requirements", "requirements-engineering", "traceability", "git", "engineering", "requirements-management"]
 classifiers = [
