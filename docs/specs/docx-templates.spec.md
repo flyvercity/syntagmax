@@ -42,9 +42,14 @@ docx-template:
 
 ### Resolution Order
 
-1. Per-record override in `docx-template.overrides.<record_name>` → use that path (or skip if `"none"`)
-2. `docx-template.default-template` → use that path (or skip if `"none"`)
-3. No `docx-template` section at all → use the bundled `template.dotm`
+0. CLI option `--docx-template` (if provided, overrides everything else for all records)
+1. Per-record override in `docx-template.overrides.<record_name>` if specified:
+   - If `"none"`, export without a template.
+   - Otherwise, resolve path relative to project config root (`config.toml` directory).
+2. `docx-template.default-template` if specified:
+   - If `"none"`, export without a template.
+   - Otherwise, resolve path relative to project config root.
+3. Otherwise (section absent, or config values are omitted/None), use the bundled `template.dotm`
 
 ## Task Breakdown
 
@@ -89,18 +94,20 @@ docx-template:
 **Implementation guidance:**
 - Add a function `resolve_docx_template(pub_config: PublishConfig, record_name: str, config_root: Path) -> Path | None` (in `pandoc.py` or a new helper location)
 - Resolution logic:
-  1. If `pub_config.docx_template` is not None:
-     - Check `overrides.get(record_name)` — if `"none"`, return `None`; if a path, resolve relative to `config_root` and return it
-     - Check `default_template` — if `"none"`, return `None`; if a path, resolve relative to `config_root` and return it
-  2. If `pub_config.docx_template` is None (section absent), return the bundled default path: `Path(__file__).parent / 'resources' / 'template.dotm'`
-- Validate that the resolved path exists; if not, log a warning and fall back to bundled default (or `None` if explicitly set to `"none"`)
+  1. Check `pub_config.docx_template` overrides for `record_name`:
+     - If override is `"none"`, return `None`.
+     - If a path is specified, resolve relative to `config_root`. If the resolved file does not exist, raise a `FatalError`.
+  2. Check `pub_config.docx_template` default-template:
+     - If `"none"`, return `None`.
+     - If a path is specified, resolve relative to `config_root`. If the resolved file does not exist, raise a `FatalError`.
+  3. If no override/default path is defined, return the bundled default path: `Path(__file__).parent / 'resources' / 'template.dotm'`.
 
 **Test requirements:**
 - Unit test: absent `docx-template` → returns bundled template path
 - Unit test: `default-template` set to a path → resolves relative to config root
 - Unit test: per-record override → overrides the default
 - Unit test: `"none"` at any level → returns `None`
-- Unit test: nonexistent path → logs warning, falls back to bundled default
+- Unit test: nonexistent path → raises `FatalError`
 
 **Demo:** `uv run pytest tests/test_pandoc.py` passes.
 
@@ -109,18 +116,25 @@ docx-template:
 **Objective:** Pass the resolved template to `pandoc.convert()` during DOCX export.
 
 **Implementation guidance:**
-- Modify `_run_pandoc_conversion` signature to accept an optional `reference_doc: Path | None` parameter
+- Modify `_run_pandoc_conversion` signature to accept an optional `reference_doc: Path | None` parameter.
 - Pass `reference_doc` to `pandoc.convert()` when format is `docx`
+- Add a new option `--docx-template` to the `publish` command in `cli.py` to allow manual template overrides.
 - In the `publish` command body (both single-file and per-record branches):
-  - Load the `PublishConfig` for the record(s)
-  - Call `resolve_docx_template()` to get the template path
-  - Pass it to `_run_pandoc_conversion()`
-- For `--single` mode (multiple records merged), use the first record's resolved template or the project-level default
+  - If `--docx-template` CLI option is provided:
+    - If it is `"none"`, set template path to `None`.
+    - Otherwise, verify it exists (raising `FatalError` if missing) and use it as the template path.
+  - Otherwise, load the `PublishConfig` for the record(s) and call `resolve_docx_template()` to get the template path.
+  - In `--single` mode:
+    - Resolve the template path using the first record.
+    - Check if any other selected records have conflicting template resolutions. If so, print a warning to console indicating which template is being applied.
+  - Pass the resolved template to `_run_pandoc_conversion()`
 
 **Test requirements:**
 - Integration test: CLI with `--docx` invokes `pandoc.convert` with the correct `reference_doc` path
 - Integration test: `publish.yaml` with `docx-template.default-template = "none"` → no `--reference-doc` in Pandoc call
 - Integration test: per-record override is respected
+- Integration test: `--docx-template` CLI option overrides config-based resolution
+- Integration test: `--single` with conflicting per-record templates emits a warning
 
 **Demo:** `uv run syntagmax --cwd ./example/obsidian-driver publish --all --docx` uses the bundled template by default.
 
