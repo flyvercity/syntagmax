@@ -320,7 +320,7 @@ class GeminiProvider(AIProvider):
         timeout_s = self.config.timeout_s
         prompt = self._get_prompt(requirement_text)
 
-        url = f'https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}'
+        url = f'https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent'
 
         body = {
             'contents': [{'parts': [{'text': prompt}]}],
@@ -329,12 +329,12 @@ class GeminiProvider(AIProvider):
 
         resp = None
         try:
-            lg.debug(f'Calling Gemini at {self._redact_sensitive_info(url)}')
+            lg.debug(f'Calling Gemini at {url}')
             lg.debug(f'Body: {json.dumps(body)}')
             resp = requests.post(
                 url,
                 json=body,
-                headers={'Content-Type': 'application/json'},
+                headers={'Content-Type': 'application/json', 'x-goog-api-key': api_key},
                 timeout=timeout_s,
             )
             resp.raise_for_status()

@@ -113,14 +113,14 @@ def _contains_tbd(marker, value):
 
 ---
 
-### BUG-3: Gemini API Key Disclosure in Error Messages
+### BUG-3: Gemini API Key Disclosure in Error Messages ✅ FIXED
 
 **Severity:** Medium  
 **Category:** Security (CWE-200: Sensitive Data Exposure)  
 **STRIDE:** Information Disclosure  
 **File:** `syntagmax/src/syntagmax/ai_providers.py` lines 237–250  
 **Confidence:** 80% (high)  
-**Auto-fix eligibility:** ELIGIBLE  
+**Status:** ✅ FIXED (2026-07-07)  
 
 **Description:**  
 The `GeminiProvider` embeds the API key directly in the URL as a query parameter:
