@@ -464,12 +464,15 @@ class MarkdownExtractor(Extractor):
                 blocks.append(TextBlock(content=text_before))
 
             # Find segment end
-            yaml_start_pos = markdown.find('```yaml', start_pos)
             slash_req_match = re.search(rf'\[/{marker}\]', markdown[start_pos:], re.IGNORECASE)
             slash_req_pos = (start_pos + slash_req_match.start()) if slash_req_match else -1
+            # Constrain ```yaml search to within the [/MARKER] boundary to avoid
+            # matching literal ```yaml inside requirement content
+            yaml_search_end = slash_req_pos if slash_req_pos != -1 else len(markdown)
+            yaml_start_pos = markdown.find('```yaml', start_pos, yaml_search_end)
             segment_end = -1
 
-            if yaml_start_pos != -1 and (slash_req_pos == -1 or yaml_start_pos < slash_req_pos):
+            if yaml_start_pos != -1:
                 end_pos = markdown.find('```', yaml_start_pos + 7)
                 if end_pos != -1:
                     segment_end = end_pos + 3

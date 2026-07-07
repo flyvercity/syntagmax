@@ -159,13 +159,13 @@ resp = requests.post(url, json=body, headers=headers, timeout=timeout_s)
 
 ---
 
-### BUG-4: Markdown Parser Boundary Detection Flaw
+### BUG-4: Markdown Parser Boundary Detection Flaw ✅ FIXED
 
 **Severity:** Medium  
 **Category:** Logic  
 **File:** `syntagmax/src/syntagmax/extractors/markdown.py` lines 461–470  
 **Confidence:** 76% (medium)  
-**Auto-fix eligibility:** ELIGIBLE  
+**Status:** ✅ FIXED (2026-07-07)  
 
 **Description:**  
 The markdown parser's segment boundary detection uses:
