@@ -21,7 +21,11 @@ def calculate_metrics(config: Config, artifacts: ArtifactMap, errors: list[str])
                 'aid': artifact.aid,
                 'status': artifact.fields.get(config.metrics.status_field, 'UNKNOWN'),
                 'verify': artifact.fields.get(config.metrics.verify_field),
-                'has_tbd': any(config.metrics.tbd_marker in field for field in artifact.fields.values()),
+                'has_tbd': any(
+                    config.metrics.tbd_marker in str(item)
+                    for field in artifact.fields.values()
+                    for item in (field if isinstance(field, list) else [field])
+                ),
             }
             for artifact in artifacts.values()
         ]

@@ -76,13 +76,13 @@ lg.error(f'Could not find input record for artifact at {loc_file}')
 
 ---
 
-### BUG-2: TBD Detection Fails for List-Valued Fields
+### BUG-2: TBD Detection Fails for List-Valued Fields ✅ FIXED
 
 **Severity:** Medium  
 **Category:** Logic  
 **File:** `syntagmax/src/syntagmax/metrics.py` lines 28–35  
 **Confidence:** 85% (high)  
-**Auto-fix eligibility:** ELIGIBLE  
+**Status:** ✅ FIXED (2026-07-07)  
 
 **Description:**  
 The metrics calculation uses `any(config.metrics.tbd_marker in field for field in artifact.fields.values())` to detect TBD markers. Python's `in` operator behaves differently depending on the operand type:
