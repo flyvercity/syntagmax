@@ -2,7 +2,7 @@
 
 ## Executive Summary
 
-The Pandoc DOCX Export Templates specification ([docx-templates.spec.md](file:///C:/Users/boris/projects/flyvercity/stmx-ws/stmx/syntagmax/docs/specs/docx-templates.spec.md)) provides a clear and structured path to support corporate styling in exported Word documents. It correctly identifies the integration points within Pydantic, Pandoc, and the CLI execution flow.
+The Pandoc DOCX Export Templates specification ([docx-templates.spec.md](../specs/docx-templates.spec.md)) provides a clear and structured path to support corporate styling in exported Word documents. It correctly identifies the integration points within Pydantic, Pandoc, and the CLI execution flow.
 
 However, the current spec contains a critical logic bug in template resolution: adding a specific override for one record will silently strip styling from all other records by falling back to `"none"` instead of the bundled default. Additionally, failing silently on missing templates and handling merged records in `--single` mode present robustness and usability risks.
 
