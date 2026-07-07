@@ -10,6 +10,12 @@ import yaml
 from pydantic import BaseModel, Field, field_validator, ConfigDict
 
 
+class DocxTemplate(BaseModel):
+    model_config = ConfigDict(extra='forbid', populate_by_name=True)
+    default_template: str | None = Field(default=None, alias='default-template')
+    overrides: dict[str, str] = Field(default_factory=dict)
+
+
 class AttributeRender(BaseModel):
     alias: str
 
@@ -55,11 +61,13 @@ RenderSection = Union[TableSection, TextSection, MarkerRenderSection]
 
 
 class PublishConfig(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
     start_level: int = Field(default=1)
     remove_numeric_prefixes_in_headers: bool = Field(default=True)
     include_plain_text: bool = Field(default=True)
     ignore_plain_text_prefixes: list[str] = Field(default_factory=list)
     render: dict[str, list[RenderSection]] = Field(default_factory=dict)
+    docx_template: DocxTemplate | None = Field(default=None, alias='docx-template')
 
 
 def load_publish_config(path: Path | None, root_dir: Path) -> PublishConfig:

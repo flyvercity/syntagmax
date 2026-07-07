@@ -464,6 +464,12 @@ syntagmax publish --all --single --pdf
 
 # Produce both DOCX and PDF alongside Markdown
 syntagmax publish --all --docx --pdf --output ./reports/
+
+# Use a custom DOCX template (one-off override)
+syntagmax publish --all --docx --docx-template ./templates/corporate.dotm
+
+# Export without any template styling
+syntagmax publish --all --docx --docx-template none
 ```
 
 **Requirements:**
@@ -474,6 +480,34 @@ syntagmax publish --all --docx --pdf --output ./reports/
 - The Markdown file is always generated first, regardless of conversion success.
 - DOCX/PDF files are placed alongside the Markdown with the same base name (e.g., `rec1.md` → `rec1.docx`).
 - If Pandoc is not found or conversion fails, a warning is logged with the exit status, the Markdown file is preserved, and the command exits successfully.
+
+#### DOCX Template Configuration
+
+By default, Syntagmax applies a bundled reference document (`template.dotm`) when converting to DOCX via Pandoc's `--reference-doc` flag. This controls styles, headers, footers, and page layout in the output.
+
+Templates can be configured per input record in `publish.yaml` using the `docx-template` section:
+
+```yaml
+docx-template:
+  default-template: "templates/corporate.dotm"
+  overrides:
+    system-requirements: "templates/sys-template.dotm"
+    implementation: "none"
+```
+
+| Field | Description |
+|-------|-------------|
+| `default-template` | Path to the default template (relative to the config directory), or `"none"` to disable |
+| `overrides` | Per-record template overrides (record name → path or `"none"`) |
+
+**Resolution order:**
+
+1. `--docx-template` CLI option (overrides everything)
+2. Per-record override in `docx-template.overrides.<record_name>`
+3. `docx-template.default-template`
+4. Bundled `template.dotm` (if no configuration is specified)
+
+Setting a template value to `"none"` at any level disables the reference document for that record, producing a plain Pandoc conversion without styling.
 
 ## Tracing Export
 

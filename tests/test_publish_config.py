@@ -144,3 +144,80 @@ atype = "SRS"
     # Resolve for r2 (should fall back to .syntagmax/publish.yaml -> start_level=2)
     config_r2 = config.load_publish_config(records[1])
     assert config_r2.start_level == 2
+
+
+
+class TestDocxTemplate:
+    def test_docx_template_absent(self):
+        config = PublishConfig()
+        assert config.docx_template is None
+
+    def test_docx_template_with_default_template(self):
+        data = {
+            'docx-template': {
+                'default-template': 'templates/corp.dotm',
+            },
+        }
+        config = PublishConfig.model_validate(data)
+        assert config.docx_template is not None
+        assert config.docx_template.default_template == 'templates/corp.dotm'
+        assert config.docx_template.overrides == {}
+
+    def test_docx_template_with_overrides(self):
+        data = {
+            'docx-template': {
+                'default-template': 'templates/default.dotm',
+                'overrides': {
+                    'system-requirements': 'templates/sys.dotm',
+                    'implementation': 'none',
+                },
+            },
+        }
+        config = PublishConfig.model_validate(data)
+        assert config.docx_template.default_template == 'templates/default.dotm'
+        assert config.docx_template.overrides['system-requirements'] == 'templates/sys.dotm'
+        assert config.docx_template.overrides['implementation'] == 'none'
+
+    def test_docx_template_none_string_preserved(self):
+        data = {
+            'docx-template': {
+                'default-template': 'none',
+            },
+        }
+        config = PublishConfig.model_validate(data)
+        assert config.docx_template.default_template == 'none'
+
+    def test_docx_template_empty_section(self):
+        data = {
+            'docx-template': {},
+        }
+        config = PublishConfig.model_validate(data)
+        assert config.docx_template is not None
+        assert config.docx_template.default_template is None
+        assert config.docx_template.overrides == {}
+
+    def test_docx_template_from_yaml(self, tmp_path):
+        yaml_content = """
+start_level: 1
+docx-template:
+  default-template: "templates/corporate.dotm"
+  overrides:
+    sys-reqs: "templates/sys.dotm"
+    impl: "none"
+"""
+        p = tmp_path / 'publish.yaml'
+        p.write_text(yaml_content, encoding='utf-8')
+        config = load_publish_config(Path('publish.yaml'), tmp_path)
+        assert config.docx_template is not None
+        assert config.docx_template.default_template == 'templates/corporate.dotm'
+        assert config.docx_template.overrides == {'sys-reqs': 'templates/sys.dotm', 'impl': 'none'}
+
+    def test_docx_template_rejects_extra_fields(self):
+        from syntagmax.publish_config import DocxTemplate
+
+        data = {
+            'default-template': 'test.dotm',
+            'unknown_field': 'value',
+        }
+        with pytest.raises(ValidationError):
+            DocxTemplate.model_validate(data)
