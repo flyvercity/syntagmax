@@ -1,0 +1,50 @@
+start_level = 1
+remove_numeric_prefixes_in_headers = true
+include_plain_text = true
+
+[[render.SYS]]
+type = "table"
+
+[[render.SYS.attributes]]
+[render.SYS.attributes.id]
+alias = "ID"
+
+[[render.SYS.attributes]]
+[render.SYS.attributes.status]
+alias = "Status"
+
+[[render.SYS]]
+type = "text"
+mode = "block"
+
+[[render.SYS.attributes]]
+[render.SYS.attributes.contents]
+alias = "Description"
+
+[[render.REQ]]
+type = "table"
+
+[[render.REQ.attributes]]
+[render.REQ.attributes.id]
+alias = "ID"
+
+[[render.REQ.attributes]]
+[render.REQ.attributes.parent]
+alias = "Parent"
+
+[[render.REQ.attributes]]
+[render.REQ.attributes.status]
+alias = "Status"
+
+[[render.REQ]]
+type = "text"
+mode = "block"
+
+[[render.REQ.attributes]]
+[render.REQ.attributes.contents]
+alias = "Requirement"
+
+[[render.COM]]
+type = "text"
+mode = "inline"
+alias = "Comment"

@@ -6,6 +6,7 @@
 
 from pathlib import Path
 from typing import Literal, Union
+import tomllib
 import yaml
 from pydantic import BaseModel, Field, field_validator, ConfigDict
 
@@ -83,15 +84,57 @@ def load_publish_config(path: Path | None, root_dir: Path) -> PublishConfig:
     if path is None:
         return PublishConfig()
 
-    resolved_path = Path(root_dir, path)
-    if not resolved_path.exists():
+    resolved_path = Path(root_dir, path) if not path.is_absolute() else path
+    if not resolved_path.is_file():
         return PublishConfig()
 
     try:
         content = resolved_path.read_text(encoding='utf-8')
-        data = yaml.safe_load(content) or {}
+        suffix = resolved_path.suffix.lower()
+
+        if suffix in ('.yaml', '.yml'):
+            data = yaml.safe_load(content) or {}
+        elif suffix == '.toml':
+            data = tomllib.loads(content)
+        else:
+            from syntagmax.errors import FatalError
+
+            raise FatalError([f"Unsupported publish config format '{suffix}' for '{resolved_path}'. Use .yaml, .yml, or .toml."])
+
         return PublishConfig.model_validate(data)
     except Exception as e:
         from syntagmax.errors import FatalError
 
+        if isinstance(e, FatalError):
+            raise
         raise FatalError([f"Failed to load publish config from '{resolved_path}': {e}"])
+
+
+def resolve_publish_file(directory: Path) -> Path | None:
+    """Check a directory for publish config files with conflict detection.
+
+    Looks for publish.yaml, publish.yml, and publish.toml. If both a YAML
+    variant and a TOML variant exist, raises a FatalError. Otherwise returns
+    the full resolved path of the found file, or None if no file exists.
+    """
+    yaml_path = directory / 'publish.yaml'
+    yml_path = directory / 'publish.yml'
+    toml_path = directory / 'publish.toml'
+
+    has_yaml = yaml_path.is_file()
+    has_yml = yml_path.is_file()
+    has_toml = toml_path.is_file()
+
+    if (has_yaml or has_yml) and has_toml:
+        from syntagmax.errors import FatalError
+
+        yaml_name = 'publish.yaml' if has_yaml else 'publish.yml'
+        raise FatalError([f"Both {yaml_name} and publish.toml found in '{directory}'. Please use only one."])
+
+    if has_yaml:
+        return yaml_path
+    if has_yml:
+        return yml_path
+    if has_toml:
+        return toml_path
+    return None

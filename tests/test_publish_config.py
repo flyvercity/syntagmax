@@ -2,7 +2,7 @@
 import pytest
 from pathlib import Path
 from pydantic import ValidationError
-from syntagmax.publish_config import PublishConfig, load_publish_config, TableSection, TextSection, MarkerRenderSection
+from syntagmax.publish_config import PublishConfig, load_publish_config, resolve_publish_file, TableSection, TextSection, MarkerRenderSection
 from syntagmax.errors import FatalError
 
 
@@ -260,3 +260,268 @@ contents_marker: "_intro_"
     def test_contents_marker_accepts_underscores_and_dashes(self):
         config = PublishConfig(contents_marker='--content--')
         assert config.contents_marker == '--content--'
+
+
+class TestTomlSupport:
+    def test_load_publish_config_toml_file(self, tmp_path):
+        toml_content = """
+start_level = 3
+
+[[render.REQ]]
+type = "text"
+mode = "inline"
+
+[[render.REQ.attributes]]
+[render.REQ.attributes.contents]
+alias = "ReqText"
+"""
+        p = tmp_path / 'publish.toml'
+        p.write_text(toml_content, encoding='utf-8')
+        config = load_publish_config(Path('publish.toml'), tmp_path)
+        assert config.start_level == 3
+        assert 'REQ' in config.render
+
+    def test_load_publish_config_toml_simple(self, tmp_path):
+        toml_content = """
+start_level = 2
+remove_numeric_prefixes_in_headers = false
+include_plain_text = false
+"""
+        p = tmp_path / 'publish.toml'
+        p.write_text(toml_content, encoding='utf-8')
+        config = load_publish_config(Path('publish.toml'), tmp_path)
+        assert config.start_level == 2
+        assert config.remove_numeric_prefixes_in_headers is False
+        assert config.include_plain_text is False
+
+    def test_load_publish_config_toml_underscore_keys(self, tmp_path):
+        toml_content = """
+start_level = 1
+
+[docx_template]
+default_template = "templates/corporate.dotm"
+
+[docx_template.overrides]
+system-requirements = "templates/sys.dotm"
+"""
+        p = tmp_path / 'publish.toml'
+        p.write_text(toml_content, encoding='utf-8')
+        config = load_publish_config(Path('publish.toml'), tmp_path)
+        assert config.docx_template is not None
+        assert config.docx_template.default_template == 'templates/corporate.dotm'
+        assert config.docx_template.overrides['system-requirements'] == 'templates/sys.dotm'
+
+    def test_load_publish_config_toml_hyphenated_keys(self, tmp_path):
+        toml_content = """
+start_level = 1
+
+["docx-template"]
+"default-template" = "templates/corporate.dotm"
+
+["docx-template".overrides]
+sys-reqs = "templates/sys.dotm"
+"""
+        p = tmp_path / 'publish.toml'
+        p.write_text(toml_content, encoding='utf-8')
+        config = load_publish_config(Path('publish.toml'), tmp_path)
+        assert config.docx_template is not None
+        assert config.docx_template.default_template == 'templates/corporate.dotm'
+
+    def test_load_publish_config_unknown_extension(self, tmp_path):
+        p = tmp_path / 'publish.json'
+        p.write_text('{}', encoding='utf-8')
+        with pytest.raises(FatalError):
+            load_publish_config(Path('publish.json'), tmp_path)
+
+    def test_load_publish_config_case_insensitive_extension(self, tmp_path):
+        toml_content = "start_level = 4\n"
+        p = tmp_path / 'publish.TOML'
+        p.write_text(toml_content, encoding='utf-8')
+        config = load_publish_config(Path('publish.TOML'), tmp_path)
+        assert config.start_level == 4
+
+    def test_load_publish_config_yml_extension(self, tmp_path):
+        yaml_content = "start_level: 5\n"
+        p = tmp_path / 'publish.yml'
+        p.write_text(yaml_content, encoding='utf-8')
+        config = load_publish_config(Path('publish.yml'), tmp_path)
+        assert config.start_level == 5
+
+    def test_load_publish_config_nonexistent_toml(self, tmp_path):
+        config = load_publish_config(Path('nonexistent.toml'), tmp_path)
+        assert config.start_level == 1
+
+    def test_load_publish_config_invalid_toml(self, tmp_path):
+        p = tmp_path / 'bad.toml'
+        p.write_text("start_level = 'not-an-int'", encoding='utf-8')
+        with pytest.raises(FatalError):
+            load_publish_config(Path('bad.toml'), tmp_path)
+
+    def test_load_publish_config_full_path(self, tmp_path):
+        """Test that load_publish_config works with absolute paths."""
+        toml_content = "start_level = 7\n"
+        p = tmp_path / 'publish.toml'
+        p.write_text(toml_content, encoding='utf-8')
+        config = load_publish_config(p, tmp_path)
+        assert config.start_level == 7
+
+
+class TestResolvePublishFile:
+    def test_resolve_publish_file_yaml_only(self, tmp_path):
+        (tmp_path / 'publish.yaml').write_text('start_level: 1', encoding='utf-8')
+        result = resolve_publish_file(tmp_path)
+        assert result == tmp_path / 'publish.yaml'
+
+    def test_resolve_publish_file_yml_only(self, tmp_path):
+        (tmp_path / 'publish.yml').write_text('start_level: 1', encoding='utf-8')
+        result = resolve_publish_file(tmp_path)
+        assert result == tmp_path / 'publish.yml'
+
+    def test_resolve_publish_file_toml_only(self, tmp_path):
+        (tmp_path / 'publish.toml').write_text('start_level = 1', encoding='utf-8')
+        result = resolve_publish_file(tmp_path)
+        assert result == tmp_path / 'publish.toml'
+
+    def test_resolve_publish_file_neither(self, tmp_path):
+        result = resolve_publish_file(tmp_path)
+        assert result is None
+
+    def test_resolve_publish_file_both_yaml_and_toml_error(self, tmp_path):
+        (tmp_path / 'publish.yaml').write_text('start_level: 1', encoding='utf-8')
+        (tmp_path / 'publish.toml').write_text('start_level = 1', encoding='utf-8')
+        with pytest.raises(FatalError):
+            resolve_publish_file(tmp_path)
+
+    def test_resolve_publish_file_yml_and_toml_error(self, tmp_path):
+        (tmp_path / 'publish.yml').write_text('start_level: 1', encoding='utf-8')
+        (tmp_path / 'publish.toml').write_text('start_level = 1', encoding='utf-8')
+        with pytest.raises(FatalError):
+            resolve_publish_file(tmp_path)
+
+    def test_resolve_publish_file_yaml_preferred_over_yml(self, tmp_path):
+        """When both .yaml and .yml exist (no TOML), .yaml takes precedence."""
+        (tmp_path / 'publish.yaml').write_text('start_level: 1', encoding='utf-8')
+        (tmp_path / 'publish.yml').write_text('start_level: 2', encoding='utf-8')
+        result = resolve_publish_file(tmp_path)
+        assert result == tmp_path / 'publish.yaml'
+
+    def test_resolve_publish_file_ignores_directories(self, tmp_path):
+        """A directory named publish.yaml should not be detected."""
+        (tmp_path / 'publish.yaml').mkdir()
+        result = resolve_publish_file(tmp_path)
+        assert result is None
+
+    def test_resolve_publish_file_ignores_directory_with_toml_file(self, tmp_path):
+        """A directory named publish.yaml should not conflict with publish.toml."""
+        (tmp_path / 'publish.yaml').mkdir()
+        (tmp_path / 'publish.toml').write_text('start_level = 1', encoding='utf-8')
+        result = resolve_publish_file(tmp_path)
+        assert result == tmp_path / 'publish.toml'
+
+
+class TestConfigResolutionToml:
+    def test_config_resolution_toml_fallback(self, tmp_path):
+        from syntagmax.config import Config
+        from syntagmax.params import Params
+
+        cfg_path = tmp_path / 'config.toml'
+        cfg_content = """
+base = "."
+[[input]]
+name = "r1"
+dir = "SYS"
+driver = "obsidian"
+atype = "SYS"
+"""
+        cfg_path.write_text(cfg_content, encoding='utf-8')
+
+        # Create .syntagmax/publish.toml as fallback
+        dot_syntagmax = tmp_path / '.syntagmax'
+        dot_syntagmax.mkdir()
+        (dot_syntagmax / 'publish.toml').write_text('start_level = 4', encoding='utf-8')
+
+        params = Params(verbose=False, render_tree=False, ai=False, output='console')
+        config = Config(params=params, config_filename=cfg_path)
+        records = config.input_records()
+
+        config_r1 = config.load_publish_config(records[0])
+        assert config_r1.start_level == 4
+
+    def test_config_resolution_toml_per_record(self, tmp_path):
+        from syntagmax.config import Config
+        from syntagmax.params import Params
+
+        cfg_path = tmp_path / 'config.toml'
+        cfg_content = """
+base = "."
+[[input]]
+name = "r1"
+dir = "SYS"
+driver = "obsidian"
+atype = "SYS"
+publish = "custom.toml"
+"""
+        cfg_path.write_text(cfg_content, encoding='utf-8')
+
+        (tmp_path / 'custom.toml').write_text('start_level = 6', encoding='utf-8')
+
+        params = Params(verbose=False, render_tree=False, ai=False, output='console')
+        config = Config(params=params, config_filename=cfg_path)
+        records = config.input_records()
+
+        config_r1 = config.load_publish_config(records[0])
+        assert config_r1.start_level == 6
+
+    def test_config_resolution_conflict_error(self, tmp_path):
+        from syntagmax.config import Config
+        from syntagmax.params import Params
+
+        cfg_path = tmp_path / 'config.toml'
+        cfg_content = """
+base = "."
+[[input]]
+name = "r1"
+dir = "SYS"
+driver = "obsidian"
+atype = "SYS"
+"""
+        cfg_path.write_text(cfg_content, encoding='utf-8')
+
+        # Create both publish.yaml and publish.toml in root
+        (tmp_path / 'publish.yaml').write_text('start_level: 1', encoding='utf-8')
+        (tmp_path / 'publish.toml').write_text('start_level = 2', encoding='utf-8')
+
+        params = Params(verbose=False, render_tree=False, ai=False, output='console')
+        config = Config(params=params, config_filename=cfg_path)
+        records = config.input_records()
+
+        with pytest.raises(FatalError):
+            config.load_publish_config(records[0])
+
+    def test_config_resolution_root_toml_over_syntagmax_yaml(self, tmp_path):
+        """Root publish.toml takes priority over .syntagmax/publish.yaml."""
+        from syntagmax.config import Config
+        from syntagmax.params import Params
+
+        cfg_path = tmp_path / 'config.toml'
+        cfg_content = """
+base = "."
+[[input]]
+name = "r1"
+dir = "SYS"
+driver = "obsidian"
+atype = "SYS"
+"""
+        cfg_path.write_text(cfg_content, encoding='utf-8')
+
+        (tmp_path / 'publish.toml').write_text('start_level = 8', encoding='utf-8')
+        dot_syntagmax = tmp_path / '.syntagmax'
+        dot_syntagmax.mkdir()
+        (dot_syntagmax / 'publish.yaml').write_text('start_level: 2', encoding='utf-8')
+
+        params = Params(verbose=False, render_tree=False, ai=False, output='console')
+        config = Config(params=params, config_filename=cfg_path)
+        records = config.input_records()
+
+        config_r1 = config.load_publish_config(records[0])
+        assert config_r1.start_level == 8

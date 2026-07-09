@@ -284,20 +284,24 @@ class Config:
             lg.debug(f'Input files: {len(input_record.filepaths)}')
 
     def load_publish_config(self, record: InputRecord) -> 'PublishConfig':
-        from syntagmax.publish_config import load_publish_config
+        from syntagmax.publish_config import load_publish_config, resolve_publish_file
 
         if record.publish_config:
             p = Path(record.publish_config)
             return load_publish_config(p, self._root_dir)
-        p1 = self._root_dir / 'publish.yaml'
-        if p1.exists():
-            return load_publish_config(Path('publish.yaml'), self._root_dir)
-        p2 = self._root_dir / '.syntagmax' / 'publish.yaml'
-        if p2.exists():
-            return load_publish_config(Path('.syntagmax/publish.yaml'), self._root_dir)
-        p3 = self._root_dir.parent / '.syntagmax' / 'publish.yaml'
-        if p3.exists():
-            return load_publish_config(Path('.syntagmax/publish.yaml'), self._root_dir.parent)
+
+        resolved = resolve_publish_file(self._root_dir)
+        if resolved:
+            return load_publish_config(resolved, self._root_dir)
+
+        resolved = resolve_publish_file(self._root_dir / '.syntagmax')
+        if resolved:
+            return load_publish_config(resolved, self._root_dir)
+
+        resolved = resolve_publish_file(self._root_dir.parent / '.syntagmax')
+        if resolved:
+            return load_publish_config(resolved, self._root_dir.parent)
+
         return load_publish_config(None, self._root_dir)
 
     def base_dir(self):

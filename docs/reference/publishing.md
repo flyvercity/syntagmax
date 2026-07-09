@@ -86,14 +86,16 @@ syntagmax publish --all --docx --docx-template none
 - DOCX/PDF files are placed alongside the Markdown with the same base name (e.g., `rec1.md` → `rec1.docx`).
 - If Pandoc is not found or conversion fails, a warning is logged with the exit status, the Markdown file is preserved, and the command exits successfully.
 
-## publish.yaml Reference
+## Publish Configuration Reference
 
-Publishing configuration controls how artifacts and text blocks are rendered in the output document. It is defined as a YAML file, resolved in the following order:
+Publishing configuration controls how artifacts and text blocks are rendered in the output document. It can be defined as either a YAML file (`publish.yaml` or `publish.yml`) or a TOML file (`publish.toml`), resolved in the following order:
 
-1. Per-record `publish` field in `config.toml`
-2. `publish.yaml` in the project root directory
-3. `.syntagmax/publish.yaml`
+1. Per-record `publish` field in `config.toml` (format detected by extension)
+2. `publish.yaml`, `publish.yml`, or `publish.toml` in the project root directory
+3. `.syntagmax/publish.yaml`, `.syntagmax/publish.yml`, or `.syntagmax/publish.toml`
 4. All-default rendering (if no file exists)
+
+If both a YAML variant and a TOML variant exist at the same location, Syntagmax raises an error. Use only one format per directory.
 
 ### Linking a Custom Publish Config
 
@@ -103,10 +105,10 @@ name = "system-requirements"
 dir = "SYS"
 driver = "obsidian"
 atype = "SYS"
-publish = "publish-sys-reqs.yaml"
+publish = "publish-sys-reqs.yaml"  # or "publish-sys-reqs.toml"
 ```
 
-### Full Schema
+### Full Schema (YAML)
 
 ```yaml
 start_level: 1
@@ -137,6 +139,46 @@ docx-template:
   overrides:
     system-requirements: "templates/sys-template.dotm"
     implementation: "none"
+```
+
+### Full Schema (TOML)
+
+```toml
+start_level = 1
+remove_numeric_prefixes_in_headers = true
+include_plain_text = true
+contents_marker = "_contents_"
+
+[[render.REQ]]
+type = "table"
+
+[[render.REQ.attributes]]
+[render.REQ.attributes.id]
+alias = "Identifier"
+
+[[render.REQ.attributes]]
+[render.REQ.attributes.parent]
+alias = "Parent"
+
+[[render.REQ]]
+type = "text"
+mode = "block"
+
+[[render.REQ.attributes]]
+[render.REQ.attributes.contents]
+alias = "Requirement"
+
+[[render.COM]]
+type = "text"
+mode = "block"
+alias = "Comment"
+
+[docx-template]
+default-template = "templates/corporate.dotm"
+
+[docx-template.overrides]
+system-requirements = "templates/sys-template.dotm"
+implementation = "none"
 ```
 
 ### Global Parameters
