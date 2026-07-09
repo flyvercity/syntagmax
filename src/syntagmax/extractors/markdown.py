@@ -451,8 +451,14 @@ class MarkdownExtractor(Extractor):
             slash_req_match = re.search(rf'\[/{marker}\]', markdown[start_pos:], re.IGNORECASE)
             slash_req_pos = (start_pos + slash_req_match.start()) if slash_req_match else -1
             # Constrain ```yaml search to within the [/MARKER] boundary to avoid
-            # matching literal ```yaml inside requirement content
-            yaml_search_end = slash_req_pos if slash_req_pos != -1 else len(markdown)
+            # matching literal ```yaml inside requirement content.
+            # When [/MARKER] is absent, constrain to before the next [MARKER] occurrence
+            # to avoid consuming unrelated YAML blocks from other artifacts.
+            if slash_req_pos != -1:
+                yaml_search_end = slash_req_pos
+            else:
+                next_marker_match = start_marker_re.search(markdown, match.end())
+                yaml_search_end = next_marker_match.start() if next_marker_match else len(markdown)
             yaml_start_pos = markdown.find('```yaml', start_pos, yaml_search_end)
             segment_end = -1
 
