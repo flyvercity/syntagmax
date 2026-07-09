@@ -197,6 +197,56 @@ class TestBuildTraceMatrix:
         matrix = build_trace_matrix(artifacts, 'REQ', 'SYS', direction='forward')
         assert matrix.records[0].linked_id == 'SYS-999'
 
+    def test_forward_filters_wrong_type_parents(self, mock_config):
+        """A REQ referencing both SYS and DOC parents only emits SYS links when parent_type='SYS'."""
+        sys1 = _make_artifact(mock_config, 'SYS', 'SYS-001')
+        doc1 = _make_artifact(mock_config, 'DOC', 'DOC-001')
+        req1 = _make_artifact(mock_config, 'REQ', 'REQ-001', pids=['SYS-001', 'DOC-001'])
+
+        artifacts: ArtifactMap = {
+            'SYS-001': sys1,
+            'DOC-001': doc1,
+            'REQ-001': req1,
+        }
+
+        matrix = build_trace_matrix(artifacts, 'REQ', 'SYS', direction='forward')
+        assert len(matrix.records) == 1
+        assert matrix.records[0].lead_id == 'REQ-001'
+        assert matrix.records[0].linked_id == 'SYS-001'
+
+    def test_forward_filters_wrong_type_parents_flat(self, mock_config):
+        """Flat mode also excludes wrong-type parents."""
+        sys1 = _make_artifact(mock_config, 'SYS', 'SYS-001')
+        sys2 = _make_artifact(mock_config, 'SYS', 'SYS-002')
+        doc1 = _make_artifact(mock_config, 'DOC', 'DOC-001')
+        req1 = _make_artifact(mock_config, 'REQ', 'REQ-001', pids=['SYS-001', 'DOC-001', 'SYS-002'])
+
+        artifacts: ArtifactMap = {
+            'SYS-001': sys1,
+            'SYS-002': sys2,
+            'DOC-001': doc1,
+            'REQ-001': req1,
+        }
+
+        matrix = build_trace_matrix(artifacts, 'REQ', 'SYS', direction='forward', flat=True)
+        assert len(matrix.records) == 1
+        assert matrix.records[0].linked_id == 'SYS-001; SYS-002'
+
+    def test_forward_wrong_type_parents_all_filtered_becomes_orphan(self, mock_config):
+        """A REQ whose parents are all of wrong type appears as orphan (empty linked_id)."""
+        doc1 = _make_artifact(mock_config, 'DOC', 'DOC-001')
+        req1 = _make_artifact(mock_config, 'REQ', 'REQ-001', pids=['DOC-001'])
+
+        artifacts: ArtifactMap = {
+            'DOC-001': doc1,
+            'REQ-001': req1,
+        }
+
+        matrix = build_trace_matrix(artifacts, 'REQ', 'SYS', direction='forward')
+        assert len(matrix.records) == 1
+        assert matrix.records[0].lead_id == 'REQ-001'
+        assert matrix.records[0].linked_id == ''
+
 
 # --- render_trace_csv tests ---
 
