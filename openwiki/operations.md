@@ -40,7 +40,8 @@ Important behaviors:
 - `--single` writes a consolidated Markdown file; without it, each record gets its own file.
 - `--date-suffix` only applies to separate output files.
 - `--docx` and `--pdf` are graceful add-ons: if Pandoc is missing, Markdown still gets written and the command does not fail.
-- Plugins run during publish, so their effects are part of the output.
+- Plugins run during publish: pre-publishing filters can mutate the block tree, and post-processing plugins can transform the Markdown.
+- Images referenced in source documents are automatically resolved and copied to the output directory.
 
 ### Start the MCP server
 `uv run syntagmax mcp run .syntagmax/config.toml --transport sse --port 8000`

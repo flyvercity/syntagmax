@@ -25,14 +25,15 @@ The CLI’s `analyze` command lets the user request a public step target; `main.
 Important consequence: if you change one step, check whether downstream steps assume the same intermediate shapes (`artifacts_list`, `artifacts`, tree nodes, or revision metadata).
 
 ## Publish pipeline
-The publish path is distinct from analysis.
+The publish path is distinct from analysis and now includes image resolution and pre-publishing filter plugins.
 
 1. `cli.py publish` loads the project config and selects one or more input records.
 2. `publish.build_block_tree()` extracts blocks per record and preserves file order.
-3. `plugin.run_block_transforms()` can mutate the block tree before rendering.
-4. `publish.render_block_tree()` renders the block tree into Markdown using `PublishConfig`.
-5. `plugin.run_markdown_transforms()` can post-process the Markdown.
-6. The CLI writes `.md`, then optionally converts to `.docx` / `.pdf` via `pandoc.py`.
+3. `publish.resolve_images()` resolves and copies images referenced in source documents to the output directory.
+4. `plugin.run_block_transforms()` runs pre-publishing filter plugins that can mutate the block tree.
+5. `publish.render_block_tree()` renders the block tree into Markdown using `PublishConfig`.
+6. `plugin.run_markdown_transforms()` runs post-processing plugins that can transform the Markdown.
+7. The CLI writes `.md`, then optionally converts to `.docx` / `.pdf` via `pandoc.py`.
 
 The publishing system is config-driven and record-specific. Each input record may point to its own publish YAML, with fallbacks to `.syntagmax/publish.yaml` or defaults.
 
@@ -48,8 +49,8 @@ The metamodel loader in `metamodel.py` uses a Lark grammar to parse the `.syntag
 
 ## Plugin system
 `plugin.py` implements a two-hook plugin model:
-- `transform_blocks(tree, config, params) -> BlockTree`
-- `transform_markdown(markdown, config, params) -> str`
+- `transform_blocks(tree, config, params) -> BlockTree` (pre-publishing filter)
+- `transform_markdown(markdown, config, params) -> str` (post-processing)
 
 Plugins may be local files/packages under the project’s `plugins/` directory or installed packages exposed through the `syntagmax.plugins` entry-point group. Hooks are run in config order and incorrect return types raise `FatalError`.
 

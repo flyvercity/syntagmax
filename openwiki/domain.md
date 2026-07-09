@@ -27,14 +27,16 @@ The metamodel loader validates that artifacts define an ID rule and a contents r
 Driver defaults matter because they affect what files are even discovered. For example, the config layer supplies default glob filters for some drivers.
 
 ## Publish block model
-Publishing operates on a nested block structure rather than directly on artifacts. This lets the renderer preserve plain text around artifact records and treat marked fragments separately.
+Publishing operates on a nested block structure rather than directly on artifacts. This lets the renderer preserve plain text around artifact records, treat marked fragments separately, and handle images referenced in source documents.
 
 A publish pass usually works like this:
 1. Extract files into blocks.
 2. Group blocks under input records and files.
-3. Render artifacts and text blocks according to publish config.
-4. Apply plugin transforms if configured.
-5. Emit Markdown or convert it to other formats.
+3. Resolve and copy images referenced in source documents to the output directory.
+4. Apply pre-publishing filter plugins that can mutate the block tree.
+5. Render artifacts and text blocks according to publish config.
+6. Apply post-processing plugins that can transform the Markdown.
+7. Emit Markdown or convert it to other formats.
 
 ## Publish configuration semantics
 `PublishConfig` controls how the renderer behaves:

@@ -12,8 +12,8 @@ Syntagmax is a git-friendly requirements management system for extracting artifa
 - Discovers input records from a TOML project config and processes them through a dependency-ordered analysis pipeline.
 - Extracts artifacts from multiple drivers, including Obsidian-style Markdown, plain Markdown, text markers, sidecar metadata, and IPython notebooks.
 - Builds a tree of artifacts, validates the metamodel, computes metrics, performs impact analysis, and optionally runs AI-assisted analysis.
-- Publishes artifact collections to Markdown, and can optionally convert output to DOCX or PDF via Pandoc.
-- Supports local and package plugins that transform the publish pipeline.
+- Publishes artifact collections to Markdown, automatically resolving and copying images referenced in source documents, and can optionally convert output to DOCX or PDF via Pandoc.
+- Supports local and package plugins that transform the publish pipeline, including pre-publishing filters that can mutate the block tree.
 - Exposes a small MCP server with tools for listing, searching, and retrieving artifact content.
 
 ## High-signal source map
@@ -48,9 +48,15 @@ Syntagmax is a git-friendly requirements management system for extracting artifa
 - For plugin changes, preserve load order and the runtime validation of hook return types.
 
 ## Recent architecture changes to know about
-Recent commits added the configurable publish system, Pandoc export, and the plugin pipeline. Those changes mean the publish path is no longer a single hardcoded renderer; it now layers config-driven rendering, optional plugins, and optional format conversion.
+Recent commits added the configurable publish system, Pandoc export, image-aware publishing, and the plugin pipeline. Those changes mean the publish path is now a multi-stage pipeline:
+- Config-driven rendering with per-record publish YAML
+- Optional pre-publishing filter plugins that can mutate the block tree
+- Automatic image resolution and copying for published documents
+- Optional format conversion via Pandoc
 
 Related evidence:
+- `8dbfa13 feat: implement automatic image resolution and copying for published documents`
+- `8894b1a feat: implement pre-publishing filter plugin hook`
 - `e2c4146 feat: implement configurable publishing system`
 - `d835f71 feat: add pandoc integration for docx and pdf export`
 - `a180058 feat: implement plugin system for transformation pipeline`
