@@ -106,11 +106,43 @@ def _run_pandoc_conversion(md_path: Path, docx: bool, pdf: bool, reference_doc: 
         formats.append(('pdf', md_path.with_suffix('.pdf')))
 
     for fmt, out_path in formats:
-        success, message = convert(md_path, out_path, fmt, reference_doc=reference_doc if fmt == 'docx' else None)
+        success, message = convert(md_path, out_path, fmt, reference_doc=reference_doc if fmt == 'docx' else None,
+                                   resource_path=md_path.parent)
         if success:
             u.pprint(f'[green]Converted to {fmt.upper()}: {out_path}[/green]')
         else:
             u.pprint(f'[yellow]Pandoc conversion to {fmt.upper()} failed: {message}[/yellow]')
+
+
+def _copy_manifest_images(manifest, output_dir: Path):
+    """Copy images from the manifest to output_dir/images/, with stale cleanup."""
+    import shutil
+
+    if not manifest:
+        return
+
+    images_dir = output_dir / 'images'
+
+    # Clean stale images
+    if images_dir.exists():
+        for f in images_dir.iterdir():
+            if f.is_file():
+                f.unlink()
+    else:
+        images_dir.mkdir(parents=True, exist_ok=True)
+
+    copied = 0
+    for source, target_rel in manifest.entries.items():
+        dest = output_dir / target_rel
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        if source.exists():
+            shutil.copy2(source, dest)
+            copied += 1
+        else:
+            lg.warning(f'Image source file not found, skipping: {source}')
+
+    if copied:
+        u.pprint(f'[green]Copied {copied} image(s) to {images_dir}[/green]')
 
 
 @rms.command(help='Publish project to markdown document(s)')
@@ -209,13 +241,16 @@ def publish(
             pre_filter_plugin = find_plugin_by_name(config.plugins(), pre_filter_name)
             tree = run_pre_filter(pre_filter_plugin, tree, config)
 
-        markdown = render_block_tree(tree, config, multi_record=(len(selected_records) > 1))
+        markdown, manifest = render_block_tree(tree, config, multi_record=(len(selected_records) > 1))
 
         # Run plugin markdown transforms
         markdown = run_markdown_transforms(config.plugins(), markdown, config)
 
         out_p.parent.mkdir(parents=True, exist_ok=True)
         out_p.write_text(markdown, encoding='utf-8')
+
+        # Copy images
+        _copy_manifest_images(manifest, out_p.parent)
 
         num_artifacts = 0
         num_text_blocks = 0
@@ -246,6 +281,9 @@ def publish(
         out_p.mkdir(parents=True, exist_ok=True)
         date_str = datetime.now().strftime('%Y-%m-%d')
 
+        from syntagmax.publish_context import ImageManifest
+        combined_manifest = ImageManifest()
+
         for record in selected_records:
             tree = build_block_tree(config)
             tree.inputs = [inp for inp in tree.inputs if inp.name == record.name]
@@ -258,10 +296,12 @@ def publish(
                 pre_filter_plugin = find_plugin_by_name(config.plugins(), pre_filter_name)
                 tree = run_pre_filter(pre_filter_plugin, tree, config)
 
-            markdown = render_block_tree(tree, config, multi_record=False)
+            markdown, manifest = render_block_tree(tree, config, multi_record=False)
 
             # Run plugin markdown transforms
             markdown = run_markdown_transforms(config.plugins(), markdown, config)
+
+            combined_manifest.merge(manifest)
 
             safe_record_name = Path(record.name).name.replace('/', '_').replace('\\', '_')
 
@@ -298,6 +338,9 @@ def publish(
             if pandoc_available:
                 reference_doc = _resolve_template_for_record(record) if docx else None
                 _run_pandoc_conversion(file_path, docx, pdf, reference_doc=reference_doc)
+
+        # Copy images after all records are processed
+        _copy_manifest_images(combined_manifest, out_p)
 
 
 @rms.command(help='Export traceability matrix as CSV/TSV')

@@ -74,7 +74,7 @@ class TestRenderBlockTree:
             ]
         )
 
-        result = render_block_tree(tree)
+        result, _ = render_block_tree(tree)
         assert '# reqs' in result
         assert '## req' in result
         assert '# Intro' in result
@@ -104,7 +104,7 @@ class TestRenderBlockTree:
             ]
         )
 
-        result = render_block_tree(tree)
+        result, _ = render_block_tree(tree)
         assert '| tags | 1, 2 |' in result
         assert '| verified | True |' in result
 
@@ -339,7 +339,7 @@ class TestPathHeadings:
 
         # Simulate config with record_dir='SYS', start_level=1, remove_numeric_prefixes=True
         # Without config, record_dir defaults to '' so we test with multi_record=False
-        result = render_block_tree(tree, multi_record=False)
+        result, _ = render_block_tree(tree, multi_record=False)
 
         # With no config, record_dir is '' so full path components are used
         # SYS/01-Intro/02-Overview.md -> ['SYS', '01-Intro', '02-Overview']
@@ -366,7 +366,7 @@ class TestPathHeadings:
             ]
         )
 
-        result = render_block_tree(tree, multi_record=True)
+        result, _ = render_block_tree(tree, multi_record=True)
         assert '# sys-reqs' in result
         assert '## file' in result
 
@@ -382,7 +382,7 @@ class TestPathHeadings:
             ]
         )
 
-        result = render_block_tree(tree, multi_record=False)
+        result, _ = render_block_tree(tree, multi_record=False)
         assert 'sys-reqs' not in result
         assert '# file' in result
 
@@ -399,7 +399,7 @@ class TestPathHeadings:
         )
 
         # Without config, default is remove_numeric_prefixes=True
-        result_stripped = render_block_tree(tree, multi_record=False)
+        result_stripped, _ = render_block_tree(tree, multi_record=False)
         assert '# Introduction' in result_stripped
 
     def test_numeric_prefix_stripping_on_record_name(self):
@@ -414,7 +414,7 @@ class TestPathHeadings:
             ]
         )
 
-        result = render_block_tree(tree, multi_record=True)
+        result, _ = render_block_tree(tree, multi_record=True)
         assert '# System Requirements' in result
 
     def test_heading_level_capping(self):
@@ -429,7 +429,7 @@ class TestPathHeadings:
             ]
         )
 
-        result = render_block_tree(tree, multi_record=True)
+        result, _ = render_block_tree(tree, multi_record=True)
         # record at level 1, then a=2, b=3, c=4, d=5, e=6, f=6, g=6 (capped)
         assert '###### ' in result
         # Should not exceed 6 hashes
@@ -450,7 +450,7 @@ class TestPathHeadings:
             ]
         )
 
-        result = render_block_tree(tree, multi_record=False)
+        result, _ = render_block_tree(tree, multi_record=False)
         # 'dir' heading emitted once
         assert result.count('# dir') == 1
         assert '## file1' in result

@@ -19,7 +19,7 @@ def check_pandoc() -> bool:
     return shutil.which('pandoc') is not None
 
 
-def convert(source_md: Path, output_path: Path, output_format: str, reference_doc: Path | None = None) -> tuple[bool, str]:
+def convert(source_md: Path, output_path: Path, output_format: str, reference_doc: Path | None = None, resource_path: Path | None = None) -> tuple[bool, str]:
     """
     Convert a Markdown file to the specified format using Pandoc.
 
@@ -29,6 +29,8 @@ def convert(source_md: Path, output_path: Path, output_format: str, reference_do
         output_format: Target format ('docx' or 'pdf').
         reference_doc: Optional path to a reference document (--reference-doc).
             Only applied when output_format is 'docx'.
+        resource_path: Optional path for Pandoc's --resource-path flag.
+            Tells Pandoc where to find images and other resources.
 
     Returns:
         A tuple of (success, message). On failure, message includes the exit code
@@ -38,6 +40,9 @@ def convert(source_md: Path, output_path: Path, output_format: str, reference_do
 
     if reference_doc is not None and output_format == 'docx':
         cmd.extend(['--reference-doc', str(reference_doc)])
+
+    if resource_path is not None:
+        cmd.extend(['--resource-path', str(resource_path)])
 
     lg.debug(f'Running Pandoc: {" ".join(cmd)}')
 
