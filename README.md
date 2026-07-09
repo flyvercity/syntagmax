@@ -36,96 +36,13 @@ This command creates a `.syntagmax` directory with:
 
 ## Configuration
 
-Syntagmax uses a TOML configuration file (default `.syntagmax/config.toml`).
+Syntagmax uses a TOML configuration file (default `.syntagmax/config.toml`). Key sections include:
 
-### Top-level options
-
-| Option | Required | Description |
-|--------|----------|-------------|
-| `base` | Yes | Base directory path (relative to the config file) |
-| `input` | Yes | List of input source definitions |
-| `metrics` | No | Metrics collection settings |
-| `metamodel` | No | Metamodel configuration |
-
-### Input sources (`[[input]]`)
-
-Each input defines a source of requirements or artifacts:
-
-| Field | Required | Default | Description |
-|-------|----------|---------|-------------|
-| `name` | Yes | — | Input source name |
-| `dir` | Yes | — | Subdirectory relative to base directory |
-| `driver` | Yes | — | Driver type: `obsidian`, `ipynb`, `markdown`, etc. |
-| `filter` | No | Driver-specific | File filter pattern (glob). Defaults: `obsidian` → `**/*.md`, `ipynb` → `**/*.ipynb`, `markdown` → `**/*.md` |
-| `atype` | No | `REQ` | Default artifact type for this source |
-| `marker` | No | *atype* | Custom marker for artifacts (e.g., `[SYS]` in Markdown). Defaults to `atype`. |
-| `markers` | No | `[]` | List of fragment markers for non-artifact text blocks (e.g., `["COM", "NOTE"]`). Obsidian driver only. |
-
-### Marked Fragments (Obsidian driver)
-
-The `markers` option allows tagging non-artifact text blocks with named markers such as `[COM]...[/COM]` or `[NOTE]...[/NOTE]`. These marked fragments are extracted as `TextBlock`s with a `marker` field set, which can later influence publication filtering.
-
-**Rules:**
-- Markers are case-insensitive (`[com]...[/COM]` is valid)
-- Marker values are stored in uppercase (e.g., `COM`, `NOTE`)
-- Fragment markers must not collide with the artifact marker (fatal config error)
-- No nesting or overlap between markers
-- Only supported for the `obsidian` driver
-
-**Example config:**
-
-```toml
-[[input]]
-name = "system-requirements"
-dir = "SYS"
-driver = "obsidian"
-markers = ["COM", "NOTE"]
-```
-
-**Example markdown:**
-
-```text
-This is a preamble. [COM]This is a comment.[/COM]
-[note]This is a note.[/note]
-Some more text.
-[SYS]
-Requirement body
-[id] SYS-001
-[/SYS]
-```
-
-This produces the following blocks:
-- Regular text: `This is a preamble. `
-- Comment fragment (marker=`COM`): `This is a comment.`
-- Regular text: `\nSome more text.\n`
-- Note fragment (marker=`NOTE`): `This is a note.`
-- Artifact: `SYS-001`
-
-### Metrics (`[metrics]`)
-
-| Field | Required | Default | Description |
-|-------|----------|---------|-------------|
-| `enabled` | No | `false` | Enable metrics collection |
-| `requirement_type` | No | `REQ` | Requirement type to include |
-| `status_field` | No | `status` | Status attribute name |
-| `verify_field` | No | `verify` | Verify attribute name |
-| `tbd_marker` | No | `TBD` | TBD detection marker |
-
-### Impact Analysis (`[impact]`)
-
-Impact analysis helps identify potentially outdated artifacts by comparing their parent revisions.
-
-| Field | Required | Default | Description |
-|-------|----------|---------|-------------|
-| `enabled` | No | `false` | Enable impact analysis |
-
-### Metamodel (`[metamodel]`)
-
-| Field | Required | Default | Description |
-|-------|----------|---------|-------------|
-| `filename` | No | — | Path to the `.syntagmax` file defining the project's metamodel. |
-
-## Example Configuration
+- `[[input]]` — input source definitions (driver, artifact type, filters)
+- `[metrics]` — metrics collection settings
+- `[impact]` — impact analysis settings
+- `[metamodel]` — metamodel file path
+- `[ai]` — AI provider and model settings
 
 ```toml
 base = ".."
@@ -134,13 +51,6 @@ base = ".."
 name = "requirements"
 dir = "requirements/REQS"
 driver = "obsidian"
-
-[[input]]
-name = "implementation"
-dir = "app/src/main"
-driver = "text"
-atype = "SRC"
-filter = "**/*.kt"
 
 [metrics]
 enabled = true
@@ -152,6 +62,8 @@ filename = "project.syntagmax"
 provider = "anthropic"
 model = "claude-sonnet-4-6"
 ```
+
+For the full schema, input source options, marked fragments, and AI provider settings, see [docs/reference/configuration.md](docs/reference/configuration.md).
 
 ## Git Integration
 
@@ -609,28 +521,6 @@ uv run syntagmax --cwd ./example/trace-tsv-plugin trace --child REQ --parent SYS
 
 - Implement automatic change propagation
 - Enhance AI-based analysis and tracing
-
-## AI Configuration (`[ai]`)
-
-AI analysis configuration. Settings can also be placed in `~/.syntagmax/config` (global configuration) which are overridden by the project configuration.
-
-Environment variables can also be used for API keys (e.g. `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY`). Configuration file values take precedence.
-
-**Note on AWS Bedrock:** Currently, only Anthropic Claude models are supported on Bedrock. `boto3` must be installed manually to use Bedrock.
-
-| Field | Required | Default | Description |
-|-------|----------|---------|-------------|
-| `provider` | No | `ollama` | AI provider: `ollama`, `anthropic`, `openai`, `gemini`, `bedrock` |
-| `model` | No | *Provider Default* | Model name to use (e.g. `gpt-4o`, `claude-3-opus`) |
-| `ollama_host` | No | `http://localhost:11434` | Ollama host URL |
-| `anthropic_api_key` | No | — | Anthropic API Key |
-| `openai_api_key` | No | — | OpenAI API Key |
-| `gemini_api_key` | No | — | Google Gemini API Key |
-| `aws_access_key_id` | No | — | AWS Access Key ID |
-| `aws_secret_access_key` | No | — | AWS Secret Access Key |
-| `aws_region_name` | No | — | AWS Region Name |
-| `aws_api_key` | No | — | AWS Bedrock API Key |
-| `timeout_s` | No | `60.0` | Request timeout in seconds |
 
 ## MCP Server
 
