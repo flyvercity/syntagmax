@@ -65,6 +65,8 @@ model = "claude-sonnet-4-6"
 
 For the full schema, input source options, marked fragments, and AI provider settings, see [docs/reference/configuration.md](docs/reference/configuration.md).
 
+For detailed Obsidian driver extraction rules, block termination behavior, and fragment marker processing, see [docs/reference/obsidian.md](docs/reference/obsidian.md).
+
 ## Git Integration
 
 Syntagmax automatically extracts revision history for each artifact using Git. This provides traceability and helps track changes over time.
