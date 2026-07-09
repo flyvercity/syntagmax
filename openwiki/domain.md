@@ -41,7 +41,7 @@ A publish pass usually works like this:
 - `start_level` offsets heading depth
 - `remove_numeric_prefixes_in_headers` strips section numbering from headings
 - `include_plain_text` toggles unmarked text blocks
-- `ignore_plain_text_prefixes` filters out lines with certain prefixes
+- `exclude_elements` (in `[drivers.obsidian]` or per-record) filters predefined Markdown elements at extraction time: `callouts`, `headings`, `horizontal_rules`, `frontmatter`
 - `render` maps artifact types or markers to ordered sections
 
 The key behavior is fallback rendering. If a type or marker has no explicit render rule, the publisher emits a heading, contents, and a metadata table.

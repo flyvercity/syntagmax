@@ -54,12 +54,9 @@ def process_heading_line(line: str, start_level: int, remove_prefixes: bool) -> 
     return line
 
 
-def adjust_text_headings_and_prefixes(text: str, start_level: int, remove_prefixes: bool, ignore_prefixes: list[str]) -> str:
+def adjust_text_headings_and_prefixes(text: str, start_level: int, remove_prefixes: bool) -> str:
     lines = []
     for line in text.splitlines():
-        stripped = line.lstrip()
-        if ignore_prefixes and any(stripped.startswith(prefix) for prefix in ignore_prefixes):
-            continue
         processed = process_heading_line(line, start_level, remove_prefixes)
         lines.append(processed)
 
@@ -138,7 +135,6 @@ def render_block(block: Block, pub_config: PublishConfig) -> str:
                     block.content,
                     pub_config.start_level,
                     pub_config.remove_numeric_prefixes_in_headers,
-                    pub_config.ignore_plain_text_prefixes,
                 )
         else:
             # Unmarked text block
@@ -148,7 +144,6 @@ def render_block(block: Block, pub_config: PublishConfig) -> str:
                 block.content,
                 pub_config.start_level,
                 pub_config.remove_numeric_prefixes_in_headers,
-                pub_config.ignore_plain_text_prefixes,
             )
 
     if isinstance(block, ArtifactBlock):
@@ -187,7 +182,6 @@ def render_block(block: Block, pub_config: PublishConfig) -> str:
                             val,
                             pub_config.start_level,
                             pub_config.remove_numeric_prefixes_in_headers,
-                            pub_config.ignore_plain_text_prefixes,
                         ).strip()
                         if sec.mode == 'block':
                             parts.append(f'**{attr_render.alias}**\n\n{processed_val}\n\n')

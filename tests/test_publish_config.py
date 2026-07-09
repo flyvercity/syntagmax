@@ -11,7 +11,6 @@ def test_default_publish_config():
     assert config.start_level == 1
     assert config.remove_numeric_prefixes_in_headers is True
     assert config.include_plain_text is True
-    assert config.ignore_plain_text_prefixes == []
     assert config.render == {}
 
 

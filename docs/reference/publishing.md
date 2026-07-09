@@ -112,7 +112,6 @@ publish = "publish-sys-reqs.yaml"
 start_level: 1
 remove_numeric_prefixes_in_headers: true
 include_plain_text: true
-ignore_plain_text_prefixes: []
 
 render:
   REQ:
@@ -146,7 +145,6 @@ docx-template:
 | `start_level` | int | `1` | Starting heading level offset in the output document |
 | `remove_numeric_prefixes_in_headers` | bool | `true` | Strip leading numeric prefixes from all headings: Markdown headings in text, directory/file names, and record names |
 | `include_plain_text` | bool | `true` | Include plain (non-artifact) text in the output |
-| `ignore_plain_text_prefixes` | list[str] | `[]` | Line prefixes to exclude from plain text output |
 
 ### Path Headings
 

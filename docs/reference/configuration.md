@@ -8,6 +8,7 @@ Syntagmax uses a TOML configuration file (default `.syntagmax/config.toml`).
 |--------|----------|-------------|
 | `base` | Yes | Base directory path (relative to the config file) |
 | `input` | Yes | List of input source definitions |
+| `drivers` | No | Driver-specific global defaults |
 | `metrics` | No | Metrics collection settings |
 | `metamodel` | No | Metamodel configuration |
 
@@ -24,6 +25,7 @@ Each input defines a source of requirements or artifacts:
 | `atype` | No | `REQ` | Default artifact type for this source |
 | `marker` | No | *atype* | Custom marker for artifacts (e.g., `[SYS]` in Markdown). Defaults to `atype`. |
 | `markers` | No | `[]` | List of fragment markers for non-artifact text blocks (e.g., `["COM", "NOTE"]`). Obsidian driver only. |
+| `exclude_elements` | No | `[]` | Markdown elements to exclude at extraction time. Merged with global `[drivers.obsidian]` defaults. Valid values: `callouts`, `headings`, `horizontal_rules`, `frontmatter`. |
 
 ## Marked Fragments (Obsidian Driver)
 
@@ -64,6 +66,44 @@ This produces the following blocks:
 - Regular text: `\nSome more text.\n`
 - Note fragment (marker=`NOTE`): `This is a note.`
 - Artifact: `SYS-001`
+
+## Drivers (`[drivers]`)
+
+Global defaults for driver-specific behaviour. Per-record settings are merged with (not override) these defaults.
+
+### Obsidian Driver (`[drivers.obsidian]`)
+
+| Field | Required | Default | Description |
+|-------|----------|---------|-------------|
+| `exclude_elements` | No | `[]` | Markdown elements to exclude from text blocks at extraction time. Valid values: `callouts`, `headings`, `horizontal_rules`, `frontmatter`. |
+
+**Element descriptions:**
+- `callouts` — lines starting with `>` (Obsidian callouts / blockquotes)
+- `headings` — lines starting with `#`
+- `horizontal_rules` — lines consisting of three or more `-`, `*`, or `_`
+- `frontmatter` — YAML frontmatter block at file start (`---` delimited)
+
+Filtering is code-block-aware: lines inside fenced code blocks (` ``` `) are never removed.
+
+**Example:**
+
+```toml
+[drivers.obsidian]
+exclude_elements = ["callouts", "frontmatter"]
+```
+
+Per-record `exclude_elements` are merged with the global list:
+
+```toml
+[drivers.obsidian]
+exclude_elements = ["frontmatter"]
+
+[[input]]
+name = "system-requirements"
+dir = "SYS"
+driver = "obsidian"
+exclude_elements = ["callouts"]  # resolved: ["callouts", "frontmatter"]
+```
 
 ## Metrics (`[metrics]`)
 

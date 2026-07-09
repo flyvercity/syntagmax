@@ -188,13 +188,10 @@ class TestConfigDrivenRendering:
         block = TextBlock(content='Some plain text', marker=None)
         assert render_block(block, pub_config_exclude) == ''
 
-        # Filter plain text by line prefix
-        pub_config_filter = PublishConfig(include_plain_text=True, ignore_plain_text_prefixes=['#', '>'])
-        content = '# Header to ignore\nRegular line\n> blockquote to ignore\n'
-        block_filter = TextBlock(content=content, marker=None)
-        result = render_block(block_filter, pub_config_filter)
-        assert 'Header to ignore' not in result
-        assert 'blockquote to ignore' not in result
+        # Include plain text
+        pub_config_include = PublishConfig(include_plain_text=True)
+        block_include = TextBlock(content='Regular line\n', marker=None)
+        result = render_block(block_include, pub_config_include)
         assert 'Regular line' in result
 
 
