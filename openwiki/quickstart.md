@@ -23,7 +23,8 @@ Syntagmax is a git-friendly requirements management system for extracting artifa
 - Metamodel DSL: `src/syntagmax/metamodel.py`
 - Extraction layer: `src/syntagmax/extract.py` and `src/syntagmax/extractors/`
 - Tree / analysis logic: `src/syntagmax/tree.py`, `src/syntagmax/analyse.py`, `src/syntagmax/impact.py`, `src/syntagmax/metrics.py`, `src/syntagmax/ai.py`
-- Publish pipeline: `src/syntagmax/publish.py`, `src/syntagmax/publish_config.py`, `src/syntagmax/pandoc.py`
+- Publish pipeline: `src/syntagmax/publish.py`, `src/syntagmax/publish_config.py`, `src/syntagmax/publish_context.py`, `src/syntagmax/pandoc.py`
+- Obsidian vault integration: `src/syntagmax/obsidian_settings.py`
 - Plugin system: `src/syntagmax/plugin.py`
 - MCP server: `src/syntagmax/mcp/server.py`
 - Representative tests: `tests/test_init.py`, `tests/test_publish.py`, `tests/test_plugin.py`, `tests/test_mcp.py`, `tests/test_metamodel.py`

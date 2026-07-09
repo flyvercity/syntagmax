@@ -30,6 +30,8 @@ VALID_EXCLUDE_ELEMENTS = frozenset({'callouts', 'headings', 'horizontal_rules', 
 
 class ObsidianDriverConfig(BaseModel):
     exclude_elements: list[str] = Field(default_factory=list, description='Predefined Markdown elements to exclude at extraction time')
+    integration: bool = Field(default=False, description='Enable reading Obsidian vault settings (e.g. attachmentFolderPath)')
+    root: str | None = Field(default=None, description='Override path to the .obsidian directory (relative to base dir)')
 
     @field_validator('exclude_elements')
     @classmethod
@@ -192,6 +194,7 @@ class Config:
         self.metrics = config_model.metrics
         self.impact = config_model.impact
         self.ai = config_model.ai
+        self._obsidian_driver_config = config_model.drivers.obsidian
 
         if config_model.metamodel.filename:
             self.metamodel = load_metamodel(Path(root_dir, config_model.metamodel.filename), errors)
@@ -309,6 +312,10 @@ class Config:
 
     def plugins(self):
         return self._plugins
+
+    @property
+    def obsidian_driver_config(self) -> 'ObsidianDriverConfig':
+        return self._obsidian_driver_config
 
     def get_trace_mode(self, source_atype: str, target_atype: str) -> str:
         if not self.metamodel:

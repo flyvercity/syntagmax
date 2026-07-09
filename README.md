@@ -257,6 +257,21 @@ syntagmax publish --all --single --docx --output ./reports/full-document.md
 
 For the full command reference, `publish.yaml` schema, rendering configuration, and DOCX template options, see [docs/reference/publishing.md](docs/reference/publishing.md).
 
+### Obsidian Attachment Folder Integration
+
+If your Obsidian vault uses a configured attachment folder (set via Vault Settings → Files & Links → Attachment folder path), Syntagmax can read this setting to resolve image references during publishing.
+
+Enable it in your `config.toml`:
+
+```toml
+[drivers.obsidian]
+integration = true
+```
+
+This reads `.obsidian/app.json` from your project root to find `attachmentFolderPath`, and uses it as the primary lookup location for `![[image.png]]` references. Both vault-relative (e.g. `attachments/pics`) and note-relative (e.g. `./assets`) paths are supported.
+
+For full details, see the [configuration reference](docs/reference/configuration.md#obsidian-driver-driversobsidian).
+
 ## Tracing Export
 
 Syntagmax can export artifact traceability relationships as CSV or TSV matrices. The export uses left outer join semantics — every lead artifact appears even if it has no links to the target type.

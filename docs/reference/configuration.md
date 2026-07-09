@@ -76,6 +76,26 @@ Global defaults for driver-specific behaviour. Per-record settings are merged wi
 | Field | Required | Default | Description |
 |-------|----------|---------|-------------|
 | `exclude_elements` | No | `[]` | Markdown elements to exclude from text blocks at extraction time. Valid values: `callouts`, `headings`, `horizontal_rules`, `frontmatter`. |
+| `integration` | No | `false` | Enable reading Obsidian vault settings (e.g. `attachmentFolderPath` from `.obsidian/app.json`). |
+| `root` | No | `<base_dir>/.obsidian` | Override path to the `.obsidian` directory (relative to base dir). |
+
+#### Obsidian Vault Integration
+
+When `integration = true`, Syntagmax reads the Obsidian vault settings file (`.obsidian/app.json`) to discover the configured `attachmentFolderPath`. During publishing, image references (`![[image.png]]`) are resolved against this folder before falling back to the vault-wide file scan.
+
+**Path resolution rules:**
+- Vault-relative paths (e.g. `"attachments/pics"`) are resolved relative to the project base directory.
+- Note-relative paths (e.g. `"./attachments"` or `"."`) are resolved relative to the current source note's directory.
+
+If `.obsidian/app.json` is missing, unreadable, or does not contain `attachmentFolderPath`, a warning is logged and publishing falls back to the standard vault-wide image scan.
+
+**Example:**
+
+```toml
+[drivers.obsidian]
+integration = true
+root = ".obsidian"  # optional, this is the default
+```
 
 **Element descriptions:**
 - `callouts` — lines starting with `>` (Obsidian callouts / blockquotes)

@@ -10,8 +10,10 @@ Obsidian inline tags (`#tag`, `#nested/tag`) appear in Markdown body text and ge
 - When enabled, strip all inline Obsidian `#tag` occurrences from `TextBlock` content
 - Only affect text blocks (not artifact content inside `[REQ]...[/REQ]`)
 - Respect fenced code blocks (never strip tags inside ` ``` ` fences)
+- Respect inline code blocks (never strip tags inside backticks, e.g., `` `#tag` ``)
+- Must not corrupt URL anchors or links containing hashes (e.g., `https://example.com/#anchor` or `[Link](https://example.com/#anchor)`)
 - Handle all valid Obsidian tag formats: `#simple`, `#nested/tag`, `#with-hyphens`, `#with_underscores`, `#Unicode≥U+0080`
-- Must not match headings (`# Heading`) or hex color codes (`#fff`, `#123456`)
+- Must not match headings (`# Heading`) or hex color codes (`#fff`, `#fafafa`, `#123456`)
 - Configurable at both global (`[drivers.obsidian]`) and per-input-record level
 - Seamless with existing workflows (no breaking changes)
 
@@ -19,7 +21,7 @@ Obsidian inline tags (`#tag`, `#nested/tag`) appear in Markdown body text and ge
 
 - The `exclude_elements` system is already well-established in `config.py` with a `VALID_EXCLUDE_ELEMENTS` frozenset and Pydantic validation
 - Filtering logic lives in `MarkdownExtractor._filter_text_content()` which operates line-by-line for most filters, but handles frontmatter as a block
-- Tags are inline (not line-level), so a regex substitution approach is needed rather than line skipping
+- Tags are inline (not line-level), so a regex substitution approach is needed rather than line skipping. However, because tags are strictly single-line and do not cross line boundaries, this substitution can be applied line-by-line within the existing loop when not inside a fenced code block.
 - Obsidian tag rules: must start with a letter, underscore, or Unicode ≥ U+0080 after `#`; can contain letters, numbers, `_`, `-`, `/`; cannot start with a digit
 
 ## Proposed Solution
@@ -43,17 +45,20 @@ Obsidian inline tags (`#tag`, `#nested/tag`) appear in Markdown body text and ge
 
 - **Objective:** Strip inline Obsidian tags from text content when `'tags'` is in exclude list
 - **Implementation guidance:**
-  - Add a tag-stripping pass in `MarkdownExtractor._filter_text_content()` (in `src/syntagmax/extractors/markdown.py`)
-  - The regex should match: `#` followed by a letter, `_`, or Unicode char ≥ U+0080, then any combination of letters, digits, `_`, `-`, `/`
-  - Pattern suggestion: `r'(?<![&\w])#(?=[^\d\s])[\w\-/]+'` or similar, refined to avoid matching headings (which start at BOL with `# `) and hex codes
-  - Process inline (not line-by-line) since tags can appear mid-line
-  - Must be code-block-aware: split content at fence boundaries and only filter non-fenced segments (reuse the existing `in_code_block` tracking or apply a similar segment approach)
-  - Strip trailing whitespace that would result in double spaces after tag removal
+  - Add a tag-stripping pass in `MarkdownExtractor._filter_text_content()` (in `src/syntagmax/extractors/markdown.py`) within the existing `for line in lines` loop (when `in_code_block` is false).
+  - Protect inline code blocks (single/double backticks) on the line from being modified.
+  - The regex must match: `#` followed by a letter, `_`, or Unicode char ≥ U+0080, then any combination of letters, digits, `_`, `-`, `/`.
+  - The pattern must avoid matching hex color codes by using a negative lookahead for 3, 4, 6, and 8 hex digits: `(?!([0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})\b)`.
+  - The pattern must avoid matching URL anchors by ensuring the `#` is preceded by a valid tag boundary (start of line, whitespace, or opening punctuation/brackets: `[`, `(`, `{`, `"`, `'`). This can be done via a fixed-width negative lookbehind: `(?<![^\s([{"'])`.
+  - Combined target pattern: `(?<![^\s([{"'])#(?!([0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})\b)[^\d\W][\w\-/]*` (where `[^\d\W]` matches any Unicode word character that is not a digit, representing letters and underscores).
+  - Clean up spaces around tags without removing newlines by using horizontal whitespace patterns (`[ \t]*`). Specifically, replace `[ \t]+#tag_pattern` with ``, and `(?<=^|[([{"'])#tag_pattern[ \t]*` with ``.
 - **Test requirements:**
   - Tags like `#safety`, `#project/active`, `#my_tag`, `#task-123` are stripped
   - Headings (`# Title`, `## Section`) are NOT stripped
-  - Hex color codes (`#fff`, `#123abc`) are NOT stripped (digit after `#`)
+  - Hex color codes (`#fff`, `#fafafa`, `#123abc`) are NOT stripped
+  - URL anchors (e.g. `https://example.com/#anchor`, `[Link](https://example.com/#anchor)`) are NOT stripped or corrupted
   - Tags inside fenced code blocks are preserved
+  - Tags inside inline code blocks (e.g., `` `#tag` ``) are preserved
   - Tags at start of line, mid-line, and end of line all work
   - Multiple tags on the same line are all stripped
   - Nested tags (`#parent/child/grandchild`) are stripped as a unit
