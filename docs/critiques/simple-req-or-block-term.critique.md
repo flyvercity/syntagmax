@@ -1,58 +1,60 @@
-# Critique: Simple Requirement or Text Block Terminator (Empty Line) Spec
+# Critique: Simple Requirement or Text Block Terminator (Empty Line) Spec (Updated)
 
 ## Executive Summary
 
-The **Simple Requirement or Text Block Terminator (Empty Line)** specification proposes a highly requested quality-of-life feature: allowing users to omit the explicit `[/TAG]` closing tag for requirements and marked text blocks in the Obsidian/Markdown driver by terminating them automatically at empty lines.
+The **Simple Requirement or Text Block Terminator (Empty Line)** specification has been significantly updated from its initial version. It now describes a robust, context-aware block termination design that preserves backward compatibility for multi-paragraph requirements when explicit closing tags or YAML blocks are used.
 
-However, the current specification contains several critical gaps that would cause parser failures and severe user experience regressions:
-1. **Critical Product/UX Gap (P1 & P2)**: The proposal to terminate blocks unconditionally on any empty line breaks backward compatibility for multi-paragraph requirements and prevents users from putting blank lines before YAML blocks (which is standard Markdown formatting).
-2. **Critical Engineering Gaps (E1 & E2)**: Slicing segments right before the first newline of an empty line leaves the segment without a trailing newline, which causes the Lark parser to fail (`ParseError`). Additionally, making the terminator optional in the grammar without updating the transformer child-indexing causes the last field or content of a terminated block to be silently discarded.
+However, the current specification still contains a few critical implementation gaps and potential runtime bugs that must be addressed before proceeding to implementation:
+1. **Critical Parser/Lark Crash on EOF (E1)**: Implicit termination at the end of a file without a final newline will cause the Lark parser to throw a `ParseError` on the last line of contents or fields, because the grammar rules (`CONTENT_LINE`, `FIELD_CONT`) strictly expect a trailing newline.
+2. **Critical Config Validation Ordering Bug (E2)**: Metamodel loading occurs *after* input records are processed, meaning the collision check between fragment markers and metamodel attributes (Task 4) will crash or be skipped because `self.metamodel` is `None` during config validation.
+3. **Critical Regex Over-matching in Unclosed Markers (E3)**: The proposed regex for unclosed fragment markers (`\[({escaped})\](.*?)(?=\n\s*\n|\Z)`) will swallow subsequent comments/notes if they are on adjacent lines without a blank line, rather than terminating at the next marker.
 
-To address these issues, we recommend a **context-aware termination strategy**: empty lines should only act as terminators when no explicit `[/TAG]` or YAML block is present. This preserves 100% backward compatibility and fixes all parsing edge cases.
+To resolve these issues, we recommend:
+- Adding a fallback trailing newline to extracted segments prior to parsing.
+- Reordering the configuration initialization to load the metamodel first.
+- Enhancing the regex lookahead for unclosed fragment markers to terminate on subsequent markers or heading lines.
 
 ---
 
 ## Product Lens Findings
 
 ### Problem Validation
-* **P1 (🎯 Must-Address): UX Regression & Silent Failure on YAML Blank Lines**
-  * **Finding**: The spec requires that "no empty lines are allowed between the opening marker and the YAML". However, it is standard Markdown style to separate text and code blocks with empty lines for readability. If a user writes an empty line before their ````yaml` block, the block will terminate early. The YAML metadata (including the requirement ID) will be ignored, resulting in a silent failure or `Missing ID` warning, and the YAML block will be leaked as plain body text.
-  * **Suggestion**: Modify the segment detection to search for ````yaml` before checking for empty-line boundaries. If a YAML block is present in the block before the next requirement starts, it should remain the primary terminator, allowing arbitrary blank lines before it.
-
-### User Value Assessment
-* **P2 (🎯 Must-Address): Disabling Multi-Paragraph Requirements**
-  * **Finding**: Under the current spec, empty lines terminate unconditionally. This means users can no longer write multi-paragraph requirements or comments, even if they explicitly use the `[/REQ]` closing tag. Any empty line will immediately terminate the requirement, leaving the second paragraph as plain text and the `[/REQ]` tag dangling.
-  * **Suggestion**: Only terminate on empty lines if there is no explicit `[/REQ]` or `[/TAG]` closing tag in the segment before the next requirement. If a closing tag is present, it should define the boundary and allow empty lines inside.
+*No issues found.* The problem is well-validated and the context-aware fallback approach is excellent for maintaining user workflows.
 
 ### Edge Cases & User Experience
-* **P3 (💡 Recommendation): Consuming Consecutive Empty Lines**
-  * **Finding**: The spec states that terminating empty line(s) are consumed. If a user leaves multiple empty lines (e.g. `\n\n\n`), and we only consume one empty line, the remaining newlines will be prepended to the subsequent text block, potentially producing empty or messy text blocks.
-  * **Suggestion**: Ensure the segment consumer consumes all contiguous whitespace and newlines up to the next non-whitespace character when advancing the position pointer.
+* **P1 (💡 Recommendation): Obsidian Tags vs. Heading Distinction**
+  * **Finding**: The spec terminates artifact blocks on any line starting with `#`. In Obsidian, users frequently use tag-only lines starting with `#tag-name` at the end of requirements. Under the current spec, if the closing tag `[/REQ]` is omitted, these tag lines will terminate the block early and place the tags outside the requirement.
+  * **Suggestion**: Narrow the heading terminator to match standard Markdown headings (e.g., `# ` with a space, or `## ` etc., up to 6 `#` followed by a space) rather than any line starting with `#`.
 
 ---
 
 ## Engineering Lens Findings
 
 ### Architecture Soundness
-* **E1 (🎯 Must-Address): Lark Parser Failure due to Missing Trailing Newline**
-  * **Finding**: The Lark grammar defines `CONTENT_LINE` and `field` as requiring a trailing newline (`_NL` or `\r?\n`). If `segment_end` is set to the position of the first `\n` in the empty line, the sliced substring `markdown[start_pos:segment_end]` will exclude that newline. As a result, the last line of the requirements contents or the last field will lack a trailing newline, causing Lark to throw a `ParseError`.
-  * **Suggestion**: Set `segment_end` to the position *after* the first `\n` of the empty line (i.e. `match.start() + 1` relative to the empty line match). This ensures the segment ends with a single newline, satisfying the Lark grammar while leaving the rest of the empty line to be consumed.
+* **E1 (🎯 Must-Address): Lark Parser Failure due to Missing Trailing Newline at EOF**
+  * **Finding**: The Lark grammar defines `CONTENT_LINE` and `FIELD_CONT` as requiring a trailing newline (`_NL` or `\r?\n`). If a requirement is at the end of the file and terminates implicitly on EOF without a trailing newline, the sliced segment will not end with a newline, causing Lark to throw a `ParseError`.
+  * **Suggestion**: In `_extract_blocks_from_markdown()`, if the extracted segment does not end with a newline, append a `\n` to the segment string before parsing.
 
-* **E2 (🎯 Must-Address): Silently Discarding the Last Child in `MarkdownTransformer`**
-  * **Finding**: In `markdown.py:92`, Lark is run with `maybe_placeholders=False`, meaning optional rules that don't match (like the optional `[terminator]`) are omitted from the children list `t` passed to `MarkdownTransformer.req()`. The transformer currently assumes the last child `t[-1]` is the terminator and excludes it from the fields/contents loop. If `terminator` is missing, `t[-1]` will actually be the last field or content block, which will be silently discarded.
-  * **Suggestion**: Update `req(self, t)` to check if `t[-1]` is a valid terminator dictionary (e.g., checks if it is a dict and has a `'type'` key representing `'yaml'` or `'slash_req'`). If it is not, treat it as part of the fields/contents and do not exclude it.
+* **E2 (🎯 Must-Address): Unclosed Fragment Marker Regex Over-matching**
+  * **Finding**: The proposed regex for unclosed paired blocks `\[({escaped})\](.*?)(?=\n\s*\n|\Z)` will consume subsequent fragment markers (e.g., `[COM]comment 1\n[NOTE]comment 2` would parse entirely as `[COM]`) because the lookahead only checks for double newlines or end of string.
+  * **Suggestion**: Update the lookahead in the regex to also terminate on subsequent fragment markers or heading lines: `(?=\n\s*\n|\n\s*\[(?:{escaped})(?:\s+\d+)?\]|\n\s*#|\Z)`.
 
-### Testing Strategy
-* **E3 (💡 Recommendation): Paired Marker Regex Alternation Bug**
-  * **Finding**: The proposed regex for paired marked blocks `\[({escaped})\](.*?)(?:\[/\1\]|\n\s*\n)` will match the first blank line even if a closing tag `[/TAG]` is present later, breaking multi-paragraph comments.
-  * **Suggestion**: Split the paired marker splitting in `_split_text_block_by_markers()` into two sequential passes: first match and extract fully closed paired blocks using `\[({escaped})\](.*?)\[/\1\]`, and then match open/unterminated paired blocks that end at the first double-newline boundary or end-of-string using `\[({escaped})\](.*?)(?=\n\s*\n|\Z)`.
+* **E3 (💡 Recommendation): Mutually Exclusive Passes in Marked Text Splitting**
+  * **Finding**: The current implementation of `_split_text_block_by_markers()` operates as a mutually exclusive choice: if any paired matches are found, it performs the paired pass and returns immediately, skipping the line-prefix pass entirely. This means mixed styles (e.g., a closed comment followed by a line-prefix note) cannot be parsed together.
+  * **Suggestion**: Structure the splitting as a pipeline where each subsequent pass is run on all remaining unmarked blocks (`marker is None`).
+
+### Dependencies & Integration Risks
+* **E4 (🎯 Must-Address): Metamodel Loading Ordering in Config Initialization**
+  * **Finding**: During `Config.__init__`, `self._read_input_records` (where fragment markers are validated) is called before `self.metamodel` is loaded. This prevents checking marker collisions with metamodel attributes at config validation time, as required by Task 4, and will lead to AttributeError/crashes.
+  * **Suggestion**: Reorder `Config.__init__` so that `self.metamodel = load_metamodel(...)` is loaded before `self._read_input_records` is called.
 
 ---
 
 ## Cross-Lens Insights
 
 ### Product Simplification × Engineering Risk Reduction
-* **X1: Context-Aware Slicing**: By implementing a context-aware segment detection in `_extract_blocks_from_markdown()` (existing YAML/closing tag detection remains unchanged, and empty-line detection only kicks in as a fallback when neither is found), we preserve full compatibility for existing files, keep the parser stable, and avoid modifying the paired marked block regex in a way that breaks multi-paragraph comments.
+* **X1: Refined Regex for Unclosed Markers**: Ensuring the regex for unclosed markers terminates on subsequent markers/headings protects the user experience (comments are not swallowed) and ensures technical correctness (correct token boundaries).
+* **X2: Obsidian Tag vs Heading Distinction**: Narrowing the `#` terminator to `# ` (heading) avoids breaking requirements that contain tags at BOL (Product Lens) and reduces parsing/segmentation edge cases (Engineering Lens).
 
 ---
 
@@ -60,12 +62,11 @@ To address these issues, we recommend a **context-aware termination strategy**: 
 
 | ID | Lens | Severity | Category | Finding | Suggestion |
 |----|------|----------|----------|---------|------------|
-| **P1** | Product | 🎯 **Must-Address** | Problem Validation | YAML block cannot be preceded by empty lines, breaking standard markdown formatting. | Search for ````yaml` first; let it take priority over empty lines if it exists. |
-| **P2** | Product | 🎯 **Must-Address** | User Value | Empty lines terminate unconditionally, breaking multi-paragraph requirements using `[/REQ]`. | Only terminate on empty lines if no explicit closing tag is present. |
-| **E1** | Eng | 🎯 **Must-Address** | Architecture | Segment sliced before the newline lacks a trailing newline, causing Lark parser crash. | Set `segment_end` after the first newline of the empty line to include it. |
-| **E2** | Eng | 🎯 **Must-Address** | Architecture | Transformer assumes `t[-1]` is the terminator, silently discarding the last field when terminator is absent. | Check if `t[-1]` is a valid terminator before excluding it from fields/contents loop. |
-| **P3** | Product | 💡 **Recommendation** | Edge Cases / UX | Multiple empty lines leave trailing newlines in the next block. | Consume all consecutive whitespace/newlines when advancing the position pointer. |
-| **E3** | Eng | 💡 **Recommendation** | Testing / Regex | Paired marker regex matches empty lines early even when closing tags exist. | Use two-pass splitting: fully closed blocks first, then open blocks terminating at double newlines. |
+| **E1** | Eng | 🎯 **Must-Address** | Architecture | Segment at EOF without trailing newline causes Lark parser crash. | Append `\n` to the segment prior to parsing if it does not end with a newline. |
+| **E2** | Eng | 🎯 **Must-Address** | Architecture | Unclosed marker regex consumes subsequent markers on adjacent lines. | Add other terminators to lookahead: `(?=\n\s*\n\|\n\s*\[(?:{escaped})(?:\s+\d+)?\]\|\n\s*#\|\Z)`. |
+| **E4** | Eng | 🎯 **Must-Address** | Integration | `self.metamodel` is `None` when validation is run, breaking collision check. | Reorder `Config.__init__` to load `self.metamodel` before calling `_read_input_records`. |
+| **P1** | Product | 💡 **Recommendation** | Edge Cases | Tag-only lines at BOL terminate blocks early if `[/REQ]` is missing. | Require a space after `#` (Markdown headings) to terminate a block. |
+| **E3** | Eng | 💡 **Recommendation** | Architecture | Splitting passes are mutually exclusive, preventing mixed styles in a single block. | Run splitting passes as a pipeline on remaining unmarked blocks. |
 
 ---
 
@@ -73,7 +74,7 @@ To address these issues, we recommend a **context-aware termination strategy**: 
 
 ### ⚠️ PROCEED WITH UPDATES
 
-The specification is valuable, but the **Must-Address** items (P1, P2, E1, E2) are critical to parser correctness and backward compatibility. We recommend applying the proposed updates before implementation.
+The specification is high-quality, but the **Must-Address** items (E1, E2, E4) are critical to system correctness. We recommend applying the proposed updates before starting the implementation.
 
 ---
 
@@ -81,31 +82,67 @@ The specification is valuable, but the **Must-Address** items (P1, P2, E1, E2) a
 
 Here are the proposed edits to update the specification in `docs/specs/simple-req-or-block-term.spec.md`:
 
-### Suggested Edit 1: Update Requirements to define Context-Aware Termination
+### Suggested Edit 1: Update Requirements for Headings and EOF
 Modify `docs/specs/simple-req-or-block-term.spec.md` Requirements section:
 ```diff
- ## Requirements
- 
- 1. Both termination methods coexist: `[/TAG]` still works, empty line(s) are an additional terminator
--2. Empty line terminates unconditionally — if a YAML block is needed, no empty lines are allowed between the opening marker and the YAML
-+2. Empty line terminates contextually: it only acts as a terminator if no explicit `[/TAG]` closing tag or ````yaml` block is present in the block.
- 3. This applies to both artifact blocks and paired marked text blocks
- 4. A single empty line (i.e., `\n\n` or `\n\r\n`) is sufficient to terminate
- 5. The terminating empty line(s) are consumed (not included in subsequent text)
+-7. A line starting with `#` (Markdown heading or Obsidian tag) terminates the current artifact block (context-aware, same as empty line — only when no explicit `[/TAG]` or YAML block is present)
++7. A line starting with a Markdown heading (e.g. `# `, `## ` up to 6 `#` followed by a space) terminates the current artifact block (context-aware, same as empty line — only when no explicit `[/TAG]` or YAML block is present)
 ```
 
-### Suggested Edit 2: Update Proposed Solution for segment detection and Lark parser
+### Suggested Edit 2: Update Proposed Solution for Segment Detection & Regex Lookahead
 Modify `docs/specs/simple-req-or-block-term.spec.md` Proposed Solution section:
 ```diff
  ## Proposed Solution
  
--1. **Segment detection level** (`_extract_blocks_from_markdown`): When looking for segment end, also search for an empty line (`\n\n` or `\r\n\r\n`) as a boundary. The priority is: YAML block > `[/TAG]` > empty line. If an empty line is found before `[/TAG]` or YAML, use it as the segment end.
--2. **Lark grammar**: Make the `terminator` rule optional so the parser can handle segments that end without `[/TAG]` or YAML.
--3. **Marked text blocks** (`_split_text_block_by_markers`): In the paired-mode regex, also allow empty line as terminator (match `[MARKER]...\n\n` in addition to `[MARKER]...[/MARKER]`).
-+1. **Segment detection level** (`_extract_blocks_from_markdown`): Keep existing detection of ````yaml` and `[/TAG]`. If neither is found before the next requirement start marker, search for the first empty line (`\n\s*\n` or `\r\n\s*\r\n`). If found, set `segment_end` to the position immediately *after* the first `\n` of the empty line (to include the trailing newline for the parser), and consume the remaining newlines/whitespace.
-+2. **Lark grammar & Transformer**: Make the `terminator` rule optional: `req: _REQ_BEGIN _NL? [contents] (field | _NL)* [terminator]`. Update `MarkdownTransformer.req(self, t)` to check if `t[-1]` represents a terminator (a dictionary with a `'type'` key). If not, treat `t[-1]` as a normal field/content child and do not exclude it.
-+3. **Marked text blocks** (`_split_text_block_by_markers`): Split paired markers in two passes: first extract fully closed paired blocks `\[({escaped})\](.*?)\[/\1\]`, then extract unclosed paired blocks using `\[({escaped})\](.*?)(?=\n\s*\n|\Z)`.
+-1. **Segment detection level** (`_extract_blocks_from_markdown`): Keep existing detection of ````yaml` and `[/TAG]`. If neither is found before the next requirement start marker, search for the earliest of: (a) a configured fragment marker at BOL, (b) a line starting with `#`, (c) the first empty line (`\n\s*\n` or `\r\n\s*\r\n`), (d) end of file. Use whichever comes first as the segment boundary. Set `segment_end` to the position immediately *after* the last content line's `\n` (to include the trailing newline for the parser). Consume any remaining newlines/whitespace when advancing `pos`.
++1. **Segment detection level** (`_extract_blocks_from_markdown`): Keep existing detection of ````yaml` and `[/TAG]`. If neither is found before the next requirement start marker, search for the earliest of: (a) a configured fragment marker at BOL, (b) a line starting with a Markdown heading (e.g. `\n# ` or `\n## `), (c) the first empty line (`\n\s*\n` or `\r\n\s*\r\n`), (d) end of file. Use whichever comes first as the segment boundary. Set `segment_end` to the position immediately *after* the last content line's `\n` (to include the trailing newline for the parser). Consume any remaining newlines/whitespace when advancing `pos`. If the segment lacks a trailing newline (e.g. when terminating implicitly on EOF), append a `\n` before parsing.
+ 2. **Lark grammar & Transformer**: Make the `terminator` rule optional: `req: _REQ_BEGIN _NL? [contents] (field | _NL)* [terminator]`. Update `MarkdownTransformer.req(self, t)` to check if `t[-1]` represents a terminator (a dictionary with a `'type'` key). If not, treat `t[-1]` as a normal field/content child and do not exclude it.
+-3. **Marked text blocks** (`_split_text_block_by_markers`): Split paired markers in two passes: first extract fully closed paired blocks `\[({escaped})\](.*?)\[/\1\]`, then extract unclosed paired blocks using `\[({escaped})\](.*?)(?=\n\s*\n|\Z)`.
++3. **Marked text blocks** (`_split_text_block_by_markers`): Split paired markers in a pipeline of passes operating on remaining unmarked blocks. First extract fully closed paired blocks `\[({escaped})\](.*?)\[/\1\]`. Then extract unclosed paired blocks using `\[({escaped})\](.*?)(?=\n\s*\n|\n\s*\[(?:{escaped})(?:\s+\d+)?\]|\n\s*#|\Z)`.
+ 4. **Config validation**: Validate that configured fragment markers do not collide with metamodel attribute names for the relevant artifact type — raise `FatalError` on collision. Load metamodel prior to input records processing to ensure the collision check works.
 ```
 
 ### Suggested Edit 3: Update Tasks in the Breakdown
-Modify `docs/specs/simple-req-or-block-term.spec.md` Task Breakdown section to reflect the exact transformer, segment detection, and regex splitting updates.
+Modify `docs/specs/simple-req-or-block-term.spec.md` Task Breakdown section:
+```diff
+ ### Task 2: Update segment boundary detection for empty-line termination of artifact blocks
+ 
+ - **Objective:** In `_extract_blocks_from_markdown()`, detect additional block boundaries (fragment markers, `#` lines, empty lines) only when no YAML or `[/TAG]` is found before them (context-aware fallback).
+ - **Implementation:**
+   - Keep existing detection of ````yaml` and `[/TAG]` unchanged — these remain the highest-priority terminators.
+   - If neither is found before the next `[MARKER]` start, search for the earliest of:
+     1. A configured fragment marker (`[COM]`, `[NOTE]`, etc.) appearing at the beginning of a line.
+-    2. A line starting with `#` (heading or tag).
++    2. A line starting with a Markdown heading (e.g., `# ` or `## ` followed by space).
+     3. The first empty line (`\n\s*\n` or `\r\n\s*\r\n`).
+     4. End of file.
+   - Use whichever comes first as the segment boundary.
+   - When any of these terminates, set `segment_end` to the position immediately *after* the last content line's `\n` (to include the trailing newline the Lark parser requires). Consume remaining consecutive whitespace/newlines when advancing `pos`.
++  - If the extracted segment does not end with a newline character, append a newline character `\n` before parsing it.
+   - Fragment markers and `#` lines are NOT consumed — they remain available for subsequent parsing (as text blocks or the next extraction pass).
+   - Existing `segment_end == -1` error ("Unterminated requirement") becomes a fallback only when none of the terminators is found (should not happen given end-of-file fallback).
+ 
+ ### Task 3: Update paired marked text block splitting for empty-line termination
+ 
+ - **Objective:** Modify `_split_text_block_by_markers()` so paired-mode also supports empty-line termination without breaking multi-paragraph closed blocks.
+ - **Implementation:**
+-  - Use a two-pass approach:
+-    1. First pass: extract fully closed paired blocks using existing regex `\[({escaped})\](.*?)\[/\1\]` (unchanged behavior).
+-    2. Second pass: on remaining text, extract unclosed paired blocks that start with `[MARKER]` and terminate at the first double-newline boundary or end-of-string, using `\[({escaped})\](.*?)(?=\n\s*\n|\Z)`.
++  - Refactor `_split_text_block_by_markers()` into a pipeline of passes:
++    1. Start with the list containing the single input `TextBlock`.
++    2. Apply the first pass (fully closed paired blocks using `\[({escaped})\](.*?)\[/\1\]`) to all unmarked blocks in the list.
++    3. Apply the second pass (unclosed paired blocks using `\[({escaped})\](.*?)(?=\n\s*\n|\n\s*\[(?:{escaped})(?:\s+\d+)?\]|\n\s*#|\Z)`) to all remaining unmarked blocks.
++    4. Apply the third pass (line-prefix markers) to any remaining unmarked blocks.
+   - When terminated by empty line, the empty line is consumed (not part of the matched content or subsequent text).
+   - If `[/TAG]` is present, the first pass captures it and the second pass never sees it.
+ 
+ ### Task 4: Validate fragment markers do not collide with metamodel attributes
+ 
+ - **Objective:** Ensure configured fragment markers cannot overlap with attribute names in the metamodel.
+ - **Implementation:**
++  - Reorder `Config.__init__` so that `self.metamodel = load_metamodel(...)` is loaded before calling `self._read_input_records(...)`.
+   - During config validation (or at extraction time when metamodel is available), check that none of the configured `markers` match any attribute name defined in the metamodel for the relevant artifact type.
+   - Comparison should be case-insensitive.
+   - Raise `FatalError` on collision with a clear message indicating which marker conflicts with which attribute.
+```

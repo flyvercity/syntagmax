@@ -12,14 +12,14 @@ Currently, artifact blocks (`[REQ]...[/REQ]`) and marked text blocks (`[COM]...[
 4. A single empty line (i.e., `\n\n` or `\n\r\n`) is sufficient to terminate
 5. The terminating empty line(s) are consumed (not included in subsequent text)
 6. A `[MARKER]` matching one of the configured fragment markers (e.g., `[COM]`, `[NOTE]`) terminates the current artifact block (context-aware, same as empty line — only when no explicit `[/TAG]` or YAML block is present)
-7. A line starting with `#` (Markdown heading or Obsidian tag) terminates the current artifact block (context-aware, same as empty line — only when no explicit `[/TAG]` or YAML block is present)
+7. A line starting with a Markdown heading (e.g. `# `, `## ` up to 6 `#` followed by a space) terminates the current artifact block (context-aware, same as empty line — only when no explicit `[/TAG]` or YAML block is present)
 8. Fragment marker names must not overlap with attribute names defined in the metamodel for the same artifact type — collision is a fatal config/validation error
 9. Complete list of artifact block terminators (in priority order):
    1. YAML block (````yaml...`````)
    2. Explicit closing tag (`[/TAG]`)
    3. Another artifact start marker (`[MARKER]` for the same input record's artifact type)
    4. A configured fragment marker (`[COM]`, `[NOTE]`, etc.)
-   5. A line starting with `#`
+   5. A line starting with a Markdown heading (`# `, `## `, etc.)
    6. One or more empty lines
    7. End of file
 
@@ -34,10 +34,10 @@ Currently, artifact blocks (`[REQ]...[/REQ]`) and marked text blocks (`[COM]...[
 
 ## Proposed Solution
 
-1. **Segment detection level** (`_extract_blocks_from_markdown`): Keep existing detection of ````yaml` and `[/TAG]`. If neither is found before the next requirement start marker, search for the earliest of: (a) a configured fragment marker at BOL, (b) a line starting with `#`, (c) the first empty line (`\n\s*\n` or `\r\n\s*\r\n`), (d) end of file. Use whichever comes first as the segment boundary. Set `segment_end` to the position immediately *after* the last content line's `\n` (to include the trailing newline for the parser). Consume any remaining newlines/whitespace when advancing `pos`.
+1. **Segment detection level** (`_extract_blocks_from_markdown`): Keep existing detection of ````yaml` and `[/TAG]`. If neither is found before the next requirement start marker, search for the earliest of: (a) a configured fragment marker at BOL, (b) a line starting with a Markdown heading (e.g. `\n# ` or `\n## `), (c) the first empty line (`\n\s*\n` or `\r\n\s*\r\n`), (d) end of file. Use whichever comes first as the segment boundary. Set `segment_end` to the position immediately *after* the last content line's `\n` (to include the trailing newline for the parser). Consume any remaining newlines/whitespace when advancing `pos`. If the segment lacks a trailing newline (e.g. when terminating implicitly on EOF), append a `\n` before parsing.
 2. **Lark grammar & Transformer**: Make the `terminator` rule optional: `req: _REQ_BEGIN _NL? [contents] (field | _NL)* [terminator]`. Update `MarkdownTransformer.req(self, t)` to check if `t[-1]` represents a terminator (a dictionary with a `'type'` key). If not, treat `t[-1]` as a normal field/content child and do not exclude it.
-3. **Marked text blocks** (`_split_text_block_by_markers`): Split paired markers in two passes: first extract fully closed paired blocks `\[({escaped})\](.*?)\[/\1\]`, then extract unclosed paired blocks using `\[({escaped})\](.*?)(?=\n\s*\n|\Z)`.
-4. **Config validation**: Validate that configured fragment markers do not collide with metamodel attribute names for the relevant artifact type — raise `FatalError` on collision.
+3. **Marked text blocks** (`_split_text_block_by_markers`): Split paired markers in a pipeline of passes operating on remaining unmarked blocks. First extract fully closed paired blocks `\[({escaped})\](.*?)\[/\1\]`. Then extract unclosed paired blocks using `\[({escaped})\](.*?)(?=\n\s*\n|\n\s*\[(?:{escaped})(?:\s+\d+)?\]|\n\s*#|\Z)`.
+4. **Config validation**: Validate that configured fragment markers do not collide with metamodel attribute names for the relevant artifact type — raise `FatalError` on collision. Load metamodel prior to input records processing to ensure the collision check works.
 
 ## Task Breakdown
 
@@ -56,11 +56,12 @@ Currently, artifact blocks (`[REQ]...[/REQ]`) and marked text blocks (`[COM]...[
   - Keep existing detection of ````yaml` and `[/TAG]` unchanged — these remain the highest-priority terminators.
   - If neither is found before the next `[MARKER]` start, search for the earliest of:
     1. A configured fragment marker (`[COM]`, `[NOTE]`, etc.) appearing at the beginning of a line.
-    2. A line starting with `#` (heading or tag).
+    2. A line starting with a Markdown heading (e.g., `# ` or `## ` followed by space).
     3. The first empty line (`\n\s*\n` or `\r\n\s*\r\n`).
     4. End of file.
   - Use whichever comes first as the segment boundary.
   - When any of these terminates, set `segment_end` to the position immediately *after* the last content line's `\n` (to include the trailing newline the Lark parser requires). Consume remaining consecutive whitespace/newlines when advancing `pos`.
+  - If the extracted segment does not end with a newline character, append a `\n` before parsing it.
   - Fragment markers and `#` lines are NOT consumed — they remain available for subsequent parsing (as text blocks or the next extraction pass).
   - Existing `segment_end == -1` error ("Unterminated requirement") becomes a fallback only when none of the terminators is found (should not happen given end-of-file fallback).
 - **Test:** Write tests with:
@@ -69,17 +70,21 @@ Currently, artifact blocks (`[REQ]...[/REQ]`) and marked text blocks (`[COM]...[
   - `[REQ]\ncontent\n[id] REQ-001\n\n```yaml\nattrs:\n  x: 1\n```\n` → YAML takes priority when present
   - Multi-paragraph requirement with `[/REQ]`: `[REQ]\npara 1\n\npara 2\n[id] REQ-001\n[/REQ]` → works correctly, empty line inside does NOT terminate because `[/REQ]` is present
   - `[REQ]\ncontent\n[id] REQ-001\n[COM]comment text[/COM]` → fragment marker terminates the artifact
-  - `[REQ]\ncontent\n[id] REQ-001\n# Next Section` → heading terminates the artifact
+  - `[REQ]\ncontent\n[id] REQ-001\n# Next Section\n` → Markdown heading terminates the artifact
+  - `[REQ]\ncontent\n[id] REQ-001\n#tag-name\n[/REQ]` → Obsidian tag does NOT terminate (no space after `#`)
   - End of file without any terminator → artifact is still extracted
+  - End of file without trailing newline → artifact is still extracted (newline appended before parsing)
 - **Demo:** `uv run pytest tests/test_empty_line_terminator.py::TestArtifactBlocks` passes.
 
 ### Task 3: Update paired marked text block splitting for empty-line termination
 
 - **Objective:** Modify `_split_text_block_by_markers()` so paired-mode also supports empty-line termination without breaking multi-paragraph closed blocks.
 - **Implementation:**
-  - Use a two-pass approach:
-    1. First pass: extract fully closed paired blocks using existing regex `\[({escaped})\](.*?)\[/\1\]` (unchanged behavior).
-    2. Second pass: on remaining text, extract unclosed paired blocks that start with `[MARKER]` and terminate at the first double-newline boundary or end-of-string, using `\[({escaped})\](.*?)(?=\n\s*\n|\Z)`.
+  - Refactor `_split_text_block_by_markers()` into a pipeline of passes:
+    1. Start with the list containing the single input `TextBlock`.
+    2. Apply the first pass (fully closed paired blocks using `\[({escaped})\](.*?)\[/\1\]`) to all unmarked blocks in the list.
+    3. Apply the second pass (unclosed paired blocks using `\[({escaped})\](.*?)(?=\n\s*\n|\n\s*\[(?:{escaped})(?:\s+\d+)?\]|\n\s*#|\Z)`) to all remaining unmarked blocks.
+    4. Apply the third pass (line-prefix markers) to any remaining unmarked blocks.
   - When terminated by empty line, the empty line is consumed (not part of the matched content or subsequent text).
   - If `[/TAG]` is present, the first pass captures it and the second pass never sees it.
 - **Test:** Write tests with:
@@ -87,13 +92,16 @@ Currently, artifact blocks (`[REQ]...[/REQ]`) and marked text blocks (`[COM]...[
   - `[COM]comment text[/COM] after` → still works (backward compat)
   - `[COM]line1\nline2\n\nafter` → multiline content terminated by empty line
   - `[COM]para1\n\npara2[/COM]` → multi-paragraph comment with explicit close tag works correctly
+  - `[COM]comment 1\n[NOTE]comment 2\n\nafter` → each marker gets its own block (unclosed regex terminates on next marker)
+  - Mixed styles: closed comment + line-prefix note in same text → both are parsed correctly via pipeline
 - **Demo:** `uv run pytest tests/test_empty_line_terminator.py::TestMarkedTextBlocks` passes.
 
 ### Task 4: Validate fragment markers do not collide with metamodel attributes
 
 - **Objective:** Ensure configured fragment markers cannot overlap with attribute names in the metamodel.
 - **Implementation:**
-  - During config validation (or at extraction time when metamodel is available), check that none of the configured `markers` match any attribute name defined in the metamodel for the relevant artifact type.
+  - Reorder `Config.__init__` so that `self.metamodel = load_metamodel(...)` is loaded before calling `self._read_input_records(...)`.
+  - During config validation, check that none of the configured `markers` match any attribute name defined in the metamodel for the relevant artifact type.
   - Comparison should be case-insensitive.
   - Raise `FatalError` on collision with a clear message indicating which marker conflicts with which attribute.
 - **Test:** Write a unit test with a marker name that matches a metamodel attribute (e.g., `markers = ["status"]` when metamodel defines `attribute status`) → raises `FatalError`.
@@ -111,9 +119,11 @@ Currently, artifact blocks (`[REQ]...[/REQ]`) and marked text blocks (`[COM]...[
   - Multi-paragraph requirement with explicit `[/REQ]` → empty lines inside do NOT terminate (backward compat)
   - Blank line before ````yaml` block with `[/TAG]` present → does NOT terminate (YAML/tag take priority)
   - Fragment marker at BOL terminates artifact (context-aware)
-  - `#` at BOL terminates artifact (context-aware)
+  - Markdown heading (`# ` with space) at BOL terminates artifact (context-aware)
+  - Obsidian tag at BOL (`#tag-name` without space) does NOT terminate
   - `#` inside a line (not at BOL) does NOT terminate
   - Fragment marker inside content (not at BOL) does NOT terminate
+  - Adjacent unclosed fragment markers on separate lines are each parsed as individual blocks
   - Existing test suite passes: `uv run pytest` (full)
 - **Test:** All new and existing tests pass.
 - **Demo:** `uv run pytest` all green.
@@ -129,7 +139,7 @@ Currently, artifact blocks (`[REQ]...[/REQ]`) and marked text blocks (`[COM]...[
       2. Explicit closing tag (`[/TAG]`) — example with `[/REQ]`, `[/COM]`
       3. Another artifact start marker — example showing back-to-back artifacts
       4. A configured fragment marker at BOL — example with `[COM]` terminating a `[REQ]`
-      5. A line starting with `#` — example with heading terminating a block
+      5. A line starting with a Markdown heading (`# `, `## `, etc. — requires space after `#`) — example with heading terminating a block
       6. One or more empty lines — example with blank line terminating
       7. End of file — implicit termination
     - A section on context-aware vs. unconditional behavior: explain that terminators 4–7 only apply when no YAML block or `[/TAG]` is present, and that when `[/TAG]` or YAML exists, empty lines and headings inside blocks are allowed
