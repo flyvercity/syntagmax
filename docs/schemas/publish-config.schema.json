@@ -120,13 +120,6 @@
       "title": "Include Plain Text",
       "type": "boolean"
     },
-    "ignore_plain_text_prefixes": {
-      "items": {
-        "type": "string"
-      },
-      "title": "Ignore Plain Text Prefixes",
-      "type": "array"
-    },
     "render": {
       "additionalProperties": {
         "items": {
