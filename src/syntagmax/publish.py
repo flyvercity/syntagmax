@@ -202,9 +202,16 @@ def get_artifact_field_value(artifact: Artifact, field_name: str) -> Optional[st
     return None
 
 
-def render_artifact_fallback(artifact: Artifact, start_level: int) -> str:
+def render_artifact_fallback(artifact: Artifact, content_level: int) -> str:
+    """Render an artifact using fallback formatting (no custom render config).
+
+    Args:
+        artifact: The artifact to render.
+        content_level: The heading level at which the artifact ID should appear.
+            This accounts for the file's hierarchical position in the document.
+    """
     parts = []
-    level = min(6, start_level + 2)
+    level = min(6, content_level)
     parts.append(f'{"#" * level} {artifact.aid}\n\n')
 
     contents = get_artifact_field_value(artifact, 'contents')
@@ -225,7 +232,19 @@ def render_artifact_fallback(artifact: Artifact, start_level: int) -> str:
     return ''.join(parts)
 
 
-def render_block(block: Block, pub_config: PublishConfig, context: RenderContext | None = None) -> str:
+def render_block(block: Block, pub_config: PublishConfig, context: RenderContext | None = None, content_level: int | None = None) -> str:
+    """Render a single block to Markdown.
+
+    Args:
+        block: The block to render.
+        pub_config: Publishing configuration.
+        context: Optional render context for image rewriting.
+        content_level: The heading level at which a source H1 should appear in output.
+            Accounts for the file's hierarchical position. When None, defaults to
+            pub_config.start_level (backward compatibility for direct callers).
+    """
+    effective_level = content_level if content_level is not None else pub_config.start_level
+
     if isinstance(block, ErrorBlock):
         return f'> **Publish error:** {block.message}\n\n'
 
@@ -255,7 +274,7 @@ def render_block(block: Block, pub_config: PublishConfig, context: RenderContext
                 # If marker configured but not in render, fall back to plain text
                 content = adjust_text_headings_and_prefixes(
                     block.content,
-                    pub_config.start_level,
+                    effective_level,
                     pub_config.remove_numeric_prefixes_in_headers,
                 )
                 if context:
@@ -267,7 +286,7 @@ def render_block(block: Block, pub_config: PublishConfig, context: RenderContext
                 return ''
             content = adjust_text_headings_and_prefixes(
                 block.content,
-                pub_config.start_level,
+                effective_level,
                 pub_config.remove_numeric_prefixes_in_headers,
             )
             if context:
@@ -298,7 +317,7 @@ def render_block(block: Block, pub_config: PublishConfig, context: RenderContext
                 break
 
         if not render_sections:
-            return image_embed + render_artifact_fallback(a, pub_config.start_level)
+            return image_embed + render_artifact_fallback(a, effective_level)
 
         parts = []
         for sec in render_sections:
@@ -323,7 +342,7 @@ def render_block(block: Block, pub_config: PublishConfig, context: RenderContext
                     if val:
                         processed_val = adjust_text_headings_and_prefixes(
                             val,
-                            pub_config.start_level,
+                            effective_level,
                             pub_config.remove_numeric_prefixes_in_headers,
                         ).strip()
                         if sec.mode == 'block':
@@ -420,9 +439,12 @@ def render_block_tree(tree: BlockTree, config: Optional[Config] = None, multi_re
 
                 last_components = components
 
+            # Content level: one level deeper than the file's own path heading.
+            # Hierarchy: record heading → path dirs → filename → content headings.
+            content_level = min(6, path_base_level + len(components)) if components else path_base_level
 
             for block in file_record.blocks:
-                block_content = render_block(block, pub_config, context)
+                block_content = render_block(block, pub_config, context, content_level=content_level)
                 if block_content:
                     # Ensure each block ends with exactly \n\n for inter-block spacing
                     stripped = block_content.rstrip('\n')

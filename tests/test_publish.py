@@ -77,7 +77,7 @@ class TestRenderBlockTree:
         result, _ = render_block_tree(tree)
         assert '# reqs' in result
         assert '## req' in result
-        assert '# Intro' in result
+        assert '### Intro' in result
         assert '### REQ-1' in result
         assert '| status | active |' in result
         assert '| id |' not in result
@@ -455,3 +455,121 @@ class TestPathHeadings:
         assert result.count('# dir') == 1
         assert '## file1' in result
         assert '## file2' in result
+
+
+class TestContentLevelHierarchy:
+    """Tests for heading level hierarchy: content headings respect file depth."""
+
+    def test_render_block_explicit_content_level(self):
+        """render_block with explicit content_level offsets H1 correctly."""
+        from syntagmax.publish_config import PublishConfig
+        from syntagmax.publish import render_block
+
+        pub_config = PublishConfig()
+        block = TextBlock(content='# Title\n## Subtitle\n')
+        result = render_block(block, pub_config, content_level=4)
+        assert '#### Title' in result
+        assert '##### Subtitle' in result
+
+    def test_render_block_content_level_none_defaults_to_start_level(self):
+        """render_block with content_level=None falls back to pub_config.start_level."""
+        from syntagmax.publish_config import PublishConfig
+        from syntagmax.publish import render_block
+
+        pub_config = PublishConfig(start_level=2)
+        block = TextBlock(content='# Heading\n')
+        result = render_block(block, pub_config, content_level=None)
+        assert '## Heading' in result
+
+    def test_render_block_artifact_fallback_uses_content_level(self):
+        """Artifact fallback heading renders at content_level."""
+        from syntagmax.publish_config import PublishConfig
+        from syntagmax.publish import render_block
+
+        artifact = MagicMock()
+        artifact.atype = 'REQ'
+        artifact.aid = 'REQ-42'
+        artifact.fields = {'id': 'REQ-42', 'contents': 'Description'}
+        artifact.location = None
+
+        pub_config = PublishConfig()
+        block = ArtifactBlock(artifact=artifact, raw_text='')
+        result = render_block(block, pub_config, content_level=4)
+        assert '#### REQ-42' in result
+
+    def test_multi_record_nested_file_content_heading(self):
+        """Content H1 in a nested file renders below the file's path heading."""
+        tree = BlockTree(
+            inputs=[
+                InputBlock(
+                    name='docs',
+                    files=[
+                        FileRecord(path='subdir/file.md', blocks=[TextBlock(content='# Intro\n## Details\n')]),
+                    ],
+                )
+            ]
+        )
+
+        result, _ = render_block_tree(tree, multi_record=True)
+        # Hierarchy: # docs (level 1), ## subdir (level 2), ### file (level 3), #### Intro (level 4)
+        assert '# docs' in result
+        assert '## subdir' in result
+        assert '### file' in result
+        assert '#### Intro' in result
+        assert '##### Details' in result
+
+    def test_single_record_nested_file_content_heading(self):
+        """Content H1 in single-record mode renders below the file's path heading."""
+        tree = BlockTree(
+            inputs=[
+                InputBlock(
+                    name='docs',
+                    files=[
+                        FileRecord(path='dir/file.md', blocks=[TextBlock(content='# Intro\n')]),
+                    ],
+                )
+            ]
+        )
+
+        result, _ = render_block_tree(tree, multi_record=False)
+        # Hierarchy: # dir (level 1), ## file (level 2), ### Intro (level 3)
+        assert '# dir' in result
+        assert '## file' in result
+        assert '### Intro' in result
+
+    def test_content_heading_level_capping_at_h6(self):
+        """Content headings are capped at H6 even with deep nesting."""
+        tree = BlockTree(
+            inputs=[
+                InputBlock(
+                    name='rec',
+                    files=[
+                        FileRecord(path='a/b/c/d/e.md', blocks=[TextBlock(content='# Deep\n## Deeper\n')]),
+                    ],
+                )
+            ]
+        )
+
+        result, _ = render_block_tree(tree, multi_record=True)
+        # record=1, a=2, b=3, c=4, d=5, e=6 (capped), content_level=min(6, 2+5)=6
+        # H1 in content -> level 6, H2 -> also capped at 6
+        assert '###### Deep' in result
+        assert '###### Deeper' in result
+        assert '####### ' not in result
+
+    def test_empty_components_falls_back_to_path_base_level(self):
+        """Files with empty path components use path_base_level as content_level."""
+        tree = BlockTree(
+            inputs=[
+                InputBlock(
+                    name='rec',
+                    files=[
+                        FileRecord(path='', blocks=[TextBlock(content='# Title\n')]),
+                    ],
+                )
+            ]
+        )
+
+        result, _ = render_block_tree(tree, multi_record=True)
+        # path_base_level=2 (multi_record with start_level=1), empty components -> content_level=2
+        assert '## Title' in result
