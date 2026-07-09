@@ -95,7 +95,7 @@ def analyze(obj: Params, config_file: Path, allow_dirty_worktree: bool, suppress
         u.pprint(f'[{color}]{summary}[/{color}]')
 
 
-def _run_pandoc_conversion(md_path: Path, docx: bool, pdf: bool):
+def _run_pandoc_conversion(md_path: Path, docx: bool, pdf: bool, reference_doc: Path | None = None):
     """Run Pandoc conversion for the given Markdown file."""
     from syntagmax.pandoc import convert
 
@@ -106,7 +106,7 @@ def _run_pandoc_conversion(md_path: Path, docx: bool, pdf: bool):
         formats.append(('pdf', md_path.with_suffix('.pdf')))
 
     for fmt, out_path in formats:
-        success, message = convert(md_path, out_path, fmt)
+        success, message = convert(md_path, out_path, fmt, reference_doc=reference_doc if fmt == 'docx' else None)
         if success:
             u.pprint(f'[green]Converted to {fmt.upper()}: {out_path}[/green]')
         else:
@@ -123,9 +123,11 @@ def _run_pandoc_conversion(md_path: Path, docx: bool, pdf: bool):
 @click.option('--date-suffix', is_flag=True, help='Append date suffix to filenames (only valid when publishing separate files)')
 @click.option('--docx', is_flag=True, help='Convert output to DOCX via Pandoc')
 @click.option('--pdf', is_flag=True, help='Convert output to PDF via Pandoc')
+@click.option('--docx-template', 'docx_template_path', default=None, help='Override DOCX reference template path (use "none" to disable)')
 def publish(
     obj: Params, records: tuple[str, ...], publish_all: bool, single: bool,
     output_path: str | None, config_file: Path, date_suffix: bool, docx: bool, pdf: bool,
+    docx_template_path: str | None,
 ):
     from datetime import datetime
     from syntagmax.publish import build_block_tree, render_block_tree
@@ -175,6 +177,22 @@ def publish(
             lg.warning('pandoc executable not found in PATH')
             u.pprint('[yellow]Warning: pandoc not found in PATH. DOCX/PDF conversion will be skipped.[/yellow]')
 
+    # Resolve DOCX template
+    def _resolve_template_for_record(record):
+        """Resolve the DOCX template for a given record."""
+        if docx_template_path is not None:
+            # CLI override takes precedence
+            if docx_template_path.lower() == 'none':
+                return None
+            cli_template = Path(docx_template_path)
+            if not cli_template.exists():
+                from syntagmax.errors import FatalError
+                raise FatalError([f'DOCX template not found: {cli_template} (--docx-template)'])
+            return cli_template
+        from syntagmax.pandoc import resolve_docx_template
+        pub_config = config.load_publish_config(record)
+        return resolve_docx_template(pub_config, record.name, cfg_path.parent)
+
     out_p = Path(output_path)
 
     if single:
@@ -206,7 +224,16 @@ def publish(
         u.pprint(f'[green]Published consolidated report to {out_p} ({num_artifacts} artifacts, {num_text_blocks} text blocks)[/green]')
 
         if pandoc_available:
-            _run_pandoc_conversion(out_p, docx, pdf)
+            # Resolve template using first record, warn on conflicts
+            reference_doc = _resolve_template_for_record(selected_records[0])
+            if len(selected_records) > 1 and docx_template_path is None:
+                for rec in selected_records[1:]:
+                    other_template = _resolve_template_for_record(rec)
+                    if other_template != reference_doc:
+                        tpl_name = str(reference_doc) if reference_doc else 'none'
+                        u.pprint(f'[yellow]Warning: Conflicting DOCX templates across records in --single mode. Using: {tpl_name}[/yellow]')
+                        break
+            _run_pandoc_conversion(out_p, docx, pdf, reference_doc=reference_doc)
     else:
         out_p.mkdir(parents=True, exist_ok=True)
         date_str = datetime.now().strftime('%Y-%m-%d')
@@ -256,7 +283,8 @@ def publish(
             u.pprint(f'[green]Published {record.name} to {file_path} ({num_artifacts} artifacts, {num_text_blocks} text blocks)[/green]')
 
             if pandoc_available:
-                _run_pandoc_conversion(file_path, docx, pdf)
+                reference_doc = _resolve_template_for_record(record)
+                _run_pandoc_conversion(file_path, docx, pdf, reference_doc=reference_doc)
 
 
 @rms.command(help='Export traceability matrix as CSV/TSV')
