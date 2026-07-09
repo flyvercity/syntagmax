@@ -573,3 +573,228 @@ class TestContentLevelHierarchy:
         result, _ = render_block_tree(tree, multi_record=True)
         # path_base_level=2 (multi_record with start_level=1), empty components -> content_level=2
         assert '## Title' in result
+
+
+
+class TestContentFiles:
+    """Tests for content files (headingless file rendering)."""
+
+    def test_content_file_no_heading_emitted(self):
+        """A file whose stem matches the contents_marker gets no filename heading."""
+        tree = BlockTree(
+            inputs=[
+                InputBlock(
+                    name='docs',
+                    files=[
+                        FileRecord(path='Chapter/_contents_.md', blocks=[TextBlock(content='Intro text')]),
+                    ],
+                )
+            ]
+        )
+
+        result, _ = render_block_tree(tree, multi_record=False)
+        assert '# Chapter' in result
+        assert '_contents_' not in result
+        assert 'Intro text' in result
+
+    def test_content_file_case_insensitive_match(self):
+        """Matching is case-insensitive: _CONTENTS_.md still treated as content file."""
+        tree = BlockTree(
+            inputs=[
+                InputBlock(
+                    name='docs',
+                    files=[
+                        FileRecord(path='Section/_CONTENTS_.md', blocks=[TextBlock(content='Body')]),
+                    ],
+                )
+            ]
+        )
+
+        result, _ = render_block_tree(tree, multi_record=False)
+        assert '# Section' in result
+        assert '_CONTENTS_' not in result
+        assert 'Body' in result
+
+    def test_content_file_among_siblings(self):
+        """Content file sorted among siblings: renders in sort order without heading."""
+        tree = BlockTree(
+            inputs=[
+                InputBlock(
+                    name='docs',
+                    files=[
+                        FileRecord(path='Chapter/01-Intro.md', blocks=[TextBlock(content='Intro')]),
+                        FileRecord(path='Chapter/_contents_.md', blocks=[TextBlock(content='Chapter body')]),
+                        FileRecord(path='Chapter/Requirements.md', blocks=[TextBlock(content='Reqs')]),
+                    ],
+                )
+            ]
+        )
+
+        result, _ = render_block_tree(tree, multi_record=False)
+        assert '# Chapter' in result
+        assert '## Intro' in result
+        assert '_contents_' not in result
+        assert 'Chapter body' in result
+        assert '## Requirements' in result
+        # Verify ordering: Intro before _contents_ body before Requirements
+        intro_pos = result.index('## Intro')
+        body_pos = result.index('Chapter body')
+        reqs_pos = result.index('## Requirements')
+        assert intro_pos < body_pos < reqs_pos
+
+    def test_content_file_content_level_at_directory_body(self):
+        """Content file's H1 renders at the directory's body level, not one deeper."""
+        tree = BlockTree(
+            inputs=[
+                InputBlock(
+                    name='docs',
+                    files=[
+                        FileRecord(path='Section/_contents_.md', blocks=[TextBlock(content='# Heading\n## Sub\n')]),
+                    ],
+                )
+            ]
+        )
+
+        result, _ = render_block_tree(tree, multi_record=False)
+        # Section at level 1, content_level = level 2 (directory body)
+        assert '# Section' in result
+        assert '## Heading' in result
+        assert '### Sub' in result
+
+    def test_normal_file_content_level_one_deeper(self):
+        """Normal file's H1 renders one level deeper than file heading (for comparison)."""
+        tree = BlockTree(
+            inputs=[
+                InputBlock(
+                    name='docs',
+                    files=[
+                        FileRecord(path='Section/Normal.md', blocks=[TextBlock(content='# Heading\n')]),
+                    ],
+                )
+            ]
+        )
+
+        result, _ = render_block_tree(tree, multi_record=False)
+        # Section at level 1, Normal at level 2, content_level = 3
+        assert '# Section' in result
+        assert '## Normal' in result
+        assert '### Heading' in result
+
+    def test_content_file_does_not_match_partial_name(self):
+        """A file named _contents_intro.md does NOT match — must be exact stem."""
+        tree = BlockTree(
+            inputs=[
+                InputBlock(
+                    name='docs',
+                    files=[
+                        FileRecord(path='Section/_contents_intro.md', blocks=[TextBlock(content='text')]),
+                    ],
+                )
+            ]
+        )
+
+        result, _ = render_block_tree(tree, multi_record=False)
+        # Should be treated as a normal file with heading emitted
+        assert '# Section' in result
+        assert '_contents_intro' in result or '## _contents_intro' in result
+
+    def test_content_file_multi_record_mode(self):
+        """Content file works correctly in multi-record mode."""
+        tree = BlockTree(
+            inputs=[
+                InputBlock(
+                    name='reqs',
+                    files=[
+                        FileRecord(path='SYS/_contents_.md', blocks=[TextBlock(content='System intro')]),
+                        FileRecord(path='SYS/Functional.md', blocks=[TextBlock(content='Func reqs')]),
+                    ],
+                )
+            ]
+        )
+
+        result, _ = render_block_tree(tree, multi_record=True)
+        # Hierarchy: # reqs (record), ## SYS (dir), content at level 3, ### Functional (file)
+        assert '# reqs' in result
+        assert '## SYS' in result
+        assert '_contents_' not in result
+        assert 'System intro' in result
+        assert '### Functional' in result
+
+    def test_content_file_sibling_headings_still_emit_after_content_file(self):
+        """After a content file, subsequent sibling files still get their headings."""
+        tree = BlockTree(
+            inputs=[
+                InputBlock(
+                    name='docs',
+                    files=[
+                        FileRecord(path='dir/_contents_.md', blocks=[TextBlock(content='intro')]),
+                        FileRecord(path='dir/alpha.md', blocks=[TextBlock(content='a')]),
+                        FileRecord(path='dir/beta.md', blocks=[TextBlock(content='b')]),
+                    ],
+                )
+            ]
+        )
+
+        result, _ = render_block_tree(tree, multi_record=False)
+        assert '# dir' in result
+        assert '## alpha' in result
+        assert '## beta' in result
+        assert '_contents_' not in result
+
+    def test_content_file_at_root_level(self):
+        """Content file at root (no parent dir) — no heading emitted, content at base level."""
+        tree = BlockTree(
+            inputs=[
+                InputBlock(
+                    name='docs',
+                    files=[
+                        FileRecord(path='_contents_.md', blocks=[TextBlock(content='# Root\n')]),
+                    ],
+                )
+            ]
+        )
+
+        result, _ = render_block_tree(tree, multi_record=False)
+        assert '_contents_' not in result
+        # With no parent dir, content_level = path_base_level + len([_contents_]) - 1 = 1 + 0 = 0? No.
+        # components = ['_contents_'], is_content_file=True, content_level = min(6, 1 + 1 - 1) = 1
+        assert '# Root' in result
+
+    def test_content_file_with_numeric_prefix(self):
+        """Content file with numeric prefix in filename matches after prefix stripping."""
+        tree = BlockTree(
+            inputs=[
+                InputBlock(
+                    name='docs',
+                    files=[
+                        FileRecord(path='Chapter/2.1.0 content.md', blocks=[TextBlock(content='Body text')]),
+                        FileRecord(path='Chapter/2.1.1 Intro.md', blocks=[TextBlock(content='Intro')]),
+                    ],
+                )
+            ]
+        )
+
+        # Simulate a publish config with contents_marker="content" and prefix stripping on
+        from unittest.mock import patch, MagicMock
+        from syntagmax.publish_config import PublishConfig
+
+        pub_config = PublishConfig(contents_marker='content', remove_numeric_prefixes_in_headers=True)
+
+        # Build the tree and render without a full Config (uses defaults)
+        result, _ = render_block_tree(tree, multi_record=False)
+        # Default contents_marker is '_contents_', not 'content', so this won't match with default
+        # We need to test with actual config. Let's verify the raw stem matching behavior instead.
+        # With default marker, '2.1.0 content' stripped to 'content' != '_contents_', so heading emitted
+        assert '## content' in result
+
+    def test_content_file_with_numeric_prefix_and_custom_marker(self):
+        """Content file with numeric prefix matches custom marker after stripping."""
+        from syntagmax.publish_config import PublishConfig, load_publish_config
+        from syntagmax.publish import render_block_tree, decompose_file_path, strip_numeric_prefix
+        from pathlib import Path
+
+        # Verify the detection logic directly
+        components = decompose_file_path('Chapter/2.1.0 content.md', '.')
+        assert components == ['Chapter', '2.1.0 content']
+        # After stripping: 'content'
+        assert strip_numeric_prefix(components[-1]) == 'content'

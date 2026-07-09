@@ -220,3 +220,43 @@ docx-template:
         }
         with pytest.raises(ValidationError):
             DocxTemplate.model_validate(data)
+
+
+class TestContentsMarker:
+    def test_default_contents_marker(self):
+        config = PublishConfig()
+        assert config.contents_marker == '_contents_'
+
+    def test_custom_contents_marker(self):
+        config = PublishConfig(contents_marker='_body_')
+        assert config.contents_marker == '_body_'
+
+    def test_contents_marker_from_yaml(self, tmp_path):
+        yaml_content = """
+start_level: 1
+contents_marker: "_intro_"
+"""
+        p = tmp_path / 'publish.yaml'
+        p.write_text(yaml_content, encoding='utf-8')
+        config = load_publish_config(Path('publish.yaml'), tmp_path)
+        assert config.contents_marker == '_intro_'
+
+    def test_contents_marker_rejects_empty(self):
+        with pytest.raises(ValidationError):
+            PublishConfig(contents_marker='')
+
+    def test_contents_marker_rejects_whitespace(self):
+        with pytest.raises(ValidationError):
+            PublishConfig(contents_marker='   ')
+
+    def test_contents_marker_rejects_forward_slash(self):
+        with pytest.raises(ValidationError):
+            PublishConfig(contents_marker='dir/file')
+
+    def test_contents_marker_rejects_backslash(self):
+        with pytest.raises(ValidationError):
+            PublishConfig(contents_marker='dir\\file')
+
+    def test_contents_marker_accepts_underscores_and_dashes(self):
+        config = PublishConfig(contents_marker='--content--')
+        assert config.contents_marker == '--content--'

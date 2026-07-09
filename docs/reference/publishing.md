@@ -112,6 +112,7 @@ publish = "publish-sys-reqs.yaml"
 start_level: 1
 remove_numeric_prefixes_in_headers: true
 include_plain_text: true
+contents_marker: "_contents_"
 
 render:
   REQ:
@@ -145,6 +146,7 @@ docx-template:
 | `start_level` | int | `1` | Starting heading level offset in the output document |
 | `remove_numeric_prefixes_in_headers` | bool | `true` | Strip leading numeric prefixes from all headings: Markdown headings in text, directory/file names, and record names |
 | `include_plain_text` | bool | `true` | Include plain (non-artifact) text in the output |
+| `contents_marker` | string | `_contents_` | Filename marker for content files (headingless rendering) |
 
 ### Path Headings
 
@@ -170,6 +172,54 @@ Given input files `SYS/01-Intro/02-Overview.md` and `SYS/01-Intro/03-Scope.md` w
 (content blocks...)
 
 ## Scope
+
+(content blocks...)
+```
+
+### Content Files (Headingless Rendering)
+
+By default, every file in a record produces a heading from its filename stem. Sometimes you want a file's content to appear directly as body text for its parent directory, without generating a separate heading. Files whose stem matches the `contents_marker` option (case-insensitive) are treated as **content files**.
+
+**Configuration:**
+
+```yaml
+contents_marker: "_contents_"   # default
+```
+
+**Behaviour:**
+- A file whose stem exactly matches the marker (e.g., `_contents_.md`, `_CONTENTS_.md`) does not produce a filename heading.
+- The file's content renders at the parent directory's body level — the same heading depth where a sibling file's heading would appear.
+- Content files sort normally alongside sibling files (alphabetically by path). This lets you control placement using standard naming (e.g., `00_contents_.md` to appear first, or `_contents_.md` to appear in natural alphabetical position).
+- The marker must be a non-empty string without directory separators (`/`, `\`).
+
+**Example:**
+
+Given files in record dir `SYS`:
+- `SYS/Chapter/_contents_.md` — contains "This chapter introduces..."
+- `SYS/Chapter/Requirements.md` — contains requirements
+
+Published as a single record with default settings:
+
+```markdown
+# Chapter
+
+This chapter introduces...
+
+## Requirements
+
+(content blocks...)
+```
+
+Without the content file feature, the output would have been:
+
+```markdown
+# Chapter
+
+## _contents_
+
+This chapter introduces...
+
+## Requirements
 
 (content blocks...)
 ```

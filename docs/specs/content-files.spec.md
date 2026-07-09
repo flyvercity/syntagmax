@@ -49,16 +49,17 @@ When a file is a content file, `last_components` is updated to include only the 
 ### Detection Logic
 
 ```python
-DEFAULT_CONTENTS_MARKER = '_contents_'
-
 # In render_block_tree:
 contents_marker = pub_config.contents_marker  # from PublishConfig
 
 # After decompose_file_path:
-is_content_file = bool(components) and components[-1].lower() == contents_marker.lower()
+last_stem = components[-1] if components else ''
+if pub_config.remove_numeric_prefixes_in_headers:
+    last_stem = strip_numeric_prefix(last_stem)
+is_content_file = bool(components) and last_stem.lower() == contents_marker.lower()
 ```
 
-The match is case-insensitive against the file stem. A file named `_contents_intro.md` does NOT match because the stem `_contents_intro` != `_contents_`.
+When `remove_numeric_prefixes_in_headers` is enabled, numeric prefixes are stripped from the file stem before comparing with the marker. This means a file named `2.1.0 content.md` will match marker `"content"` because the effective stem after stripping is `content`. The match is case-insensitive. A file named `_contents_intro.md` does NOT match because the stem `_contents_intro` != `_contents_`.
 
 ## Task Breakdown
 

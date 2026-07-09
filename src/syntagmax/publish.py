@@ -420,28 +420,67 @@ def render_block_tree(tree: BlockTree, config: Optional[Config] = None, multi_re
             # Decompose path into heading components
             components = decompose_file_path(file_record.path, record_dir)
 
+            # Detect content files: last component matches contents_marker (case-insensitive)
+            # Apply numeric prefix stripping before comparison when enabled,
+            # since the user sees/names files by their effective (stripped) name.
+            last_stem = components[-1] if components else ''
+            if pub_config.remove_numeric_prefixes_in_headers:
+                last_stem = strip_numeric_prefix(last_stem)
+            is_content_file = (
+                bool(components)
+                and last_stem.lower() == pub_config.contents_marker.lower()
+            )
+
             if components:
-                # Find longest common prefix with previous file
-                common_len = 0
-                for i, (a, b) in enumerate(zip(last_components, components)):
-                    if a == b:
-                        common_len = i + 1
-                    else:
-                        break
+                if is_content_file:
+                    # Content file: emit headings for directory components only (not the file stem)
+                    dir_components = components[:-1]
 
-                # Emit headings only for new components
-                for i in range(common_len, len(components)):
-                    heading_text = components[i]
-                    if pub_config.remove_numeric_prefixes_in_headers:
-                        heading_text = strip_numeric_prefix(heading_text)
-                    level = min(6, path_base_level + i)
-                    parts.append(f'{"#" * level} {heading_text}\n\n')
+                    # Find longest common prefix with previous file (compare dir parts only)
+                    common_len = 0
+                    for i, (a, b) in enumerate(zip(last_components, dir_components)):
+                        if a == b:
+                            common_len = i + 1
+                        else:
+                            break
 
-                last_components = components
+                    # Emit headings only for new directory components
+                    for i in range(common_len, len(dir_components)):
+                        heading_text = dir_components[i]
+                        if pub_config.remove_numeric_prefixes_in_headers:
+                            heading_text = strip_numeric_prefix(heading_text)
+                        level = min(6, path_base_level + i)
+                        parts.append(f'{"#" * level} {heading_text}\n\n')
 
-            # Content level: one level deeper than the file's own path heading.
-            # Hierarchy: record heading → path dirs → filename → content headings.
-            content_level = min(6, path_base_level + len(components)) if components else path_base_level
+                    # Update last_components to directory parts only
+                    last_components = dir_components
+                else:
+                    # Normal file: emit headings for all new components (dirs + file stem)
+                    # Find longest common prefix with previous file
+                    common_len = 0
+                    for i, (a, b) in enumerate(zip(last_components, components)):
+                        if a == b:
+                            common_len = i + 1
+                        else:
+                            break
+
+                    # Emit headings only for new components
+                    for i in range(common_len, len(components)):
+                        heading_text = components[i]
+                        if pub_config.remove_numeric_prefixes_in_headers:
+                            heading_text = strip_numeric_prefix(heading_text)
+                        level = min(6, path_base_level + i)
+                        parts.append(f'{"#" * level} {heading_text}\n\n')
+
+                    last_components = components
+
+            # Content level calculation:
+            # - Normal file: one level deeper than the file's own path heading
+            # - Content file: at the directory's body level (same depth as file heading would be)
+            if is_content_file:
+                content_level = min(6, path_base_level + len(components) - 1) if components else path_base_level
+            else:
+                content_level = min(6, path_base_level + len(components)) if components else path_base_level
 
             for block in file_record.blocks:
                 block_content = render_block(block, pub_config, context, content_level=content_level)

@@ -65,8 +65,18 @@ class PublishConfig(BaseModel):
     start_level: int = Field(default=1)
     remove_numeric_prefixes_in_headers: bool = Field(default=True)
     include_plain_text: bool = Field(default=True)
+    contents_marker: str = Field(default='_contents_', description='Filename marker for headingless content files in publishing')
     render: dict[str, list[RenderSection]] = Field(default_factory=dict)
     docx_template: DocxTemplate | None = Field(default=None, alias='docx-template')
+
+    @field_validator('contents_marker')
+    @classmethod
+    def validate_contents_marker(cls, v: str) -> str:
+        if not v or not v.strip():
+            raise ValueError('contents_marker must be a non-empty, non-whitespace string')
+        if '/' in v or '\\' in v:
+            raise ValueError('contents_marker must not contain directory separators (/ or \\)')
+        return v
 
 
 def load_publish_config(path: Path | None, root_dir: Path) -> PublishConfig:
