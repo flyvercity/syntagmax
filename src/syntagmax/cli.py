@@ -224,15 +224,17 @@ def publish(
         u.pprint(f'[green]Published consolidated report to {out_p} ({num_artifacts} artifacts, {num_text_blocks} text blocks)[/green]')
 
         if pandoc_available:
-            # Resolve template using first record, warn on conflicts
-            reference_doc = _resolve_template_for_record(selected_records[0])
-            if len(selected_records) > 1 and docx_template_path is None:
-                for rec in selected_records[1:]:
-                    other_template = _resolve_template_for_record(rec)
-                    if other_template != reference_doc:
-                        tpl_name = str(reference_doc) if reference_doc else 'none'
-                        u.pprint(f'[yellow]Warning: Conflicting DOCX templates across records in --single mode. Using: {tpl_name}[/yellow]')
-                        break
+            reference_doc = None
+            if docx:
+                # Resolve template using first record, warn on conflicts
+                reference_doc = _resolve_template_for_record(selected_records[0])
+                if len(selected_records) > 1 and docx_template_path is None:
+                    for rec in selected_records[1:]:
+                        other_template = _resolve_template_for_record(rec)
+                        if other_template != reference_doc:
+                            tpl_name = str(reference_doc) if reference_doc else 'none'
+                            u.pprint(f'[yellow]Warning: Conflicting DOCX templates across records in --single mode. Using: {tpl_name}[/yellow]')
+                            break
             _run_pandoc_conversion(out_p, docx, pdf, reference_doc=reference_doc)
     else:
         out_p.mkdir(parents=True, exist_ok=True)
@@ -283,7 +285,7 @@ def publish(
             u.pprint(f'[green]Published {record.name} to {file_path} ({num_artifacts} artifacts, {num_text_blocks} text blocks)[/green]')
 
             if pandoc_available:
-                reference_doc = _resolve_template_for_record(record)
+                reference_doc = _resolve_template_for_record(record) if docx else None
                 _run_pandoc_conversion(file_path, docx, pdf, reference_doc=reference_doc)
 
 
