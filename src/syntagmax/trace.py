@@ -84,14 +84,15 @@ def build_trace_matrix(
         )
 
         for lead in lead_artifacts:
-            # Find parents of the target type
+            # Find parents of the target type only
             linked_ids = []
             for pid in lead.pids:
-                if pid in artifacts and artifacts[pid].atype == parent_type:
+                if pid not in artifacts:
+                    # Unresolved reference — include raw ID so broken links are visible
                     linked_ids.append(pid)
-                else:
-                    # Unresolved reference or wrong-type parent - include raw ID so broken links are visible
+                elif artifacts[pid].atype == parent_type:
                     linked_ids.append(pid)
+                # else: wrong-type parent — skip (not relevant for this trace)
 
             # Serialize attributes
             attrs = {}

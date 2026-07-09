@@ -79,7 +79,16 @@ def populate_pids(config: Config, artifacts: ArtifactMap, errors: list[str]):
                                     if trace_mode == 'timestamp' and not nominal_revision:
                                         nominal_revision = 'older'
 
-                                a.parent_links.append(ParentLink(pid=aid, nominal_revision=nominal_revision))
+                                existing_link = next((pl for pl in a.parent_links if pl.pid == aid), None)
+                                if existing_link:
+                                    if existing_link.nominal_revision != nominal_revision:
+                                        errors.append(
+                                            f"Conflicting nominal revisions for parent '{aid}' "
+                                            f"in artifact '{a.aid}': "
+                                            f"'{existing_link.nominal_revision}' vs '{nominal_revision}'"
+                                        )
+                                else:
+                                    a.parent_links.append(ParentLink(pid=aid, nominal_revision=nominal_revision))
 
                                 if aid not in a.pids:
                                     a.pids.append(aid)
@@ -98,6 +107,7 @@ def gather_ansestors(artifacts: ArtifactMap, ref: str, depth: int = 0) -> str | 
 
     for child in artifacts[ref].children:
         artifacts[child].ansestors.add(ref)
+        artifacts[child].ansestors.update(artifacts[ref].ansestors)
         err = gather_ansestors(artifacts, child, depth + 1)
 
         if err:
