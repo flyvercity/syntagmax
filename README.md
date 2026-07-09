@@ -375,6 +375,26 @@ def export_trace(matrix: TraceMatrix, config: Config, params: dict) -> None:
 
 Hooks are called in config order. Each hook must return the correct type (`BlockTree` or `str`); returning `None` or a wrong type halts the pipeline with an error. The `export_trace` hook returns `None` (the plugin handles output directly).
 
+### Pre-Publishing Block Filter
+
+A plugin can also implement a per-block filter hook, activated via `--pre-filter <plugin-name>` on the `publish` command:
+
+```python
+from syntagmax.blocks import Block, FileRecord
+from syntagmax.config import Config
+
+def filter_block(block: Block, file_record: FileRecord, config: Config, params: dict) -> Block | None:
+    """Called per-block after tree transforms, before rendering.
+    Return a Block instance to keep/modify, or None to omit the block."""
+    ...
+```
+
+This hook runs **after** `transform_blocks` but **before** rendering. It receives each block individually along with its parent `FileRecord` (providing file path context). Returning `None` omits the block from the published output; returning a value that is neither a `Block` instance nor `None` halts the pipeline with a fatal error.
+
+The `--pre-filter` option requires the plugin to be configured in `config.toml`. A single plugin module can implement `filter_block` alongside other hooks (`transform_blocks`, `transform_markdown`).
+
+> **Note:** The pre-publishing filter applies only to the `publish` command. Other interfaces (e.g., the MCP server) do not apply publish-time filters.
+
 ### Local Plugins
 
 Place Python files in `.syntagmax/plugins/` relative to the config file:
@@ -408,10 +428,16 @@ Then reference it in your config with `source = "package"`.
 
 ### Example
 
-See `example/plugin-demo/` for a working example with two local plugins demonstrating both hook types.
+See `example/plugin-demo/` for a working example with local plugins demonstrating `transform_blocks`, `transform_markdown`, and `filter_block` hooks.
 
 ```bash
-uv run syntagmax --cwd ./example/plugin-demo publish .syntagmax/reports/output.md
+uv run syntagmax --cwd ./example/plugin-demo publish --all .syntagmax/reports/output.md
+```
+
+To demonstrate the `filter_block` hook (omits draft artifacts):
+
+```bash
+uv run syntagmax --cwd ./example/plugin-demo publish --pre-filter redact-draft --all --single --output .syntagmax/reports/filtered.md
 ```
 
 See `example/trace-tsv-plugin/` for a working example of the `export_trace` hook that exports as TSV.

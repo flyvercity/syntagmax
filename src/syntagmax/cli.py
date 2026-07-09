@@ -124,15 +124,16 @@ def _run_pandoc_conversion(md_path: Path, docx: bool, pdf: bool, reference_doc: 
 @click.option('--docx', is_flag=True, help='Convert output to DOCX via Pandoc')
 @click.option('--pdf', is_flag=True, help='Convert output to PDF via Pandoc')
 @click.option('--docx-template', 'docx_template_path', default=None, help='Override DOCX reference template path (use "none" to disable)')
+@click.option('--pre-filter', 'pre_filter_name', default=None, help='Run a pre-publishing block filter plugin')
 def publish(
     obj: Params, records: tuple[str, ...], publish_all: bool, single: bool,
     output_path: str | None, config_file: Path, date_suffix: bool, docx: bool, pdf: bool,
-    docx_template_path: str | None,
+    docx_template_path: str | None, pre_filter_name: str | None,
 ):
     from datetime import datetime
     from syntagmax.publish import build_block_tree, render_block_tree
     from syntagmax.blocks import ArtifactBlock, TextBlock
-    from syntagmax.plugin import run_block_transforms, run_markdown_transforms
+    from syntagmax.plugin import run_block_transforms, run_markdown_transforms, find_plugin_by_name, run_pre_filter
     import sys
 
     if not records and not publish_all:
@@ -203,6 +204,11 @@ def publish(
         # Run plugin block transforms
         tree = run_block_transforms(config.plugins(), tree, config)
 
+        # Run pre-publishing block filter if specified
+        if pre_filter_name:
+            pre_filter_plugin = find_plugin_by_name(config.plugins(), pre_filter_name)
+            tree = run_pre_filter(pre_filter_plugin, tree, config)
+
         markdown = render_block_tree(tree, config, multi_record=(len(selected_records) > 1))
 
         # Run plugin markdown transforms
@@ -246,6 +252,11 @@ def publish(
 
             # Run plugin block transforms
             tree = run_block_transforms(config.plugins(), tree, config)
+
+            # Run pre-publishing block filter if specified
+            if pre_filter_name:
+                pre_filter_plugin = find_plugin_by_name(config.plugins(), pre_filter_name)
+                tree = run_pre_filter(pre_filter_plugin, tree, config)
 
             markdown = render_block_tree(tree, config, multi_record=False)
 
