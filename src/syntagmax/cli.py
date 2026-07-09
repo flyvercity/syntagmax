@@ -203,7 +203,7 @@ def publish(
         # Run plugin block transforms
         tree = run_block_transforms(config.plugins(), tree, config)
 
-        markdown = render_block_tree(tree, config)
+        markdown = render_block_tree(tree, config, multi_record=(len(selected_records) > 1))
 
         # Run plugin markdown transforms
         markdown = run_markdown_transforms(config.plugins(), markdown, config)
@@ -247,7 +247,7 @@ def publish(
             # Run plugin block transforms
             tree = run_block_transforms(config.plugins(), tree, config)
 
-            markdown = render_block_tree(tree, config)
+            markdown = render_block_tree(tree, config, multi_record=False)
 
             # Run plugin markdown transforms
             markdown = run_markdown_transforms(config.plugins(), markdown, config)

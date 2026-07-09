@@ -144,9 +144,37 @@ docx-template:
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `start_level` | int | `1` | Starting heading level offset in the output document |
-| `remove_numeric_prefixes_in_headers` | bool | `true` | Strip leading numeric prefixes (e.g., `1.2.3 Title` → `Title`) |
+| `remove_numeric_prefixes_in_headers` | bool | `true` | Strip leading numeric prefixes from all headings: Markdown headings in text, directory/file names, and record names |
 | `include_plain_text` | bool | `true` | Include plain (non-artifact) text in the output |
 | `ignore_plain_text_prefixes` | list[str] | `[]` | Line prefixes to exclude from plain text output |
+
+### Path Headings
+
+During publishing, each file's relative path (within the input record's directory) is decomposed into nested headings. Directory components become headings at progressively deeper levels, with the file stem (extension stripped) as the deepest heading before the file's content blocks.
+
+**Behaviour:**
+- The record's configured `dir` prefix is stripped from file paths before decomposition.
+- When publishing multiple records together (`--all` or multiple named records with `--single`), the record name appears as a top-level heading at `start_level`. Path headings start one level below.
+- When publishing a single record, no record name heading is emitted. Path headings start at `start_level`.
+- Shared directory prefixes between consecutive files are not repeated — a directory heading is emitted only when entering a new directory.
+- All heading levels are capped at 6 (the maximum Markdown heading depth).
+- If `remove_numeric_prefixes_in_headers` is enabled, numeric prefixes (e.g., `01-`, `2.1 `) are stripped from directory names, file names, and the record name.
+
+**Example:**
+
+Given input files `SYS/01-Intro/02-Overview.md` and `SYS/01-Intro/03-Scope.md` with record `dir = "SYS"`, `start_level = 1`, `remove_numeric_prefixes_in_headers = true`, published as a single record:
+
+```markdown
+# Intro
+
+## Overview
+
+(content blocks...)
+
+## Scope
+
+(content blocks...)
+```
 
 ### Render Section
 

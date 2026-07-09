@@ -28,6 +28,7 @@ from syntagmax.plugin import PluginConfig
 @dataclass
 class InputRecord:
     name: str
+    dir: str
     record_base: Path
     filepaths: list[Path]
     driver: str
@@ -221,6 +222,7 @@ class Config:
             self._input_records.append(
                 InputRecord(
                     name=name,
+                    dir=input_config.dir,
                     record_base=record_base,
                     filepaths=list(filepaths),
                     driver=input_config.driver,

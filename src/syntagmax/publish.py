@@ -199,7 +199,30 @@ def render_block(block: Block, pub_config: PublishConfig) -> str:
     return ''
 
 
-def render_block_tree(tree: BlockTree, config: Optional[Config] = None) -> str:
+def decompose_file_path(file_path: str, record_dir: str) -> list[str]:
+    """Decompose FileRecord.path into heading components.
+
+    Strips the record's dir prefix and file extension.
+    Returns list of components: [dir1, dir2, ..., file_stem]
+    """
+    from pathlib import PurePosixPath
+
+    parts = PurePosixPath(file_path).parts
+    dir_parts = PurePosixPath(record_dir).parts
+
+    # Strip leading components matching record dir
+    if parts[:len(dir_parts)] == dir_parts:
+        parts = parts[len(dir_parts):]
+
+    # Strip extension from last component (filename)
+    if parts:
+        parts = list(parts)
+        parts[-1] = PurePosixPath(parts[-1]).stem
+
+    return list(parts)
+
+
+def render_block_tree(tree: BlockTree, config: Optional[Config] = None, multi_record: bool = True) -> str:
     parts: list[str] = []
 
     record_map: dict[str, InputRecord] = {}
@@ -209,13 +232,48 @@ def render_block_tree(tree: BlockTree, config: Optional[Config] = None) -> str:
 
     for input_block in tree.inputs:
         pub_config = PublishConfig()
+        record_dir = ''
         if config and input_block.name in record_map:
             pub_config = config.load_publish_config(record_map[input_block.name])
+            record_dir = record_map[input_block.name].dir
 
-        level = min(6, pub_config.start_level + 1)
-        parts.append(f'{"#" * level} {input_block.name}\n\n')
+        # Emit record name heading only in multi_record mode
+        if multi_record:
+            record_heading = input_block.name
+            if pub_config.remove_numeric_prefixes_in_headers:
+                record_heading = strip_numeric_prefix(record_heading)
+            level = min(6, pub_config.start_level)
+            parts.append(f'{"#" * level} {record_heading}\n\n')
+
+        # Base level for path headings
+        path_base_level = pub_config.start_level + 1 if multi_record else pub_config.start_level
+
+        # Track emitted path components to avoid duplicates
+        last_components: list[str] = []
 
         for file_record in input_block.files:
+            # Decompose path into heading components
+            components = decompose_file_path(file_record.path, record_dir)
+
+            if components:
+                # Find longest common prefix with previous file
+                common_len = 0
+                for i, (a, b) in enumerate(zip(last_components, components)):
+                    if a == b:
+                        common_len = i + 1
+                    else:
+                        break
+
+                # Emit headings only for new components
+                for i in range(common_len, len(components)):
+                    heading_text = components[i]
+                    if pub_config.remove_numeric_prefixes_in_headers:
+                        heading_text = strip_numeric_prefix(heading_text)
+                    level = min(6, path_base_level + i)
+                    parts.append(f'{"#" * level} {heading_text}\n\n')
+
+                last_components = components
+
             for block in file_record.blocks:
                 block_content = render_block(block, pub_config)
                 if block_content:

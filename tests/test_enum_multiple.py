@@ -103,7 +103,7 @@ def test_markdown_extractor_enum_multiple(config, metamodel, tmp_path):
     filepath = tmp_path / 'test.md'
     filepath.write_text(contents, encoding='utf-8')
 
-    input_record = InputRecord(name='test_md', record_base=tmp_path, filepaths=[], driver='markdown', default_atype='REQ', marker='REQ')
+    input_record = InputRecord(name='test_md', dir='.', record_base=tmp_path, filepaths=[], driver='markdown', default_atype='REQ', marker='REQ')
     extractor = MarkdownExtractor(config, input_record, metamodel=metamodel)
     artifacts, errors = extractor.extract_from_file(filepath)
 

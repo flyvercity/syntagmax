@@ -257,6 +257,7 @@ class TestMarkdownExtractorUpdateAttributes:
 
         record = InputRecord(
             name='test',
+            dir='.',
             record_base=tmp_path,
             filepaths=[],
             driver='obsidian',

@@ -36,7 +36,7 @@ class TestTextExtractorBlocks:
         f = tmp_path / 'test.py'
         f.write_text(content, encoding='utf-8')
 
-        record = InputRecord(name='t', record_base=tmp_path, filepaths=[f], driver='text', default_atype='SRC', marker='SRC')
+        record = InputRecord(name='t', dir='.', record_base=tmp_path, filepaths=[f], driver='text', default_atype='SRC', marker='SRC')
         extractor = TextExtractor(config, record)
         blocks = extractor.extract_blocks_from_file(f)
 
@@ -75,7 +75,8 @@ class TestRenderBlockTree:
         )
 
         result = render_block_tree(tree)
-        assert '## reqs' in result
+        assert '# reqs' in result
+        assert '## req' in result
         assert '# Intro' in result
         assert '### REQ-1' in result
         assert '| status | active |' in result
@@ -232,7 +233,7 @@ class TestPublishCLI:
         file_path = out_dir / 'rec1.md'
         assert file_path.exists()
         content = file_path.read_text(encoding='utf-8')
-        assert '### rec1' in content  # level=2 + 1 = 3 -> ### rec1
+        assert '## sys' in content  # file heading: start_level=2, multi_record=False
         assert '**Body**: System shall do X.' in content
 
         # Run publish consolidated (--single)
@@ -241,7 +242,7 @@ class TestPublishCLI:
         assert result.exit_code == 0, result.output
         assert single_file.exists()
         content = single_file.read_text(encoding='utf-8')
-        assert '### rec1' in content
+        assert '## sys' in content  # single record with --all: multi_record=False (only 1 record)
         assert '**Body**: System shall do X.' in content
 
     def test_publish_date_suffix(self, tmp_path):
@@ -293,3 +294,167 @@ class TestPublishCLI:
         runner = CliRunner()
         result = runner.invoke(rms, ['--cwd', str(tmp_path), 'publish', '--all', '--single', '--date-suffix'])
         assert result.exit_code != 0
+
+
+class TestPathDecomposition:
+    def test_decompose_strips_record_dir(self):
+        from syntagmax.publish import decompose_file_path
+        result = decompose_file_path('SYS/01-Intro/02-Functional.md', 'SYS')
+        assert result == ['01-Intro', '02-Functional']
+
+    def test_decompose_nested_record_dir(self):
+        from syntagmax.publish import decompose_file_path
+        result = decompose_file_path('requirements/REQS/chapter/file.md', 'requirements/REQS')
+        assert result == ['chapter', 'file']
+
+    def test_decompose_file_only(self):
+        from syntagmax.publish import decompose_file_path
+        result = decompose_file_path('SYS/myfile.md', 'SYS')
+        assert result == ['myfile']
+
+    def test_decompose_no_match(self):
+        from syntagmax.publish import decompose_file_path
+        result = decompose_file_path('OTHER/file.md', 'SYS')
+        assert result == ['OTHER', 'file']
+
+    def test_decompose_dot_dir(self):
+        from syntagmax.publish import decompose_file_path
+        result = decompose_file_path('file.md', '.')
+        assert result == ['file']
+
+
+class TestPathHeadings:
+    def test_headings_emitted_for_directories_and_files(self):
+        from syntagmax.publish import render_block_tree
+
+        tree = BlockTree(
+            inputs=[
+                InputBlock(
+                    name='sys',
+                    files=[
+                        FileRecord(path='SYS/01-Intro/02-Overview.md', blocks=[TextBlock(content='Some text')]),
+                        FileRecord(path='SYS/01-Intro/03-Scope.md', blocks=[TextBlock(content='More text')]),
+                        FileRecord(path='SYS/02-Design/01-Arch.md', blocks=[TextBlock(content='Design text')]),
+                    ],
+                )
+            ]
+        )
+
+        # Simulate config with record_dir='SYS', start_level=1, remove_numeric_prefixes=True
+        # Without config, record_dir defaults to '' so we test with multi_record=False
+        result = render_block_tree(tree, multi_record=False)
+
+        # With no config, record_dir is '' so full path components are used
+        # SYS/01-Intro/02-Overview.md -> ['SYS', '01-Intro', '02-Overview']
+        # With default remove_numeric_prefixes=True: SYS, Intro, Overview
+        assert '# SYS' in result
+        assert '## Intro' in result
+        assert '### Overview' in result
+        assert '### Scope' in result
+        # Intro heading should appear only once (shared dir)
+        assert result.count('## Intro') == 1
+        # Design is a new directory
+        assert '## Design' in result
+        assert '### Arch' in result
+
+    def test_multi_record_emits_record_heading(self):
+        from syntagmax.publish import render_block_tree
+
+        tree = BlockTree(
+            inputs=[
+                InputBlock(
+                    name='sys-reqs',
+                    files=[FileRecord(path='file.md', blocks=[TextBlock(content='Body')])],
+                )
+            ]
+        )
+
+        result = render_block_tree(tree, multi_record=True)
+        assert '# sys-reqs' in result
+        assert '## file' in result
+
+    def test_single_record_no_record_heading(self):
+        from syntagmax.publish import render_block_tree
+
+        tree = BlockTree(
+            inputs=[
+                InputBlock(
+                    name='sys-reqs',
+                    files=[FileRecord(path='file.md', blocks=[TextBlock(content='Body')])],
+                )
+            ]
+        )
+
+        result = render_block_tree(tree, multi_record=False)
+        assert 'sys-reqs' not in result
+        assert '# file' in result
+
+    def test_numeric_prefix_stripping_disabled(self):
+        from syntagmax.publish import render_block_tree
+
+        tree = BlockTree(
+            inputs=[
+                InputBlock(
+                    name='reqs',
+                    files=[FileRecord(path='01-Introduction.md', blocks=[TextBlock(content='text')])],
+                )
+            ]
+        )
+
+        # Without config, default is remove_numeric_prefixes=True
+        result_stripped = render_block_tree(tree, multi_record=False)
+        assert '# Introduction' in result_stripped
+
+    def test_numeric_prefix_stripping_on_record_name(self):
+        from syntagmax.publish import render_block_tree
+
+        tree = BlockTree(
+            inputs=[
+                InputBlock(
+                    name='01 System Requirements',
+                    files=[FileRecord(path='file.md', blocks=[TextBlock(content='text')])],
+                )
+            ]
+        )
+
+        result = render_block_tree(tree, multi_record=True)
+        assert '# System Requirements' in result
+
+    def test_heading_level_capping(self):
+        from syntagmax.publish import render_block_tree
+
+        tree = BlockTree(
+            inputs=[
+                InputBlock(
+                    name='rec',
+                    files=[FileRecord(path='a/b/c/d/e/f/g.md', blocks=[TextBlock(content='deep')])],
+                )
+            ]
+        )
+
+        result = render_block_tree(tree, multi_record=True)
+        # record at level 1, then a=2, b=3, c=4, d=5, e=6, f=6, g=6 (capped)
+        assert '###### ' in result
+        # Should not exceed 6 hashes
+        assert '####### ' not in result
+
+    def test_duplicate_dirs_not_repeated(self):
+        from syntagmax.publish import render_block_tree
+
+        tree = BlockTree(
+            inputs=[
+                InputBlock(
+                    name='rec',
+                    files=[
+                        FileRecord(path='dir/file1.md', blocks=[TextBlock(content='A')]),
+                        FileRecord(path='dir/file2.md', blocks=[TextBlock(content='B')]),
+                    ],
+                )
+            ]
+        )
+
+        result = render_block_tree(tree, multi_record=False)
+        # 'dir' heading emitted once
+        assert result.count('# dir') == 1
+        assert '## file1' in result
+        assert '## file2' in result

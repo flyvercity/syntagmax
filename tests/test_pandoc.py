@@ -313,7 +313,7 @@ class TestResolveDocxTemplate:
 
     def test_default_template_resolves_relative(self, tmp_path):
         from syntagmax.pandoc import resolve_docx_template
-        from syntagmax.publish_config import PublishConfig, DocxTemplate
+        from syntagmax.publish_config import PublishConfig
 
         # Create the template file
         templates_dir = tmp_path / 'templates'
