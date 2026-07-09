@@ -6,25 +6,26 @@ The publishing engine uses each file's stem as a heading in the output. Users ne
 
 ## Requirements
 
-1. Files whose stem exactly matches the configurable marker (default `_contents_`) are treated as content files.
+1. Files whose stem matches the configurable marker (default `_contents_`, case-insensitive) are treated as content files.
 2. Content files are sorted normally with their siblings (alphabetically by path).
 3. Content files do NOT emit a filename heading — their blocks render at the directory's own body level (same `content_level` as the directory heading itself, not one level deeper).
-4. The marker is configurable via `[drivers.obsidian]` section: `contents_marker = "_contents_"`.
+4. The marker is configurable via `PublishConfig` (in `publish.yaml`): `contents_marker: "_contents_"`.
 5. The feature only affects the publish pipeline's heading emission, not extraction.
+6. The marker must be a non-empty string without directory separator characters (`/`, `\`).
 
 ## Background
 
 - `render_block_tree` in `publish.py` iterates files, calls `decompose_file_path` to split path into components, then emits a heading for each new component (including file stem as the last component).
 - `content_level` is computed as `path_base_level + len(components)` — one deeper than the file's own heading.
-- The `ObsidianDriverConfig` pydantic model in `config.py` already holds driver-level options (`exclude_elements`, `integration`, `root`).
-- The config is accessible in `render_block_tree` via `config.obsidian_driver_config`.
+- `PublishConfig` in `publish_config.py` holds per-record publishing options (`start_level`, `remove_numeric_prefixes_in_headers`, `include_plain_text`, `render`, etc.) and is the natural home for `contents_marker` since the feature is driver-agnostic.
+- The publish config is accessible in `render_block_tree` via `config.load_publish_config(record)`.
 
 ## Proposed Solution
 
 ### Architecture
 
-1. Add `contents_marker: str` field to `ObsidianDriverConfig` (default `"_contents_"`).
-2. In `render_block_tree`, after decomposing path components, check if the last component (file stem) exactly matches the contents marker. If so:
+1. Add `contents_marker: str` field to `PublishConfig` (default `"_contents_"`) with a validator ensuring it is non-empty, non-whitespace, and contains no directory separators (`/`, `\`).
+2. In `render_block_tree`, after decomposing path components, check if the last component (file stem) matches the contents marker case-insensitively. If so:
    - Do NOT emit a heading for that file stem (skip the last component from heading emission).
    - Set `content_level` to the directory's heading level (one less than it would normally be), so content renders as the directory's own body.
 3. When there's no config passed (no-config mode), use the default marker `"_contents_"`.
@@ -51,44 +52,41 @@ When a file is a content file, `last_components` is updated to include only the 
 DEFAULT_CONTENTS_MARKER = '_contents_'
 
 # In render_block_tree:
-contents_marker = DEFAULT_CONTENTS_MARKER
-if config:
-    contents_marker = config.obsidian_driver_config.contents_marker
+contents_marker = pub_config.contents_marker  # from PublishConfig
 
 # After decompose_file_path:
-is_content_file = bool(components) and components[-1] == contents_marker
+is_content_file = bool(components) and components[-1].lower() == contents_marker.lower()
 ```
 
-The match is exact (case-sensitive) against the file stem. A file named `_contents_intro.md` does NOT match.
+The match is case-insensitive against the file stem. A file named `_contents_intro.md` does NOT match because the stem `_contents_intro` != `_contents_`.
 
 ## Task Breakdown
 
-### Task 1: Add `contents_marker` option to `ObsidianDriverConfig`
+### Task 1: Add `contents_marker` option to `PublishConfig`
 
-**Objective:** Add the configurable marker string to the driver config model.
+**Objective:** Add the configurable marker string to the publish config model with validation.
 
 **Implementation guidance:**
-- In `src/syntagmax/config.py`, add a new field to `ObsidianDriverConfig`:
+- In `src/syntagmax/publish_config.py`, add a new field to `PublishConfig`:
   ```python
   contents_marker: str = Field(default='_contents_', description='Filename marker for headingless content files in publishing')
   ```
-- No validation needed beyond the default Pydantic string validation.
+- Add a Pydantic `field_validator` that rejects empty/whitespace-only values and values containing `/` or `\`.
 
 **Test requirements:**
-- Unit test: parse a config with `[drivers.obsidian] contents_marker = "_body_"` and verify `config.obsidian_driver_config.contents_marker == "_body_"`.
-- Unit test: default config has `contents_marker == "_contents_"`.
+- Unit test: load a `publish.yaml` with `contents_marker: "_body_"` and verify `pub_config.contents_marker == "_body_"`.
+- Unit test: default `PublishConfig()` has `contents_marker == "_contents_"`.
+- Unit test: validation rejects empty string, whitespace, and strings with `/` or `\`.
 
-**Demo:** `uv run pytest tests/test_obsidian_attachment_path.py` passes with new assertions.
+**Demo:** `uv run pytest tests/test_publish_config.py` passes with new assertions.
 
 ### Task 2: Implement content file detection in `render_block_tree`
 
 **Objective:** Modify the rendering loop to detect content files and skip heading emission for them, adjusting content_level accordingly.
 
 **Implementation guidance:**
-- In `render_block_tree`, after decomposing components, extract the contents marker:
-  - If `config` is available: `contents_marker = config.obsidian_driver_config.contents_marker`
-  - Otherwise use the default: `"_contents_"`
-- After `components = decompose_file_path(...)`, check if `components` is non-empty and the last component exactly matches the marker.
+- In `render_block_tree`, `pub_config` is already loaded per input block. Use `pub_config.contents_marker` directly.
+- After `components = decompose_file_path(...)`, check if `components` is non-empty and the last component matches the marker case-insensitively (`components[-1].lower() == pub_config.contents_marker.lower()`).
 - If it's a content file:
   - Emit headings for directory components normally (all except the last one).
   - Do NOT emit a heading for the file stem.
@@ -98,6 +96,7 @@ The match is exact (case-sensitive) against the file stem. A file named `_conten
 
 **Test requirements:**
 - Test: file named `_contents_.md` in a directory — no filename heading emitted, content renders at directory level.
+- Test: file named `_CONTENTS_.md` — still matches (case-insensitive).
 - Test: `_contents_.md` sorted among siblings — content appears in correct sort position.
 - Test: custom marker configured — only files with that marker are treated as content files.
 - Test: file named `_contents_intro.md` does NOT match (must be exact stem match).
@@ -126,11 +125,11 @@ The match is exact (case-sensitive) against the file stem. A file named `_conten
 
 ### Task 4: Update documentation
 
-**Objective:** Document the new feature in the configuration reference and publishing reference.
+**Objective:** Document the new feature in the publishing reference.
 
 **Implementation guidance:**
-- Update `docs/reference/configuration.md` to document `contents_marker` under `[drivers.obsidian]`.
-- Update `docs/reference/publishing.md` to explain content file behavior.
+- Update `docs/reference/publishing.md` to document `contents_marker` as a `publish.yaml` option and explain content file behavior.
+- Update `docs/reference/configuration.md` if it references publish options.
 
 **Test requirements:**
 - No code tests; documentation review.

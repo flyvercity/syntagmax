@@ -8,11 +8,11 @@ This report challenges the specification in [content-files.spec.md](file:///C:/U
 
 The proposed "Content Files" feature is highly valuable for requirements management, enabling users to write folder notes or introductions (e.g., `_contents_.md`) that render cleanly without artificial heading blocks.
 
-However, the specification contains a **critical layout defect** regarding file sorting (X1), which would cause headingless content to be visually merged under preceding sibling subheadings. It also introduces a minor coupling risk by placing a global publishing configuration under a specific driver's namespace (E1).
+Sibling interleave is an intentional design feature: content files sort alphabetically alongside their siblings. This allows users to place introductory or transitional content exactly where they want it in the document sequence relative to other files (using standard sorting logic).
 
-With the updates detailed below, this feature is safe and ready to implement.
+No blocking "Must-Address" issues were identified. Several recommendations are proposed to improve the architecture and configuration robustness.
 
-**Verdict**: ⚠️ **PROCEED WITH UPDATES**
+**Verdict**: ⚠️ **PROCEED WITH UPDATES** (Recommendations only)
 
 ---
 
@@ -20,7 +20,6 @@ With the updates detailed below, this feature is safe and ready to implement.
 
 | ID | Lens | Severity | Category | Finding | Suggestion |
 |----|------|----------|----------|---------|------------|
-| **X1** | Both | 🎯 Must-Address | Scope × UX / Layout | Sibling sorting can interleave the content file, causing its headingless text to render under an unrelated sibling's heading. | Implement a custom tuple-based sorting key in the rendering loop to guarantee the content file sorts first at its directory level. |
 | **E1** | Engineering | 💡 Recommendation | Architecture Soundness | Placing `contents_marker` under `[drivers.obsidian]` couples the general publish module to a specific driver's configuration. | Move the configuration option to `PublishConfig` (`publish.yaml` or global `[publish]` table). |
 | **P1** | Product | 💡 Recommendation | Edge Cases & UX | A case-sensitive match against the file stem may fail on case-insensitive filesystems (Windows/macOS) if the casing differs. | Match the content file stem case-insensitively. |
 | **P2** | Product | 💡 Recommendation | Edge Cases & UX | The configurable marker is not validated, which could lead to empty/whitespace values or invalid path characters. | Add a Pydantic validator to restrict the marker to non-empty strings without directory separators. |
@@ -28,31 +27,6 @@ With the updates detailed below, this feature is safe and ready to implement.
 ---
 
 ## Detailed Findings & Analysis
-
-### 🎯 Must-Address
-
-#### X1: Content File Sorting
-- **Category**: Scope × UX / Layout
-- **Description**: Currently, files are sorted alphabetically by their relative path string. If a user configures `contents_marker = "index"`, a directory structure containing `Chapter/characteristics.md`, `Chapter/index.md`, and `Chapter/requirements.md` will sort the files in that order. Because `index.md` emits no heading, its content will render immediately after `characteristics.md`, placing it visually inside the `## characteristics` section.
-- **Impact**: Severe rendering/layout bug that confuses the reader and breaks document structure.
-- **Suggestion**: Ensure that content files are sorted first within their directory. In [publish.py](file:///C:/Users/boris/projects/flyvercity/stmx-ws/stmx/syntagmax/src/syntagmax/publish.py#L416), sort `input_block.files` before rendering using a custom tuple key:
-  ```python
-  def make_sort_key(file_record):
-      components = decompose_file_path(file_record.path, record_dir)
-      key = []
-      for idx, comp in enumerate(components):
-          is_last = (idx == len(components) - 1)
-          if not is_last:
-              key.append((2, comp))  # Subdirectories sort last
-          else:
-              if comp.lower() == contents_marker.lower():
-                  key.append((0, comp))  # Content file sorts first
-              else:
-                  key.append((1, comp))  # Other files sort in the middle
-      return key
-  ```
-
----
 
 ### 💡 Recommendations
 
