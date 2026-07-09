@@ -430,84 +430,17 @@ syntagmax edit attrs -s requirements -o replace -n doors_id --csv mapping.csv --
 
 ## Publishing
 
-Syntagmax can combine all project inputs into a single structured markdown document, preserving both artifact content and surrounding non-artifact text (headings, rationale, design notes, etc.).
+Syntagmax can combine project inputs into structured markdown documents, with optional DOCX/PDF export via Pandoc. Rendering is controlled by `publish.yaml` configuration.
 
 ```bash
-syntagmax publish output.md
+# Publish all records to separate files
+syntagmax publish --all
+
+# Single consolidated document with DOCX export
+syntagmax publish --all --single --docx --output ./reports/full-document.md
 ```
 
-The publish command:
-- Processes all input records from the project config
-- Preserves non-artifact text blocks (context, rationale, notes) alongside requirements
-- Renders each artifact in a normalized format: heading + body + metadata table
-- Sorts files within each input record lexicographically by relative path
-
-### Options
-
-```bash
-syntagmax publish <output-file> [-f <config-file>]
-```
-
-- `<output-file>`: Path to the output markdown file (required)
-- `-f, --config-file`: Path to config file (default: `.syntagmax/config.toml`)
-
-### DOCX/PDF Export (Pandoc Integration)
-
-The `publish` command can optionally convert the generated Markdown to DOCX and/or PDF using [Pandoc](https://pandoc.org/).
-
-```bash
-# Publish all records and convert to Word
-syntagmax publish --all --docx
-
-# Publish consolidated document as PDF
-syntagmax publish --all --single --pdf
-
-# Produce both DOCX and PDF alongside Markdown
-syntagmax publish --all --docx --pdf --output ./reports/
-
-# Use a custom DOCX template (one-off override)
-syntagmax publish --all --docx --docx-template ./templates/corporate.dotm
-
-# Export without any template styling
-syntagmax publish --all --docx --docx-template none
-```
-
-**Requirements:**
-- Pandoc must be installed and available in your `PATH`.
-- For PDF output, a LaTeX engine (e.g., `xelatex`, `pdflatex`) must also be installed.
-
-**Behavior:**
-- The Markdown file is always generated first, regardless of conversion success.
-- DOCX/PDF files are placed alongside the Markdown with the same base name (e.g., `rec1.md` → `rec1.docx`).
-- If Pandoc is not found or conversion fails, a warning is logged with the exit status, the Markdown file is preserved, and the command exits successfully.
-
-#### DOCX Template Configuration
-
-By default, Syntagmax applies a bundled reference document (`template.dotm`) when converting to DOCX via Pandoc's `--reference-doc` flag. This controls styles, headers, footers, and page layout in the output.
-
-Templates can be configured per input record in `publish.yaml` using the `docx-template` section:
-
-```yaml
-docx-template:
-  default-template: "templates/corporate.dotm"
-  overrides:
-    system-requirements: "templates/sys-template.dotm"
-    implementation: "none"
-```
-
-| Field | Description |
-|-------|-------------|
-| `default-template` | Path to the default template (relative to the config directory), or `"none"` to disable |
-| `overrides` | Per-record template overrides (record name → path or `"none"`) |
-
-**Resolution order:**
-
-1. `--docx-template` CLI option (overrides everything)
-2. Per-record override in `docx-template.overrides.<record_name>`
-3. `docx-template.default-template`
-4. Bundled `template.dotm` (if no configuration is specified)
-
-Setting a template value to `"none"` at any level disables the reference document for that record, producing a plain Pandoc conversion without styling.
+For the full command reference, `publish.yaml` schema, rendering configuration, and DOCX template options, see [docs/reference/publishing.md](docs/reference/publishing.md).
 
 ## Tracing Export
 
