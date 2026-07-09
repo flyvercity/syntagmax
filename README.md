@@ -455,6 +455,19 @@ syntagmax publish <output-file> [-f <config-file>]
 
 The `publish` command can optionally convert the generated Markdown to DOCX and/or PDF using [Pandoc](https://pandoc.org/).
 
+### Image Handling
+
+Published documents automatically resolve and copy image references:
+
+- **Obsidian wiki-links** (`![[image.png]]`): resolved via vault-wide filename search
+- **Standard markdown** (`![alt](path/to/image.png)`): resolved relative to the source file
+
+Images are copied to an `images/` subdirectory alongside the output markdown, with paths rewritten to point there. Target filenames are derived by flattening the source path (e.g., `SYS/diagram.png` → `images/SYS-diagram.png`).
+
+**Security:** Only images within the project workspace (`base_dir`) are copied. Remote URLs (`http://`, `https://`) are left unchanged. Stale images from previous runs are cleaned automatically.
+
+**Sidecar image artifacts** (e.g., `diagram.png` with `diagram.png.stmx`) automatically emit a markdown image embed in the published output.
+
 ```bash
 # Publish all records and convert to Word
 syntagmax publish --all --docx

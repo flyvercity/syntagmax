@@ -74,7 +74,7 @@ class TestRenderBlockTree:
             ]
         )
 
-        result = render_block_tree(tree)
+        result, _ = render_block_tree(tree)
         assert '## reqs' in result
         assert '# Intro' in result
         assert '### REQ-1' in result
@@ -103,7 +103,7 @@ class TestRenderBlockTree:
             ]
         )
 
-        result = render_block_tree(tree)
+        result, _ = render_block_tree(tree)
         assert '| tags | 1, 2 |' in result
         assert '| verified | True |' in result
 
