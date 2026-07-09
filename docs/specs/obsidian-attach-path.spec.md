@@ -101,3 +101,13 @@ No other exceptions should be silently swallowed.
 - **Implementation:** Create a minimal test fixture (in `tests/` using tmp_path) that mimics a project with `.obsidian/app.json`, an attachment folder with an image, and a requirement referencing it. Run `render_block_tree` and verify the manifest contains the attachment image and the markdown output has rewritten references. Include a variant with note-relative path configuration.
 - **Test:** The e2e test asserts correct manifest entries and markdown output for both vault-relative and note-relative configurations.
 - **Demo:** Running the test suite passes, confirming the full pipeline works with Obsidian attachment integration.
+
+### Task 6: Update documentation
+
+- **Objective:** Ensure all user-facing documentation reflects the new Obsidian integration feature.
+- **Implementation:** Update the following:
+  1. `README.md` — Add a subsection under an appropriate heading documenting `[drivers.obsidian]` integration options (`integration`, `root`) with a usage example.
+  2. `docs/reference/configuration.md` — Add the new `[drivers.obsidian]` fields to the configuration reference with descriptions, types, and defaults.
+  3. `openwiki/` — Update relevant architecture or domain notes if they reference the publish image resolution flow or driver configuration.
+- **Test:** Review rendered documentation for accuracy and completeness; verify all examples are syntactically valid TOML.
+- **Demo:** A user reading the README or configuration reference can discover and configure the Obsidian attachment integration without consulting the spec.
