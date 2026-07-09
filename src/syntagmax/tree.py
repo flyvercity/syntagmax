@@ -98,6 +98,7 @@ def gather_ansestors(artifacts: ArtifactMap, ref: str, depth: int = 0) -> str | 
 
     for child in artifacts[ref].children:
         artifacts[child].ansestors.add(ref)
+        artifacts[child].ansestors.update(artifacts[ref].ansestors)
         err = gather_ansestors(artifacts, child, depth + 1)
 
         if err:
