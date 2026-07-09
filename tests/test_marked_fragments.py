@@ -36,6 +36,7 @@ def obsidian_config(params, tmp_path):
 def input_record_with_markers(tmp_path):
     return InputRecord(
         name='test',
+        dir='.',
         record_base=tmp_path,
         filepaths=[],
         driver='obsidian',

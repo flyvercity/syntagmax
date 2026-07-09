@@ -16,7 +16,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from syntagmax.blocks import BlockTree
+from syntagmax.blocks import Block, BlockTree
 from syntagmax.errors import FatalError
 
 
@@ -309,3 +309,60 @@ def run_markdown_transforms(plugins: list[LoadedPlugin], markdown: str, config) 
         markdown = result
 
     return markdown
+
+
+
+def run_pre_filter(plugin: LoadedPlugin, tree: BlockTree, config) -> BlockTree:
+    """Run the filter_block hook on a specific plugin for every block in the tree.
+
+    The hook is called once per block. It may return the block (possibly modified)
+    or None to omit the block from the output.
+
+    Args:
+        plugin: The loaded plugin to invoke.
+        tree: The block tree to filter.
+        config: The Syntagmax Config object.
+
+    Returns:
+        The filtered BlockTree.
+
+    Raises:
+        FatalError: If the plugin lacks filter_block, or if the hook raises
+                    an exception or returns an invalid type.
+    """
+    if not hasattr(plugin.module, 'filter_block'):
+        raise FatalError(
+            f'Plugin "{plugin.name}" does not implement the filter_block hook'
+        )
+
+    lg.info(f'Running filter_block for plugin "{plugin.name}"')
+
+    for input_block in tree.inputs:
+        for file_record in input_block.files:
+            new_blocks = []
+            for block in file_record.blocks:
+                try:
+                    result = plugin.module.filter_block(block, file_record, config, plugin.params)
+                except FatalError:
+                    raise
+                except Exception as e:
+                    lg.debug(f'Plugin "{plugin.name}" filter_block error:\n{traceback.format_exc()}')
+                    raise FatalError(
+                        f'Plugin "{plugin.name}": filter_block raised an exception '
+                        f'in file "{file_record.path}": {e}'
+                    )
+
+                if result is None:
+                    continue
+
+                if not isinstance(result, Block):
+                    raise FatalError(
+                        f'Plugin "{plugin.name}": filter_block must return a Block instance or None, '
+                        f'got {type(result).__name__} in file "{file_record.path}"'
+                    )
+
+                new_blocks.append(result)
+
+            file_record.blocks = new_blocks
+
+    return tree

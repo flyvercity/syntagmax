@@ -36,96 +36,13 @@ This command creates a `.syntagmax` directory with:
 
 ## Configuration
 
-Syntagmax uses a TOML configuration file (default `.syntagmax/config.toml`).
+Syntagmax uses a TOML configuration file (default `.syntagmax/config.toml`). Key sections include:
 
-### Top-level options
-
-| Option | Required | Description |
-|--------|----------|-------------|
-| `base` | Yes | Base directory path (relative to the config file) |
-| `input` | Yes | List of input source definitions |
-| `metrics` | No | Metrics collection settings |
-| `metamodel` | No | Metamodel configuration |
-
-### Input sources (`[[input]]`)
-
-Each input defines a source of requirements or artifacts:
-
-| Field | Required | Default | Description |
-|-------|----------|---------|-------------|
-| `name` | Yes | — | Input source name |
-| `dir` | Yes | — | Subdirectory relative to base directory |
-| `driver` | Yes | — | Driver type: `obsidian`, `ipynb`, `markdown`, etc. |
-| `filter` | No | Driver-specific | File filter pattern (glob). Defaults: `obsidian` → `**/*.md`, `ipynb` → `**/*.ipynb`, `markdown` → `**/*.md` |
-| `atype` | No | `REQ` | Default artifact type for this source |
-| `marker` | No | *atype* | Custom marker for artifacts (e.g., `[SYS]` in Markdown). Defaults to `atype`. |
-| `markers` | No | `[]` | List of fragment markers for non-artifact text blocks (e.g., `["COM", "NOTE"]`). Obsidian driver only. |
-
-### Marked Fragments (Obsidian driver)
-
-The `markers` option allows tagging non-artifact text blocks with named markers such as `[COM]...[/COM]` or `[NOTE]...[/NOTE]`. These marked fragments are extracted as `TextBlock`s with a `marker` field set, which can later influence publication filtering.
-
-**Rules:**
-- Markers are case-insensitive (`[com]...[/COM]` is valid)
-- Marker values are stored in uppercase (e.g., `COM`, `NOTE`)
-- Fragment markers must not collide with the artifact marker (fatal config error)
-- No nesting or overlap between markers
-- Only supported for the `obsidian` driver
-
-**Example config:**
-
-```toml
-[[input]]
-name = "system-requirements"
-dir = "SYS"
-driver = "obsidian"
-markers = ["COM", "NOTE"]
-```
-
-**Example markdown:**
-
-```text
-This is a preamble. [COM]This is a comment.[/COM]
-[note]This is a note.[/note]
-Some more text.
-[SYS]
-Requirement body
-[id] SYS-001
-[/SYS]
-```
-
-This produces the following blocks:
-- Regular text: `This is a preamble. `
-- Comment fragment (marker=`COM`): `This is a comment.`
-- Regular text: `\nSome more text.\n`
-- Note fragment (marker=`NOTE`): `This is a note.`
-- Artifact: `SYS-001`
-
-### Metrics (`[metrics]`)
-
-| Field | Required | Default | Description |
-|-------|----------|---------|-------------|
-| `enabled` | No | `false` | Enable metrics collection |
-| `requirement_type` | No | `REQ` | Requirement type to include |
-| `status_field` | No | `status` | Status attribute name |
-| `verify_field` | No | `verify` | Verify attribute name |
-| `tbd_marker` | No | `TBD` | TBD detection marker |
-
-### Impact Analysis (`[impact]`)
-
-Impact analysis helps identify potentially outdated artifacts by comparing their parent revisions.
-
-| Field | Required | Default | Description |
-|-------|----------|---------|-------------|
-| `enabled` | No | `false` | Enable impact analysis |
-
-### Metamodel (`[metamodel]`)
-
-| Field | Required | Default | Description |
-|-------|----------|---------|-------------|
-| `filename` | No | — | Path to the `.syntagmax` file defining the project's metamodel. |
-
-## Example Configuration
+- `[[input]]` — input source definitions (driver, artifact type, filters)
+- `[metrics]` — metrics collection settings
+- `[impact]` — impact analysis settings
+- `[metamodel]` — metamodel file path
+- `[ai]` — AI provider and model settings
 
 ```toml
 base = ".."
@@ -134,13 +51,6 @@ base = ".."
 name = "requirements"
 dir = "requirements/REQS"
 driver = "obsidian"
-
-[[input]]
-name = "implementation"
-dir = "app/src/main"
-driver = "text"
-atype = "SRC"
-filter = "**/*.kt"
 
 [metrics]
 enabled = true
@@ -152,6 +62,8 @@ filename = "project.syntagmax"
 provider = "anthropic"
 model = "claude-sonnet-4-6"
 ```
+
+For the full schema, input source options, marked fragments, and AI provider settings, see [docs/reference/configuration.md](docs/reference/configuration.md).
 
 ## Git Integration
 
@@ -227,8 +139,6 @@ Syntagmax allows defining a custom metamodel for artifacts and their attributes 
 
 **Companion VS Code Extension:** [syntagmax-vscode](https://github.com/flyvercity/syntagmax-vscode)
 
-### Example
-
 ```model
 artifact REQ:
     attribute id is mandatory string
@@ -237,106 +147,11 @@ artifact REQ:
     attribute status is mandatory enum [draft, active, retired]
     attribute verify is optional string
     attribute priority is mandatory integer
-```
 
-The attributes `id` and `contents` are always mandatory for all artifacts, but the type is flexible.
-
-### Syntax Reference
-
-Python-style comments (`# ...`) are supported.
-
-| Rule | Description |
-|------|-------------|
-| `artifact <NAME>:` | Defines a new artifact type. Rules must be indented. |
-| `id is <type> [as <schema>]` | Defines the id attribute and its optional schema. |
-| `attribute <ATTR> is <presence> [multiple] <type>` | Defines a general attribute rule. |
-
-**Presence:** `mandatory` or `optional`.
-
-**Modifier:**
-- `multiple`: (Optional) Allows an attribute to have multiple values. Multiple values are extracted into a list. If a `multiple` attribute is missing, it defaults to an empty list `[]`.
-
-**Types:**
-- `string`: Any text.
-- `integer`: A whole number.
-- `boolean`: `true` or `false`.
-  - **Custom Values**: You can define custom truthy and falsy values: `boolean [true: "yes", "on", false: "no", "off"]`. If custom values are defined, validation becomes exhaustive (standard `true`/`false` will be rejected unless explicitly included). Comparison is case-insensitive.
-- `reference [to parent]`: A reference to another artifact (e.g., `SRS-001`). The optional `to parent` modifier marks the attribute as a parent indicator, used for building the artifact hierarchy. 
-  - **Nominal Revision**: For "via commit" traces, you can specify a parent's revision using the `@` symbol: `parent: SRS-001@c2d94e4`. This allows for impact analysis to identify if a requirement is outdated relative to its parent.
-- `enum [<values>]`: A fixed set of allowed values (comma-separated). Add the optional `multiple` modifier to allow the attribute to have multiple values.
-
-### Multiple Enum Extraction
-
-Multiple values for an enum can be specified by repeating the attribute or by using a comma-separated list in a single attribute:
-
-```
-[<
-ID = REQ-1
-allocation = HW
-allocation = SW
->>>
-This requirement has multiple allocations.
->]
-```
-
-Or:
-
-```
-[<
-ID = REQ-2
-allocation = HW, SW
->>>
-This requirement also has multiple allocations.
->]
-```
-
-### Impact Analysis Logic
-
-When impact analysis is enabled (`[impact] enabled = true`), Syntagmax performs the following checks:
-
-1. **Via Commit**: If a parent reference includes a revision (e.g., `SRS-001@c2d94e4`), Syntagmax compares it with the parent's actual latest revision. If they differ, the link is marked as suspicious.
-2. **Via Timestamp**: If no revision is specified and the metamodel trace mode is `timestamp`, the link is marked as suspicious if the parent was modified later than the artifact.
-
-Suspicious links are highlighted in the artifact tree (printed in yellow) and included in the impact analysis report.
-
-> **Note**: Impact analysis requires a clean git worktree. You can bypass this check using the `--allow-dirty-worktree` flag.
-
-### Trace Modes
-
-Metamodel traces can specify an analysis mode:
-
-```model
 trace from REQ to SYS is mandatory via commit
-trace from SYS to ARCH is optional via timestamp
 ```
 
-- `via commit`: Requires specific revision pinning in the artifact (e.g. `parent: SYS-001@c2d94e4`).
-- `via timestamp`: Uses modification times to detect potential staleness. Defaults to `older` nominal revision if not specified.
-
-### Examples of multiple attributes
-
-Multiple values can be specified by repeating the attribute:
-
-```
-[<
-ID = REQ-1
-tag = security
-tag = performance
->>>
-This requirement has multiple tags.
->]
-```
-
-In this case, `artifact.fields['tag']` will be `['security', 'performance']`.
-
-In Obsidian (YAML):
-```yaml
-attrs:
-  author:
-    - Alice
-    - Bob
-```
-This will result in `artifact.fields['author']` being `['Alice', 'Bob']`.
+For the full syntax reference, types, trace modes, multiple attributes, and impact analysis logic, see [docs/reference/metamodel.md](docs/reference/metamodel.md).
 
 ## Editing and Renumbering
 
@@ -430,84 +245,17 @@ syntagmax edit attrs -s requirements -o replace -n doors_id --csv mapping.csv --
 
 ## Publishing
 
-Syntagmax can combine all project inputs into a single structured markdown document, preserving both artifact content and surrounding non-artifact text (headings, rationale, design notes, etc.).
+Syntagmax can combine project inputs into structured markdown documents, with optional DOCX/PDF export via Pandoc. Rendering is controlled by `publish.yaml` configuration.
 
 ```bash
-syntagmax publish output.md
+# Publish all records to separate files
+syntagmax publish --all
+
+# Single consolidated document with DOCX export
+syntagmax publish --all --single --docx --output ./reports/full-document.md
 ```
 
-The publish command:
-- Processes all input records from the project config
-- Preserves non-artifact text blocks (context, rationale, notes) alongside requirements
-- Renders each artifact in a normalized format: heading + body + metadata table
-- Sorts files within each input record lexicographically by relative path
-
-### Options
-
-```bash
-syntagmax publish <output-file> [-f <config-file>]
-```
-
-- `<output-file>`: Path to the output markdown file (required)
-- `-f, --config-file`: Path to config file (default: `.syntagmax/config.toml`)
-
-### DOCX/PDF Export (Pandoc Integration)
-
-The `publish` command can optionally convert the generated Markdown to DOCX and/or PDF using [Pandoc](https://pandoc.org/).
-
-```bash
-# Publish all records and convert to Word
-syntagmax publish --all --docx
-
-# Publish consolidated document as PDF
-syntagmax publish --all --single --pdf
-
-# Produce both DOCX and PDF alongside Markdown
-syntagmax publish --all --docx --pdf --output ./reports/
-
-# Use a custom DOCX template (one-off override)
-syntagmax publish --all --docx --docx-template ./templates/corporate.dotm
-
-# Export without any template styling
-syntagmax publish --all --docx --docx-template none
-```
-
-**Requirements:**
-- Pandoc must be installed and available in your `PATH`.
-- For PDF output, a LaTeX engine (e.g., `xelatex`, `pdflatex`) must also be installed.
-
-**Behavior:**
-- The Markdown file is always generated first, regardless of conversion success.
-- DOCX/PDF files are placed alongside the Markdown with the same base name (e.g., `rec1.md` → `rec1.docx`).
-- If Pandoc is not found or conversion fails, a warning is logged with the exit status, the Markdown file is preserved, and the command exits successfully.
-
-#### DOCX Template Configuration
-
-By default, Syntagmax applies a bundled reference document (`template.dotm`) when converting to DOCX via Pandoc's `--reference-doc` flag. This controls styles, headers, footers, and page layout in the output.
-
-Templates can be configured per input record in `publish.yaml` using the `docx-template` section:
-
-```yaml
-docx-template:
-  default-template: "templates/corporate.dotm"
-  overrides:
-    system-requirements: "templates/sys-template.dotm"
-    implementation: "none"
-```
-
-| Field | Description |
-|-------|-------------|
-| `default-template` | Path to the default template (relative to the config directory), or `"none"` to disable |
-| `overrides` | Per-record template overrides (record name → path or `"none"`) |
-
-**Resolution order:**
-
-1. `--docx-template` CLI option (overrides everything)
-2. Per-record override in `docx-template.overrides.<record_name>`
-3. `docx-template.default-template`
-4. Bundled `template.dotm` (if no configuration is specified)
-
-Setting a template value to `"none"` at any level disables the reference document for that record, producing a plain Pandoc conversion without styling.
+For the full command reference, `publish.yaml` schema, rendering configuration, and DOCX template options, see [docs/reference/publishing.md](docs/reference/publishing.md).
 
 ## Tracing Export
 
@@ -567,9 +315,12 @@ syntagmax trace --child REQ --parent SYS --plugin tsv-export
 
 Syntagmax supports a plugin system that allows custom transformations during the publish pipeline. Plugins are distributed separately from the core project — either as local Python files or as installable packages.
 
-### Configuration
+Plugins are declared in `config.toml` via `[[plugin]]` blocks and can implement hooks for:
 
-Plugins are declared in `config.toml` via `[[plugin]]` blocks. They execute in the order listed.
+- **`transform_blocks`** — modify the block tree before rendering
+- **`transform_markdown`** — transform rendered markdown before writing
+- **`filter_block`** — per-block pre-publishing filter (activated via `--pre-filter`)
+- **`export_trace`** — custom tracing export format (activated via `--plugin`)
 
 ```toml
 [[plugin]]
@@ -579,125 +330,14 @@ enabled = true
 
 [plugin.params]
 title = "My Document"
-version = "2.0"
-
-[[plugin]]
-name = "syntagmax-company-plugin"
-source = "package"
-
-[plugin.params]
-company = "Acme Corp"
 ```
 
-| Field | Required | Default | Description |
-|-------|----------|---------|-------------|
-| `name` | Yes | — | Plugin name (used for discovery) |
-| `source` | Yes | — | `"local"` or `"package"` |
-| `enabled` | No | `true` | Set to `false` to disable without removing |
-| `params` | No | `{}` | Plugin-specific parameters |
-
-### Plugin Hooks
-
-A plugin is a Python module exposing one or more of:
-
-```python
-from syntagmax.blocks import BlockTree
-from syntagmax.config import Config
-
-def transform_blocks(tree: BlockTree, config: Config, params: dict) -> BlockTree:
-    """Called after block tree is built, before rendering."""
-    ...
-
-def transform_markdown(markdown: str, config: Config, params: dict) -> str:
-    """Called after markdown is rendered, before writing to file."""
-    ...
-```
-
-For tracing export, a plugin can implement:
-
-```python
-from syntagmax.trace import TraceMatrix
-from syntagmax.config import Config
-
-def export_trace(matrix: TraceMatrix, config: Config, params: dict) -> None:
-    """Called instead of the built-in CSV writer when --plugin is specified.
-    The plugin is responsible for writing output (file, stdout, etc.)."""
-    ...
-```
-
-Hooks are called in config order. Each hook must return the correct type (`BlockTree` or `str`); returning `None` or a wrong type halts the pipeline with an error. The `export_trace` hook returns `None` (the plugin handles output directly).
-
-### Local Plugins
-
-Place Python files in `.syntagmax/plugins/` relative to the config file:
-
-```
-.syntagmax/
-├── config.toml
-└── plugins/
-    ├── my-transform.py           # Single-file plugin
-    └── complex-transform/        # Directory plugin
-        ├── __init__.py
-        └── helpers.py
-```
-
-### Package Plugins
-
-Install a Python package that registers an entry-point:
-
-```toml
-# In the plugin package's pyproject.toml:
-[project.entry-points."syntagmax.plugins"]
-my-plugin-name = "my_plugin_module"
-```
-
-Then reference it in your config with `source = "package"`.
-
-### Error Handling
-
-- If a plugin cannot be found or loaded, the pipeline halts immediately.
-- If a hook raises an exception, the full traceback is logged at DEBUG level, and the pipeline halts with a clear error message naming the plugin.
-
-### Example
-
-See `example/plugin-demo/` for a working example with two local plugins demonstrating both hook types.
-
-```bash
-uv run syntagmax --cwd ./example/plugin-demo publish .syntagmax/reports/output.md
-```
-
-See `example/trace-tsv-plugin/` for a working example of the `export_trace` hook that exports as TSV.
-
-```bash
-uv run syntagmax --cwd ./example/trace-tsv-plugin trace --child REQ --parent SYS --plugin tsv-export
-```
+For the full plugin API, configuration options, local/package plugin setup, and working examples, see [docs/reference/plugins.md](docs/reference/plugins.md).
 
 ## Required Improvements
 
 - Implement automatic change propagation
 - Enhance AI-based analysis and tracing
-
-## AI Configuration (`[ai]`)
-
-AI analysis configuration. Settings can also be placed in `~/.syntagmax/config` (global configuration) which are overridden by the project configuration.
-
-Environment variables can also be used for API keys (e.g. `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY`). Configuration file values take precedence.
-
-**Note on AWS Bedrock:** Currently, only Anthropic Claude models are supported on Bedrock. `boto3` must be installed manually to use Bedrock.
-
-| Field | Required | Default | Description |
-|-------|----------|---------|-------------|
-| `provider` | No | `ollama` | AI provider: `ollama`, `anthropic`, `openai`, `gemini`, `bedrock` |
-| `model` | No | *Provider Default* | Model name to use (e.g. `gpt-4o`, `claude-3-opus`) |
-| `ollama_host` | No | `http://localhost:11434` | Ollama host URL |
-| `anthropic_api_key` | No | — | Anthropic API Key |
-| `openai_api_key` | No | — | OpenAI API Key |
-| `gemini_api_key` | No | — | Google Gemini API Key |
-| `aws_access_key_id` | No | — | AWS Access Key ID |
-| `aws_secret_access_key` | No | — | AWS Secret Access Key |
-| `aws_region_name` | No | — | AWS Region Name |
-| `aws_api_key` | No | — | AWS Bedrock API Key |
-| `timeout_s` | No | `60.0` | Request timeout in seconds |
 
 ## MCP Server
 

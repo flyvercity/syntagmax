@@ -613,4 +613,75 @@ class MarkdownExtractor(Extractor):
 
     def extract_blocks_from_file(self, filepath: Path) -> list[Block]:
         markdown = filepath.read_text(encoding='utf-8')
-        return self._extract_blocks_from_markdown(filepath, markdown)
+        blocks = self._extract_blocks_from_markdown(filepath, markdown)
+        return self._apply_element_filters(blocks)
+
+    def _apply_element_filters(self, blocks: list[Block]) -> list[Block]:
+        """Apply exclude_elements filtering to TextBlocks."""
+        exclude = self._record.exclude_elements
+        if not exclude:
+            return blocks
+
+        filtered: list[Block] = []
+        is_file_start = True
+
+        for block in blocks:
+            if isinstance(block, TextBlock):
+                content = self._filter_text_content(block.content, is_file_start, exclude)
+                is_file_start = False
+                if content and content.strip():
+                    filtered.append(TextBlock(content=content, marker=block.marker))
+            else:
+                is_file_start = False
+                filtered.append(block)
+
+        return filtered
+
+    def _filter_text_content(self, content: str, is_file_start: bool, exclude: list[str]) -> str:
+        """Filter excluded Markdown elements from text content.
+
+        Respects fenced code blocks: lines inside ``` fences are never filtered.
+        Supports both LF and CRLF line endings.
+        """
+        import re as _re
+
+        # Handle frontmatter first (operates on entire content, not line-by-line)
+        if is_file_start and 'frontmatter' in exclude:
+            fm_pattern = _re.compile(r'\A---\r?\n.*?\r?\n---\r?\n', _re.DOTALL)
+            content = fm_pattern.sub('', content)
+
+        # If no line-level filters remain, return early
+        line_filters = set(exclude) & {'callouts', 'headings', 'horizontal_rules'}
+        if not line_filters:
+            return content
+
+        hr_pattern = _re.compile(r'^\s*[-*_]{3,}\s*$')
+        lines = content.splitlines(keepends=True)
+        result: list[str] = []
+        in_code_block = False
+
+        for line in lines:
+            stripped = line.lstrip()
+
+            # Track fenced code block state
+            if stripped.startswith('```'):
+                in_code_block = not in_code_block
+                result.append(line)
+                continue
+
+            # Lines inside code blocks are always preserved
+            if in_code_block:
+                result.append(line)
+                continue
+
+            # Apply filters
+            if 'callouts' in line_filters and stripped.startswith('>'):
+                continue
+            if 'headings' in line_filters and stripped.startswith('#'):
+                continue
+            if 'horizontal_rules' in line_filters and hr_pattern.match(line):
+                continue
+
+            result.append(line)
+
+        return ''.join(result)

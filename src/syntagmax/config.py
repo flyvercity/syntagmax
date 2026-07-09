@@ -17,7 +17,7 @@ import json
 from dataclasses import dataclass, field
 
 from benedict import benedict
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from syntagmax.params import Params
 from syntagmax.metamodel import load_metamodel
@@ -25,9 +25,29 @@ from syntagmax.errors import FatalError
 from syntagmax.plugin import PluginConfig
 
 
+VALID_EXCLUDE_ELEMENTS = frozenset({'callouts', 'headings', 'horizontal_rules', 'frontmatter'})
+
+
+class ObsidianDriverConfig(BaseModel):
+    exclude_elements: list[str] = Field(default_factory=list, description='Predefined Markdown elements to exclude at extraction time')
+
+    @field_validator('exclude_elements')
+    @classmethod
+    def validate_exclude_elements(cls, v: list[str]) -> list[str]:
+        for elem in v:
+            if elem not in VALID_EXCLUDE_ELEMENTS:
+                raise ValueError(f'Unknown exclude element "{elem}". Valid elements: {sorted(VALID_EXCLUDE_ELEMENTS)}')
+        return v
+
+
+class DriversConfig(BaseModel):
+    obsidian: ObsidianDriverConfig = Field(default_factory=ObsidianDriverConfig)
+
+
 @dataclass
 class InputRecord:
     name: str
+    dir: str
     record_base: Path
     filepaths: list[Path]
     driver: str
@@ -35,6 +55,7 @@ class InputRecord:
     marker: str
     markers: list[str] = field(default_factory=list)
     publish_config: str | None = None
+    exclude_elements: list[str] = field(default_factory=list)
 
 
 DEFAULT_FILTERS = {'obsidian': '**/*.md', 'ipynb': '**/*.ipynb', 'markdown': '**/*.md'}
@@ -49,6 +70,17 @@ class InputConfig(BaseModel):
     marker: str | None = Field(default=None, description='Custom marker for artifacts (e.g., "REQ"). Defaults to atype.')
     markers: list[str] = Field(default_factory=list, description='Fragment markers for non-artifact text blocks (e.g., ["COM", "NOTE"]). Obsidian driver only.')
     publish: str | None = Field(default=None, description='Path to publish configuration file relative to the project directory or config folder')
+    exclude_elements: list[str] | None = Field(default=None, description='Markdown elements to exclude at extraction time (merged with global driver defaults)')
+
+    @field_validator('exclude_elements')
+    @classmethod
+    def validate_exclude_elements(cls, v: list[str] | None) -> list[str] | None:
+        if v is None:
+            return v
+        for elem in v:
+            if elem not in VALID_EXCLUDE_ELEMENTS:
+                raise ValueError(f'Unknown exclude element "{elem}". Valid elements: {sorted(VALID_EXCLUDE_ELEMENTS)}')
+        return v
 
 
 class MetricsConfig(BaseModel):
@@ -93,6 +125,7 @@ class ConfigFile(BaseModel):
     metamodel: Metamodel = Field(Metamodel(), description='Configuration for the artifact metamodel')
     ai: AIConfig = Field(default_factory=AIConfig, description='Configuration for AI-powered analysis')
     plugin: list[PluginConfig] = Field(default_factory=list, description='List of plugin configurations')
+    drivers: DriversConfig = Field(default_factory=DriversConfig, description='Driver-specific configuration defaults')
 
 
 class Config:
@@ -154,7 +187,7 @@ class Config:
 
         self._base_dir = Path(root_dir, config_model.base)
         lg.debug(f'Base directory: {self._base_dir}')
-        self._read_input_records(config_model.input)
+        self._read_input_records(config_model.input, config_model.drivers)
 
         self.metrics = config_model.metrics
         self.impact = config_model.impact
@@ -174,7 +207,7 @@ class Config:
 
         self._plugins = load_plugins(config_model.plugin, self._root_dir)
 
-    def _read_input_records(self, input_configs: list[InputConfig]):
+    def _read_input_records(self, input_configs: list[InputConfig], drivers: DriversConfig):
         errors: list[str] = []
 
         for input_config in input_configs:
@@ -191,6 +224,13 @@ class Config:
 
             artifact_marker = input_config.marker or input_config.atype
             fragment_markers = input_config.markers
+
+            # Resolve exclude_elements: union of global driver default and record-level
+            global_excludes: list[str] = []
+            if input_config.driver == 'obsidian':
+                global_excludes = drivers.obsidian.exclude_elements
+            record_excludes = input_config.exclude_elements or []
+            resolved_excludes = sorted(set(global_excludes) | set(record_excludes))
 
             # Validate fragment markers
             if fragment_markers:
@@ -221,6 +261,7 @@ class Config:
             self._input_records.append(
                 InputRecord(
                     name=name,
+                    dir=input_config.dir,
                     record_base=record_base,
                     filepaths=list(filepaths),
                     driver=input_config.driver,
@@ -228,6 +269,7 @@ class Config:
                     marker=artifact_marker,
                     markers=[m.upper() for m in fragment_markers],
                     publish_config=input_config.publish,
+                    exclude_elements=resolved_excludes,
                 )
             )
 

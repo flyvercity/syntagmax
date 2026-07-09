@@ -13,6 +13,7 @@ from syntagmax.plugin import (
     load_plugins,
     run_block_transforms,
     run_markdown_transforms,
+    run_pre_filter,
 )
 from syntagmax.blocks import BlockTree, InputBlock, FileRecord, TextBlock
 from syntagmax.errors import FatalError
@@ -419,3 +420,121 @@ class TestRunMarkdownTransforms:
 
         md = run_markdown_transforms([plugin], 'rendered', None)
         assert md == 'rendered_MD_MODIFIED'
+
+
+
+class TestRunPreFilter:
+    def test_filter_block_called_for_each_block(self):
+        call_log = []
+
+        def filter_block(block, file_record, config, params):
+            call_log.append(block.content)
+            return block
+
+        plugin = _make_plugin_module('test', filter_block=filter_block)
+        tree = BlockTree(inputs=[
+            InputBlock(name='inp', files=[
+                FileRecord(path='a.md', blocks=[TextBlock(content='one'), TextBlock(content='two')]),
+                FileRecord(path='b.md', blocks=[TextBlock(content='three')]),
+            ])
+        ])
+
+        run_pre_filter(plugin, tree, None)
+        assert call_log == ['one', 'two', 'three']
+
+    def test_returned_block_replaces_original(self):
+        def filter_block(block, file_record, config, params):
+            return TextBlock(content=block.content.upper())
+
+        plugin = _make_plugin_module('upper', filter_block=filter_block)
+        tree = _make_tree_with_text('hello')
+
+        result = run_pre_filter(plugin, tree, None)
+        assert result.inputs[0].files[0].blocks[0].content == 'HELLO'
+
+    def test_file_record_passed_correctly(self):
+        received_paths = []
+
+        def filter_block(block, file_record, config, params):
+            received_paths.append(file_record.path)
+            return block
+
+        plugin = _make_plugin_module('ctx', filter_block=filter_block)
+        tree = BlockTree(inputs=[
+            InputBlock(name='inp', files=[
+                FileRecord(path='src/req.md', blocks=[TextBlock(content='x')]),
+                FileRecord(path='src/sys.md', blocks=[TextBlock(content='y')]),
+            ])
+        ])
+
+        run_pre_filter(plugin, tree, None)
+        assert received_paths == ['src/req.md', 'src/sys.md']
+
+    def test_returning_none_removes_block(self):
+        def filter_block(block, file_record, config, params):
+            if block.content == 'remove_me':
+                return None
+            return block
+
+        plugin = _make_plugin_module('strip', filter_block=filter_block)
+        tree = BlockTree(inputs=[
+            InputBlock(name='inp', files=[
+                FileRecord(path='a.md', blocks=[
+                    TextBlock(content='keep'),
+                    TextBlock(content='remove_me'),
+                    TextBlock(content='also_keep'),
+                ])
+            ])
+        ])
+
+        result = run_pre_filter(plugin, tree, None)
+        blocks = result.inputs[0].files[0].blocks
+        assert len(blocks) == 2
+        assert blocks[0].content == 'keep'
+        assert blocks[1].content == 'also_keep'
+
+    def test_returning_non_block_raises_fatal_error(self):
+        def filter_block(block, file_record, config, params):
+            return 'not a block'
+
+        plugin = _make_plugin_module('bad', filter_block=filter_block)
+        tree = _make_tree_with_text('x')
+
+        with pytest.raises(FatalError, match='bad.*filter_block must return a Block instance or None.*got str'):
+            run_pre_filter(plugin, tree, None)
+
+    def test_exception_raises_fatal_error_with_file_path(self):
+        def filter_block(block, file_record, config, params):
+            raise ValueError('boom')
+
+        plugin = _make_plugin_module('explode', filter_block=filter_block)
+        tree = BlockTree(inputs=[
+            InputBlock(name='inp', files=[
+                FileRecord(path='reqs/SYS-001.md', blocks=[TextBlock(content='x')])
+            ])
+        ])
+
+        with pytest.raises(FatalError, match='explode.*filter_block raised.*reqs/SYS-001.md.*boom'):
+            run_pre_filter(plugin, tree, None)
+
+    def test_missing_filter_block_raises_fatal_error(self):
+        plugin = _make_plugin_module('no_hook')
+        tree = _make_tree_with_text('x')
+
+        with pytest.raises(FatalError, match='no_hook.*does not implement the filter_block hook'):
+            run_pre_filter(plugin, tree, None)
+
+    def test_params_are_passed(self):
+        received_params = {}
+
+        def filter_block(block, file_record, config, params):
+            received_params.update(params)
+            return block
+
+        plugin = LoadedPlugin(name='p', module=ModuleType('p'), params={'marker': 'DRAFT'})
+        plugin.module.filter_block = filter_block
+
+        tree = _make_tree_with_text('x')
+        run_pre_filter(plugin, tree, None)
+
+        assert received_params == {'marker': 'DRAFT'}

@@ -1,6 +1,6 @@
 {
-  "updatedAt": "2026-07-03T11:43:12.968Z",
-  "command": "init",
-  "gitHead": "85fcbf51cb8b75b93a4c8dd1b14f4294fbc43370",
-  "model": "openai/gpt-5.4-mini"
+  "updatedAt": "2026-07-09T12:26:28.353Z",
+  "command": "update",
+  "gitHead": "67e2202cf0d75e87980a7b4c680a0b4141a38a35",
+  "model": "mistralai/mistral-large-2512"
 }
