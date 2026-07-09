@@ -25,7 +25,8 @@ Users want to use `publish.toml` as an alternative to `publish.yaml` for the pub
 - **Objective:** Make `load_publish_config()` detect file extension and use `yaml.safe_load()` for `.yaml`/`.yml` or `tomllib.loads()` for `.toml`.
 - **Implementation guidance:**
   - Import `tomllib` at the top of `publish_config.py`.
-  - In `load_publish_config()`, check `resolved_path.suffix` to choose the parser.
+  - In `load_publish_config()`, check `resolved_path.suffix.lower()` to choose the parser (case-insensitive extension matching).
+  - Use `.is_file()` instead of `.exists()` when validating if the path exists (prevents issues with directories of the same name).
   - For unknown extensions, raise a `FatalError` with a descriptive message.
 - **Test requirements:**
   - Add `test_load_publish_config_toml_file(tmp_path)` — write a `.toml` file, load it, verify parsing.
@@ -36,16 +37,18 @@ Users want to use `publish.toml` as an alternative to `publish.yaml` for the pub
 ### Task 2: Add dual-format conflict detection helper
 
 - **File:** `src/syntagmax/publish_config.py`
-- **Objective:** Create a helper function that checks a directory for both `publish.yaml` and `publish.toml` and errors if both exist, otherwise returns the one that exists (or `None`).
+- **Objective:** Create a helper function that checks a directory for both `publish.yaml`/`.yml` and `publish.toml` and errors if both exist, otherwise returns the one that exists (or `None`).
 - **Implementation guidance:**
   - Add a function `resolve_publish_file(directory: Path) -> Path | None` in `publish_config.py`.
-  - Check for `publish.yaml` and `publish.toml` in the given directory.
-  - If both exist, raise `FatalError` with a clear message (e.g., "Both publish.yaml and publish.toml found in {directory}. Please use only one.").
-  - If one exists, return its path relative to the directory; if neither, return `None`.
+  - Check for `publish.yaml`, `publish.yml`, and `publish.toml` using `.is_file()`.
+  - If both a YAML variant (either `.yaml` or `.yml`) and a TOML variant exist, raise a `FatalError` with a clear message (e.g., "Both publish.yaml and publish.toml found in {directory}. Please use only one.").
+  - If one exists, return its full resolved path (e.g., `directory / filename`); if none, return `None`.
 - **Test requirements:**
-  - `test_resolve_publish_file_yaml_only` — returns yaml path.
-  - `test_resolve_publish_file_toml_only` — returns toml path.
-  - `test_resolve_publish_file_both_error` — raises FatalError.
+  - `test_resolve_publish_file_yaml_only` — returns full yaml path.
+  - `test_resolve_publish_file_yml_only` — returns full yml path.
+  - `test_resolve_publish_file_toml_only` — returns full toml path.
+  - `test_resolve_publish_file_both_error` — raises FatalError (yaml + toml).
+  - `test_resolve_publish_file_yml_and_toml_error` — raises FatalError (yml + toml).
   - `test_resolve_publish_file_neither` — returns None.
 - **Demo:** Calling with a directory containing both files raises a clear error.
 
@@ -57,7 +60,7 @@ Users want to use `publish.toml` as an alternative to `publish.yaml` for the pub
   - Import `resolve_publish_file` from `publish_config`.
   - For per-record explicit path: keep as-is (extension detection handles it in `load_publish_config`).
   - For fallback locations (root, `.syntagmax/`, parent `.syntagmax/`): use `resolve_publish_file()` to find the file.
-  - Pass the resolved path to `load_publish_config()`.
+  - Pass the full path returned by `resolve_publish_file()` directly to `load_publish_config()`.
 - **Test requirements:**
   - Update `test_config_resolution` to add a variant with `.toml` fallback.
   - Add `test_config_resolution_toml_per_record` — per-record `publish = "custom.toml"` works.
