@@ -25,7 +25,7 @@ Each input defines a source of requirements or artifacts:
 | `atype` | No | `REQ` | Default artifact type for this source |
 | `marker` | No | *atype* | Custom marker for artifacts (e.g., `[SYS]` in Markdown). Defaults to `atype`. |
 | `markers` | No | `[]` | List of fragment markers for non-artifact text blocks (e.g., `["COM", "NOTE"]`). Obsidian driver only. |
-| `exclude_elements` | No | `[]` | Markdown elements to exclude at extraction time. Merged with global `[drivers.obsidian]` defaults. Valid values: `callouts`, `headings`, `horizontal_rules`, `frontmatter`. |
+| `exclude_elements` | No | `[]` | Markdown elements to exclude at extraction time. Merged with global `[drivers.obsidian]` defaults. Valid values: `callouts`, `headings`, `horizontal_rules`, `frontmatter`, `tags`. |
 
 ## Marked Fragments (Obsidian Driver)
 
@@ -75,7 +75,7 @@ Global defaults for driver-specific behaviour. Per-record settings are merged wi
 
 | Field | Required | Default | Description |
 |-------|----------|---------|-------------|
-| `exclude_elements` | No | `[]` | Markdown elements to exclude from text blocks at extraction time. Valid values: `callouts`, `headings`, `horizontal_rules`, `frontmatter`. |
+| `exclude_elements` | No | `[]` | Markdown elements to exclude from text blocks at extraction time. Valid values: `callouts`, `headings`, `horizontal_rules`, `frontmatter`, `tags`. |
 | `integration` | No | `false` | Enable reading Obsidian vault settings (e.g. `attachmentFolderPath` from `.obsidian/app.json`). |
 | `root` | No | `<base_dir>/.obsidian` | Override path to the `.obsidian` directory (relative to base dir). |
 
@@ -102,6 +102,7 @@ root = ".obsidian"  # optional, this is the default
 - `headings` — lines starting with `#`
 - `horizontal_rules` — lines consisting of three or more `-`, `*`, or `_`
 - `frontmatter` — YAML frontmatter block at file start (`---` delimited)
+- `tags` — inline Obsidian tags (`#tag`, `#nested/tag`). Strips all `#tag` occurrences from text. Respects fenced code blocks, inline code spans, URL anchors, and hex color codes.
 
 Filtering is code-block-aware: lines inside fenced code blocks (` ``` `) are never removed.
 
@@ -124,6 +125,31 @@ dir = "SYS"
 driver = "obsidian"
 exclude_elements = ["callouts"]  # resolved: ["callouts", "frontmatter"]
 ```
+
+**Tags example:**
+
+When `tags` is included, inline Obsidian tags like `#safety` or `#project/active` are stripped from text blocks during extraction:
+
+```toml
+[drivers.obsidian]
+exclude_elements = ["tags", "frontmatter"]
+```
+
+Given source text:
+```text
+This requirement relates to safety. #safety #performance/telemetry
+
+See `#example` in the code.
+```
+
+The extracted text block will contain:
+```text
+This requirement relates to safety.
+
+See `#example` in the code.
+```
+
+Tags inside inline code, fenced code blocks, and URL anchors are never stripped.
 
 ## Metrics (`[metrics]`)
 

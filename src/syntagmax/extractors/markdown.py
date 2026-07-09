@@ -661,9 +661,24 @@ class MarkdownExtractor(Extractor):
             content = fm_pattern.sub('', content)
 
         # If no line-level filters remain, return early
-        line_filters = set(exclude) & {'callouts', 'headings', 'horizontal_rules'}
+        line_filters = set(exclude) & {'callouts', 'headings', 'horizontal_rules', 'tags'}
         if not line_filters:
             return content
+
+        strip_tags = 'tags' in line_filters
+
+        # Obsidian tag pattern:
+        # - Preceded by start-of-string, whitespace, or opening punctuation (not URL path chars)
+        # - `#` followed by a non-digit word character (letter, underscore, or Unicode >= U+0080)
+        # - Then any word chars, hyphens, or forward slashes
+        # - Excludes hex color codes via negative lookahead for 3/4/6/8 hex digits
+        if strip_tags:
+            _tag_pattern = _re.compile(
+                r'(?<![^\s([{"\'])[ \t]*'
+                r'#(?!(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})\b)'
+                r'[^\d\W][\w\-/]*',
+                _re.UNICODE,
+            )
 
         hr_pattern = _re.compile(r'^\s*[-*_]{3,}\s*$')
         lines = content.splitlines(keepends=True)
@@ -684,7 +699,7 @@ class MarkdownExtractor(Extractor):
                 result.append(line)
                 continue
 
-            # Apply filters
+            # Apply line-level filters
             if 'callouts' in line_filters and stripped.startswith('>'):
                 continue
             if 'headings' in line_filters and stripped.startswith('#'):
@@ -692,6 +707,42 @@ class MarkdownExtractor(Extractor):
             if 'horizontal_rules' in line_filters and hr_pattern.match(line):
                 continue
 
+            # Apply inline tag stripping
+            if strip_tags:
+                line = self._strip_tags_from_line(line, _tag_pattern)
+
             result.append(line)
 
         return ''.join(result)
+
+    def _strip_tags_from_line(self, line: str, tag_pattern: 're.Pattern[str]') -> str:
+        """Strip Obsidian inline tags from a line, preserving inline code spans."""
+        import re as _re
+
+        # Split the line into inline-code and non-code segments
+        # Match single or double backtick inline code spans
+        code_span_re = _re.compile(r'(`{1,2})(?:.+?)\1')
+
+        parts: list[str] = []
+        pos = 0
+
+        for match in code_span_re.finditer(line):
+            # Process text before the code span
+            before = line[pos:match.start()]
+            if before:
+                before = tag_pattern.sub('', before)
+                # Collapse multiple horizontal whitespace into one space
+                before = _re.sub(r'[ \t]{2,}', ' ', before)
+            parts.append(before)
+            # Preserve the code span verbatim
+            parts.append(match.group(0))
+            pos = match.end()
+
+        # Process remaining text after last code span
+        remainder = line[pos:]
+        if remainder:
+            remainder = tag_pattern.sub('', remainder)
+            remainder = _re.sub(r'[ \t]{2,}', ' ', remainder)
+        parts.append(remainder)
+
+        return ''.join(parts)

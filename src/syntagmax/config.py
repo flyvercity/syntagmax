@@ -25,7 +25,7 @@ from syntagmax.errors import FatalError
 from syntagmax.plugin import PluginConfig
 
 
-VALID_EXCLUDE_ELEMENTS = frozenset({'callouts', 'headings', 'horizontal_rules', 'frontmatter'})
+VALID_EXCLUDE_ELEMENTS = frozenset({'callouts', 'headings', 'horizontal_rules', 'frontmatter', 'tags'})
 
 
 class ObsidianDriverConfig(BaseModel):
