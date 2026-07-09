@@ -79,7 +79,8 @@ def populate_pids(config: Config, artifacts: ArtifactMap, errors: list[str]):
                                     if trace_mode == 'timestamp' and not nominal_revision:
                                         nominal_revision = 'older'
 
-                                a.parent_links.append(ParentLink(pid=aid, nominal_revision=nominal_revision))
+                                if not any(pl.pid == aid for pl in a.parent_links):
+                                    a.parent_links.append(ParentLink(pid=aid, nominal_revision=nominal_revision))
 
                                 if aid not in a.pids:
                                     a.pids.append(aid)
