@@ -8,7 +8,7 @@ The current `ignore_plain_text_prefixes` parameter in `publish.yaml` is a generi
 
 1. Remove `ignore_plain_text_prefixes` from `PublishConfig` (breaking change).
 2. Introduce a `[drivers.obsidian]` section in `config.toml` for global driver defaults.
-3. Allow per-input-record `exclude_elements` to override the global default.
+3. Allow per-input-record `exclude_elements` that merges with (not overrides) the global default.
 4. Predefined excludable element set for the Obsidian/Markdown driver:
    - `callouts` — blockquote lines (`>`)
    - `headings` — lines starting with `#`
@@ -16,7 +16,7 @@ The current `ignore_plain_text_prefixes` parameter in `publish.yaml` is a generi
    - `frontmatter` — entire YAML frontmatter block at file start
 5. Filtering happens at extraction time (inside `_extract_blocks_from_markdown` / `extract_blocks_from_file`), not at render time.
 6. The `adjust_text_headings_and_prefixes` function loses its `ignore_prefixes` parameter.
-7. Resolution logic: if a record specifies `exclude_elements`, it wins entirely (no merging with global). Otherwise, fall back to `[drivers.<name>]` defaults. If neither is set, the list is empty (no exclusion).
+7. Resolution logic: if a record specifies `exclude_elements`, merge its contents with the global `[drivers.<name>]` defaults list (union) to form the resolved exclusion list. If neither is set, the list is empty (no exclusion).
 
 ## Background
 
@@ -34,7 +34,7 @@ The current `ignore_plain_text_prefixes` parameter in `publish.yaml` is a generi
 [drivers.obsidian]
 exclude_elements = ["callouts"]
 
-# Per-record override (wins entirely over global)
+# Per-record additions (merged with global via union)
 [[input]]
 name = "system-requirements"
 dir = "SYS"
@@ -57,10 +57,11 @@ graph TD
 
 ### Element Filtering Logic
 
-- **callouts**: Remove lines starting with `>` (and continuation lines of multi-line callouts).
-- **headings**: Remove lines starting with `#`.
-- **horizontal_rules**: Remove lines matching `^\s*[-*_]{3,}\s*$`.
-- **frontmatter**: If the file content starts with `---\n`, remove everything up to and including the closing `---\n`. This applies only at the very start of a file (i.e. first `TextBlock` produced before any artifact marker).
+- **Code-block awareness**: Before applying any filters to a `TextBlock`, the filtering logic must identify fenced code blocks (lines delimited by ` ``` `). Lines inside code blocks are preserved exactly as-is and are excluded from heading (`#`) and callout (`>`) stripping.
+- **callouts**: Remove lines starting with `>` outside of code blocks.
+- **headings**: Remove lines starting with `#` outside of code blocks.
+- **horizontal_rules**: Remove lines matching `^\s*[-*_]{3,}\s*$` outside of code blocks.
+- **frontmatter**: If the file content starts with `---\r?\n`, remove everything up to and including the closing `---\r?\n`. This applies only at the very start of a file (the first `TextBlock` in a file before any artifact marker). Use a regex that supports both LF and CRLF line endings.
 
 ### Empty Block Handling
 
@@ -88,11 +89,11 @@ If filtering leaves a `TextBlock` with only whitespace content, omit it from the
 - **Implementation:**
   - Add `exclude_elements: list[str] | None = Field(default=None)` to `InputConfig` (with the same known-set validator).
   - Add `exclude_elements: list[str] = field(default_factory=list)` to the `InputRecord` dataclass.
-  - In `_read_input_records`, resolve the effective list: use record-level if not `None`, else global driver default from `config_model.drivers`, else empty list.
+  - In `_read_input_records`, resolve the effective list: take the union of the global driver default and the record-level list (if present). Deduplicate. If both are absent, the result is an empty list.
   - Pass the resolved list into the `InputRecord` constructor.
 - **Test requirements:**
-  - Unit test: record-level override wins over global.
-  - Unit test: absent record-level falls back to global.
+  - Unit test: record-level list merges with global (union).
+  - Unit test: absent record-level uses global only.
   - Unit test: both absent yields empty list.
   - Unit test: unknown names at record level are rejected.
 - **Demo:** Config with per-record `exclude_elements` loads correctly; the resolved `InputRecord` carries the expected list.
@@ -102,10 +103,11 @@ If filtering leaves a `TextBlock` with only whitespace content, omit it from the
 - **Objective:** Filter excluded elements from `TextBlock` content at extraction time.
 - **Implementation:**
   - Add a `_filter_text_content(self, content: str, is_file_start: bool) -> str` method to `MarkdownExtractor` that applies each enabled filter:
-    - `callouts`: Remove lines starting with `>` (strip trailing blank lines left behind).
-    - `headings`: Remove lines starting with `#`.
-    - `horizontal_rules`: Remove lines matching `^\s*[-*_]{3,}\s*$`.
-    - `frontmatter`: Only when `is_file_start=True`. If content starts with `---\n`, remove everything up to and including the next `---\n`.
+    - Track fenced code block state (toggle on lines starting with ` ``` `). Lines inside code blocks are never filtered.
+    - `callouts`: Remove lines starting with `>` (outside code blocks).
+    - `headings`: Remove lines starting with `#` (outside code blocks).
+    - `horizontal_rules`: Remove lines matching `^\s*[-*_]{3,}\s*$` (outside code blocks).
+    - `frontmatter`: Only when `is_file_start=True`. If content starts with `---` followed by `\n` or `\r\n`, remove everything up to and including the next `---\r?\n`. Use a regex supporting both LF and CRLF.
   - In `_extract_blocks_from_markdown`, after creating each `TextBlock`, call `_filter_text_content`. The first `TextBlock` in a file gets `is_file_start=True`.
   - If the filtered content is empty or whitespace-only, do not append the block.
   - In `extract_blocks_from_file`, read `self._record.exclude_elements` to determine which filters are active. If the list is empty, skip filtering entirely (no performance cost).
@@ -113,6 +115,8 @@ If filtering leaves a `TextBlock` with only whitespace content, omit it from the
   - Unit test for each element type individually.
   - Unit test for combined exclusions.
   - Unit test: frontmatter removal only applies to the first text block.
+  - Unit test: frontmatter removal works with both LF and CRLF line endings.
+  - Unit test: lines inside fenced code blocks are preserved even when `headings` or `callouts` are excluded.
   - Unit test: empty blocks after filtering are omitted.
   - Unit test: no filtering when `exclude_elements` is empty.
 - **Demo:** Run extraction on a sample file with callouts; with `exclude_elements = ["callouts"]`, the resulting `TextBlock` content has no `>` lines.
