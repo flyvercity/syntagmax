@@ -202,6 +202,10 @@ class Config:
             lg.warning('No static validation model')
             self.metamodel = None
 
+        # Validate fragment markers don't collide with metamodel attributes
+        if self.metamodel:
+            self._validate_marker_attribute_collisions(errors)
+
         if errors:
             raise FatalError(errors)
 
@@ -282,6 +286,31 @@ class Config:
         for input_record in self._input_records:
             lg.info(f'Input record: {input_record.name}')
             lg.debug(f'Input files: {len(input_record.filepaths)}')
+
+    def _validate_marker_attribute_collisions(self, errors: list[str]):
+        """Validate that configured fragment markers do not collide with metamodel attribute names."""
+        artifacts_meta = self.metamodel.get('artifacts', {})
+
+        for record in self._input_records:
+            if not record.markers:
+                continue
+
+            # Get attribute names for this record's artifact type
+            atype = record.default_atype
+            atype_meta = artifacts_meta.get(atype, {})
+            attr_names = set()
+
+            if 'attributes' in atype_meta:
+                for attr_name in atype_meta['attributes'].keys():
+                    attr_names.add(attr_name.upper())
+
+            # Check collision
+            for marker in record.markers:
+                if marker.upper() in attr_names:
+                    errors.append(
+                        f'Input "{record.name}": fragment marker "{marker}" collides with '
+                        f'metamodel attribute "{marker.lower()}" for artifact type "{atype}"'
+                    )
 
     def load_publish_config(self, record: InputRecord) -> 'PublishConfig':
         from syntagmax.publish_config import load_publish_config, resolve_publish_file

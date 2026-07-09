@@ -1,7 +1,7 @@
 // src/syntagmax/extractors/markdown.lark
 ?start: req
 
-req: _REQ_BEGIN _NL? [contents] (field | _NL)* terminator
+req: _REQ_BEGIN _NL? [contents] field* [terminator]
 
 _REQ_BEGIN: _TOKEN_BEGIN
 _REQ_END: _TOKEN_END

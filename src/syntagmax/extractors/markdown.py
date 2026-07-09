@@ -56,13 +56,20 @@ class MarkdownTransformer(Transformer):
         return None
 
     def req(self, t):
-        # req: _REQ_BEGIN _NL? [contents] field* terminator
-        # children: [contents], field*, terminator
+        # req: _REQ_BEGIN _NL? [contents] field* [terminator]
+        # children: [contents], field*, [terminator]
         contents_text = ''
         all_fields = []
-        terminator = t[-1]
+        terminator = None
 
-        for child in t[:-1]:
+        # Check if the last child is a valid terminator
+        if t and isinstance(t[-1], dict) and 'type' in t[-1]:
+            terminator = t[-1]
+            children = t[:-1]
+        else:
+            children = list(t)
+
+        for child in children:
             if isinstance(child, dict):
                 if 'text' in child:
                     contents_text = child['text']
@@ -73,7 +80,7 @@ class MarkdownTransformer(Transformer):
             'req': {
                 'contents': {'text': contents_text},
                 'fields': {'list': all_fields},
-                'yaml': terminator if terminator.get('type') == 'yaml' else None,
+                'yaml': terminator if terminator and terminator.get('type') == 'yaml' else None,
             }
         }
 
@@ -361,65 +368,122 @@ class MarkdownExtractor(Extractor):
     def _split_text_block_by_markers(self, text_block: TextBlock) -> list[Block]:
         """Split a TextBlock into marked and unmarked fragments based on configured markers.
 
-        Supports two marker formats:
-        1. Paired: [MARKER]content[/MARKER]
-        2. Line-prefix: [MARKER] content (paragraph terminated by blank line or end-of-string)
+        Supports three marker formats (applied as a pipeline):
+        1. Paired (closed): [MARKER]content[/MARKER]
+        2. Paired (unclosed): [MARKER]content terminated by empty line, next marker, heading, or end-of-string
+        3. Line-prefix: [MARKER] content (paragraph terminated by blank line or end-of-string)
            Also handles [MARKER N] numbered variants.
         """
         markers = self._record.markers
         if not markers:
             return [text_block]
 
-        content = text_block.content
-
-        # First pass: try paired markers [MARKER]...[/MARKER]
         escaped = '|'.join(re.escape(m) for m in markers)
+
+        # Pipeline: start with the input block, apply passes to unmarked blocks
+        blocks: list[Block] = [text_block]
+
+        # Pass 1: Fully closed paired markers [MARKER]...[/MARKER]
+        blocks = self._apply_marker_pass(blocks, self._split_closed_paired, escaped)
+
+        # Pass 2: Unclosed paired markers [MARKER]...terminated by empty line/next marker/heading/EOF
+        blocks = self._apply_marker_pass(blocks, self._split_unclosed_paired, escaped)
+
+        # Pass 3: Line-prefix markers [MARKER] content
+        blocks = self._apply_marker_pass(blocks, self._split_line_prefix, escaped)
+
+        return blocks if blocks else [text_block]
+
+    def _apply_marker_pass(self, blocks: list[Block], splitter, escaped: str) -> list[Block]:
+        """Apply a splitting pass to all unmarked TextBlocks in the list."""
+        result: list[Block] = []
+        for block in blocks:
+            if isinstance(block, TextBlock) and block.marker is None:
+                result.extend(splitter(block.content, escaped))
+            else:
+                result.append(block)
+        return result
+
+    def _split_closed_paired(self, content: str, escaped: str) -> list[Block]:
+        """Split by fully closed paired markers [MARKER]...[/MARKER]."""
         paired_pattern = re.compile(rf'\[({escaped})\](.*?)\[/\1\]', re.IGNORECASE | re.DOTALL)
+        matches = list(paired_pattern.finditer(content))
+        if not matches:
+            return [TextBlock(content=content, marker=None)]
 
-        paired_matches = list(paired_pattern.finditer(content))
-        if paired_matches:
-            result: list[Block] = []
-            pos = 0
-            for match in paired_matches:
-                before = content[pos : match.start()]
-                if before:
-                    result.append(TextBlock(content=before, marker=None))
-                marker_name = match.group(1).upper()
-                marker_content = match.group(2)
-                result.append(TextBlock(content=marker_content, marker=marker_name))
-                pos = match.end()
-            after = content[pos:]
-            if after:
-                result.append(TextBlock(content=after, marker=None))
-            return result if result else [text_block]
+        result: list[Block] = []
+        pos = 0
+        for match in matches:
+            before = content[pos:match.start()]
+            if before:
+                result.append(TextBlock(content=before, marker=None))
+            marker_name = match.group(1).upper()
+            marker_content = match.group(2)
+            result.append(TextBlock(content=marker_content, marker=marker_name))
+            pos = match.end()
+        after = content[pos:]
+        if after:
+            result.append(TextBlock(content=after, marker=None))
+        return result if result else [TextBlock(content=content, marker=None)]
 
-        # Second pass: line-prefix markers [MARKER] or [MARKER N] at start of paragraph
-        # A paragraph is delimited by double newlines or start/end of string
+    def _split_unclosed_paired(self, content: str, escaped: str) -> list[Block]:
+        """Split by unclosed paired markers terminated by empty line, next marker, heading, or EOF."""
+        # Lookahead terminates on: double newline, next fragment marker, heading, or end of string
+        unclosed_pattern = re.compile(
+            rf'\[({escaped})(?:\s+\d+)?\](.*?)(?=\n\s*\n|\n\s*\[(?:{escaped})(?:\s+\d+)?\]|\n\s*#{{1,6}}\s|\Z)',
+            re.IGNORECASE | re.DOTALL,
+        )
+        matches = list(unclosed_pattern.finditer(content))
+        if not matches:
+            return [TextBlock(content=content, marker=None)]
+
+        result: list[Block] = []
+        pos = 0
+        for match in matches:
+            before = content[pos:match.start()]
+            if before:
+                result.append(TextBlock(content=before, marker=None))
+            marker_name = match.group(1).upper()
+            marker_content = match.group(2).strip()
+            result.append(TextBlock(content=marker_content, marker=marker_name))
+            # Consume the terminating empty line if present
+            end_pos = match.end()
+            if end_pos < len(content) and content[end_pos] == '\n':
+                # Check if it's an empty line terminator (consume it)
+                remaining = content[end_pos:]
+                empty_match = re.match(r'\n\s*\n', remaining)
+                if empty_match:
+                    end_pos += empty_match.end()
+            pos = end_pos
+        after = content[pos:]
+        if after:
+            result.append(TextBlock(content=after, marker=None))
+        return result if result else [TextBlock(content=content, marker=None)]
+
+    def _split_line_prefix(self, content: str, escaped: str) -> list[Block]:
+        """Split by line-prefix markers [MARKER] content at start of paragraph."""
         prefix_pattern = re.compile(
             rf'^\[({escaped})(?:\s+\d+)?\]\s*(.*?)(?=\n\n|\Z)',
             re.IGNORECASE | re.DOTALL | re.MULTILINE,
         )
+        matches = list(prefix_pattern.finditer(content))
+        if not matches:
+            return [TextBlock(content=content, marker=None)]
 
-        prefix_matches = list(prefix_pattern.finditer(content))
-        if not prefix_matches:
-            return [text_block]
-
-        result = []
+        result: list[Block] = []
         pos = 0
-        for match in prefix_matches:
-            before = content[pos : match.start()]
+        for match in matches:
+            before = content[pos:match.start()]
             if before:
                 result.append(TextBlock(content=before, marker=None))
             marker_name = match.group(1).upper()
             marker_content = match.group(2).strip()
             result.append(TextBlock(content=marker_content, marker=marker_name))
             pos = match.end()
-
         after = content[pos:]
         if after:
             result.append(TextBlock(content=after, marker=None))
-
-        return result if result else [text_block]
+        return result if result else [TextBlock(content=content, marker=None)]
 
     def _extract_blocks_from_markdown(self, filepath: Path, markdown: str, location_builder: Callable[[int, int], Location] | None = None) -> list[Block]:
         from syntagmax.artifact import LineLocation
@@ -447,9 +511,9 @@ class MarkdownExtractor(Extractor):
             if text_before:
                 blocks.append(TextBlock(content=text_before))
 
-            # Find segment end — bound the terminator search to before the next
-            # [MARKER] occurrence so that a missing [/MARKER] does not consume a
-            # later segment's terminator.
+            # Find segment end — priority: YAML block > [/MARKER] > fallback terminators.
+            # Context-aware: fallback terminators (fragment markers, headings, empty lines, EOF)
+            # only apply when no explicit [/MARKER] or YAML block is found.
             next_marker_match = start_marker_re.search(markdown, match.end())
             terminator_search_end = next_marker_match.start() if next_marker_match else len(markdown)
             slash_req_match = re.search(
@@ -473,7 +537,67 @@ class MarkdownExtractor(Extractor):
             elif slash_req_pos != -1:
                 segment_end = slash_req_pos + len(f'[/{marker}]')
 
+            # Context-aware fallback: if no YAML or [/TAG] found, search for
+            # fragment markers at BOL, Markdown headings, empty lines, or EOF.
+            _fallback_pos_set = False
             if segment_end == -1:
+                # Start searching after the first newline following [MARKER]
+                # to avoid matching the line break right after the opening tag.
+                first_nl = markdown.find('\n', match.end())
+                if first_nl != -1 and first_nl < terminator_search_end:
+                    fallback_search_start = first_nl + 1
+                else:
+                    fallback_search_start = match.end()
+                fallback_search_region = markdown[fallback_search_start:terminator_search_end]
+
+                # Build fallback terminator regex: fragment marker at BOL, heading at BOL, or empty line
+                fallback_patterns = []
+
+                # Fragment markers at beginning of line
+                fragment_markers = getattr(self._record, 'markers', None) or []
+                if fragment_markers:
+                    escaped_markers = '|'.join(re.escape(m) for m in fragment_markers)
+                    fallback_patterns.append(rf'^(?:\[(?:{escaped_markers})(?:\s+\d+)?\])')
+
+                # Markdown headings (# followed by space, up to 6 #)
+                fallback_patterns.append(r'^#{1,6}\s')
+
+                # Empty line: newline followed by optional whitespace/CR followed by another newline
+                # Using a non-MULTILINE approach to correctly handle CRLF
+                fallback_patterns.append(r'\n[ \t]*\r?\n')
+
+                fallback_re = re.compile('|'.join(f'({p})' for p in fallback_patterns), re.MULTILINE | re.IGNORECASE)
+                fallback_match = fallback_re.search(fallback_search_region)
+
+                if fallback_match:
+                    # segment_end is set to position of the fallback match (exclusive of the match itself)
+                    fallback_abs_pos = fallback_search_start + fallback_match.start()
+
+                    # For empty lines, consume the empty line(s) when advancing pos
+                    if fallback_match.group(len(fallback_patterns)):  # last group = empty line
+                        # The empty line pattern \n...\n starts with the \n that ends the last content line.
+                        # Include that \n in the segment (parser needs trailing newline).
+                        segment_end = fallback_abs_pos + 1
+                        # Consume all consecutive blank lines after the segment
+                        consume_end = fallback_search_start + fallback_match.end()
+                        while consume_end < len(markdown) and markdown[consume_end] in '\r\n \t':
+                            consume_end += 1
+                        pos = consume_end
+                        _fallback_pos_set = True
+                    else:
+                        # Fragment markers and headings are NOT consumed — they're at BOL
+                        # segment_end is the start of that line
+                        segment_end = fallback_abs_pos
+                        pos = fallback_abs_pos
+                        _fallback_pos_set = True
+                else:
+                    # EOF fallback — use everything up to terminator_search_end
+                    segment_end = terminator_search_end
+                    pos = terminator_search_end
+                    _fallback_pos_set = True
+
+            if segment_end == -1:
+                # Should not happen given EOF fallback, but guard against it
                 start_line = markdown.count('\n', 0, start_pos) + 1
                 if yaml_start_pos != -1:
                     error = f'Unclosed YAML block in requirement at line {start_line} in {filepath}'
@@ -488,6 +612,16 @@ class MarkdownExtractor(Extractor):
             segment = markdown[start_pos:segment_end]
             start_line = markdown.count('\n', 0, start_pos) + 1
             end_line = markdown.count('\n', 0, segment_end) + 1
+
+            # Ensure segment ends with a newline for the Lark parser
+            # (only needed for fallback-terminated segments that may lack one, e.g. EOF)
+            if _fallback_pos_set and segment and not segment.endswith('\n'):
+                segment += '\n'
+
+            # Advance pos: if fallback termination already set pos, use that;
+            # otherwise advance past the segment end (YAML/[/TAG] case).
+            if not _fallback_pos_set:
+                pos = segment_end
 
             lg.debug(f'Found requirement at line {start_line}, parsing')
 
@@ -506,7 +640,6 @@ class MarkdownExtractor(Extractor):
                     error = f'Non-breaking space (NBSP) detected in requirement at line {start_line} in {filepath}'
                     lg.error(error)
                     blocks.append(ErrorBlock(message=error, raw_text=segment))
-                    pos = segment_end
                     continue
 
                 if not yaml_text:
@@ -519,7 +652,6 @@ class MarkdownExtractor(Extractor):
                         error = f'Invalid metadata in YAML at line {start_line}'
                         lg.error(error)
                         blocks.append(ErrorBlock(message=error, raw_text=segment))
-                        pos = segment_end
                         continue
                     yaml_attrs = yaml_dict.get_dict('attrs')
 
@@ -534,7 +666,6 @@ class MarkdownExtractor(Extractor):
                 if not aid:
                     error = f'Missing ID in metadata at line {start_line}'
                     lg.warning(error)
-                    pos = segment_end
                     aid = UNDEFINED_ID
 
                 if 'atype' in temp_attrs:
@@ -601,8 +732,6 @@ class MarkdownExtractor(Extractor):
                 lg.exception(e)
                 error = f'Error processing requirement at line {start_line} in {filepath}'
                 blocks.append(ErrorBlock(message=error, raw_text=segment))
-
-            pos = segment_end
 
         # Capture trailing text
         text_after = markdown[pos:]
