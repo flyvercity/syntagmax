@@ -26,20 +26,49 @@ from syntagmax.plugin import PluginConfig
 
 
 VALID_EXCLUDE_ELEMENTS = frozenset({'callouts', 'headings', 'horizontal_rules', 'frontmatter', 'tags'})
+VALID_EXCLUDE_MODES = frozenset({'only', 'string', 'string-on-start'})
+
+
+class ExcludeElementConfig(BaseModel):
+    """Configuration for a single element exclusion with removal mode."""
+
+    name: str = Field(..., description='Element name to exclude')
+    mode: str = Field(default='string-on-start', description='Removal mode: only, string, or string-on-start')
+
+    @field_validator('name')
+    @classmethod
+    def validate_name(cls, v: str) -> str:
+        if v not in VALID_EXCLUDE_ELEMENTS:
+            raise ValueError(f'Unknown exclude element "{v}". Valid elements: {sorted(VALID_EXCLUDE_ELEMENTS)}')
+        return v
+
+    @field_validator('mode')
+    @classmethod
+    def validate_mode(cls, v: str) -> str:
+        if v not in VALID_EXCLUDE_MODES:
+            raise ValueError(f'Unknown exclude mode "{v}". Valid modes: {sorted(VALID_EXCLUDE_MODES)}')
+        return v
+
+
+def _validate_no_duplicate_elements(v: list[ExcludeElementConfig]) -> list[ExcludeElementConfig]:
+    """Container-level validator rejecting duplicate element names."""
+    seen: set[str] = set()
+    for elem in v:
+        if elem.name in seen:
+            raise ValueError(f'Duplicate exclude element "{elem.name}" in exclude_elements list')
+        seen.add(elem.name)
+    return v
 
 
 class ObsidianDriverConfig(BaseModel):
-    exclude_elements: list[str] = Field(default_factory=list, description='Predefined Markdown elements to exclude at extraction time')
+    exclude_elements: list[ExcludeElementConfig] = Field(default_factory=list, description='Markdown elements to exclude at extraction time')
     integration: bool = Field(default=False, description='Enable reading Obsidian vault settings (e.g. attachmentFolderPath)')
     root: str | None = Field(default=None, description='Override path to the .obsidian directory (relative to base dir)')
 
     @field_validator('exclude_elements')
     @classmethod
-    def validate_exclude_elements(cls, v: list[str]) -> list[str]:
-        for elem in v:
-            if elem not in VALID_EXCLUDE_ELEMENTS:
-                raise ValueError(f'Unknown exclude element "{elem}". Valid elements: {sorted(VALID_EXCLUDE_ELEMENTS)}')
-        return v
+    def validate_exclude_elements(cls, v: list[ExcludeElementConfig]) -> list[ExcludeElementConfig]:
+        return _validate_no_duplicate_elements(v)
 
 
 class DriversConfig(BaseModel):
@@ -57,7 +86,7 @@ class InputRecord:
     marker: str
     markers: list[str] = field(default_factory=list)
     publish_config: str | None = None
-    exclude_elements: list[str] = field(default_factory=list)
+    exclude_elements: list['ExcludeElementConfig'] = field(default_factory=list)
 
 
 DEFAULT_FILTERS = {'obsidian': '**/*.md', 'ipynb': '**/*.ipynb', 'markdown': '**/*.md'}
@@ -72,17 +101,16 @@ class InputConfig(BaseModel):
     marker: str | None = Field(default=None, description='Custom marker for artifacts (e.g., "REQ"). Defaults to atype.')
     markers: list[str] = Field(default_factory=list, description='Fragment markers for non-artifact text blocks (e.g., ["COM", "NOTE"]). Obsidian driver only.')
     publish: str | None = Field(default=None, description='Path to publish configuration file relative to the project directory or config folder')
-    exclude_elements: list[str] | None = Field(default=None, description='Markdown elements to exclude at extraction time (merged with global driver defaults)')
+    exclude_elements: list[ExcludeElementConfig] | None = Field(
+        default=None, description='Markdown elements to exclude at extraction time (merged with global driver defaults)'
+    )
 
     @field_validator('exclude_elements')
     @classmethod
-    def validate_exclude_elements(cls, v: list[str] | None) -> list[str] | None:
+    def validate_exclude_elements(cls, v: list[ExcludeElementConfig] | None) -> list[ExcludeElementConfig] | None:
         if v is None:
             return v
-        for elem in v:
-            if elem not in VALID_EXCLUDE_ELEMENTS:
-                raise ValueError(f'Unknown exclude element "{elem}". Valid elements: {sorted(VALID_EXCLUDE_ELEMENTS)}')
-        return v
+        return _validate_no_duplicate_elements(v)
 
 
 class MetricsConfig(BaseModel):
@@ -233,11 +261,19 @@ class Config:
             fragment_markers = input_config.markers
 
             # Resolve exclude_elements: union of global driver default and record-level
-            global_excludes: list[str] = []
+            # Per-record mode takes precedence when both define the same element name
+            global_excludes: list[ExcludeElementConfig] = []
             if input_config.driver == 'obsidian':
                 global_excludes = drivers.obsidian.exclude_elements
             record_excludes = input_config.exclude_elements or []
-            resolved_excludes = sorted(set(global_excludes) | set(record_excludes))
+
+            # Merge: start with global, then overlay per-record (per-record wins on conflict)
+            merged: dict[str, ExcludeElementConfig] = {}
+            for elem in global_excludes:
+                merged[elem.name] = elem
+            for elem in record_excludes:
+                merged[elem.name] = elem
+            resolved_excludes = sorted(merged.values(), key=lambda e: e.name)
 
             # Validate fragment markers
             if fragment_markers:

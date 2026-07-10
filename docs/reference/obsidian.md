@@ -355,7 +355,20 @@ Key observations:
 
 ## Element Filtering
 
-The Obsidian driver can exclude specific Markdown elements from extracted text blocks. This is configured via `exclude_elements` at the input record level or globally under `[drivers.obsidian]`.
+The Obsidian driver can exclude specific Markdown elements from extracted text blocks. This is configured via `exclude_elements` at the input record level or globally under `[drivers.obsidian]`. Each entry specifies an element name and an optional removal mode.
+
+### Configuration Format
+
+```toml
+[drivers.obsidian]
+exclude_elements = [
+    {name = "frontmatter"},
+    {name = "callouts", mode = "only"},
+    {name = "tags", mode = "string-on-start"},
+]
+```
+
+### Supported Elements
 
 | Element | Description |
 |---------|-------------|
@@ -365,7 +378,19 @@ The Obsidian driver can exclude specific Markdown elements from extracted text b
 | `frontmatter` | YAML frontmatter at file start (`---` delimited) |
 | `tags` | Inline Obsidian tags (`#tag`, `#nested/tag`) |
 
-Filtering is code-block-aware: content inside fenced code blocks is never modified.
+### Removal Modes
+
+| Mode | Default | Behaviour |
+|------|---------|-----------|
+| `only` | | Remove the element marker only, keep surrounding text |
+| `string` | | Remove the entire line if the element is present |
+| `string-on-start` | ✓ | Remove the entire line if the element is the first non-whitespace |
+
+The `only` mode for `callouts` and `headings` strips the prefix marker (`>`, `# `) while preserving leading indentation and the remaining text. For `tags`, `only` mode strips the `#tag` token inline. For `horizontal_rules` and `frontmatter`, all modes behave identically (complete removal).
+
+For `tags` with `string-on-start` mode, lines where a tag is the first non-whitespace are removed entirely; lines with mid-line tags have the tags stripped inline (falling back to `only` behaviour).
+
+Filtering is code-block-aware: content inside fenced code blocks is never modified. Tags inside inline code spans are also protected.
 
 ---
 

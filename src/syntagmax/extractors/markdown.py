@@ -12,7 +12,7 @@ from lark import Lark, Transformer, exceptions
 from benedict import benedict
 
 from syntagmax.extractors.extractor import Extractor, ExtractorResult
-from syntagmax.config import Config, InputRecord
+from syntagmax.config import Config, InputRecord, ExcludeElementConfig
 from syntagmax.artifact import ArtifactBuilder, Artifact, Location, UNDEFINED_ID
 from syntagmax.blocks import Block, TextBlock, ArtifactBlock, ErrorBlock
 
@@ -841,40 +841,51 @@ class MarkdownExtractor(Extractor):
 
         return filtered
 
-    def _filter_text_content(self, content: str, is_file_start: bool, exclude: list[str]) -> str:
+    def _filter_text_content(
+        self, content: str, is_file_start: bool, exclude: list[ExcludeElementConfig]
+    ) -> str:
         """Filter excluded Markdown elements from text content.
 
         Respects fenced code blocks: lines inside ``` fences are never filtered.
         Supports both LF and CRLF line endings.
+        Each element has a mode: only, string, or string-on-start.
         """
         import re as _re
 
+        # Build lookup: element name -> mode
+        exclude_map: dict[str, str] = {e.name: e.mode for e in exclude}
+
         # Handle frontmatter first (operates on entire content, not line-by-line)
-        if is_file_start and 'frontmatter' in exclude:
+        # All modes behave identically for frontmatter (complete removal)
+        if is_file_start and 'frontmatter' in exclude_map:
             fm_pattern = _re.compile(r'\A---\r?\n.*?\r?\n---\r?\n', _re.DOTALL)
             content = fm_pattern.sub('', content)
 
         # If no line-level filters remain, return early
-        line_filters = set(exclude) & {'callouts', 'headings', 'horizontal_rules', 'tags'}
-        if not line_filters:
+        line_elements = set(exclude_map.keys()) & {'callouts', 'headings', 'horizontal_rules', 'tags'}
+        if not line_elements:
             return content
 
-        strip_tags = 'tags' in line_filters
+        tags_mode = exclude_map.get('tags')
+        callouts_mode = exclude_map.get('callouts')
+        headings_mode = exclude_map.get('headings')
+        hr_mode = exclude_map.get('horizontal_rules')
 
-        # Obsidian tag pattern:
-        # - Preceded by start-of-string, whitespace, or opening punctuation (not URL path chars)
-        # - `#` followed by a non-digit word character (letter, underscore, or Unicode >= U+0080)
-        # - Then any word chars, hyphens, or forward slashes
-        # - Excludes hex color codes via negative lookahead for 3/4/6/8 hex digits
-        if strip_tags:
+        # Obsidian tag pattern
+        if tags_mode:
             _tag_pattern = _re.compile(
                 r'(?<![^\s([{"\'])[ \t]*'
                 r'#(?!(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})\b)'
                 r'[^\d\W][\w\-/]*',
                 _re.UNICODE,
             )
+            # Code span regex for masking
+            _code_span_re = _re.compile(r'(`{1,2})(?:.+?)\1')
 
         hr_pattern = _re.compile(r'^\s*[-*_]{3,}\s*$')
+        callout_only_re = _re.compile(r'^(\s*)>\s?(.*)$')
+        heading_only_re = _re.compile(r'^(\s*)#{1,6}\s+(.*)$')
+
         lines = content.splitlines(keepends=True)
         result: list[str] = []
         in_code_block = False
@@ -893,21 +904,85 @@ class MarkdownExtractor(Extractor):
                 result.append(line)
                 continue
 
-            # Apply line-level filters
-            if 'callouts' in line_filters and stripped.startswith('>'):
-                continue
-            if 'headings' in line_filters and stripped.startswith('#'):
-                continue
-            if 'horizontal_rules' in line_filters and hr_pattern.match(line):
+            # --- Callouts ---
+            if callouts_mode and stripped.startswith('>'):
+                if callouts_mode == 'only':
+                    m = callout_only_re.match(line)
+                    if m:
+                        text_part = line.rstrip('\r\n')
+                        ending = line[len(text_part):]
+                        result.append(m.group(1) + m.group(2) + ending)
+                    else:
+                        result.append(line)
+                    continue
+                else:
+                    # string and string-on-start both remove the line
+                    continue
+
+            # --- Headings ---
+            if headings_mode and stripped.startswith('#'):
+                if headings_mode == 'only':
+                    m = heading_only_re.match(line)
+                    if m:
+                        text_part = line.rstrip('\r\n')
+                        ending = line[len(text_part):]
+                        result.append(m.group(1) + m.group(2) + ending)
+                    else:
+                        result.append(line)
+                    continue
+                else:
+                    # string and string-on-start both remove the line
+                    continue
+
+            # --- Horizontal rules ---
+            if hr_mode and hr_pattern.match(line):
+                # All modes remove the line
                 continue
 
-            # Apply inline tag stripping
-            if strip_tags:
-                line = self._strip_tags_from_line(line, _tag_pattern)
+            # --- Tags ---
+            if tags_mode:
+                if tags_mode == 'only':
+                    line = self._strip_tags_from_line(line, _tag_pattern)
+                elif tags_mode == 'string':
+                    # Remove entire line if it contains any tag outside code spans
+                    if self._line_has_tag(line, _tag_pattern, _code_span_re):
+                        continue
+                else:
+                    # string-on-start: remove line if first non-ws is a tag; else strip inline
+                    if self._line_starts_with_tag(line, _tag_pattern, _code_span_re):
+                        continue
+                    else:
+                        line = self._strip_tags_from_line(line, _tag_pattern)
 
             result.append(line)
 
         return ''.join(result)
+
+    def _mask_code_spans(self, line: str, code_span_re: 're.Pattern[str]') -> str:
+        """Replace inline code span content with placeholder characters for detection."""
+        result = list(line)
+        for match in code_span_re.finditer(line):
+            for i in range(match.start(), match.end()):
+                result[i] = 'X'
+        return ''.join(result)
+
+    def _line_has_tag(
+        self, line: str, tag_pattern: 're.Pattern[str]', code_span_re: 're.Pattern[str]'
+    ) -> bool:
+        """Check if a line contains an Obsidian tag outside code spans."""
+        masked = self._mask_code_spans(line, code_span_re)
+        return bool(tag_pattern.search(masked))
+
+    def _line_starts_with_tag(
+        self, line: str, tag_pattern: 're.Pattern[str]', code_span_re: 're.Pattern[str]'
+    ) -> bool:
+        """Check if the first non-whitespace on a line is an Obsidian tag (outside code spans)."""
+        masked = self._mask_code_spans(line, code_span_re)
+        stripped = masked.lstrip()
+        if not stripped:
+            return False
+        m = tag_pattern.match(stripped)
+        return m is not None and m.start() == 0
 
     def _strip_tags_from_line(self, line: str, tag_pattern: 're.Pattern[str]') -> str:
         """Strip Obsidian inline tags from a line, preserving inline code spans."""

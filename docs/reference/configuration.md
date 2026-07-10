@@ -25,7 +25,7 @@ Each input defines a source of requirements or artifacts:
 | `atype` | No | `REQ` | Default artifact type for this source |
 | `marker` | No | *atype* | Custom marker for artifacts (e.g., `[SYS]` in Markdown). Defaults to `atype`. |
 | `markers` | No | `[]` | List of fragment markers for non-artifact text blocks (e.g., `["COM", "NOTE"]`). Obsidian driver only. |
-| `exclude_elements` | No | `[]` | Markdown elements to exclude at extraction time. Merged with global `[drivers.obsidian]` defaults. Valid values: `callouts`, `headings`, `horizontal_rules`, `frontmatter`, `tags`. |
+| `exclude_elements` | No | `[]` | Markdown elements to exclude at extraction time. Each entry is an object with `name` and optional `mode`. Merged with global `[drivers.obsidian]` defaults. See [Element Exclusion](#element-exclusion) below. |
 
 ## Marked Fragments (Obsidian Driver)
 
@@ -75,7 +75,7 @@ Global defaults for driver-specific behaviour. Per-record settings are merged wi
 
 | Field | Required | Default | Description |
 |-------|----------|---------|-------------|
-| `exclude_elements` | No | `[]` | Markdown elements to exclude from text blocks at extraction time. Valid values: `callouts`, `headings`, `horizontal_rules`, `frontmatter`, `tags`. |
+| `exclude_elements` | No | `[]` | Markdown elements to exclude from text blocks at extraction time. Each entry is an object with `name` and optional `mode`. See [Element Exclusion](#element-exclusion) below. |
 | `integration` | No | `false` | Enable reading Obsidian vault settings (e.g. `attachmentFolderPath` from `.obsidian/app.json`). |
 | `root` | No | `<base_dir>/.obsidian` | Override path to the `.obsidian` directory (relative to base dir). |
 
@@ -97,46 +97,74 @@ integration = true
 root = ".obsidian"  # optional, this is the default
 ```
 
-**Element descriptions:**
-- `callouts` — lines starting with `>` (Obsidian callouts / blockquotes)
-- `headings` — lines starting with `#`
-- `horizontal_rules` — lines consisting of three or more `-`, `*`, or `_`
-- `frontmatter` — YAML frontmatter block at file start (`---` delimited)
-- `tags` — inline Obsidian tags (`#tag`, `#nested/tag`). Strips all `#tag` occurrences from text. Respects fenced code blocks, inline code spans, URL anchors, and hex color codes.
+#### Element Exclusion
 
-Filtering is code-block-aware: lines inside fenced code blocks (` ``` `) are never removed.
+Each entry in `exclude_elements` is an object with two fields:
+
+| Field | Required | Default | Description |
+|-------|----------|---------|-------------|
+| `name` | Yes | — | Element to exclude: `callouts`, `headings`, `horizontal_rules`, `frontmatter`, `tags` |
+| `mode` | No | `string-on-start` | Removal mode: `only`, `string`, or `string-on-start` |
+
+**Removal modes:**
+
+| Mode | Behaviour |
+|------|-----------|
+| `only` | Remove the element marker/prefix but keep surrounding text on the line |
+| `string` | Remove the entire line if the element is present anywhere |
+| `string-on-start` | Remove the entire line if the element is the first non-whitespace |
+
+**Mode semantics by element:**
+
+| Element | `only` | `string` | `string-on-start` (default) |
+|---------|--------|----------|----------------------------|
+| `callouts` | Strip `> ` prefix, keep text (preserve indentation) | Remove line | Remove line |
+| `headings` | Strip `# ` prefix, keep text (preserve indentation) | Remove line | Remove line |
+| `horizontal_rules` | Remove line | Remove line | Remove line |
+| `frontmatter` | Remove block | Remove block | Remove block |
+| `tags` | Strip `#tag` inline, keep surrounding text | Remove entire line if any tag present | Remove line if tag starts it; strip inline otherwise |
+
+For `frontmatter` and `horizontal_rules`, all three modes behave identically (complete removal).
+
+Filtering is code-block-aware: lines inside fenced code blocks (` ``` `) are never modified. Tags inside inline code spans (`` `#tag` ``) are also protected.
 
 **Example:**
 
 ```toml
 [drivers.obsidian]
-exclude_elements = ["callouts", "frontmatter"]
+exclude_elements = [
+    {name = "frontmatter"},
+    {name = "callouts", mode = "only"},
+    {name = "tags", mode = "string-on-start"},
+]
 ```
 
-Per-record `exclude_elements` are merged with the global list:
+Per-record `exclude_elements` are merged (union) with the global list. Per-record mode takes precedence for the same element name:
 
 ```toml
 [drivers.obsidian]
-exclude_elements = ["frontmatter"]
+exclude_elements = [{name = "frontmatter"}, {name = "tags", mode = "only"}]
 
 [[input]]
 name = "system-requirements"
 dir = "SYS"
 driver = "obsidian"
-exclude_elements = ["callouts"]  # resolved: ["callouts", "frontmatter"]
+exclude_elements = [{name = "callouts"}, {name = "tags", mode = "string"}]
+# resolved: frontmatter (string-on-start), callouts (string-on-start), tags (string)
 ```
 
 **Tags example:**
 
-When `tags` is included, inline Obsidian tags like `#safety` or `#project/active` are stripped from text blocks during extraction:
+With `mode = "string-on-start"`, lines starting with a tag are removed entirely, while mid-line tags are stripped inline:
 
 ```toml
 [drivers.obsidian]
-exclude_elements = ["tags", "frontmatter"]
+exclude_elements = [{name = "tags", mode = "string-on-start"}]
 ```
 
 Given source text:
 ```text
+#internal remove this entire line
 This requirement relates to safety. #safety #performance/telemetry
 
 See `#example` in the code.
