@@ -4,77 +4,11 @@
 # Created: 2025-04-07
 # Description: Prints a tree of artifacts and other console output.
 
-from rich.markup import escape
-
 from syntagmax.artifact import Artifact, ArtifactMap
-import syntagmax.utils as u
 
 CONST_I_CHAR = '│'
 CONST_T_CHAR = '├─'
 CONST_L_CHAR = '└─'
-CONST_II_CHAR = '║'
-
-
-def print_artifact(artifact: Artifact, indent: str, last: bool, top: bool, has_children: bool, verbose: bool = False):
-    this_indent = indent + (CONST_L_CHAR if last else CONST_T_CHAR) if not top else ' '
-    u.pprint(f'{this_indent}[cyan]{artifact.atype}[/cyan]: [green]{artifact.aid}[/green]')
-    metastring = str(artifact)
-
-    if top:
-        return
-
-    # detail_indent should continue the tree lines for siblings and children
-    # 1. Continue the parent's branch line only if this artifact is not the last child
-    # 2. Add a vertical line for this artifact's own children
-    branch_line = CONST_I_CHAR if not last else ' '
-    children_line = CONST_I_CHAR if has_children else ' '
-    detail_indent = indent + branch_line + ' ' + children_line
-
-    u.pprint(f'{detail_indent} [i]{metastring}[/i]')
-
-    pids_str_list = []
-    if artifact.parent_links:
-        for link in artifact.parent_links:
-            s = link.pid
-            if link.nominal_revision:
-                s += f'@{link.nominal_revision}'
-            if link.is_suspicious:
-                s = f'[yellow]{s}[/yellow]'
-            pids_str_list.append(s)
-    else:
-        pids_str_list = [str(pid) for pid in artifact.pids]
-
-    pids_str = ', '.join(pids_str_list)
-    u.pprint(f'{detail_indent} Parents: [{pids_str}]')
-
-    if artifact.revisions:
-        u.pprint(escape(f'{detail_indent} Revisions:'))
-        rev_list = sorted(list(artifact.revisions), key=lambda r: r.timestamp, reverse=True)
-
-        for r in rev_list:
-            rev_str = f'{r.hash_short} ({r.timestamp.strftime("%Y-%m-%d %H:%M")} by {r.author_email})'
-            u.pprint(escape(f'{detail_indent}  - {rev_str}'))
-
-    u.pprint(escape(f'{detail_indent} Attributes:'))
-    for field in artifact.fields:
-        field_str = str(artifact.fields[field])
-        if len(field_str) > 60:
-            field_str = field_str.split()[0]
-            field_str = field_str[0:60] + '...'
-        u.pprint(f'{detail_indent}  - {field}: {field_str}')
-
-
-def print_arttree(artifacts: ArtifactMap, ref: str, indent: str = '', last: bool = True, top: bool = True, verbose: bool = False):
-    artifact = artifacts[ref]
-    children = list(sorted(artifact.children, key=lambda c: artifacts[c].aid))
-    print_artifact(artifact, indent, last, top, bool(children), verbose)
-    indent += (CONST_I_CHAR if not last else ' ') + ' '
-
-    for child_id in children[:-1]:
-        print_arttree(artifacts, child_id, indent, False, False, verbose)
-
-    if children:
-        print_arttree(artifacts, children[-1], indent, True, False, verbose)
 
 
 def render_tree_markdown(artifacts: ArtifactMap, ref: str = 'ROOT', verbose: bool = False) -> str:
