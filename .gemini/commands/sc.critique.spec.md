@@ -113,7 +113,7 @@ Challenge the specification and implementation plan through two distinct expert 
    - 🤔 **Question**: Ambiguity or assumption that needs stakeholder input. Cannot be resolved by the development team alone.
 
 7. **Generate Critique Report**:
-   Ensure the directory `docs/critiques/` exists (create it if necessary), then create the critique report. The report must include:
+   Ensure the directory `docs/critiques/` exists (create it if necessary), then create the critique report. If critique report already exists, do not overwrite, create a new file. The report must include:
 
    - **Executive Summary**: Overall assessment and readiness to proceed
    - **Product Lens Findings**: Organized by subcategory
