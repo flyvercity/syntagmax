@@ -579,9 +579,20 @@ class MarkdownExtractor(Extractor):
                         # Include that \n in the segment (parser needs trailing newline).
                         segment_end = fallback_abs_pos + 1
                         # Consume all consecutive blank lines after the segment
+                        # Only consume full blank lines (whitespace + newline), NOT leading
+                        # indentation of the next non-empty line.
                         consume_end = fallback_search_start + fallback_match.end()
-                        while consume_end < len(markdown) and markdown[consume_end] in '\r\n \t':
-                            consume_end += 1
+                        while consume_end < len(markdown):
+                            # Try to consume a blank line: optional spaces/tabs followed by a newline
+                            scan = consume_end
+                            while scan < len(markdown) and markdown[scan] in ' \t':
+                                scan += 1
+                            if scan < len(markdown) and markdown[scan] == '\r':
+                                scan += 1
+                            if scan < len(markdown) and markdown[scan] == '\n':
+                                consume_end = scan + 1
+                            else:
+                                break
                         pos = consume_end
                         _fallback_pos_set = True
                     else:

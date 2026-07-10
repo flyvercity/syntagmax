@@ -5,7 +5,7 @@ import pytest
 
 from syntagmax.config import Config, InputRecord
 from syntagmax.extractors.obsidian import ObsidianExtractor
-from syntagmax.blocks import TextBlock, ArtifactBlock, ErrorBlock
+from syntagmax.blocks import TextBlock, ArtifactBlock
 from syntagmax.params import Params
 from syntagmax.errors import FatalError
 
@@ -300,9 +300,9 @@ class TestMarkerAttributeCollision:
 
         cfg_path = tmp_path / 'config.toml'
         cfg_path.write_text(
-            f'base = "."\n\n[metamodel]\nfilename = "project.syntagmax"\n\n'
-            f'[[input]]\nname = "test"\ndir = "."\ndriver = "obsidian"\natype = "REQ"\n'
-            f'markers = ["STATUS"]\n',
+            'base = "."\n\n[metamodel]\nfilename = "project.syntagmax"\n\n'
+            '[[input]]\nname = "test"\ndir = "."\ndriver = "obsidian"\natype = "REQ"\n'
+            'markers = ["STATUS"]\n',
             encoding='utf-8',
         )
 
@@ -321,9 +321,9 @@ class TestMarkerAttributeCollision:
 
         cfg_path = tmp_path / 'config.toml'
         cfg_path.write_text(
-            f'base = "."\n\n[metamodel]\nfilename = "project.syntagmax"\n\n'
-            f'[[input]]\nname = "test"\ndir = "."\ndriver = "obsidian"\natype = "REQ"\n'
-            f'markers = ["COM", "NOTE"]\n',
+            'base = "."\n\n[metamodel]\nfilename = "project.syntagmax"\n\n'
+            '[[input]]\nname = "test"\ndir = "."\ndriver = "obsidian"\natype = "REQ"\n'
+            'markers = ["COM", "NOTE"]\n',
             encoding='utf-8',
         )
 
@@ -340,9 +340,9 @@ class TestMarkerAttributeCollision:
 
         cfg_path = tmp_path / 'config.toml'
         cfg_path.write_text(
-            f'base = "."\n\n[metamodel]\nfilename = "project.syntagmax"\n\n'
-            f'[[input]]\nname = "test"\ndir = "."\ndriver = "obsidian"\natype = "REQ"\n'
-            f'markers = ["status"]\n',
+            'base = "."\n\n[metamodel]\nfilename = "project.syntagmax"\n\n'
+            '[[input]]\nname = "test"\ndir = "."\ndriver = "obsidian"\natype = "REQ"\n'
+            'markers = ["status"]\n',
             encoding='utf-8',
         )
 

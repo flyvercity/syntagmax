@@ -186,7 +186,7 @@ class TestImageResolutionWithAttachmentFolder:
         return cfg_path, base_dir
 
     def test_attachment_folder_resolves_image(self, params, tmp_path):
-        cfg_path, base_dir = self._make_project(tmp_path)
+        cfg_path, _ = self._make_project(tmp_path)
         config = Config(params=params, config_filename=cfg_path)
         context = RenderContext(config=config)
         context.source_file_path = 'REQ/REQ-001.md'
@@ -197,7 +197,7 @@ class TestImageResolutionWithAttachmentFolder:
         assert result.startswith('images/')
 
     def test_fallback_skipped_when_integration_disabled(self, params, tmp_path):
-        cfg_path, base_dir = self._make_project(tmp_path, integration=False)
+        cfg_path, _ = self._make_project(tmp_path, integration=False)
         config = Config(params=params, config_filename=cfg_path)
         context = RenderContext(config=config)
         context.source_file_path = 'REQ/REQ-001.md'

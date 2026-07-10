@@ -5,7 +5,6 @@ import textwrap
 import pytest
 from syntagmax.config import Config, InputRecord, VALID_EXCLUDE_ELEMENTS, ObsidianDriverConfig, InputConfig
 from syntagmax.extractors.obsidian import ObsidianExtractor
-from syntagmax.extractors.markdown import MarkdownExtractor
 from syntagmax.blocks import TextBlock, ArtifactBlock
 from syntagmax.params import Params
 from pydantic import ValidationError

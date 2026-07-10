@@ -774,12 +774,6 @@ class TestContentFiles:
             ]
         )
 
-        # Simulate a publish config with contents_marker="content" and prefix stripping on
-        from unittest.mock import patch, MagicMock
-        from syntagmax.publish_config import PublishConfig
-
-        pub_config = PublishConfig(contents_marker='content', remove_numeric_prefixes_in_headers=True)
-
         # Build the tree and render without a full Config (uses defaults)
         result, _ = render_block_tree(tree, multi_record=False)
         # Default contents_marker is '_contents_', not 'content', so this won't match with default
@@ -789,9 +783,7 @@ class TestContentFiles:
 
     def test_content_file_with_numeric_prefix_and_custom_marker(self):
         """Content file with numeric prefix matches custom marker after stripping."""
-        from syntagmax.publish_config import PublishConfig, load_publish_config
-        from syntagmax.publish import render_block_tree, decompose_file_path, strip_numeric_prefix
-        from pathlib import Path
+        from syntagmax.publish import decompose_file_path, strip_numeric_prefix
 
         # Verify the detection logic directly
         components = decompose_file_path('Chapter/2.1.0 content.md', '.')
