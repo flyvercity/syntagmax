@@ -120,7 +120,7 @@ class TestBuildBlockTree:
         cfg_path.write_text('base = "."\n[[input]]\nname="src"\ndir="src"\ndriver="text"\natype="SRC"\nfilter="**/*.py"\n', encoding='utf-8')
         cfg = Config(params=params, config_filename=cfg_path)
 
-        tree = build_block_tree(cfg)
+        tree, errors = build_block_tree(cfg)
         assert len(tree.inputs) == 1
         files = tree.inputs[0].files
         assert len(files) == 2

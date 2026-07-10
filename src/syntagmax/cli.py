@@ -229,7 +229,9 @@ def publish(
     out_p = Path(output_path)
 
     if single:
-        tree = build_block_tree(config)
+        tree, block_errors = build_block_tree(config)
+        for err in block_errors:
+            u.pprint(f'[red]Error: {err}[/red]')
         selected_names = {r.name for r in selected_records}
         tree.inputs = [inp for inp in tree.inputs if inp.name in selected_names]
 
@@ -285,7 +287,9 @@ def publish(
         combined_manifest = ImageManifest()
 
         for record in selected_records:
-            tree = build_block_tree(config)
+            tree, block_errors = build_block_tree(config)
+            for err in block_errors:
+                u.pprint(f'[red]Error: {err}[/red]')
             tree.inputs = [inp for inp in tree.inputs if inp.name == record.name]
 
             # Run plugin block transforms

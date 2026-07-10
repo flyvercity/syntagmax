@@ -366,7 +366,7 @@ class TestEndToEndPublishWithAttachments:
         )
 
         config = Config(params=params, config_filename=cfg_path)
-        tree = build_block_tree(config)
+        tree, _errors = build_block_tree(config)
 
         result, manifest = render_block_tree(tree, config=config, multi_record=False)
 
@@ -415,7 +415,7 @@ class TestEndToEndPublishWithAttachments:
         )
 
         config = Config(params=params, config_filename=cfg_path)
-        tree = build_block_tree(config)
+        tree, _errors = build_block_tree(config)
 
         result, manifest = render_block_tree(tree, config=config, multi_record=False)
 

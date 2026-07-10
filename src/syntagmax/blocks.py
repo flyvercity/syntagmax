@@ -22,6 +22,8 @@ class Block:
 class TextBlock(Block):
     content: str
     marker: str | None = None
+    id: str | None = None
+    explicit_id: bool = False
 
 
 @dataclass

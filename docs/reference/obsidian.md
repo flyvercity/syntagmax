@@ -214,14 +214,17 @@ The Obsidian driver supports three fragment marker formats, applied as a pipelin
 
 ```markdown
 [COM]This is a comment.[/COM]
+[COM com-1]This is an identified comment.[/COM]
 ```
 
-Traditional paired syntax. The marker is explicitly closed with `[/MARKER]`. Content between the markers can span multiple lines and include empty lines.
+Traditional paired syntax. The marker is explicitly closed with `[/MARKER]`. Content between the markers can span multiple lines and include empty lines. An optional ID can be placed after the marker name.
 
 #### 2. Unclosed Paired Markers
 
 ```markdown
 [COM]This comment ends at the next blank line.
+
+[COM intro]This identified comment also ends at the blank line.
 
 Text after the comment.
 ```
@@ -238,10 +241,12 @@ When no `[/MARKER]` closing tag is present, the marked block terminates at:
 [COM] This is a single-paragraph comment that
 terminates at the next blank line or end of file.
 
+[COM section.1] This identified comment uses a line-prefix marker.
+
 Next paragraph is unmarked.
 ```
 
-A marker at the start of a line followed by a space and content. The block terminates at the next double newline or end of string. Also supports numbered variants: `[COM 1]`, `[NOTE 2]`.
+A marker at the start of a line followed by a space and content. The block terminates at the next double newline or end of string. An optional ID can be placed after the marker name: `[COM my-id] content`.
 
 ### Processing Pipeline
 
@@ -260,6 +265,24 @@ This pipeline ensures that closed markers always take priority, and mixed styles
 - No duplicates (case-insensitive) in the marker list
 - Fragment markers must NOT collide with the artifact marker (e.g., `markers = ["REQ"]` when `marker = "REQ"` is a fatal error)
 - Fragment markers must NOT collide with metamodel attribute names for the artifact type (e.g., `markers = ["status"]` when the metamodel defines `attribute status` is a fatal error)
+
+### Block IDs
+
+Fragment markers can carry an optional identifier for cross-referencing:
+
+```markdown
+[COM com-1]This is an identified commentary block.[/COM]
+[NOTE intro]This note has an explicit ID.
+```
+
+#### ID Rules
+
+- IDs must match `[a-zA-Z0-9_-.]` (letters, digits, underscore, hyphen, dot)
+- IDs are optional — if absent, Syntagmax generates a deterministic short hash internally
+- User-provided IDs must be unique within a given marker type across the entire project
+- Duplicate explicit IDs produce extraction errors
+- Auto-generated IDs (for blocks without explicit IDs) are not checked for uniqueness
+- Invalid ID characters produce extraction errors
 
 ---
 

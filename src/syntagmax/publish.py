@@ -17,7 +17,7 @@ from syntagmax.publish_context import (
 )
 
 
-def build_block_tree(config: Config) -> BlockTree:
+def build_block_tree(config: Config) -> tuple[BlockTree, list[str]]:
     tree = BlockTree()
 
     for record in config.input_records():
@@ -35,7 +35,24 @@ def build_block_tree(config: Config) -> BlockTree:
 
         tree.inputs.append(input_block)
 
-    return tree
+    # Validate uniqueness of explicit block IDs within each marker type
+    errors: list[str] = []
+    seen: dict[tuple[str, str], str] = {}  # (marker, id) -> first file path
+
+    for input_block in tree.inputs:
+        for file_record in input_block.files:
+            for block in file_record.blocks:
+                if isinstance(block, TextBlock) and block.explicit_id and block.id and block.marker:
+                    key = (block.marker, block.id)
+                    if key in seen:
+                        errors.append(
+                            f'Duplicate block ID "{block.id}" for marker [{block.marker}] '
+                            f'in {file_record.path} (first defined in {seen[key]})'
+                        )
+                    else:
+                        seen[key] = file_record.path
+
+    return tree, errors
 
 
 def strip_numeric_prefix(header_text: str) -> str:
