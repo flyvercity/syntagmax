@@ -25,6 +25,7 @@ Each input defines a source of requirements or artifacts:
 | `atype` | No | `REQ` | Default artifact type for this source |
 | `marker` | No | *atype* | Custom marker for artifacts (e.g., `[SYS]` in Markdown). Defaults to `atype`. |
 | `markers` | No | `[]` | List of fragment markers for non-artifact text blocks (e.g., `["COM", "NOTE"]`). Obsidian driver only. |
+| `publish` | No | — | Path to a per-record publish configuration file (relative to the base directory). If the file is not found, Syntagmax raises an error. See [Publishing Reference](publishing.md). |
 | `exclude_elements` | No | `[]` | Markdown elements to exclude at extraction time. Each entry is an object with `name` and optional `mode`. Merged with global `[drivers.obsidian]` defaults. See [Element Exclusion](#element-exclusion) below. |
 
 ## Marked Fragments (Obsidian Driver)

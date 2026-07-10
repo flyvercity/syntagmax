@@ -100,7 +100,7 @@ class InputConfig(BaseModel):
     atype: str = Field('REQ', description='Default artifact type for this input source')
     marker: str | None = Field(default=None, description='Custom marker for artifacts (e.g., "REQ"). Defaults to atype.')
     markers: list[str] = Field(default_factory=list, description='Fragment markers for non-artifact text blocks (e.g., ["COM", "NOTE"]). Obsidian driver only.')
-    publish: str | None = Field(default=None, description='Path to publish configuration file relative to the project directory or config folder')
+    publish: str | None = Field(default=None, description='Path to publish config file relative to the base directory. Error if not found.')
     exclude_elements: list[ExcludeElementConfig] | None = Field(
         default=None, description='Markdown elements to exclude at extraction time (merged with global driver defaults)'
     )
@@ -353,21 +353,22 @@ class Config:
 
         if record.publish_config:
             p = Path(record.publish_config)
-            return load_publish_config(p, self._root_dir)
+            return load_publish_config(p, self._base_dir, explicit=True)
 
-        resolved = resolve_publish_file(self._root_dir)
+        # Fallback chain (documented resolution order):
+        # 1. publish.yaml/yml/toml in the base directory (project root)
+        resolved = resolve_publish_file(self._base_dir)
         if resolved:
-            return load_publish_config(resolved, self._root_dir)
+            return load_publish_config(resolved, self._base_dir)
 
-        resolved = resolve_publish_file(self._root_dir / '.syntagmax')
+        # 2. publish.yaml/yml/toml in the .syntagmax directory
+        syntagmax_dir = self._base_dir / '.syntagmax'
+        resolved = resolve_publish_file(syntagmax_dir)
         if resolved:
-            return load_publish_config(resolved, self._root_dir)
+            return load_publish_config(resolved, self._base_dir)
 
-        resolved = resolve_publish_file(self._root_dir.parent / '.syntagmax')
-        if resolved:
-            return load_publish_config(resolved, self._root_dir.parent)
-
-        return load_publish_config(None, self._root_dir)
+        # 3. All-default rendering
+        return load_publish_config(None, self._base_dir)
 
     def base_dir(self):
         return self._base_dir

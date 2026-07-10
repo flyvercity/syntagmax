@@ -90,14 +90,18 @@ syntagmax publish --all --docx --docx-template none
 
 Publishing configuration controls how artifacts and text blocks are rendered in the output document. It can be defined as either a YAML file (`publish.yaml` or `publish.yml`) or a TOML file (`publish.toml`), resolved in the following order:
 
-1. Per-record `publish` field in `config.toml` (format detected by extension)
-2. `publish.yaml`, `publish.yml`, or `publish.toml` in the project root directory
-3. `.syntagmax/publish.yaml`, `.syntagmax/publish.yml`, or `.syntagmax/publish.toml`
-4. All-default rendering (if no file exists)
+1. **Per-record `publish` field** in `config.toml` — path is resolved relative to the base directory (the `base` setting in your config). If the file is not found, Syntagmax raises an error.
+2. **Base directory** — `publish.yaml`, `publish.yml`, or `publish.toml` in the base directory (i.e. the project root as defined by `base`).
+3. **`.syntagmax/` directory** — `publish.yaml`, `publish.yml`, or `publish.toml` inside `<base>/.syntagmax/`.
+4. **All-default rendering** — if no file exists at any location.
 
 If both a YAML variant and a TOML variant exist at the same location, Syntagmax raises an error. Use only one format per directory.
 
+> **Note:** The base directory is determined by the `base` field in `config.toml`, resolved relative to the config file's location. For example, if your config is at `.syntagmax/config.toml` with `base = ".."`, the base directory is the project root (one level above `.syntagmax/`).
+
 ### Linking a Custom Publish Config
+
+The `publish` field in an input record specifies a path relative to the base directory:
 
 ```toml
 [[input]]
@@ -105,8 +109,10 @@ name = "system-requirements"
 dir = "SYS"
 driver = "obsidian"
 atype = "SYS"
-publish = "publish-sys-reqs.yaml"  # or "publish-sys-reqs.toml"
+publish = "publish-sys-reqs.yaml"  # resolved relative to base directory
 ```
+
+If the file does not exist at the resolved path, Syntagmax raises a fatal error (it will not silently fall back to defaults).
 
 ### Full Schema (YAML)
 

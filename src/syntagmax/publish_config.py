@@ -80,12 +80,16 @@ class PublishConfig(BaseModel):
         return v
 
 
-def load_publish_config(path: Path | None, root_dir: Path) -> PublishConfig:
+def load_publish_config(path: Path | None, root_dir: Path, *, explicit: bool = False) -> PublishConfig:
     if path is None:
         return PublishConfig()
 
     resolved_path = Path(root_dir, path) if not path.is_absolute() else path
     if not resolved_path.is_file():
+        if explicit:
+            from syntagmax.errors import FatalError
+
+            raise FatalError([f"Publish config file not found: '{resolved_path}' (specified as '{path}' in input record)"])
         return PublishConfig()
 
     try:

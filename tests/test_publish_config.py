@@ -525,3 +525,192 @@ atype = "SYS"
 
         config_r1 = config.load_publish_config(records[0])
         assert config_r1.start_level == 8
+
+
+class TestPublishResolutionWithBaseDir:
+    """Tests for publish config resolution when config file is in a subdirectory with base='..'."""
+
+    def test_per_record_publish_resolves_relative_to_base_dir(self, tmp_path):
+        """Bug scenario: config at .syntagmax/config.toml, base='..', publish='publish.yaml' at project root."""
+        from syntagmax.config import Config
+        from syntagmax.params import Params
+
+        # Create project layout: project_root/.syntagmax/config.toml
+        project_root = tmp_path / 'project'
+        project_root.mkdir()
+        dot_syntagmax = project_root / '.syntagmax'
+        dot_syntagmax.mkdir()
+
+        cfg_path = dot_syntagmax / 'config.toml'
+        cfg_content = """
+base = ".."
+
+[[input]]
+name = "SCHED"
+dir = "Personal Scheduler App"
+driver = "obsidian"
+atype = "SRS"
+marker = "REQ"
+publish = "publish.yaml"
+"""
+        cfg_path.write_text(cfg_content, encoding='utf-8')
+
+        # publish.yaml is at the project root (where base points)
+        publish_yaml = project_root / 'publish.yaml'
+        publish_yaml.write_text('start_level: 4', encoding='utf-8')
+
+        # Create the input dir so Config doesn't error
+        (project_root / 'Personal Scheduler App').mkdir()
+
+        params = Params(verbose=False, render_tree=False, ai=False, output='console')
+        config = Config(params=params, config_filename=cfg_path)
+        records = config.input_records()
+
+        assert len(records) == 1
+        assert records[0].publish_config == 'publish.yaml'
+
+        pub_config = config.load_publish_config(records[0])
+        assert pub_config.start_level == 4
+
+    def test_explicit_publish_not_found_raises_error(self, tmp_path):
+        """When publish is explicitly specified but file doesn't exist, raise FatalError."""
+        from syntagmax.config import Config
+        from syntagmax.params import Params
+
+        project_root = tmp_path / 'project'
+        project_root.mkdir()
+        dot_syntagmax = project_root / '.syntagmax'
+        dot_syntagmax.mkdir()
+
+        cfg_path = dot_syntagmax / 'config.toml'
+        cfg_content = """
+base = ".."
+
+[[input]]
+name = "SCHED"
+dir = "docs"
+driver = "obsidian"
+atype = "SRS"
+publish = "publish.yaml"
+"""
+        cfg_path.write_text(cfg_content, encoding='utf-8')
+
+        (project_root / 'docs').mkdir()
+        # Deliberately NOT creating publish.yaml
+
+        params = Params(verbose=False, render_tree=False, ai=False, output='console')
+        config = Config(params=params, config_filename=cfg_path)
+        records = config.input_records()
+
+        with pytest.raises(FatalError, match="Publish config file not found"):
+            config.load_publish_config(records[0])
+
+    def test_fallback_finds_publish_in_base_dir(self, tmp_path):
+        """Fallback chain looks in base_dir first when no per-record publish is set."""
+        from syntagmax.config import Config
+        from syntagmax.params import Params
+
+        project_root = tmp_path / 'project'
+        project_root.mkdir()
+        dot_syntagmax = project_root / '.syntagmax'
+        dot_syntagmax.mkdir()
+
+        cfg_path = dot_syntagmax / 'config.toml'
+        cfg_content = """
+base = ".."
+
+[[input]]
+name = "r1"
+dir = "docs"
+driver = "obsidian"
+atype = "SRS"
+"""
+        cfg_path.write_text(cfg_content, encoding='utf-8')
+
+        # publish.yaml in project root (base_dir)
+        (project_root / 'publish.yaml').write_text('start_level: 7', encoding='utf-8')
+        (project_root / 'docs').mkdir()
+
+        params = Params(verbose=False, render_tree=False, ai=False, output='console')
+        config = Config(params=params, config_filename=cfg_path)
+        records = config.input_records()
+
+        pub_config = config.load_publish_config(records[0])
+        assert pub_config.start_level == 7
+
+    def test_fallback_finds_publish_in_syntagmax_subdir(self, tmp_path):
+        """Fallback chain looks in base_dir/.syntagmax second."""
+        from syntagmax.config import Config
+        from syntagmax.params import Params
+
+        project_root = tmp_path / 'project'
+        project_root.mkdir()
+        dot_syntagmax = project_root / '.syntagmax'
+        dot_syntagmax.mkdir()
+
+        cfg_path = dot_syntagmax / 'config.toml'
+        cfg_content = """
+base = ".."
+
+[[input]]
+name = "r1"
+dir = "docs"
+driver = "obsidian"
+atype = "SRS"
+"""
+        cfg_path.write_text(cfg_content, encoding='utf-8')
+
+        # publish.yaml in .syntagmax/ (not in project root)
+        (dot_syntagmax / 'publish.yaml').write_text('start_level: 3', encoding='utf-8')
+        (project_root / 'docs').mkdir()
+
+        params = Params(verbose=False, render_tree=False, ai=False, output='console')
+        config = Config(params=params, config_filename=cfg_path)
+        records = config.input_records()
+
+        pub_config = config.load_publish_config(records[0])
+        assert pub_config.start_level == 3
+
+    def test_base_dir_publish_takes_priority_over_syntagmax_dir(self, tmp_path):
+        """publish.yaml in base_dir takes priority over .syntagmax/publish.yaml."""
+        from syntagmax.config import Config
+        from syntagmax.params import Params
+
+        project_root = tmp_path / 'project'
+        project_root.mkdir()
+        dot_syntagmax = project_root / '.syntagmax'
+        dot_syntagmax.mkdir()
+
+        cfg_path = dot_syntagmax / 'config.toml'
+        cfg_content = """
+base = ".."
+
+[[input]]
+name = "r1"
+dir = "docs"
+driver = "obsidian"
+atype = "SRS"
+"""
+        cfg_path.write_text(cfg_content, encoding='utf-8')
+
+        # Both locations have publish files — root takes priority
+        (project_root / 'publish.yaml').write_text('start_level: 9', encoding='utf-8')
+        (dot_syntagmax / 'publish.yaml').write_text('start_level: 2', encoding='utf-8')
+        (project_root / 'docs').mkdir()
+
+        params = Params(verbose=False, render_tree=False, ai=False, output='console')
+        config = Config(params=params, config_filename=cfg_path)
+        records = config.input_records()
+
+        pub_config = config.load_publish_config(records[0])
+        assert pub_config.start_level == 9
+
+    def test_load_publish_config_explicit_nonexistent_raises(self, tmp_path):
+        """load_publish_config with explicit=True raises FatalError for missing file."""
+        with pytest.raises(FatalError, match="Publish config file not found"):
+            load_publish_config(Path('nonexistent.yaml'), tmp_path, explicit=True)
+
+    def test_load_publish_config_non_explicit_nonexistent_returns_defaults(self, tmp_path):
+        """load_publish_config without explicit=True returns defaults for missing file."""
+        config = load_publish_config(Path('nonexistent.yaml'), tmp_path)
+        assert config.start_level == 1
