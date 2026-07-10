@@ -4,6 +4,7 @@
 # Created: 2026-06-20
 # Description: Publish command - builds a block tree and renders to markdown.
 
+import hashlib
 import re
 from typing import Optional
 from syntagmax.blocks import BlockTree, InputBlock, FileRecord, TextBlock, ArtifactBlock, ErrorBlock, Block
@@ -15,6 +16,16 @@ from syntagmax.publish_context import (
     RenderContext, ImageManifest, IMAGE_EXTENSIONS,
     resolve_image_to_manifest, _is_remote_url,
 )
+
+
+def generate_block_id(marker: str, content: str, filepath: str) -> str:
+    """Generate a deterministic 8-char hex hash for a text block without an explicit ID.
+
+    The hash is derived from the marker type, block content, and file path to ensure
+    stability across runs while avoiding collisions between different blocks.
+    """
+    data = f'{marker}:{filepath}:{content}'.encode('utf-8')
+    return hashlib.sha256(data).hexdigest()[:8]
 
 
 def build_block_tree(config: Config) -> tuple[BlockTree, list[str]]:
@@ -34,6 +45,13 @@ def build_block_tree(config: Config) -> tuple[BlockTree, list[str]]:
                 input_block.files.append(FileRecord(path=config.derive_path(filepath), blocks=blocks))
 
         tree.inputs.append(input_block)
+
+    # Assign deterministic IDs to marked TextBlocks that don't have explicit IDs
+    for input_block in tree.inputs:
+        for file_record in input_block.files:
+            for block in file_record.blocks:
+                if isinstance(block, TextBlock) and block.marker and block.id is None:
+                    block.id = generate_block_id(block.marker, block.content, file_record.path)
 
     # Validate uniqueness of explicit block IDs within each marker type
     errors: list[str] = []

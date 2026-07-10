@@ -16,24 +16,12 @@ from syntagmax.config import Config, InputRecord
 from syntagmax.artifact import ArtifactBuilder, Artifact, Location, UNDEFINED_ID
 from syntagmax.blocks import Block, TextBlock, ArtifactBlock, ErrorBlock
 
-import hashlib
-
 _VALID_BLOCK_ID_RE = re.compile(r'^[a-zA-Z0-9_.\-]+$')
 
 
 def _validate_block_id(id_str: str) -> bool:
     """Check if a block ID contains only valid characters [a-zA-Z0-9_-.]."""
     return bool(_VALID_BLOCK_ID_RE.match(id_str))
-
-
-def generate_block_id(marker: str, content: str, filepath: str) -> str:
-    """Generate a deterministic 8-char hex hash for a text block without an explicit ID.
-
-    The hash is derived from the marker type, block content, and file path to ensure
-    stability across runs while avoiding collisions between different blocks.
-    """
-    data = f'{marker}:{filepath}:{content}'.encode('utf-8')
-    return hashlib.sha256(data).hexdigest()[:8]
 
 
 class MarkdownArtifact(Artifact):
@@ -384,7 +372,7 @@ class MarkdownExtractor(Extractor):
         errors = [b.message for b in blocks if isinstance(b, ErrorBlock)]
         return artifacts, errors
 
-    def _split_text_block_by_markers(self, text_block: TextBlock, filepath: str) -> list[Block]:
+    def _split_text_block_by_markers(self, text_block: TextBlock) -> list[Block]:
         """Split a TextBlock into marked and unmarked fragments based on configured markers.
 
         Supports three marker formats (applied as a pipeline):
@@ -403,27 +391,27 @@ class MarkdownExtractor(Extractor):
         blocks: list[Block] = [text_block]
 
         # Pass 1: Fully closed paired markers [MARKER]...[/MARKER]
-        blocks = self._apply_marker_pass(blocks, self._split_closed_paired, escaped, filepath)
+        blocks = self._apply_marker_pass(blocks, self._split_closed_paired, escaped)
 
         # Pass 2: Unclosed paired markers [MARKER]...terminated by empty line/next marker/heading/EOF
-        blocks = self._apply_marker_pass(blocks, self._split_unclosed_paired, escaped, filepath)
+        blocks = self._apply_marker_pass(blocks, self._split_unclosed_paired, escaped)
 
         # Pass 3: Line-prefix markers [MARKER] content
-        blocks = self._apply_marker_pass(blocks, self._split_line_prefix, escaped, filepath)
+        blocks = self._apply_marker_pass(blocks, self._split_line_prefix, escaped)
 
         return blocks if blocks else [text_block]
 
-    def _apply_marker_pass(self, blocks: list[Block], splitter, escaped: str, filepath: str) -> list[Block]:
+    def _apply_marker_pass(self, blocks: list[Block], splitter, escaped: str) -> list[Block]:
         """Apply a splitting pass to all unmarked TextBlocks in the list."""
         result: list[Block] = []
         for block in blocks:
             if isinstance(block, TextBlock) and block.marker is None:
-                result.extend(splitter(block.content, escaped, filepath))
+                result.extend(splitter(block.content, escaped))
             else:
                 result.append(block)
         return result
 
-    def _split_closed_paired(self, content: str, escaped: str, filepath: str) -> list[Block]:
+    def _split_closed_paired(self, content: str, escaped: str) -> list[Block]:
         """Split by fully closed paired markers [MARKER]...[/MARKER]."""
         paired_pattern = re.compile(rf'\[({escaped})(?:\s+([^\]]+))?\](.*?)\[/\1\]', re.IGNORECASE | re.DOTALL)
         matches = list(paired_pattern.finditer(content))
@@ -444,22 +432,21 @@ class MarkdownExtractor(Extractor):
                 raw_id = raw_id.strip()
                 if not _validate_block_id(raw_id):
                     result.append(ErrorBlock(
-                        message=f'Invalid block ID "{raw_id}" for marker [{marker_name}] in {filepath} — IDs must match [a-zA-Z0-9_.-]',
+                        message=f'Invalid block ID "{raw_id}" for marker [{marker_name}] — IDs must match [a-zA-Z0-9_.-]',
                         raw_text=match.group(0),
                     ))
                     pos = match.end()
                     continue
                 result.append(TextBlock(content=marker_content, marker=marker_name, id=raw_id, explicit_id=True))
             else:
-                block_id = generate_block_id(marker_name, marker_content, filepath)
-                result.append(TextBlock(content=marker_content, marker=marker_name, id=block_id, explicit_id=False))
+                result.append(TextBlock(content=marker_content, marker=marker_name))
             pos = match.end()
         after = content[pos:]
         if after:
             result.append(TextBlock(content=after, marker=None))
         return result if result else [TextBlock(content=content, marker=None)]
 
-    def _split_unclosed_paired(self, content: str, escaped: str, filepath: str) -> list[Block]:
+    def _split_unclosed_paired(self, content: str, escaped: str) -> list[Block]:
         """Split by unclosed paired markers terminated by empty line, next marker, heading, or EOF."""
         # Lookahead terminates on: double newline, next fragment marker, heading, or end of string
         unclosed_pattern = re.compile(
@@ -484,7 +471,7 @@ class MarkdownExtractor(Extractor):
                 raw_id = raw_id.strip()
                 if not _validate_block_id(raw_id):
                     result.append(ErrorBlock(
-                        message=f'Invalid block ID "{raw_id}" for marker [{marker_name}] in {filepath} — IDs must match [a-zA-Z0-9_.-]',
+                        message=f'Invalid block ID "{raw_id}" for marker [{marker_name}] — IDs must match [a-zA-Z0-9_.-]',
                         raw_text=match.group(0),
                     ))
                     # Consume the terminating empty line if present
@@ -498,8 +485,7 @@ class MarkdownExtractor(Extractor):
                     continue
                 result.append(TextBlock(content=marker_content, marker=marker_name, id=raw_id, explicit_id=True))
             else:
-                block_id = generate_block_id(marker_name, marker_content, filepath)
-                result.append(TextBlock(content=marker_content, marker=marker_name, id=block_id, explicit_id=False))
+                result.append(TextBlock(content=marker_content, marker=marker_name))
 
             # Consume the terminating empty line if present
             end_pos = match.end()
@@ -515,7 +501,7 @@ class MarkdownExtractor(Extractor):
             result.append(TextBlock(content=after, marker=None))
         return result if result else [TextBlock(content=content, marker=None)]
 
-    def _split_line_prefix(self, content: str, escaped: str, filepath: str) -> list[Block]:
+    def _split_line_prefix(self, content: str, escaped: str) -> list[Block]:
         """Split by line-prefix markers [MARKER] content at start of paragraph."""
         prefix_pattern = re.compile(
             rf'^\[({escaped})(?:\s+([^\]]+))?\]\s*(.*?)(?=\n\n|\Z)',
@@ -539,15 +525,14 @@ class MarkdownExtractor(Extractor):
                 raw_id = raw_id.strip()
                 if not _validate_block_id(raw_id):
                     result.append(ErrorBlock(
-                        message=f'Invalid block ID "{raw_id}" for marker [{marker_name}] in {filepath} — IDs must match [a-zA-Z0-9_.-]',
+                        message=f'Invalid block ID "{raw_id}" for marker [{marker_name}] — IDs must match [a-zA-Z0-9_.-]',
                         raw_text=match.group(0),
                     ))
                     pos = match.end()
                     continue
                 result.append(TextBlock(content=marker_content, marker=marker_name, id=raw_id, explicit_id=True))
             else:
-                block_id = generate_block_id(marker_name, marker_content, filepath)
-                result.append(TextBlock(content=marker_content, marker=marker_name, id=block_id, explicit_id=False))
+                result.append(TextBlock(content=marker_content, marker=marker_name))
             pos = match.end()
         after = content[pos:]
         if after:
@@ -820,11 +805,10 @@ class MarkdownExtractor(Extractor):
 
         # Post-process: split TextBlocks by fragment markers
         if self._record.markers:
-            rel_path = self._config.derive_path(filepath)
             split_blocks: list[Block] = []
             for block in blocks:
                 if isinstance(block, TextBlock) and block.marker is None:
-                    split_blocks.extend(self._split_text_block_by_markers(block, rel_path))
+                    split_blocks.extend(self._split_text_block_by_markers(block))
                 else:
                     split_blocks.append(block)
             blocks = split_blocks
