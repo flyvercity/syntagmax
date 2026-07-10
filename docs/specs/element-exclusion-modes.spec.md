@@ -11,13 +11,15 @@ The `exclude_elements` mechanism currently has hard-coded removal semantics per 
 3. Default mode for all elements: `string-on-start`
 4. **Breaking change** — plain string format no longer accepted
 5. All five element types (`callouts`, `headings`, `horizontal_rules`, `frontmatter`, `tags`) support all three modes
-6. `only` mode for `callouts`/`headings` strips the prefix marker (`>`, `# `) but keeps the text
+6. `only` mode for `callouts`/`headings` strips the prefix marker (`>`, `# `) but keeps the text, preserving any leading whitespace/indentation before the marker
 7. `only` mode for `horizontal_rules` removes the line (it *is* the element)
 8. `only` mode for `tags` strips inline tags (current behaviour)
 9. `only` mode for `frontmatter` removes the frontmatter block (block-level, mode has no additional meaning beyond `only`)
-10. "Starts the line" means the element is the first non-whitespace character
-11. Code-block awareness preserved for all modes
-12. Inline code span protection preserved for `tags` in all modes
+10. For `frontmatter` and `horizontal_rules`, all three modes behave identically (complete removal) — the mode is accepted for schema consistency but has no semantic difference
+11. "Starts the line" means the element is the first non-whitespace character
+12. Code-block awareness preserved for all modes
+13. Inline code span protection preserved for `tags` in all modes — including `string` and `string-on-start` line-level decisions (tags inside code spans must not trigger line removal)
+14. Duplicate element names within a single `exclude_elements` list are rejected at validation time
 
 ## Background
 
@@ -66,17 +68,22 @@ class ExcludeElementConfig(BaseModel):
 VALID_EXCLUDE_MODES = frozenset({'only', 'string', 'string-on-start'})
 ```
 
+A container-level validator on `exclude_elements` lists rejects duplicate `name` values (e.g., `[{name = "tags", mode = "only"}, {name = "tags", mode = "string"}]` is invalid).
+
 ### Mode Semantics by Element
 
 | Element | `only` | `string` | `string-on-start` |
 |---------|--------|----------|-------------------|
-| `callouts` | Strip `> ` prefix, keep text | Remove line if contains `>` at start | Remove line if `>` is first non-ws (same as `string` for callouts) |
-| `headings` | Strip `# ` prefix, keep text | Remove line if contains heading marker | Remove line if `#` heading is first non-ws |
+| `callouts` | Strip `> ` prefix, keep text (preserve leading whitespace) | Remove line if `>` is first non-ws | Remove line if `>` is first non-ws |
+| `headings` | Strip `# ` prefix, keep text (preserve leading whitespace) | Remove line if `#` heading is first non-ws | Remove line if `#` heading is first non-ws |
 | `horizontal_rules` | Remove line | Remove line | Remove line |
 | `frontmatter` | Remove frontmatter block | Remove frontmatter block | Remove frontmatter block |
-| `tags` | Strip `#tag` inline, keep surrounding text | Remove entire line if it contains any `#tag` | Remove line only if `#tag` is first non-ws |
+| `tags` | Strip `#tag` inline, keep surrounding text | Remove entire line if it contains any `#tag` (outside code spans) | Remove line only if `#tag` is first non-ws (outside code spans); otherwise fall back to `only` |
 
-Note: For `callouts` and `headings`, `string` and `string-on-start` are effectively identical because these elements inherently start at line beginning. The distinction matters mainly for `tags`.
+Notes:
+- For `callouts` and `headings`, `string` and `string-on-start` are effectively identical because these elements inherently start at line beginning. The distinction matters mainly for `tags`.
+- For `frontmatter` and `horizontal_rules`, all three modes produce identical results. The mode is accepted for schema consistency but documented as having no additional effect.
+- For `tags` in `string` and `string-on-start` modes, inline code spans must be masked before evaluating whether a tag is present on the line (see Task 3 implementation guidance).
 
 ### Merge Logic
 
@@ -93,6 +100,7 @@ When resolving per-record + global `exclude_elements`:
   - Add `ExcludeElementConfig` model in `config.py` with `name: str` and `mode: str = "string-on-start"`.
   - Add validator on `name` checking against `VALID_EXCLUDE_ELEMENTS`.
   - Add validator on `mode` checking against `{"only", "string", "string-on-start"}`.
+  - Add a container-level validator on `exclude_elements` in both `ObsidianDriverConfig` and `InputConfig` that rejects duplicate `name` values.
   - Change `ObsidianDriverConfig.exclude_elements` to `list[ExcludeElementConfig]`.
   - Change `InputConfig.exclude_elements` to `list[ExcludeElementConfig] | None`.
   - Update `InputRecord.exclude_elements` dataclass field to `list[ExcludeElementConfig]`.
@@ -101,9 +109,10 @@ When resolving per-record + global `exclude_elements`:
   - Config with `[{name = "tags", mode = "string"}]` parses correctly.
   - Config with `[{name = "callouts"}]` defaults mode to `string-on-start`.
   - Invalid `name` rejected. Invalid `mode` rejected.
+  - Duplicate `name` in the same list rejected (e.g., `[{name = "tags"}, {name = "tags", mode = "only"}]`).
   - Merge logic: per-record mode overrides global mode for same element name.
   - Old plain-string format is rejected (breaking change).
-- **Demo:** Config parsing succeeds with new format; validation errors on invalid modes/names.
+- **Demo:** Config parsing succeeds with new format; validation errors on invalid modes/names/duplicates.
 
 ### Task 2: Refactor `_filter_text_content` to be mode-aware for line-level elements
 
@@ -113,17 +122,19 @@ When resolving per-record + global `exclude_elements`:
   - For each line-level element, branch on mode:
     - `string-on-start`: current behaviour (remove line if element starts it — first non-ws).
     - `string`: remove line if the element pattern is found anywhere on the line. For `callouts` this means `>` anywhere; for `headings` `#` followed by space anywhere. (In practice, for these elements `string` and `string-on-start` are equivalent since they always start lines.)
-    - `only`: strip the prefix marker but keep the rest of the line. `> text` → `text`; `## Title` → `Title`.
+    - `only`: strip the prefix marker but keep the rest of the line, **preserving leading whitespace/indentation**. E.g., `  > text` → `  text`; `  ## Title` → `  Title`. Use a regex that captures leading whitespace and text after the marker: `r'^(\s*)>\s?(.*)$'` for callouts, `r'^(\s*)#{1,6}\s+(.*)$'` for headings.
   - `horizontal_rules`: all modes remove the line.
   - `frontmatter`: all modes remove the frontmatter block.
 - **Test requirements:**
   - `callouts` with `only`: `> quoted text` becomes `quoted text`.
+  - `callouts` with `only` preserving indent: `  > indented` becomes `  indented`.
   - `callouts` with `string-on-start`: line removed.
   - `headings` with `only`: `## Title` becomes `Title`.
+  - `headings` with `only` preserving indent: `  ## Title` becomes `  Title`.
   - `headings` with `string-on-start`: line removed.
   - `horizontal_rules`: line removed in all modes.
   - Code blocks still protected in all modes.
-- **Demo:** A text block with `> Important note` + `exclude_elements = [{name = "callouts", mode = "only"}]` produces `Important note`.
+- **Demo:** A text block with `  > Important note` + `exclude_elements = [{name = "callouts", mode = "only"}]` produces `  Important note`.
 
 ### Task 3: Implement mode-aware tag filtering
 
@@ -131,16 +142,19 @@ When resolving per-record + global `exclude_elements`:
 - **Implementation guidance:**
   - `only`: current behaviour — `_strip_tags_from_line()` removes tags inline.
   - `string`: if line (outside code spans) contains any Obsidian tag, remove the entire line.
-  - `string-on-start`: if the first non-whitespace on the line is a tag, remove the entire line; otherwise apply `only` mode (strip tags inline).
-  - Reuse the existing `_tag_pattern` regex for detection.
-  - For `string` mode: check if `_tag_pattern` matches anywhere on the line (outside code spans); if so, skip the line.
-  - For `string-on-start`: check if `stripped.lstrip()` starts with a tag match; if so, skip the line; otherwise fall through to `only` logic.
+  - `string-on-start`: if the first non-whitespace on the line (outside code spans) is a tag, remove the entire line; otherwise apply `only` mode (strip tags inline).
+  - **Code span masking for line-level decisions:** Before evaluating whether a tag exists on the line (`string` mode) or starts the line (`string-on-start` mode), temporarily mask inline code spans by replacing backtick-enclosed content with a placeholder of the same length (e.g., `X` characters). This prevents false-positive matches on tags inside code spans like `` `#tag` ``. The masking is only for the detection decision — actual content modification still uses the existing `_strip_tags_from_line()` logic which already handles code spans correctly.
+  - Reuse the existing `_tag_pattern` regex for detection on the masked line.
+  - For `string` mode: check if `_tag_pattern` matches anywhere on the masked line; if so, skip the line.
+  - For `string-on-start`: check if the first non-whitespace on the masked line is a tag match; if so, skip the line; otherwise fall through to `only` logic.
 - **Test requirements:**
   - `tags` mode `only`: `Hello #safety world` → `Hello world` (current behaviour).
   - `tags` mode `string`: `Hello #safety world` → line removed entirely.
+  - `tags` mode `string`: `` Text with `#safe` only `` → line preserved (tag is inside code span).
   - `tags` mode `string-on-start`: `#safety is important` → line removed; `Important #safety note` → `Important note` (falls back to `only`).
+  - `tags` mode `string-on-start`: `` `#safety` is important `` → line preserved (tag is inside code span at line start).
   - `tags` mode `string-on-start` with leading whitespace: `   #safety rest` → line removed.
-  - Tags in code spans/fenced blocks preserved in all modes.
+  - Tags in fenced code blocks preserved in all modes.
   - Multiple tags on line with `string` mode: line removed.
 - **Demo:** Config with `[{name = "tags", mode = "string-on-start"}]` removes lines starting with tags but preserves mid-line text with tags stripped.
 
