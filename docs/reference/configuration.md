@@ -7,6 +7,7 @@ Syntagmax uses a TOML configuration file (default `.syntagmax/config.toml`).
 | Option | Required | Description |
 |--------|----------|-------------|
 | `base` | Yes | Base directory path (relative to the config file) |
+| `publish` | No | Global publish config file path (relative to config file directory). See [Publishing Reference](publishing.md). |
 | `input` | Yes | List of input source definitions |
 | `drivers` | No | Driver-specific global defaults |
 | `metrics` | No | Metrics collection settings |

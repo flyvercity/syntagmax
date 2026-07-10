@@ -91,13 +91,13 @@ syntagmax publish --all --docx --docx-template none
 Publishing configuration controls how artifacts and text blocks are rendered in the output document. It can be defined as either a YAML file (`publish.yaml` or `publish.yml`) or a TOML file (`publish.toml`), resolved in the following order:
 
 1. **Per-record `publish` field** in `config.toml` — path is resolved relative to the base directory (the `base` setting in your config). If the file is not found, Syntagmax raises an error.
-2. **Base directory** — `publish.yaml`, `publish.yml`, or `publish.toml` in the base directory (i.e. the project root as defined by `base`).
-3. **`.syntagmax/` directory** — `publish.yaml`, `publish.yml`, or `publish.toml` inside `<base>/.syntagmax/`.
+2. **Top-level `publish` field** in `config.toml` — a global publish config path, resolved relative to the config file's directory (`.syntagmax/`). Used for all records that don't specify their own. If the file is not found, Syntagmax raises an error.
+3. **`.syntagmax/` directory** — auto-discovers `publish.yaml`, `publish.yml`, or `publish.toml` in the `.syntagmax/` project directory (where `config.toml` lives).
 4. **All-default rendering** — if no file exists at any location.
 
-If both a YAML variant and a TOML variant exist at the same location, Syntagmax raises an error. Use only one format per directory.
+If both a YAML variant and a TOML variant exist in `.syntagmax/`, Syntagmax raises an error. Use only one format.
 
-> **Note:** The base directory is determined by the `base` field in `config.toml`, resolved relative to the config file's location. For example, if your config is at `.syntagmax/config.toml` with `base = ".."`, the base directory is the project root (one level above `.syntagmax/`).
+> **Note:** The base directory is determined by the `base` field in `config.toml`, resolved relative to the config file's location. For example, if your config is at `.syntagmax/config.toml` with `base = ".."`, the base directory is the project root (one level above `.syntagmax/`). Per-record `publish` paths are resolved relative to the base directory; the top-level `publish` and auto-discovery use the config file's directory (`.syntagmax/`).
 
 ### Linking a Custom Publish Config
 
@@ -113,6 +113,29 @@ publish = "publish-sys-reqs.yaml"  # resolved relative to base directory
 ```
 
 If the file does not exist at the resolved path, Syntagmax raises a fatal error (it will not silently fall back to defaults).
+
+### Global Publish Config
+
+To apply a single publish configuration to all records without repeating the path in each `[[input]]` block, use the top-level `publish` field:
+
+```toml
+base = ".."
+publish = "publish.yaml"
+
+[[input]]
+name = "system-requirements"
+dir = "SYS"
+driver = "obsidian"
+atype = "SYS"
+
+[[input]]
+name = "software-requirements"
+dir = "SRS"
+driver = "obsidian"
+atype = "SRS"
+```
+
+The path is resolved relative to the config file's directory (i.e. `.syntagmax/`). Per-record `publish` overrides the global setting for that record.
 
 ### Full Schema (YAML)
 

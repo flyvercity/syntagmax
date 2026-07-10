@@ -149,6 +149,7 @@ class Metamodel(BaseModel):
 
 class ConfigFile(BaseModel):
     base: str = Field(default='..', description='Base directory for relative paths, relative to this config file')
+    publish: str | None = Field(default=None, description='Global publish config file path, relative to config file directory')
     input: list[InputConfig] = Field(..., description='List of input sources to process')
     metrics: MetricsConfig = Field(MetricsConfig(), description='Configuration for metrics collection')
     impact: ImpactConfig = Field(ImpactConfig(), description='Configuration for impact analysis')
@@ -217,6 +218,7 @@ class Config:
 
         self._base_dir = Path(root_dir, config_model.base)
         lg.debug(f'Base directory: {self._base_dir}')
+        self._global_publish_config = config_model.publish
         self._read_input_records(config_model.input, config_model.drivers)
 
         self.metrics = config_model.metrics
@@ -356,19 +358,18 @@ class Config:
             return load_publish_config(p, self._base_dir, explicit=True)
 
         # Fallback chain (documented resolution order):
-        # 1. publish.yaml/yml/toml in the base directory (project root)
-        resolved = resolve_publish_file(self._base_dir)
-        if resolved:
-            return load_publish_config(resolved, self._base_dir)
+        # 1. Global publish field in config.toml (resolved relative to config file dir)
+        if self._global_publish_config:
+            p = Path(self._global_publish_config)
+            return load_publish_config(p, self._root_dir, explicit=True)
 
-        # 2. publish.yaml/yml/toml in the .syntagmax directory
-        syntagmax_dir = self._base_dir / '.syntagmax'
-        resolved = resolve_publish_file(syntagmax_dir)
+        # 2. Auto-discover publish.yaml/yml/toml in .syntagmax directory
+        resolved = resolve_publish_file(self._root_dir)
         if resolved:
-            return load_publish_config(resolved, self._base_dir)
+            return load_publish_config(resolved, self._root_dir)
 
         # 3. All-default rendering
-        return load_publish_config(None, self._base_dir)
+        return load_publish_config(None, self._root_dir)
 
     def base_dir(self):
         return self._base_dir

@@ -122,10 +122,8 @@ atype = "SRS"
     custom_yaml = tmp_path / 'custom.yaml'
     custom_yaml.write_text('start_level: 5', encoding='utf-8')
 
-    # Create default .syntagmax/publish.yaml
-    dot_syntagmax = tmp_path / '.syntagmax'
-    dot_syntagmax.mkdir()
-    default_yaml = dot_syntagmax / 'publish.yaml'
+    # Create default publish.yaml alongside config (auto-discovered in _root_dir)
+    default_yaml = tmp_path / 'publish.yaml'
     default_yaml.write_text('start_level: 2', encoding='utf-8')
 
     params = Params(verbose=False, render_tree=False, ai=False, output='console')
@@ -140,7 +138,7 @@ atype = "SRS"
     config_r1 = config.load_publish_config(records[0])
     assert config_r1.start_level == 5
 
-    # Resolve for r2 (should fall back to .syntagmax/publish.yaml -> start_level=2)
+    # Resolve for r2 (should fall back to publish.yaml in _root_dir -> start_level=2)
     config_r2 = config.load_publish_config(records[1])
     assert config_r2.start_level == 2
 
@@ -435,10 +433,8 @@ atype = "SYS"
 """
         cfg_path.write_text(cfg_content, encoding='utf-8')
 
-        # Create .syntagmax/publish.toml as fallback
-        dot_syntagmax = tmp_path / '.syntagmax'
-        dot_syntagmax.mkdir()
-        (dot_syntagmax / 'publish.toml').write_text('start_level = 4', encoding='utf-8')
+        # Create publish.toml alongside config (auto-discovered in _root_dir)
+        (tmp_path / 'publish.toml').write_text('start_level = 4', encoding='utf-8')
 
         params = Params(verbose=False, render_tree=False, ai=False, output='console')
         config = Config(params=params, config_filename=cfg_path)
@@ -498,8 +494,8 @@ atype = "SYS"
         with pytest.raises(FatalError):
             config.load_publish_config(records[0])
 
-    def test_config_resolution_root_toml_over_syntagmax_yaml(self, tmp_path):
-        """Root publish.toml takes priority over .syntagmax/publish.yaml."""
+    def test_config_resolution_auto_discovery_ignores_subdirs(self, tmp_path):
+        """Auto-discovery only checks _root_dir, not subdirectories."""
         from syntagmax.config import Config
         from syntagmax.params import Params
 
@@ -523,6 +519,7 @@ atype = "SYS"
         config = Config(params=params, config_filename=cfg_path)
         records = config.input_records()
 
+        # Only _root_dir (tmp_path) is checked; .syntagmax/ subdirectory is ignored
         config_r1 = config.load_publish_config(records[0])
         assert config_r1.start_level == 8
 
@@ -605,8 +602,8 @@ publish = "publish.yaml"
         with pytest.raises(FatalError, match="Publish config file not found"):
             config.load_publish_config(records[0])
 
-    def test_fallback_finds_publish_in_base_dir(self, tmp_path):
-        """Fallback chain looks in base_dir first when no per-record publish is set."""
+    def test_base_dir_publish_not_auto_discovered(self, tmp_path):
+        """publish.yaml in base_dir is NOT auto-discovered (base_dir is for input records, not config)."""
         from syntagmax.config import Config
         from syntagmax.params import Params
 
@@ -627,7 +624,7 @@ atype = "SRS"
 """
         cfg_path.write_text(cfg_content, encoding='utf-8')
 
-        # publish.yaml in project root (base_dir)
+        # publish.yaml in project root (base_dir) — should NOT be auto-discovered
         (project_root / 'publish.yaml').write_text('start_level: 7', encoding='utf-8')
         (project_root / 'docs').mkdir()
 
@@ -635,11 +632,12 @@ atype = "SRS"
         config = Config(params=params, config_filename=cfg_path)
         records = config.input_records()
 
+        # Should get defaults since base_dir is not checked for auto-discovery
         pub_config = config.load_publish_config(records[0])
-        assert pub_config.start_level == 7
+        assert pub_config.start_level == 1
 
     def test_fallback_finds_publish_in_syntagmax_subdir(self, tmp_path):
-        """Fallback chain looks in base_dir/.syntagmax second."""
+        """Auto-discovery finds publish.yaml in the config file's directory (.syntagmax/)."""
         from syntagmax.config import Config
         from syntagmax.params import Params
 
@@ -671,8 +669,8 @@ atype = "SRS"
         pub_config = config.load_publish_config(records[0])
         assert pub_config.start_level == 3
 
-    def test_base_dir_publish_takes_priority_over_syntagmax_dir(self, tmp_path):
-        """publish.yaml in base_dir takes priority over .syntagmax/publish.yaml."""
+    def test_syntagmax_dir_auto_discovery_ignores_base_dir(self, tmp_path):
+        """Auto-discovery only checks _root_dir (.syntagmax/), not base_dir."""
         from syntagmax.config import Config
         from syntagmax.params import Params
 
@@ -693,7 +691,7 @@ atype = "SRS"
 """
         cfg_path.write_text(cfg_content, encoding='utf-8')
 
-        # Both locations have publish files — root takes priority
+        # publish.yaml in both locations — only .syntagmax/ should be used
         (project_root / 'publish.yaml').write_text('start_level: 9', encoding='utf-8')
         (dot_syntagmax / 'publish.yaml').write_text('start_level: 2', encoding='utf-8')
         (project_root / 'docs').mkdir()
@@ -703,7 +701,7 @@ atype = "SRS"
         records = config.input_records()
 
         pub_config = config.load_publish_config(records[0])
-        assert pub_config.start_level == 9
+        assert pub_config.start_level == 2
 
     def test_load_publish_config_explicit_nonexistent_raises(self, tmp_path):
         """load_publish_config with explicit=True raises FatalError for missing file."""
@@ -714,3 +712,180 @@ atype = "SRS"
         """load_publish_config without explicit=True returns defaults for missing file."""
         config = load_publish_config(Path('nonexistent.yaml'), tmp_path)
         assert config.start_level == 1
+
+
+
+class TestGlobalPublishConfig:
+    """Tests for the top-level 'publish' field in config.toml."""
+
+    def test_global_publish_used_when_no_per_record(self, tmp_path):
+        """Global publish field is used when no per-record publish is set."""
+        from syntagmax.config import Config
+        from syntagmax.params import Params
+
+        project_root = tmp_path / 'project'
+        project_root.mkdir()
+        dot_syntagmax = project_root / '.syntagmax'
+        dot_syntagmax.mkdir()
+
+        cfg_path = dot_syntagmax / 'config.toml'
+        cfg_content = """
+base = ".."
+publish = "my-publish.yaml"
+
+[[input]]
+name = "r1"
+dir = "docs"
+driver = "obsidian"
+atype = "SRS"
+"""
+        cfg_path.write_text(cfg_content, encoding='utf-8')
+
+        # Resolved relative to config file dir (.syntagmax/)
+        (dot_syntagmax / 'my-publish.yaml').write_text('start_level: 6', encoding='utf-8')
+        (project_root / 'docs').mkdir()
+
+        params = Params(verbose=False, render_tree=False, ai=False, output='console')
+        config = Config(params=params, config_filename=cfg_path)
+        records = config.input_records()
+
+        pub_config = config.load_publish_config(records[0])
+        assert pub_config.start_level == 6
+
+    def test_per_record_overrides_global(self, tmp_path):
+        """Per-record publish takes priority over global publish."""
+        from syntagmax.config import Config
+        from syntagmax.params import Params
+
+        project_root = tmp_path / 'project'
+        project_root.mkdir()
+        dot_syntagmax = project_root / '.syntagmax'
+        dot_syntagmax.mkdir()
+
+        cfg_path = dot_syntagmax / 'config.toml'
+        cfg_content = """
+base = ".."
+publish = "global-publish.yaml"
+
+[[input]]
+name = "r1"
+dir = "docs"
+driver = "obsidian"
+atype = "SRS"
+publish = "record-publish.yaml"
+"""
+        cfg_path.write_text(cfg_content, encoding='utf-8')
+
+        # Global resolves relative to config dir (.syntagmax/)
+        (dot_syntagmax / 'global-publish.yaml').write_text('start_level: 2', encoding='utf-8')
+        # Per-record resolves relative to base_dir (project_root)
+        (project_root / 'record-publish.yaml').write_text('start_level: 8', encoding='utf-8')
+        (project_root / 'docs').mkdir()
+
+        params = Params(verbose=False, render_tree=False, ai=False, output='console')
+        config = Config(params=params, config_filename=cfg_path)
+        records = config.input_records()
+
+        pub_config = config.load_publish_config(records[0])
+        assert pub_config.start_level == 8
+
+    def test_global_publish_overrides_auto_discovery(self, tmp_path):
+        """Global publish takes priority over auto-discovered publish files."""
+        from syntagmax.config import Config
+        from syntagmax.params import Params
+
+        project_root = tmp_path / 'project'
+        project_root.mkdir()
+        dot_syntagmax = project_root / '.syntagmax'
+        dot_syntagmax.mkdir()
+
+        cfg_path = dot_syntagmax / 'config.toml'
+        cfg_content = """
+base = ".."
+publish = "custom-publish.yaml"
+
+[[input]]
+name = "r1"
+dir = "docs"
+driver = "obsidian"
+atype = "SRS"
+"""
+        cfg_path.write_text(cfg_content, encoding='utf-8')
+
+        # Auto-discoverable file in .syntagmax/ (would be found by convention)
+        (dot_syntagmax / 'publish.yaml').write_text('start_level: 3', encoding='utf-8')
+        # Explicit global publish file (also in .syntagmax/, different name)
+        (dot_syntagmax / 'custom-publish.yaml').write_text('start_level: 5', encoding='utf-8')
+        (project_root / 'docs').mkdir()
+
+        params = Params(verbose=False, render_tree=False, ai=False, output='console')
+        config = Config(params=params, config_filename=cfg_path)
+        records = config.input_records()
+
+        pub_config = config.load_publish_config(records[0])
+        assert pub_config.start_level == 5
+
+    def test_global_publish_missing_raises_error(self, tmp_path):
+        """Global publish field pointing to nonexistent file raises FatalError."""
+        from syntagmax.config import Config
+        from syntagmax.params import Params
+
+        project_root = tmp_path / 'project'
+        project_root.mkdir()
+        dot_syntagmax = project_root / '.syntagmax'
+        dot_syntagmax.mkdir()
+
+        cfg_path = dot_syntagmax / 'config.toml'
+        cfg_content = """
+base = ".."
+publish = "nonexistent.yaml"
+
+[[input]]
+name = "r1"
+dir = "docs"
+driver = "obsidian"
+atype = "SRS"
+"""
+        cfg_path.write_text(cfg_content, encoding='utf-8')
+        (project_root / 'docs').mkdir()
+        # Deliberately NOT creating nonexistent.yaml in .syntagmax/
+
+        params = Params(verbose=False, render_tree=False, ai=False, output='console')
+        config = Config(params=params, config_filename=cfg_path)
+        records = config.input_records()
+
+        with pytest.raises(FatalError, match="Publish config file not found"):
+            config.load_publish_config(records[0])
+
+    def test_global_publish_not_set_falls_through(self, tmp_path):
+        """When global publish is not set, auto-discovery in .syntagmax/ is used."""
+        from syntagmax.config import Config
+        from syntagmax.params import Params
+
+        project_root = tmp_path / 'project'
+        project_root.mkdir()
+        dot_syntagmax = project_root / '.syntagmax'
+        dot_syntagmax.mkdir()
+
+        cfg_path = dot_syntagmax / 'config.toml'
+        cfg_content = """
+base = ".."
+
+[[input]]
+name = "r1"
+dir = "docs"
+driver = "obsidian"
+atype = "SRS"
+"""
+        cfg_path.write_text(cfg_content, encoding='utf-8')
+
+        # Auto-discoverable in .syntagmax/ (config file's directory)
+        (dot_syntagmax / 'publish.yaml').write_text('start_level: 4', encoding='utf-8')
+        (project_root / 'docs').mkdir()
+
+        params = Params(verbose=False, render_tree=False, ai=False, output='console')
+        config = Config(params=params, config_filename=cfg_path)
+        records = config.input_records()
+
+        pub_config = config.load_publish_config(records[0])
+        assert pub_config.start_level == 4
