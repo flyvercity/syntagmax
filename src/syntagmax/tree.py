@@ -101,14 +101,14 @@ def populate_pids(config: Config, artifacts: ArtifactMap, errors: list[str]):
                 # But usually it's just one set of pids per attribute.
 
 
-def gather_ansestors(artifacts: ArtifactMap, ref: str, depth: int = 0) -> str | None:
+def gather_ancestors(artifacts: ArtifactMap, ref: str, depth: int = 0) -> str | None:
     if depth > MAX_TREE_DEPTH:
         return f'Circular reference detected with {artifacts[ref].aid}'
 
     for child in artifacts[ref].children:
-        artifacts[child].ansestors.add(ref)
-        artifacts[child].ansestors.update(artifacts[ref].ansestors)
-        err = gather_ansestors(artifacts, child, depth + 1)
+        artifacts[child].ancestors.add(ref)
+        artifacts[child].ancestors.update(artifacts[ref].ancestors)
+        err = gather_ancestors(artifacts, child, depth + 1)
 
         if err:
             return err
@@ -145,7 +145,7 @@ def build_tree(config: Config, artifacts: ArtifactMap, errors: list[str]):
     artifacts[root.aid] = root
 
     for ref in artifacts.keys():
-        err = gather_ansestors(artifacts, ref)
+        err = gather_ancestors(artifacts, ref)
 
         if err:
             errors.append(err)

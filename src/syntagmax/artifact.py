@@ -93,7 +93,7 @@ class Artifact:
         self.pids: list[str] = []
         self.parent_links: list[ParentLink] = []
         self.children: set[str] = set()
-        self.ansestors: set[str] = set()
+        self.ancestors: set[str] = set()
         self.fields: dict[str, str | list[str]] = {}
         self.revisions: set[Revision] = set()
 
