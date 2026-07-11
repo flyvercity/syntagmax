@@ -596,7 +596,7 @@ Contributors (human or agent) should:
 
 ### Pin-Based Context
 
-The project uses a Pin MCP to store persistent factoids (coding style, design decisions, intentional behaviours). Agents should fetch these before starting work to avoid violating documented constraints.
+The project uses [Pin MCP](https://github.com/scartill/pin-memory) to store persistent factoids (coding style, design decisions, intentional behaviours). Agents should fetch these before starting work to avoid violating documented constraints.
 
 ### Key Constraints to Respect
 
