@@ -8,27 +8,29 @@ Syntagmax needs to match this behavior so that extracted artifact content and te
 
 ## Requirements
 
-- New field `strict_line_breaks` on `ObsidianDriverConfig` in `config.py`
-- Accepted values (case-insensitive):
-  - `on` or `true` — strict mode (standard Markdown, no transformation)
-  - `off` or `false` — Obsidian-style relaxed breaks (apply `  \n` transformation)
-  - `auto` — read `strictLineBreaks` from Obsidian's `app.json`
-- Default: `on` (standard Markdown behavior, no transformation applied)
+- New field `strict_line_breaks` on `ObsidianDriverConfig` in `config.py`, accepting string or native TOML boolean values
+- Accepted values (case-insensitive for strings):
+  - `on` / `"true"` / native boolean `true` — strict mode (standard Markdown, no transformation)
+  - `off` / `"false"` / native boolean `false` — Obsidian-style relaxed breaks (apply `  \n` transformation)
+  - `"auto"` — read `strictLineBreaks` from Obsidian's `app.json`
+- Default: `"on"` (standard Markdown behavior, no transformation applied)
+- Note: Obsidian itself defaults to relaxed breaks (strict OFF). Syntagmax defaults to strict ON for standard Markdown compatibility. Users wanting vault-consistent behavior should use `"auto"` or `"off"`.
 - `auto` requires `integration = true` in `[drivers.obsidian]`; if not, raise a fatal configuration error
 - When strict mode is OFF, single newlines in TextBlock content and artifact `contents` field are converted to `  \n` (two trailing spaces + newline) at extraction time
 - When strict mode is ON (default), no transformation is applied
-- The transformation must be code-block-aware: lines inside fenced code blocks (` ``` `) are never modified
+- The transformation must be code-block-aware, CRLF-safe, and block-syntax-aware
 - New function in `obsidian_settings.py` to read `strictLineBreaks` from `app.json`
 
 ## Configuration
 
 ```toml
 [drivers.obsidian]
-strict_line_breaks = "off"      # on | true | off | false | auto
+strict_line_breaks = "off"      # "on" | "true" | "off" | "false" | "auto" | true | false
 integration = true              # required for "auto"
 ```
 
 - `strict_line_breaks` — controls line break interpretation (default: `"on"`)
+- Accepts quoted strings (`"on"`, `"off"`, `"true"`, `"false"`, `"auto"`) or native TOML booleans (`true`, `false`)
 - When `"auto"`, reads `strictLineBreaks` from `.obsidian/app.json` (requires `integration = true`)
 
 ## Obsidian Settings Source
@@ -67,11 +69,13 @@ Paragraph two
 
 ### Rules
 
-1. A `\n` that is NOT preceded by two spaces or a backslash, and NOT followed by another `\n`, is replaced with `  \n`.
-2. Paragraph breaks (`\n\n`) are left untouched.
-3. Already-existing hard breaks (`  \n` or `\\\n`) are not doubled.
-4. Lines inside fenced code blocks (` ``` `) are never modified.
-5. The transformation is applied at extraction time, affecting both TextBlock content and artifact `contents` fields.
+1. Lines inside fenced code blocks (` ``` `) are never modified.
+2. Lines consisting only of whitespace (empty lines or paragraph separators) are never modified.
+3. Lines preceding an empty or whitespace-only line are never modified (to preserve paragraph breaks).
+4. Markdown block-level elements are never modified: headings (starting with `#`), table rows (starting with `|`), list items (starting with `- `, `* `, `+ `, or numbered like `1. `), thematic breaks (`---`, `***`, `___`), and HTML blocks.
+5. Already-existing hard breaks (trailing `  ` or `\`) are not doubled.
+6. Any other line is appended with `  ` before its line ending (`\n` or `\r\n`), preserving the original line ending format.
+7. The transformation is applied at extraction time, affecting both TextBlock content and artifact `contents` fields.
 
 ## Error Handling
 
@@ -81,21 +85,21 @@ Paragraph two
 
 ## Proposed Solution
 
-1. Add `strict_line_breaks` field to `ObsidianDriverConfig` with default `"on"`, accepting `on`/`true`/`off`/`false`/`auto`
+1. Add `strict_line_breaks` field to `ObsidianDriverConfig` as `str | bool` with default `"on"`, accepting `on`/`true`/`off`/`false`/`auto` (strings) and native TOML booleans `true`/`false`. Normalizes value to lowercase string in validation.
 2. Add config-time validation: if `strict_line_breaks = "auto"` but `integration = false`, raise `FatalError`
 3. Add `read_obsidian_strict_line_breaks()` to `obsidian_settings.py`
 4. Resolve the effective boolean in `Config` via `resolve_strict_line_breaks() -> bool` (eagerly for `on`/`off`/`true`/`false`, lazily for `auto`; cached)
-5. Implement a code-block-aware line-break transformation function `apply_soft_line_breaks(text: str) -> str`
+5. Implement a code-block-aware, CRLF-safe, and block-syntax-aware line-break transformation function `apply_soft_line_breaks(text: str) -> str`
 6. Apply transformation in `ObsidianExtractor.extract_blocks_from_file()` to both TextBlock content and artifact contents
 
 ## Task Breakdown
 
 ### Task 1: Add `strict_line_breaks` field to `ObsidianDriverConfig`
 
-- **Objective:** Extend the config model to accept the new setting with proper validation.
-- **Implementation:** In `src/syntagmax/config.py`, add a `strict_line_breaks: str` field to `ObsidianDriverConfig` with default `"on"`. Add a `@field_validator` that normalizes and validates the value: accept `"on"`, `"true"`, `"off"`, `"false"`, `"auto"` (case-insensitive). Store normalized lowercase form.
-- **Test:** Unit test that valid values parse correctly, invalid values raise `ValidationError`, and default is `"on"`.
-- **Demo:** A config with `[drivers.obsidian]\nstrict_line_breaks = "auto"` loads without validation errors on the field itself.
+- **Objective:** Extend the config model to accept the new setting with proper validation, supporting both string and native TOML boolean values.
+- **Implementation:** In `src/syntagmax/config.py`, add a `strict_line_breaks: str | bool` field to `ObsidianDriverConfig` with default `"on"`. Add a `@field_validator` that: (1) converts native booleans (`True` → `"true"`, `False` → `"false"`), (2) normalizes strings to lowercase, (3) validates against the allowed set `{"on", "true", "off", "false", "auto"}`. Store normalized lowercase string form.
+- **Test:** Unit test that: valid string values parse correctly, native TOML booleans (`true`/`false`) parse correctly, invalid values raise `ValidationError`, and default is `"on"`.
+- **Demo:** Both `strict_line_breaks = "off"` and `strict_line_breaks = false` load correctly and normalize to `"false"`/`"off"` respectively.
 
 ### Task 2: Add cross-field validation for `auto` + `integration`
 
@@ -120,14 +124,18 @@ Paragraph two
 
 ### Task 5: Implement the line-break transformation function
 
-- **Objective:** Create a code-block-aware function that converts single `\n` to `  \n` (Markdown hard break).
+- **Objective:** Create a code-block-aware, CRLF-safe, and block-syntax-aware function that converts single `\n` to `  \n` (Markdown hard break).
 - **Implementation:** Add a utility function `apply_soft_line_breaks(text: str) -> str` in `src/syntagmax/extractors/markdown.py`. Logic:
-  1. Split content into fenced code block regions and non-fenced regions (same fence-tracking pattern used in `_filter_text_content`).
-  2. In non-fenced regions, replace single `\n` (that is NOT already preceded by two spaces or a backslash, and NOT followed by another `\n`) with `  \n`.
-  3. Leave `\n\n` (paragraph breaks) untouched.
-  4. Leave lines inside code blocks untouched.
-- **Test:** Tests: (a) single `\n` between text → `  \n`, (b) `\n\n` unchanged, (c) already-hard-break (`  \n`) unchanged, (d) content inside ` ``` ` blocks untouched, (e) empty string → empty string, (f) trailing newline at end of content handled gracefully.
-- **Demo:** `"line1\nline2\n\nparagraph2"` → `"line1  \nline2\n\nparagraph2"`.
+  1. Split content by lines, preserving original line endings (`\r\n` or `\n`).
+  2. Track fenced code block state (` ``` `); lines inside code blocks are passed through verbatim.
+  3. For each non-code-block line, skip transformation if:
+     - The line is empty or whitespace-only (paragraph separator).
+     - The next line is empty or whitespace-only (line precedes a paragraph break).
+     - The line is a Markdown block-level element: heading (`#`), table row (`|`), list item (`- `, `* `, `+ `, `1. `), thematic break (`---`, `***`, `___`), or HTML block (`<`).
+     - The line already ends with a hard break (trailing `  ` or `\` before the line ending).
+  4. For all other lines, append `  ` before the line ending, preserving the original ending format (`\r\n` or `\n`).
+- **Test:** Tests: (a) single `\n` between text → `  \n`, (b) `\n\n` unchanged, (c) already-hard-break (`  \n`) unchanged, (d) content inside ` ``` ` blocks untouched, (e) empty string → empty string, (f) CRLF line endings preserved correctly (`\r\n` → `  \r\n`), (g) table rows/headings/list items not modified, (h) line before empty line not modified, (i) whitespace-only lines not modified.
+- **Demo:** `"line1\nline2\n\nparagraph2"` → `"line1  \nline2\n\nparagraph2"`; `"line1\r\nline2\r\n"` → `"line1  \r\nline2  \r\n"`; `"| col |\ntext\n"` → `"| col |\ntext  \n"`.
 
 ### Task 6: Apply transformation in ObsidianExtractor at extraction time
 
