@@ -960,7 +960,13 @@ class MarkdownExtractor(Extractor):
                 content = self._filter_text_content(block.content, is_file_start, exclude)
                 is_file_start = False
                 if content and content.strip():
-                    filtered.append(TextBlock(content=content, marker=block.marker))
+                    filtered.append(TextBlock(
+                        content=content,
+                        marker=block.marker,
+                        id=block.id,
+                        explicit_id=block.explicit_id,
+                        source_offset=block.source_offset,
+                    ))
             else:
                 is_file_start = False
                 filtered.append(block)
