@@ -39,7 +39,7 @@ This command creates a `.syntagmax` directory with:
 Syntagmax uses a TOML configuration file (default `.syntagmax/config.toml`). Key sections include:
 
 - `[[input]]` — input source definitions (driver, artifact type, filters)
-- `publish` — global publish config file path (relative to base directory)
+- `publish` — global publish config file path (relative to config file directory)
 - `[metrics]` — metrics collection settings
 - `[impact]` — impact analysis settings
 - `[metamodel]` — metamodel file path

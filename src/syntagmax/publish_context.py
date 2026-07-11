@@ -150,7 +150,7 @@ def resolve_image_to_manifest(
 
             if folder is not None:
                 candidate = folder / target_filename
-                if candidate.exists():
+                if candidate.is_file():
                     if not _is_within_base_dir(candidate, base_dir):
                         lg.warning(f'Attachment folder image escapes project workspace: {candidate}')
                         return None

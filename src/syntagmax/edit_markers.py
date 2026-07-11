@@ -5,7 +5,6 @@
 # Description: Renumbering marker IDs on non-artifact marked text blocks.
 
 import logging as lg
-import re
 from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path

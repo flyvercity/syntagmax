@@ -352,7 +352,10 @@ def render_block(block: Block, pub_config: PublishConfig, context: RenderContext
                 break
 
         if not render_sections:
-            return image_embed + render_artifact_fallback(a, effective_level)
+            # When content_level is explicitly provided (from render_block_tree), use it.
+            # When None (direct callers), preserve historical behaviour: start_level + 2.
+            fallback_level = effective_level if content_level is not None else pub_config.start_level + 2
+            return image_embed + render_artifact_fallback(a, fallback_level)
 
         parts = []
         for sec in render_sections:
