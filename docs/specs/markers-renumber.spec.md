@@ -6,7 +6,7 @@ Non-artifact marked text blocks (e.g., `[COM]content[/COM]`, `[NOTE]content`) do
 
 ## Requirements
 
-1. New CLI command: `edit renumber-markers` under the flat `edit` group
+1. New CLI command group: `edit markers` with subcommand `renumber`
 2. Scans input records that have configured fragment markers
 3. For each marker type independently: finds the maximum existing numeric ID, then assigns `max + 1`, `max + 2`, etc. to blocks without explicit IDs. If no existing numeric IDs for a marker type, starts from 1.
 4. IDs are plain integers written as `[MARKER N]` in the opening tag (space between marker name and number)
@@ -59,7 +59,7 @@ The closing tag `[/MARKER]` is never modified.
 ## CLI Interface
 
 ```
-syntagmax edit renumber-markers [CONFIG_PATH] [OPTIONS]
+syntagmax edit markers renumber [CONFIG_PATH] [OPTIONS]
 ```
 
 ### Options
@@ -78,16 +78,16 @@ syntagmax edit renumber-markers [CONFIG_PATH] [OPTIONS]
 
 ```bash
 # Renumber all unmarked blocks across the project
-syntagmax edit renumber-markers --all
+syntagmax edit markers renumber --all
 
 # Dry-run to preview changes
-syntagmax edit renumber-markers --all --dry-run
+syntagmax edit markers renumber --all --dry-run
 
 # Only renumber COM markers in a specific section
-syntagmax edit renumber-markers --section system-requirements --marker COM
+syntagmax edit markers renumber --section system-requirements --marker COM
 
 # Using a custom config path
-syntagmax edit renumber-markers .syntagmax/config.toml --all
+syntagmax edit markers renumber .syntagmax/config.toml --all
 ```
 
 ## Algorithm
@@ -150,7 +150,7 @@ Summary: N blocks renumbered across M files
 ## Implementation Notes
 
 - New module: `src/syntagmax/edit_markers.py`
-- CLI wiring: add `renumber-markers` command under `edit` group in `cli.py`
+- CLI wiring: add `markers` subgroup under `edit` in `cli.py`, with `renumber` command
 - File modification strategy: during extraction, record character offsets of each opening marker tag. In the write phase, replace at exact offsets (bottom-to-top to avoid drift). Write with `newline=''` and ensure LF endings.
 - The extraction pass must be extended to return offset information for TextBlocks. This can be done by modifying `_split_text_block_by_markers()` to record match positions relative to the file content, or by running a secondary targeted pass on the raw file content using the same regex patterns but only at positions corresponding to extracted unmarked blocks.
 - The offset information ties a TextBlock to its exact opening tag position in the source file, enabling safe surgical replacement.
@@ -180,7 +180,7 @@ Create the module with `renumber_markers(config: Config, section: str | None, ma
 
 ### Task 3: CLI Wiring
 
-Add `renumber-markers` command under `edit` in `cli.py`:
+Add `markers` subgroup under `edit` in `cli.py`, with `renumber` command:
 - Accepts `[CONFIG_PATH]` positional argument (default `.syntagmax/config.toml`)
 - Accepts `--all` or `--section <name>` (one required)
 - Accepts `--marker <name>` (optional filter)
@@ -210,6 +210,7 @@ Verify:
 - Re-extraction confirms `explicit_id=True` for all previously unnumbered blocks
 - Written files use LF line endings
 
-### Task 5: README Documentation
+### Task 5: Documentation
 
-Add subsection under "Editing and Renumbering" describing `edit renumber-markers`, its options, and example usage.
+- Add subsection under "Editing and Renumbering" in `README.md` describing `edit markers renumber`, its options, and example usage.
+- Update relevant pages in `docs/reference/` (e.g., configuration, obsidian driver docs) to mention the new command and its relationship to fragment markers.
