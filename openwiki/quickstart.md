@@ -22,12 +22,13 @@ Syntagmax is a git-friendly requirements management system for extracting artifa
 - Configuration loading: `src/syntagmax/config.py`
 - Metamodel DSL: `src/syntagmax/metamodel.py`
 - Extraction layer: `src/syntagmax/extract.py` and `src/syntagmax/extractors/`
+- Edit markers: `src/syntagmax/edit_markers.py`
 - Tree / analysis logic: `src/syntagmax/tree.py`, `src/syntagmax/analyse.py`, `src/syntagmax/impact.py`, `src/syntagmax/metrics.py`, `src/syntagmax/ai.py`
 - Publish pipeline: `src/syntagmax/publish.py`, `src/syntagmax/publish_config.py`, `src/syntagmax/publish_context.py`, `src/syntagmax/pandoc.py`
 - Obsidian vault integration: `src/syntagmax/obsidian_settings.py`
 - Plugin system: `src/syntagmax/plugin.py`
 - MCP server: `src/syntagmax/mcp/server.py`
-- Representative tests: `tests/test_init.py`, `tests/test_publish.py`, `tests/test_plugin.py`, `tests/test_mcp.py`, `tests/test_metamodel.py`
+- Representative tests: `tests/test_init.py`, `tests/test_publish.py`, `tests/test_plugin.py`, `tests/test_mcp.py`, `tests/test_metamodel.py`, `tests/test_marker_renumber.py`, `tests/test_strict_line_breaks.py`
 
 ## Project layout
 - `src/syntagmax/` contains the runtime package.
@@ -64,5 +65,8 @@ Related evidence:
 
 ## Useful docs already in the repo
 - `README.md` remains the user-facing introduction.
+- `docs/internal.md` is a useful internal process overview.
+- `docs/specs/publish-config.spec.md`, `docs/specs/publishing-word.md`, and `docs/specs/plugin-system.md` are the highest-signal design docs for current publish behavior.
+E.md` remains the user-facing introduction.
 - `docs/internal.md` is a useful internal process overview.
 - `docs/specs/publish-config.spec.md`, `docs/specs/publishing-word.md`, and `docs/specs/plugin-system.md` are the highest-signal design docs for current publish behavior.
