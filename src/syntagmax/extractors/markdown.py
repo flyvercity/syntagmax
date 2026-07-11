@@ -502,47 +502,50 @@ class MarkdownExtractor(Extractor):
             return [text_block]
 
         escaped = '|'.join(re.escape(m) for m in markers)
+        base_offset = text_block.source_offset
 
         # Pipeline: start with the input block, apply passes to unmarked blocks
         blocks: list[Block] = [text_block]
 
         # Pass 1: Fully closed paired markers [MARKER]...[/MARKER]
-        blocks = self._apply_marker_pass(blocks, self._split_closed_paired, escaped)
+        blocks = self._apply_marker_pass(blocks, self._split_closed_paired, escaped, base_offset)
 
         # Pass 2: Unclosed paired markers [MARKER]...terminated by empty line/next marker/heading/EOF
-        blocks = self._apply_marker_pass(blocks, self._split_unclosed_paired, escaped)
+        blocks = self._apply_marker_pass(blocks, self._split_unclosed_paired, escaped, base_offset)
 
         # Pass 3: Line-prefix markers [MARKER] content
-        blocks = self._apply_marker_pass(blocks, self._split_line_prefix, escaped)
+        blocks = self._apply_marker_pass(blocks, self._split_line_prefix, escaped, base_offset)
 
         return blocks if blocks else [text_block]
 
-    def _apply_marker_pass(self, blocks: list[Block], splitter, escaped: str) -> list[Block]:
+    def _apply_marker_pass(self, blocks: list[Block], splitter, escaped: str, base_offset: int | None) -> list[Block]:
         """Apply a splitting pass to all unmarked TextBlocks in the list."""
         result: list[Block] = []
         for block in blocks:
             if isinstance(block, TextBlock) and block.marker is None:
-                result.extend(splitter(block.content, escaped))
+                result.extend(splitter(block.content, escaped, block.source_offset))
             else:
                 result.append(block)
         return result
 
-    def _split_closed_paired(self, content: str, escaped: str) -> list[Block]:
+    def _split_closed_paired(self, content: str, escaped: str, base_offset: int | None) -> list[Block]:
         """Split by fully closed paired markers [MARKER]...[/MARKER]."""
         paired_pattern = re.compile(rf'\[({escaped})(?:\s+([^\]]+))?\](.*?)\[/\1\]', re.IGNORECASE | re.DOTALL)
         matches = list(paired_pattern.finditer(content))
         if not matches:
-            return [TextBlock(content=content, marker=None)]
+            return [TextBlock(content=content, marker=None, source_offset=base_offset)]
 
         result: list[Block] = []
         pos = 0
         for match in matches:
             before = content[pos:match.start()]
             if before:
-                result.append(TextBlock(content=before, marker=None))
+                offset = (base_offset + pos) if base_offset is not None else None
+                result.append(TextBlock(content=before, marker=None, source_offset=offset))
             marker_name = match.group(1).upper()
             raw_id = match.group(2)
             marker_content = match.group(3)
+            tag_offset = (base_offset + match.start()) if base_offset is not None else None
 
             if raw_id is not None:
                 raw_id = raw_id.strip()
@@ -553,16 +556,17 @@ class MarkdownExtractor(Extractor):
                     ))
                     pos = match.end()
                     continue
-                result.append(TextBlock(content=marker_content, marker=marker_name, id=raw_id, explicit_id=True))
+                result.append(TextBlock(content=marker_content, marker=marker_name, id=raw_id, explicit_id=True, source_offset=tag_offset))
             else:
-                result.append(TextBlock(content=marker_content, marker=marker_name))
+                result.append(TextBlock(content=marker_content, marker=marker_name, source_offset=tag_offset))
             pos = match.end()
         after = content[pos:]
         if after:
-            result.append(TextBlock(content=after, marker=None))
-        return result if result else [TextBlock(content=content, marker=None)]
+            offset = (base_offset + pos) if base_offset is not None else None
+            result.append(TextBlock(content=after, marker=None, source_offset=offset))
+        return result if result else [TextBlock(content=content, marker=None, source_offset=base_offset)]
 
-    def _split_unclosed_paired(self, content: str, escaped: str) -> list[Block]:
+    def _split_unclosed_paired(self, content: str, escaped: str, base_offset: int | None) -> list[Block]:
         """Split by unclosed paired markers terminated by empty line, next marker, heading, or EOF."""
         # Lookahead terminates on: double newline, next fragment marker, heading, or end of string
         unclosed_pattern = re.compile(
@@ -571,17 +575,19 @@ class MarkdownExtractor(Extractor):
         )
         matches = list(unclosed_pattern.finditer(content))
         if not matches:
-            return [TextBlock(content=content, marker=None)]
+            return [TextBlock(content=content, marker=None, source_offset=base_offset)]
 
         result: list[Block] = []
         pos = 0
         for match in matches:
             before = content[pos:match.start()]
             if before:
-                result.append(TextBlock(content=before, marker=None))
+                offset = (base_offset + pos) if base_offset is not None else None
+                result.append(TextBlock(content=before, marker=None, source_offset=offset))
             marker_name = match.group(1).upper()
             raw_id = match.group(2)
             marker_content = match.group(3).strip()
+            tag_offset = (base_offset + match.start()) if base_offset is not None else None
 
             if raw_id is not None:
                 raw_id = raw_id.strip()
@@ -599,9 +605,9 @@ class MarkdownExtractor(Extractor):
                             end_pos += empty_match.end()
                     pos = end_pos
                     continue
-                result.append(TextBlock(content=marker_content, marker=marker_name, id=raw_id, explicit_id=True))
+                result.append(TextBlock(content=marker_content, marker=marker_name, id=raw_id, explicit_id=True, source_offset=tag_offset))
             else:
-                result.append(TextBlock(content=marker_content, marker=marker_name))
+                result.append(TextBlock(content=marker_content, marker=marker_name, source_offset=tag_offset))
 
             # Consume the terminating empty line if present
             end_pos = match.end()
@@ -614,10 +620,11 @@ class MarkdownExtractor(Extractor):
             pos = end_pos
         after = content[pos:]
         if after:
-            result.append(TextBlock(content=after, marker=None))
-        return result if result else [TextBlock(content=content, marker=None)]
+            offset = (base_offset + pos) if base_offset is not None else None
+            result.append(TextBlock(content=after, marker=None, source_offset=offset))
+        return result if result else [TextBlock(content=content, marker=None, source_offset=base_offset)]
 
-    def _split_line_prefix(self, content: str, escaped: str) -> list[Block]:
+    def _split_line_prefix(self, content: str, escaped: str, base_offset: int | None) -> list[Block]:
         """Split by line-prefix markers [MARKER] content at start of paragraph."""
         prefix_pattern = re.compile(
             rf'^\[({escaped})(?:\s+([^\]]+))?\]\s*(.*?)(?=\n\n|\Z)',
@@ -625,17 +632,19 @@ class MarkdownExtractor(Extractor):
         )
         matches = list(prefix_pattern.finditer(content))
         if not matches:
-            return [TextBlock(content=content, marker=None)]
+            return [TextBlock(content=content, marker=None, source_offset=base_offset)]
 
         result: list[Block] = []
         pos = 0
         for match in matches:
             before = content[pos:match.start()]
             if before:
-                result.append(TextBlock(content=before, marker=None))
+                offset = (base_offset + pos) if base_offset is not None else None
+                result.append(TextBlock(content=before, marker=None, source_offset=offset))
             marker_name = match.group(1).upper()
             raw_id = match.group(2)
             marker_content = match.group(3).strip()
+            tag_offset = (base_offset + match.start()) if base_offset is not None else None
 
             if raw_id is not None:
                 raw_id = raw_id.strip()
@@ -646,14 +655,15 @@ class MarkdownExtractor(Extractor):
                     ))
                     pos = match.end()
                     continue
-                result.append(TextBlock(content=marker_content, marker=marker_name, id=raw_id, explicit_id=True))
+                result.append(TextBlock(content=marker_content, marker=marker_name, id=raw_id, explicit_id=True, source_offset=tag_offset))
             else:
-                result.append(TextBlock(content=marker_content, marker=marker_name))
+                result.append(TextBlock(content=marker_content, marker=marker_name, source_offset=tag_offset))
             pos = match.end()
         after = content[pos:]
         if after:
-            result.append(TextBlock(content=after, marker=None))
-        return result if result else [TextBlock(content=content, marker=None)]
+            offset = (base_offset + pos) if base_offset is not None else None
+            result.append(TextBlock(content=after, marker=None, source_offset=offset))
+        return result if result else [TextBlock(content=content, marker=None, source_offset=base_offset)]
 
     def _extract_blocks_from_markdown(self, filepath: Path, markdown: str, location_builder: Callable[[int, int], Location] | None = None) -> list[Block]:
         from syntagmax.artifact import LineLocation
@@ -679,7 +689,7 @@ class MarkdownExtractor(Extractor):
             # Capture text before this segment
             text_before = markdown[pos:start_pos]
             if text_before:
-                blocks.append(TextBlock(content=text_before))
+                blocks.append(TextBlock(content=text_before, source_offset=pos))
 
             # Find segment end — priority: YAML block > [/MARKER] > fallback terminators.
             # Context-aware: fallback terminators (fragment markers, headings, empty lines, EOF)
@@ -917,7 +927,7 @@ class MarkdownExtractor(Extractor):
         # Capture trailing text
         text_after = markdown[pos:]
         if text_after:
-            blocks.append(TextBlock(content=text_after))
+            blocks.append(TextBlock(content=text_after, source_offset=pos))
 
         # Post-process: split TextBlocks by fragment markers
         if self._record.markers:

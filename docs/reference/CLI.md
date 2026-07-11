@@ -254,6 +254,7 @@ syntagmax edit COMMAND [OPTIONS]
 
 - [`renumber`](#edit-renumber) — Renumber artifact IDs
 - [`attrs`](#edit-attrs) — Bulk attribute manipulation
+- [`markers`](#edit-markers) — Fragment marker management
 
 ---
 
@@ -383,6 +384,72 @@ syntagmax edit attrs -s requirements -o add -t field -n PRIORITY -l HIGH
 
 # Use a custom config and preview
 syntagmax edit attrs -f custom-config.toml -s reqs -o replace -n status -l active --dry-run
+```
+
+---
+
+### `edit markers`
+
+Fragment marker management commands group.
+
+```
+syntagmax edit markers COMMAND [OPTIONS]
+```
+
+#### Subcommands
+
+- [`renumber`](#edit-markers-renumber) — Assign sequential numeric IDs to unmarked fragment blocks
+
+---
+
+### `edit markers renumber`
+
+Assign sequential numeric IDs to non-artifact marked text blocks (e.g., `[COM]`, `[NOTE]`) that don't already have explicit IDs. Numbering is independent per marker type and starts from `max_existing + 1` (or 1 if none exist).
+
+```
+syntagmax edit markers renumber [OPTIONS] [CONFIG_PATH]
+```
+
+#### Arguments
+
+| Argument | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `CONFIG_PATH` | No | `.syntagmax/config.toml` | Path to the project configuration file |
+
+#### Options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `--all` | Flag | off | Renumber across all input records. Either `--all` or `--section` is required. |
+| `--section NAME` | String | — | Restrict renumbering to a specific input record |
+| `--marker NAME` | String | — | Only renumber blocks of a specific marker type |
+| `--dry-run` | Flag | off | Show planned changes without modifying files |
+
+#### Behaviour
+
+- Only input records using the Obsidian driver with configured `markers` are processed.
+- Existing explicit IDs (numeric or non-numeric) are never modified.
+- New IDs are plain integers written into the opening tag: `[COM]` → `[COM 3]`.
+- The original casing of the marker name is preserved: `[com]` → `[com 3]`.
+- The closing tag `[/MARKER]` is never modified.
+- All three marker formats (closed paired, unclosed paired, line-prefix) are supported.
+- Files are written with Unix-style line endings (LF).
+- ID numbering is shared across files within the targeted records (global max per marker type).
+
+#### Examples
+
+```bash
+# Renumber all unmarked blocks across the project
+syntagmax edit markers renumber --all
+
+# Dry-run to preview changes
+syntagmax edit markers renumber --all --dry-run
+
+# Only renumber COM markers in a specific section
+syntagmax edit markers renumber --section system-requirements --marker COM
+
+# Using a custom config path
+syntagmax edit markers renumber --all .syntagmax/config.toml
 ```
 
 ---
@@ -550,7 +617,9 @@ syntagmax
 ├── trace
 ├── edit
 │   ├── renumber [CONFIG_PATH]
-│   └── attrs
+│   ├── attrs
+│   └── markers
+│       └── renumber [CONFIG_PATH]
 ├── mcp
 │   └── run CONFIG_PATH
 └── schema

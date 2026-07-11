@@ -284,6 +284,16 @@ Fragment markers can carry an optional identifier for cross-referencing:
 - Auto-generated IDs (for blocks without explicit IDs) are not checked for uniqueness
 - Invalid ID characters produce extraction errors
 
+#### Automatic ID Assignment
+
+Use the [`edit markers renumber`](CLI.md#edit-markers-renumber) command to assign permanent sequential numeric IDs to all unmarked blocks:
+
+```bash
+syntagmax edit markers renumber --all
+```
+
+This replaces `[COM]` with `[COM 1]`, `[COM 2]`, etc. Numbering is independent per marker type and starts from `max_existing + 1`. See the [CLI reference](CLI.md#edit-markers-renumber) for full options.
+
 ---
 
 ## ID and Type Resolution

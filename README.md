@@ -246,6 +246,39 @@ syntagmax edit attrs -s requirements -o replace -n doors_id --csv mapping.csv --
 - **CSV mapping**: `--csv` takes precedence; `--value` serves as fallback for unmatched IDs.
 - **Atomic writes**: All changes are computed in memory before any file is written.
 
+### Marker Renumbering
+
+The `edit markers renumber` command assigns sequential numeric IDs to non-artifact marked text blocks (e.g., `[COM]`, `[NOTE]`) that don't already have explicit IDs.
+
+```bash
+syntagmax edit markers renumber --all
+```
+
+#### Options:
+- `--all`: Renumber across all input records (required unless `--section` is used).
+- `--section <name>`: Restrict to a specific input record.
+- `--marker <name>`: Only renumber blocks of a specific marker type.
+- `--dry-run`: Show what changes would be made without modifying files.
+
+#### Behaviour:
+- Numbering is independent per marker type (COM numbering does not affect NOTE).
+- New IDs start from `max_existing + 1` (or 1 if no numeric IDs exist for that type).
+- Original marker casing is preserved: `[com]` → `[com 3]`.
+- All marker formats are supported: closed (`[COM]...[/COM]`), unclosed, and line-prefix.
+
+#### Examples:
+
+```bash
+# Renumber all unmarked blocks
+syntagmax edit markers renumber --all
+
+# Preview changes
+syntagmax edit markers renumber --all --dry-run
+
+# Only renumber COM markers in system-requirements
+syntagmax edit markers renumber --section system-requirements --marker COM
+```
+
 ## Publishing
 
 Syntagmax can combine project inputs into structured markdown documents, with optional DOCX/PDF export via Pandoc. Rendering is controlled by `publish.yaml` configuration.

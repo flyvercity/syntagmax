@@ -23,6 +23,7 @@ from syntagmax.mcp.server import run_mcp_server
 from syntagmax.init_cmd import init_project
 from syntagmax.edit import renumber_artifacts
 from syntagmax.edit_attrs import manipulate_attributes, load_csv_mapping
+from syntagmax.edit_markers import renumber_markers
 
 
 @click.group(help='RMS Entry Point')
@@ -518,6 +519,40 @@ def attrs(
         name=name,
         value=value,
         csv_mapping=csv_mapping,
+        dry_run=dry_run,
+    )
+
+
+@edit.group(help='Fragment marker management commands')
+def markers():
+    pass
+
+
+@markers.command('renumber', help='Assign sequential numeric IDs to unmarked fragment blocks')
+@click.pass_obj
+@click.argument(
+    'config_path',
+    type=click.Path(exists=True),
+    default='.syntagmax/config.toml',
+)
+@click.option('--all', 'renumber_all', is_flag=True, help='Renumber across all input records')
+@click.option('--section', default=None, help='Restrict to a specific input record')
+@click.option('--marker', default=None, help='Only renumber blocks of a specific marker type')
+@click.option('--dry-run', is_flag=True, help='Show planned changes without modifying files')
+def markers_renumber(obj: Params, config_path: Path, renumber_all: bool, section: str | None, marker: str | None, dry_run: bool):
+    if not renumber_all and not section:
+        u.pprint('[red]Either --all or --section must be specified.[/red]')
+        return
+
+    if renumber_all and section:
+        u.pprint('[red]Cannot specify both --all and --section.[/red]')
+        return
+
+    configurator = Config(obj, Path(config_path))
+    renumber_markers(
+        config=configurator,
+        section=section,
+        marker_filter=marker,
         dry_run=dry_run,
     )
 
