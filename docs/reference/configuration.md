@@ -78,8 +78,9 @@ Global defaults for driver-specific behaviour. Per-record settings are merged wi
 | Field | Required | Default | Description |
 |-------|----------|---------|-------------|
 | `exclude_elements` | No | `[]` | Markdown elements to exclude from text blocks at extraction time. Each entry is an object with `name` and optional `mode`. See [Element Exclusion](#element-exclusion) below. |
-| `integration` | No | `false` | Enable reading Obsidian vault settings (e.g. `attachmentFolderPath` from `.obsidian/app.json`). |
+| `integration` | No | `false` | Enable reading Obsidian vault settings (e.g. `attachmentFolderPath`, `strictLineBreaks` from `.obsidian/app.json`). |
 | `root` | No | `<base_dir>/.obsidian` | Override path to the `.obsidian` directory (relative to base dir). |
+| `strict_line_breaks` | No | `"on"` | Line break handling mode. See [Strict Line Breaks](#strict-line-breaks) below. |
 
 #### Obsidian Vault Integration
 
@@ -98,6 +99,49 @@ If `.obsidian/app.json` is missing, unreadable, or does not contain `attachmentF
 integration = true
 root = ".obsidian"  # optional, this is the default
 ```
+
+#### Strict Line Breaks
+
+Controls how single newlines in Obsidian Markdown source content are treated during extraction.
+
+Obsidian by default treats a single newline as a visible line break (`<br>`). This is non-standard Markdown behavior — the Markdown spec treats single newlines as whitespace. The `strict_line_breaks` setting allows Syntagmax to match whichever behavior the user's vault is configured for.
+
+**Accepted values:**
+
+| Value | Meaning |
+|-------|---------|
+| `"on"` / `"true"` / `true` | Strict mode (standard Markdown). Single newlines are whitespace. No transformation applied. **(default)** |
+| `"off"` / `"false"` / `false` | Obsidian relaxed mode. Single newlines become hard breaks (`  \n`) during extraction. |
+| `"auto"` | Read the `strictLineBreaks` setting from Obsidian's `.obsidian/app.json`. Requires `integration = true`. |
+
+When strict mode is OFF, the transformation converts single newlines to Markdown hard breaks (two trailing spaces + newline) at extraction time. This ensures that published output and Pandoc exports preserve the author's intended line breaks.
+
+**Transformation rules:**
+- Lines inside fenced code blocks are never modified.
+- Empty/whitespace-only lines (paragraph separators) are never modified.
+- Lines preceding a paragraph separator are never modified.
+- Markdown block-level elements (headings, tables, lists, thematic breaks, HTML blocks) are never modified.
+- Already-existing hard breaks (trailing `  ` or `\`) are not doubled.
+- CRLF line endings are preserved.
+
+**Note:** Syntagmax defaults to `"on"` (standard Markdown) while Obsidian itself defaults to relaxed breaks. Users wanting vault-consistent behavior should use `"auto"` (with `integration = true`) or `"off"`.
+
+**Example:**
+
+```toml
+[drivers.obsidian]
+strict_line_breaks = "off"
+```
+
+Or using `auto` mode with vault integration:
+
+```toml
+[drivers.obsidian]
+integration = true
+strict_line_breaks = "auto"
+```
+
+**Error:** Setting `strict_line_breaks = "auto"` without `integration = true` is a fatal configuration error.
 
 #### Element Exclusion
 

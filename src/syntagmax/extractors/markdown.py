@@ -24,6 +24,122 @@ def _validate_block_id(id_str: str) -> bool:
     return bool(_VALID_BLOCK_ID_RE.match(id_str))
 
 
+# Patterns for detecting Markdown block-level elements
+_HEADING_RE = re.compile(r'^\s*#{1,6}\s')
+_TABLE_ROW_RE = re.compile(r'^\s*\|')
+_UNORDERED_LIST_RE = re.compile(r'^\s*[-*+]\s')
+_ORDERED_LIST_RE = re.compile(r'^\s*\d+[.)]\s')
+_THEMATIC_BREAK_RE = re.compile(r'^\s*[-*_]{3,}\s*$')
+_HTML_BLOCK_RE = re.compile(r'^\s*<')
+_FENCE_START_RE = re.compile(r'^\s*```')
+
+
+def _is_block_element(line_content: str) -> bool:
+    """Check if a line (without line ending) is a Markdown block-level element."""
+    return bool(
+        _HEADING_RE.match(line_content)
+        or _TABLE_ROW_RE.match(line_content)
+        or _UNORDERED_LIST_RE.match(line_content)
+        or _ORDERED_LIST_RE.match(line_content)
+        or _THEMATIC_BREAK_RE.match(line_content)
+        or _HTML_BLOCK_RE.match(line_content)
+    )
+
+
+def apply_soft_line_breaks(text: str) -> str:
+    """Convert single newlines to Markdown hard breaks (trailing two spaces).
+
+    This implements Obsidian's relaxed line break behavior for standard Markdown
+    renderers. The transformation is:
+    - Code-block-aware: lines inside fenced code blocks are never modified.
+    - CRLF-safe: preserves original line endings.
+    - Block-syntax-aware: headings, tables, lists, thematic breaks, and HTML blocks
+      are never modified.
+    - Paragraph-safe: empty/whitespace-only lines and lines preceding them are not modified.
+
+    Args:
+        text: The input text content.
+
+    Returns:
+        Text with single newlines converted to hard breaks where appropriate.
+    """
+    if not text:
+        return text
+
+    # Split preserving line endings
+    lines = text.splitlines(keepends=True)
+    if not lines:
+        return text
+
+    result: list[str] = []
+    in_code_block = False
+
+    for i, line in enumerate(lines):
+        # Separate content from line ending
+        if line.endswith('\r\n'):
+            content = line[:-2]
+            ending = '\r\n'
+        elif line.endswith('\n'):
+            content = line[:-1]
+            ending = '\n'
+        elif line.endswith('\r'):
+            content = line[:-1]
+            ending = '\r'
+        else:
+            # Last line without trailing newline — no transformation needed
+            result.append(line)
+            continue
+
+        stripped = content.lstrip()
+
+        # Track fenced code block state
+        if _FENCE_START_RE.match(content):
+            in_code_block = not in_code_block
+            result.append(line)
+            continue
+
+        # Lines inside code blocks are never modified
+        if in_code_block:
+            result.append(line)
+            continue
+
+        # Empty or whitespace-only lines are never modified
+        if not stripped:
+            result.append(line)
+            continue
+
+        # Check if next line is empty or whitespace-only (preserve paragraph breaks)
+        if i + 1 < len(lines):
+            next_line = lines[i + 1]
+            # Strip line ending from next line for whitespace check
+            if next_line.endswith('\r\n'):
+                next_content = next_line[:-2]
+            elif next_line.endswith('\n'):
+                next_content = next_line[:-1]
+            elif next_line.endswith('\r'):
+                next_content = next_line[:-1]
+            else:
+                next_content = next_line
+            if not next_content.strip():
+                result.append(line)
+                continue
+
+        # Block-level elements are never modified
+        if _is_block_element(content):
+            result.append(line)
+            continue
+
+        # Already has a hard break (trailing two spaces or backslash)
+        if content.endswith('  ') or content.endswith('\\'):
+            result.append(line)
+            continue
+
+        # Apply transformation: append two spaces before line ending
+        result.append(content + '  ' + ending)
+
+    return ''.join(result)
+
+
 class MarkdownArtifact(Artifact):
     def __init__(self, config: Config):
         super().__init__(config)

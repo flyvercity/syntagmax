@@ -275,6 +275,25 @@ This reads `.obsidian/app.json` from your project root to find `attachmentFolder
 
 For full details, see the [configuration reference](docs/reference/configuration.md#obsidian-driver-driversobsidian).
 
+### Strict Line Breaks
+
+Obsidian treats single newlines as visible line breaks by default, which differs from standard Markdown. The `strict_line_breaks` setting controls whether Syntagmax transforms single newlines into Markdown hard breaks (`  \n`) during extraction.
+
+```toml
+[drivers.obsidian]
+strict_line_breaks = "off"      # Apply Obsidian-style relaxed line breaks
+```
+
+Set to `"auto"` to read the setting from your vault's `.obsidian/app.json` (requires `integration = true`):
+
+```toml
+[drivers.obsidian]
+integration = true
+strict_line_breaks = "auto"
+```
+
+For full details, see the [configuration reference](docs/reference/configuration.md#strict-line-breaks).
+
 ## Tracing Export
 
 Syntagmax can export artifact traceability relationships as CSV or TSV matrices. The export uses left outer join semantics — every lead artifact appears even if it has no links to the target type.

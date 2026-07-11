@@ -60,10 +60,27 @@ def _validate_no_duplicate_elements(v: list[ExcludeElementConfig]) -> list[Exclu
     return v
 
 
+VALID_STRICT_LINE_BREAKS_VALUES = frozenset({'on', 'true', 'off', 'false', 'auto'})
+
+
 class ObsidianDriverConfig(BaseModel):
     exclude_elements: list[ExcludeElementConfig] = Field(default_factory=list, description='Markdown elements to exclude at extraction time')
     integration: bool = Field(default=False, description='Enable reading Obsidian vault settings (e.g. attachmentFolderPath)')
     root: str | None = Field(default=None, description='Override path to the .obsidian directory (relative to base dir)')
+    strict_line_breaks: str | bool = Field(default='on', description='Line break mode: on/true (standard Markdown), off/false (Obsidian relaxed), auto (read from app.json)')
+
+    @field_validator('strict_line_breaks', mode='before')
+    @classmethod
+    def validate_strict_line_breaks(cls, v: str | bool) -> str:
+        if isinstance(v, bool):
+            return 'true' if v else 'false'
+        normalized = str(v).lower().strip()
+        if normalized not in VALID_STRICT_LINE_BREAKS_VALUES:
+            raise ValueError(
+                f'Invalid strict_line_breaks value "{v}". '
+                f'Valid values: {sorted(VALID_STRICT_LINE_BREAKS_VALUES)}'
+            )
+        return normalized
 
     @field_validator('exclude_elements')
     @classmethod
@@ -226,6 +243,13 @@ class Config:
         self.ai = config_model.ai
         self._obsidian_driver_config = config_model.drivers.obsidian
 
+        # Validate strict_line_breaks = "auto" requires integration = true
+        if (self._obsidian_driver_config.strict_line_breaks == 'auto'
+                and not self._obsidian_driver_config.integration):
+            errors.append(
+                'strict_line_breaks = "auto" requires integration = true in [drivers.obsidian]'
+            )
+
         if config_model.metamodel.filename:
             self.metamodel = load_metamodel(Path(root_dir, config_model.metamodel.filename), errors)
         else:
@@ -387,6 +411,42 @@ class Config:
     @property
     def obsidian_driver_config(self) -> 'ObsidianDriverConfig':
         return self._obsidian_driver_config
+
+    def resolve_strict_line_breaks(self) -> bool:
+        """Resolve the effective strict_line_breaks setting to a boolean.
+
+        Returns:
+            True if strict mode is ON (standard Markdown, no transformation).
+            False if strict mode is OFF (Obsidian relaxed breaks, apply transformation).
+        """
+        if hasattr(self, '_strict_line_breaks_resolved'):
+            return self._strict_line_breaks_resolved
+
+        value = self._obsidian_driver_config.strict_line_breaks
+        if value in ('on', 'true'):
+            result = True
+            lg.info(f'Strict line breaks: ON (configured as "{value}") — standard Markdown, no transformation')
+        elif value in ('off', 'false'):
+            result = False
+            lg.info(f'Strict line breaks: OFF (configured as "{value}") — Obsidian relaxed breaks, applying hard break transformation')
+        else:
+            # auto mode — read from app.json
+            from syntagmax.obsidian_settings import read_obsidian_strict_line_breaks
+            obsidian_value = read_obsidian_strict_line_breaks(
+                self._base_dir, self._obsidian_driver_config.root
+            )
+            if obsidian_value is None:
+                lg.warning('Could not read strictLineBreaks from Obsidian settings, defaulting to strict mode ON')
+                result = True
+                lg.info('Strict line breaks: ON (auto, fallback) — standard Markdown, no transformation')
+            else:
+                result = obsidian_value
+                mode_str = 'ON' if result else 'OFF'
+                effect = 'no transformation' if result else 'applying hard break transformation'
+                lg.info(f'Strict line breaks: {mode_str} (auto, read from app.json) — {effect}')
+
+        self._strict_line_breaks_resolved = result
+        return result
 
     def get_trace_mode(self, source_atype: str, target_atype: str) -> str:
         if not self.metamodel:
