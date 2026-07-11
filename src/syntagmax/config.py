@@ -425,10 +425,10 @@ class Config:
         value = self._obsidian_driver_config.strict_line_breaks
         if value in ('on', 'true'):
             result = True
-            lg.info(f'Strict line breaks: ON (configured as "{value}") — standard Markdown, no transformation')
+            lg.info(f'Strict line breaks: ON (configured as "{value}") - standard Markdown, no transformation')
         elif value in ('off', 'false'):
             result = False
-            lg.info(f'Strict line breaks: OFF (configured as "{value}") — Obsidian relaxed breaks, applying hard break transformation')
+            lg.info(f'Strict line breaks: OFF (configured as "{value}") - Obsidian relaxed breaks, applying hard break transformation')
         else:
             # auto mode — read from app.json
             from syntagmax.obsidian_settings import read_obsidian_strict_line_breaks
@@ -438,12 +438,12 @@ class Config:
             if obsidian_value is None:
                 lg.warning('Could not read strictLineBreaks from Obsidian settings, defaulting to strict mode ON')
                 result = True
-                lg.info('Strict line breaks: ON (auto, fallback) — standard Markdown, no transformation')
+                lg.info('Strict line breaks: ON (auto, fallback) - standard Markdown, no transformation')
             else:
                 result = obsidian_value
                 mode_str = 'ON' if result else 'OFF'
                 effect = 'no transformation' if result else 'applying hard break transformation'
-                lg.info(f'Strict line breaks: {mode_str} (auto, read from app.json) — {effect}')
+                lg.info(f'Strict line breaks: {mode_str} (auto, read from app.json) - {effect}')
 
         self._strict_line_breaks_resolved = result
         return result
