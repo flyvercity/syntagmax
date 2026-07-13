@@ -5,13 +5,15 @@
 # Description: Publish command - builds a block tree and renders to markdown.
 
 import hashlib
+import logging as lg
 import re
 from typing import Optional
 from syntagmax.blocks import BlockTree, InputBlock, FileRecord, TextBlock, ArtifactBlock, ErrorBlock, Block
 from syntagmax.config import Config, InputRecord
 from syntagmax.extract import EXTRACTORS
 from syntagmax.artifact import Artifact, FileLocation
-from syntagmax.publish_config import PublishConfig, TableSection, TextSection, MarkerRenderSection
+from syntagmax.metamodel import is_attribute_mandatory
+from syntagmax.publish_config import PublishConfig, TableSection, TextSection, MarkerRenderSection, AttributePresence
 from syntagmax.publish_context import (
     RenderContext, ImageManifest, IMAGE_EXTENSIONS,
     resolve_image_to_manifest, _is_remote_url,
@@ -237,6 +239,34 @@ def get_artifact_field_value(artifact: Artifact, field_name: str) -> Optional[st
     return None
 
 
+def should_render_attribute(
+    attr_name: str,
+    val: Optional[str],
+    presence_mode: AttributePresence,
+    atype: str,
+    artifact_fields: dict,
+    metamodel: dict | None,
+) -> bool:
+    """Determine whether an attribute should be rendered based on presence mode.
+
+    Args:
+        attr_name: The attribute name.
+        val: The resolved value (from get_artifact_field_value), or None.
+        presence_mode: The effective presence mode ('all', 'mandatory', 'values-only').
+        atype: The artifact type name.
+        artifact_fields: The artifact's field dict.
+        metamodel: The parsed metamodel dict, or None.
+    """
+    if val:
+        return True
+    if presence_mode == 'values-only':
+        return False
+    if presence_mode == 'all':
+        return True
+    # presence_mode == 'mandatory'
+    return is_attribute_mandatory(attr_name, atype, artifact_fields, metamodel)
+
+
 def render_artifact_fallback(artifact: Artifact, content_level: int, table_spacer: int = 1, context: RenderContext | None = None) -> str:
     """Render an artifact using fallback formatting (no custom render config).
 
@@ -366,13 +396,32 @@ def render_block(block: Block, pub_config: PublishConfig, context: RenderContext
         parts = []
         for sec in render_sections:
             if isinstance(sec, TableSection):
+                # Resolve effective presence mode
+                effective_presence: AttributePresence = (
+                    sec.attribute_presence if sec.attribute_presence is not None
+                    else pub_config.attribute_presence
+                )
+
+                # Resolve metamodel
+                metamodel = None
+                if context:
+                    metamodel = context.config.metamodel
+
+                # Degrade 'mandatory' to 'values-only' if metamodel unavailable
+                if effective_presence == 'mandatory' and not metamodel:
+                    lg.warning(
+                        "attribute_presence is 'mandatory' but metamodel is unavailable; "
+                        "degrading to 'values-only'"
+                    )
+                    effective_presence = 'values-only'
+
                 rows = []
                 for attr_dict in sec.attributes:
                     attr_name = list(attr_dict.keys())[0]
                     attr_render = attr_dict[attr_name]
                     val = get_artifact_field_value(a, attr_name)
-                    if val:
-                        rows.append((attr_render.alias, val))
+                    if should_render_attribute(attr_name, val, effective_presence, a.atype, a.fields, metamodel):
+                        rows.append((attr_render.alias, val or ''))
                 if rows:
                     effective_spacer = sec.spacer if sec.spacer is not None else pub_config.table_spacer
                     parts.append('&nbsp;\n\n' * effective_spacer)

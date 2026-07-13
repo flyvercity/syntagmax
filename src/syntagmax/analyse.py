@@ -9,6 +9,7 @@ import re
 
 from syntagmax.artifact import ArtifactMap, Artifact
 from syntagmax.config import Config
+from syntagmax.metamodel import evaluate_condition
 
 _NUM_PATTERN = re.compile(r'\{num(?::(\d+))?\}')
 
@@ -48,32 +49,9 @@ class ArtifactValidator:
         if not condition:
             return True
 
-        anchor_name = condition['anchor']
-        negated = condition['negated']
-
-        value = artifact.fields.get(anchor_name)
-        if value is None:
-            # if the attribute is absent, the condition evaluates to False
-            res = False
-        else:
-            # the attribute shall be boolean
-            truthy = {'true', 'yes', '1'}
-
-            # Use custom truthy values if defined in the metamodel
-            if artifact.atype in self._artifacts:
-                anchor_rules = self._artifacts[artifact.atype]['attributes'].get(anchor_name, [])
-                if isinstance(anchor_rules, dict):
-                    anchor_rules = [anchor_rules]
-
-                for rule in anchor_rules:
-                    type_info = rule.get('type_info', {})
-                    if type_info.get('type') == 'boolean' and 'custom_values' in type_info:
-                        truthy = {v.lower() for v in type_info['custom_values']['true']}
-                        break
-
-            res = str(value).lower() in truthy
-
-        return not res if negated else res
+        # Build a metamodel dict in the format expected by the shared helper
+        metamodel = {'artifacts': self._artifacts, 'traces': self._traces}
+        return evaluate_condition(artifact.fields, artifact.atype, condition, metamodel)
 
     def _validate_id_schema(self, artifact: Artifact):
         artifact_rules = self._artifacts[artifact.atype]['attributes']

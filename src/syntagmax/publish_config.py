@@ -11,6 +11,9 @@ import yaml
 from pydantic import BaseModel, Field, field_validator, ConfigDict
 
 
+AttributePresence = Literal['all', 'mandatory', 'values-only']
+
+
 class DocxTemplate(BaseModel):
     model_config = ConfigDict(extra='forbid', populate_by_name=True)
     default_template: str | None = Field(default=None, alias='default-template')
@@ -22,9 +25,10 @@ class AttributeRender(BaseModel):
 
 
 class TableSection(BaseModel):
-    model_config = ConfigDict(extra='forbid')
+    model_config = ConfigDict(extra='forbid', populate_by_name=True)
     type: Literal['table']
     spacer: int | None = Field(default=None, ge=0, le=20)
+    attribute_presence: AttributePresence | None = Field(default=None, alias='attribute-presence')
     attributes: list[dict[str, AttributeRender]]
 
     @field_validator('attributes')
@@ -69,6 +73,7 @@ class PublishConfig(BaseModel):
     include_plain_text: bool = Field(default=True)
     contents_marker: str = Field(default='_contents_', description='Filename marker for headingless content files in publishing')
     table_spacer: int = Field(default=1, alias='table-spacer', ge=0, le=20)
+    attribute_presence: AttributePresence = Field(default='values-only', alias='attribute-presence')
     render: dict[str, list[RenderSection]] = Field(default_factory=dict)
     docx_template: DocxTemplate | None = Field(default=None, alias='docx-template')
 
