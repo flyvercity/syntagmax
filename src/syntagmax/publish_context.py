@@ -95,9 +95,8 @@ class RenderContext:
             obsidian_cfg = self.config.obsidian_driver_config
             if obsidian_cfg.integration:
                 from syntagmax.obsidian_settings import read_obsidian_attachment_path
-                self._obsidian_attachment_path = read_obsidian_attachment_path(
-                    self.config.base_dir(), obsidian_cfg.root
-                )
+
+                self._obsidian_attachment_path = read_obsidian_attachment_path(self.config.base_dir(), obsidian_cfg.root)
         return self._obsidian_attachment_path
 
 

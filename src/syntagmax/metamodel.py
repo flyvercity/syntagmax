@@ -280,8 +280,10 @@ def validate_metamodel(metamodel: dict, errors: list[str]):
                         errors.append(f"Trace from '{source_atype}' has invalid anchor '{anchor_name}': must be a non-conditional boolean attribute")
 
 
-
 # --- Shared condition evaluation helpers ---
+
+
+_TRUTHY_CACHE = {}
 
 
 def evaluate_condition(artifact_fields: dict, atype: str, condition: dict | None, metamodel: dict) -> bool:
@@ -308,21 +310,25 @@ def evaluate_condition(artifact_fields: dict, atype: str, condition: dict | None
         res = False
     else:
         # Default truthy values for boolean evaluation
-        truthy = {'true', 'yes', '1'}
+        cache_key = (id(metamodel), atype, anchor_name)
+        truthy = _TRUTHY_CACHE.get(cache_key)
+        if truthy is None:
+            truthy = {'true', 'yes', '1'}
 
-        # Use custom truthy values if defined in the metamodel
-        artifacts = metamodel.get('artifacts', {})
-        atype_def = artifacts.get(atype)
-        if atype_def:
-            anchor_rules = atype_def.get('attributes', {}).get(anchor_name, [])
-            if isinstance(anchor_rules, dict):
-                anchor_rules = [anchor_rules]
+            # Use custom truthy values if defined in the metamodel
+            artifacts = metamodel.get('artifacts', {})
+            atype_def = artifacts.get(atype)
+            if atype_def:
+                anchor_rules = atype_def.get('attributes', {}).get(anchor_name, [])
+                if isinstance(anchor_rules, dict):
+                    anchor_rules = [anchor_rules]
 
-            for rule in anchor_rules:
-                type_info = rule.get('type_info', {})
-                if type_info.get('type') == 'boolean' and 'custom_values' in type_info:
-                    truthy = {v.lower() for v in type_info['custom_values']['true']}
-                    break
+                for rule in anchor_rules:
+                    type_info = rule.get('type_info', {})
+                    if type_info.get('type') == 'boolean' and 'custom_values' in type_info:
+                        truthy = {v.lower() for v in type_info['custom_values']['true']}
+                        break
+            _TRUTHY_CACHE[cache_key] = truthy
 
         if isinstance(value, list):
             res = len(value) > 0

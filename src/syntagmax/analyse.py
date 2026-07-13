@@ -30,6 +30,30 @@ class ArtifactValidator:
         self._id_schema_cache = {}
         self._suppress_tracing = suppress_tracing
 
+        # Precompute & cache rule normalization to avoid repeated iterations and setup
+        self._precomputed_rules = {}
+        self._precomputed_id_rules = {}
+        for atype, atype_def in self._artifacts.items():
+            attrs = atype_def.get('attributes', {})
+            norm_attrs = {}
+            for attr_name, rules in attrs.items():
+                if isinstance(rules, dict):
+                    rules_list = [rules]
+                else:
+                    rules_list = list(rules)
+
+                # Check if this attribute is unconditionally allowed, etc.
+                norm_attrs[attr_name] = rules_list
+            self._precomputed_rules[atype] = norm_attrs
+
+            # Also cache ID rules
+            id_rules = attrs.get('id', [])
+            if isinstance(id_rules, dict):
+                id_rules = [id_rules]
+            else:
+                id_rules = list(id_rules)
+            self._precomputed_id_rules[atype] = id_rules
+
     def validate(self, artifact: Artifact):
         if self._artifacts is None or not self._artifacts:
             return self.errors
@@ -54,13 +78,9 @@ class ArtifactValidator:
         return evaluate_condition(artifact.fields, artifact.atype, condition, metamodel)
 
     def _validate_id_schema(self, artifact: Artifact):
-        artifact_rules = self._artifacts[artifact.atype]['attributes']
-        id_rules = artifact_rules.get('id', [])
+        id_rules = self._precomputed_id_rules.get(artifact.atype)
         if not id_rules:
             return
-
-        if isinstance(id_rules, dict):
-            id_rules = [id_rules]
 
         # Usually only one id rule, but let's be safe
         for rule in id_rules:
@@ -100,15 +120,22 @@ class ArtifactValidator:
                 self.errors.append(f"Artifact ID '{artifact.aid}' does not match schema '{schema}' for type '{artifact.atype}' ({artifact})")
 
     def _validate_attributes(self, artifact: Artifact):
-        artifact_rules = self._artifacts[artifact.atype]['attributes']
+        norm_rules = self._precomputed_rules.get(artifact.atype)
+        if not norm_rules:
+            # Fallback if atype not initialized
+            norm_rules = {}
+
         actual_names = set(artifact.fields.keys())
 
         # 1. Identify active rules for each attribute
         active_rules_by_name = {}
-        for attr_name, rules in artifact_rules.items():
-            if isinstance(rules, dict):
-                rules = [rules]
-            active = [r for r in rules if self._evaluate_condition(artifact, r.get('condition'))]
+        for attr_name, rules in norm_rules.items():
+            # Optimization: if rule is unconditional, it is always active
+            active = []
+            for r in rules:
+                cond = r.get('condition')
+                if not cond or self._evaluate_condition(artifact, cond):
+                    active.append(r)
             if active:
                 active_rules_by_name[attr_name] = active
 

@@ -18,6 +18,7 @@ from syntagmax.utils import pprint
 @dataclass
 class MarkerReplacement:
     """A single replacement to apply to a source file."""
+
     offset: int
     old_tag_len: int
     new_tag: str
@@ -79,6 +80,7 @@ def _compute_tag_replacement(content: str, offset: int, marker_name_upper: str, 
 @dataclass
 class _UnmarkedBlock:
     """An unmarked block that needs an ID assigned."""
+
     filepath: Path
     block: TextBlock
 
@@ -160,9 +162,7 @@ def renumber_markers(
                     if block.source_offset is not None:
                         unmarked_blocks.append(_UnmarkedBlock(filepath=filepath, block=block))
                     else:
-                        lg.warning(
-                            f'Marked block [{block.marker}] in {filepath} has no source offset, skipping'
-                        )
+                        lg.warning(f'Marked block [{block.marker}] in {filepath} has no source offset, skipping')
 
     if not unmarked_blocks:
         pprint('[green]No unmarked blocks found — nothing to renumber.[/green]')
@@ -198,10 +198,7 @@ def renumber_markers(
         for ub, new_id in assignments:
             r = _compute_tag_replacement(content, ub.block.source_offset, ub.block.marker, new_id)
             if r is None:
-                lg.warning(
-                    f'Could not find opening tag for [{ub.block.marker}] '
-                    f'at offset {ub.block.source_offset} in {filepath}, skipping'
-                )
+                lg.warning(f'Could not find opening tag for [{ub.block.marker}] at offset {ub.block.source_offset} in {filepath}, skipping')
                 continue
             replacements.append(r)
 
@@ -218,7 +215,7 @@ def renumber_markers(
                 pprint(f'Assigned [{r.marker} {r.new_id}] in {rel_path}')
 
             # Apply replacement (bottom-to-top so offsets stay valid)
-            content = content[:r.offset] + r.new_tag + content[r.offset + r.old_tag_len:]
+            content = content[: r.offset] + r.new_tag + content[r.offset + r.old_tag_len :]
             assigned_count += 1
 
         if not dry_run:

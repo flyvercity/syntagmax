@@ -256,7 +256,7 @@ class MarkdownExtractor(Extractor):
             if yaml_start != -1:
                 yaml_end = segment.find('```', yaml_start + 7)
                 if yaml_end != -1:
-                    raw_yaml = segment[yaml_start + 7: yaml_end]
+                    raw_yaml = segment[yaml_start + 7 : yaml_end]
                     # Strip leading newline
                     if raw_yaml.startswith('\n'):
                         raw_yaml = raw_yaml[1:]
@@ -269,28 +269,19 @@ class MarkdownExtractor(Extractor):
                     try:
                         modified_yaml = roundtrip_modify_attrs(raw_yaml, {'id': new_id}, 'replace')
                         new_yaml_block = f'```yaml{newline}{modified_yaml.rstrip()}{newline}```'
-                        segment = segment[:yaml_start] + new_yaml_block + segment[yaml_end + 3:]
+                        segment = segment[:yaml_start] + new_yaml_block + segment[yaml_end + 3 :]
                     except YAMLParsingError as e:
-                        lg.warning(
-                            f'Could not round-trip YAML for {artifact.aid}, '
-                            f'falling back to regex: {e}'
-                        )
+                        lg.warning(f'Could not round-trip YAML for {artifact.aid}, falling back to regex: {e}')
                         # Fallback: regex-based id replacement in YAML
-                        yaml_block = segment[yaml_start: yaml_end + 3]
-                        yaml_block = re.sub(
-                            r'^(\s*id:\s*).*$', rf'\g<1>{new_id}',
-                            yaml_block, flags=re.MULTILINE
-                        )
-                        segment = segment[:yaml_start] + yaml_block + segment[yaml_end + 3:]
+                        yaml_block = segment[yaml_start : yaml_end + 3]
+                        yaml_block = re.sub(r'^(\s*id:\s*).*$', rf'\g<1>{new_id}', yaml_block, flags=re.MULTILINE)
+                        segment = segment[:yaml_start] + yaml_block + segment[yaml_end + 3 :]
             else:
                 # No YAML block - fallback to regex for YAML if somehow there's inline yaml
                 pass
 
             # Also update [id] format if it exists in the markdown
-            segment = re.sub(
-                r'\[id\]\s*[a-zA-Z0-9_{}:-]*',
-                f'[id] {new_id}', segment, flags=re.IGNORECASE
-            )
+            segment = re.sub(r'\[id\]\s*[a-zA-Z0-9_{}:-]*', f'[id] {new_id}', segment, flags=re.IGNORECASE)
 
             # Replace the segment in the lines list
             lines[start_line - 1 : end_line] = [segment]
@@ -321,11 +312,12 @@ class MarkdownExtractor(Extractor):
         from syntagmax.artifact import LineLocation
 
         filepath = self._config.base_dir() / loc_file
-        with open(filepath, 'r', encoding='utf-8', newline='') as f:
-            text = f.read()
+        with open(filepath, 'r', encoding='utf-8', newline='') as f:
+            text = f.read()
 
-        # Detect line endings (newline='' preserves original newlines)
-        newline = '\r\n' if '\r\n' in text else '\n'
+        # Detect line endings (newline='' preserves original newlines)
+
+        newline = '\r\n' if '\r\n' in text else '\n'
 
         lines = text.splitlines(keepends=True)
         marker = self._record.marker
@@ -338,7 +330,7 @@ class MarkdownExtractor(Extractor):
                 continue
 
             start_line, end_line = artifact.location.loc_lines
-            segment_lines = lines[start_line - 1: end_line]
+            segment_lines = lines[start_line - 1 : end_line]
             segment = ''.join(segment_lines)
 
             if target_type == 'attr':
@@ -346,7 +338,7 @@ class MarkdownExtractor(Extractor):
             elif target_type == 'field':
                 segment = self._update_inline_fields(segment, attrs_delta, operation, marker, newline)
 
-            lines[start_line - 1: end_line] = [segment]
+            lines[start_line - 1 : end_line] = [segment]
 
         return ''.join(lines)
 
@@ -374,7 +366,7 @@ class MarkdownExtractor(Extractor):
 
         if yaml_start != -1 and yaml_end != -1:
             # Extract raw YAML (after ```yaml newline, before closing ```)
-            raw_yaml = segment[yaml_start + 7: yaml_end]
+            raw_yaml = segment[yaml_start + 7 : yaml_end]
             # Strip leading newline that follows ```yaml
             if raw_yaml.startswith('\n'):
                 raw_yaml = raw_yaml[1:]
@@ -385,14 +377,11 @@ class MarkdownExtractor(Extractor):
                 modified_yaml = roundtrip_modify_attrs(raw_yaml, attrs_delta, operation)
             except YAMLParsingError as e:
                 aid = artifact.aid if hasattr(artifact, 'aid') else 'unknown'
-                lg.error(
-                    f'Error parsing YAML block in artifact {aid}: {e}'
-                    + (f' ({e.details})' if e.details else '')
-                )
+                lg.error(f'Error parsing YAML block in artifact {aid}: {e}' + (f' ({e.details})' if e.details else ''))
                 return segment
 
             new_yaml_block = f'```yaml{newline}{modified_yaml.rstrip()}{newline}```'
-            segment = segment[:yaml_start] + new_yaml_block + segment[yaml_end + 3:]
+            segment = segment[:yaml_start] + new_yaml_block + segment[yaml_end + 3 :]
         else:
             # No YAML block exists - create one from scratch using ruamel
             try:
@@ -425,9 +414,7 @@ class MarkdownExtractor(Extractor):
         for attr_name, attr_value in attrs_delta.items():
             # Multiline-safe regex: matches [name] line and any continuation lines
             escaped_name = re.escape(attr_name)
-            pattern = re.compile(
-                rf'(?mi)^\[{escaped_name}\][^\r\n]*(?:\r?\n(?!(?:\[|```yaml)).*)*'
-            )
+            pattern = re.compile(rf'(?mi)^\[{escaped_name}\][^\r\n]*(?:\r?\n(?!(?:\[|```yaml)).*)*')
 
             match = pattern.search(segment)
 
@@ -442,23 +429,21 @@ class MarkdownExtractor(Extractor):
                     # Also consume trailing newline
                     if end < len(segment) and segment[end] == '\n':
                         end += 1
-                    elif end + 1 < len(segment) and segment[end: end + 2] == '\r\n':
+                    elif end + 1 < len(segment) and segment[end : end + 2] == '\r\n':
                         end += 2
                     segment = segment[:start] + segment[end:]
             elif operation == 'replace':
                 if match:
                     # In-place replacement: keep position, replace value
                     new_field = f'[{attr_name}] {attr_value or ""}'
-                    segment = segment[:match.start()] + new_field + segment[match.end():]
+                    segment = segment[: match.start()] + new_field + segment[match.end() :]
                 else:
                     # Field not found - append
                     segment = self._insert_inline_field(segment, attr_name, attr_value or '', marker, newline)
 
         return segment
 
-    def _insert_inline_field(
-        self, segment: str, name: str, value: str, marker: str, newline: str
-    ) -> str:
+    def _insert_inline_field(self, segment: str, name: str, value: str, marker: str, newline: str) -> str:
         """Insert an inline field before [/MARKER] or before the YAML block."""
         new_field_line = f'[{name}] {value}'
 
@@ -538,7 +523,7 @@ class MarkdownExtractor(Extractor):
         result: list[Block] = []
         pos = 0
         for match in matches:
-            before = content[pos:match.start()]
+            before = content[pos : match.start()]
             if before:
                 offset = (base_offset + pos) if base_offset is not None else None
                 result.append(TextBlock(content=before, marker=None, source_offset=offset))
@@ -550,10 +535,12 @@ class MarkdownExtractor(Extractor):
             if raw_id is not None:
                 raw_id = raw_id.strip()
                 if not _validate_block_id(raw_id):
-                    result.append(ErrorBlock(
-                        message=f'Invalid block ID "{raw_id}" for marker [{marker_name}] — IDs must match [a-zA-Z0-9_.-]',
-                        raw_text=match.group(0),
-                    ))
+                    result.append(
+                        ErrorBlock(
+                            message=f'Invalid block ID "{raw_id}" for marker [{marker_name}] — IDs must match [a-zA-Z0-9_.-]',
+                            raw_text=match.group(0),
+                        )
+                    )
                     pos = match.end()
                     continue
                 result.append(TextBlock(content=marker_content, marker=marker_name, id=raw_id, explicit_id=True, source_offset=tag_offset))
@@ -580,7 +567,7 @@ class MarkdownExtractor(Extractor):
         result: list[Block] = []
         pos = 0
         for match in matches:
-            before = content[pos:match.start()]
+            before = content[pos : match.start()]
             if before:
                 offset = (base_offset + pos) if base_offset is not None else None
                 result.append(TextBlock(content=before, marker=None, source_offset=offset))
@@ -592,10 +579,12 @@ class MarkdownExtractor(Extractor):
             if raw_id is not None:
                 raw_id = raw_id.strip()
                 if not _validate_block_id(raw_id):
-                    result.append(ErrorBlock(
-                        message=f'Invalid block ID "{raw_id}" for marker [{marker_name}] — IDs must match [a-zA-Z0-9_.-]',
-                        raw_text=match.group(0),
-                    ))
+                    result.append(
+                        ErrorBlock(
+                            message=f'Invalid block ID "{raw_id}" for marker [{marker_name}] — IDs must match [a-zA-Z0-9_.-]',
+                            raw_text=match.group(0),
+                        )
+                    )
                     # Consume the terminating empty line if present
                     end_pos = match.end()
                     if end_pos < len(content) and content[end_pos] == '\n':
@@ -637,7 +626,7 @@ class MarkdownExtractor(Extractor):
         result: list[Block] = []
         pos = 0
         for match in matches:
-            before = content[pos:match.start()]
+            before = content[pos : match.start()]
             if before:
                 offset = (base_offset + pos) if base_offset is not None else None
                 result.append(TextBlock(content=before, marker=None, source_offset=offset))
@@ -649,10 +638,12 @@ class MarkdownExtractor(Extractor):
             if raw_id is not None:
                 raw_id = raw_id.strip()
                 if not _validate_block_id(raw_id):
-                    result.append(ErrorBlock(
-                        message=f'Invalid block ID "{raw_id}" for marker [{marker_name}] — IDs must match [a-zA-Z0-9_.-]',
-                        raw_text=match.group(0),
-                    ))
+                    result.append(
+                        ErrorBlock(
+                            message=f'Invalid block ID "{raw_id}" for marker [{marker_name}] — IDs must match [a-zA-Z0-9_.-]',
+                            raw_text=match.group(0),
+                        )
+                    )
                     pos = match.end()
                     continue
                 result.append(TextBlock(content=marker_content, marker=marker_name, id=raw_id, explicit_id=True, source_offset=tag_offset))
@@ -960,22 +951,22 @@ class MarkdownExtractor(Extractor):
                 content = self._filter_text_content(block.content, is_file_start, exclude)
                 is_file_start = False
                 if content and content.strip():
-                    filtered.append(TextBlock(
-                        content=content,
-                        marker=block.marker,
-                        id=block.id,
-                        explicit_id=block.explicit_id,
-                        source_offset=block.source_offset,
-                    ))
+                    filtered.append(
+                        TextBlock(
+                            content=content,
+                            marker=block.marker,
+                            id=block.id,
+                            explicit_id=block.explicit_id,
+                            source_offset=block.source_offset,
+                        )
+                    )
             else:
                 is_file_start = False
                 filtered.append(block)
 
         return filtered
 
-    def _filter_text_content(
-        self, content: str, is_file_start: bool, exclude: list[ExcludeElementConfig]
-    ) -> str:
+    def _filter_text_content(self, content: str, is_file_start: bool, exclude: list[ExcludeElementConfig]) -> str:
         """Filter excluded Markdown elements from text content.
 
         Respects fenced code blocks: lines inside ``` fences are never filtered.
@@ -1042,7 +1033,7 @@ class MarkdownExtractor(Extractor):
                     m = callout_only_re.match(line)
                     if m:
                         text_part = line.rstrip('\r\n')
-                        ending = line[len(text_part):]
+                        ending = line[len(text_part) :]
                         result.append(m.group(1) + m.group(2) + ending)
                     else:
                         result.append(line)
@@ -1057,7 +1048,7 @@ class MarkdownExtractor(Extractor):
                     m = heading_only_re.match(line)
                     if m:
                         text_part = line.rstrip('\r\n')
-                        ending = line[len(text_part):]
+                        ending = line[len(text_part) :]
                         result.append(m.group(1) + m.group(2) + ending)
                     else:
                         result.append(line)
@@ -1098,16 +1089,12 @@ class MarkdownExtractor(Extractor):
                 result[i] = 'X'
         return ''.join(result)
 
-    def _line_has_tag(
-        self, line: str, tag_pattern: 're.Pattern[str]', code_span_re: 're.Pattern[str]'
-    ) -> bool:
+    def _line_has_tag(self, line: str, tag_pattern: 're.Pattern[str]', code_span_re: 're.Pattern[str]') -> bool:
         """Check if a line contains an Obsidian tag outside code spans."""
         masked = self._mask_code_spans(line, code_span_re)
         return bool(tag_pattern.search(masked))
 
-    def _line_starts_with_tag(
-        self, line: str, tag_pattern: 're.Pattern[str]', code_span_re: 're.Pattern[str]'
-    ) -> bool:
+    def _line_starts_with_tag(self, line: str, tag_pattern: 're.Pattern[str]', code_span_re: 're.Pattern[str]') -> bool:
         """Check if the first non-whitespace on a line is an Obsidian tag (outside code spans)."""
         masked = self._mask_code_spans(line, code_span_re)
         stripped = masked.lstrip()
@@ -1129,7 +1116,7 @@ class MarkdownExtractor(Extractor):
 
         for match in code_span_re.finditer(line):
             # Process text before the code span
-            before = line[pos:match.start()]
+            before = line[pos : match.start()]
             if before:
                 before = tag_pattern.sub('', before)
                 # Collapse multiple horizontal whitespace into one space

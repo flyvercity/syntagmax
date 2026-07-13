@@ -41,11 +41,7 @@ def obsidian_config(params, tmp_path):
     metamodel_path = tmp_path / 'project.syntagmax'
     metamodel_path.write_text(metamodel_content, encoding='utf-8')
 
-    cfg_content = (
-        'base = "."\n'
-        '[[input]]\nname = "requirements"\ndir = "REQ"\ndriver = "obsidian"\natype = "REQ"\n'
-        '[metamodel]\nfilename = "project.syntagmax"\n'
-    )
+    cfg_content = 'base = "."\n[[input]]\nname = "requirements"\ndir = "REQ"\ndriver = "obsidian"\natype = "REQ"\n[metamodel]\nfilename = "project.syntagmax"\n'
     cfg_path = tmp_path / 'config.toml'
     cfg_path.write_text(cfg_content, encoding='utf-8')
 
@@ -62,16 +58,7 @@ def sample_req_file(tmp_path):
     req_dir = tmp_path / 'REQ'
     req_dir.mkdir(exist_ok=True)
     content = (
-        '[REQ]\n'
-        'This is a requirement.\n'
-        '[id] REQ-001\n'
-        '[parent] SYS-001\n'
-        '```yaml\n'
-        'attrs:\n'
-        '  id: REQ-001\n'
-        '  title: Sample Requirement\n'
-        '  status: draft\n'
-        '```\n'
+        '[REQ]\nThis is a requirement.\n[id] REQ-001\n[parent] SYS-001\n```yaml\nattrs:\n  id: REQ-001\n  title: Sample Requirement\n  status: draft\n```\n'
     )
     req_file = req_dir / 'REQ-001.md'
     req_file.write_text(content, encoding='utf-8')
@@ -83,16 +70,7 @@ def sample_req_file_no_status(tmp_path):
     """Create a requirement file without status attribute."""
     req_dir = tmp_path / 'REQ'
     req_dir.mkdir(exist_ok=True)
-    content = (
-        '[REQ]\n'
-        'This is a requirement.\n'
-        '[id] REQ-002\n'
-        '```yaml\n'
-        'attrs:\n'
-        '  id: REQ-002\n'
-        '  title: Another Requirement\n'
-        '```\n'
-    )
+    content = '[REQ]\nThis is a requirement.\n[id] REQ-002\n```yaml\nattrs:\n  id: REQ-002\n  title: Another Requirement\n```\n'
     req_file = req_dir / 'REQ-002.md'
     req_file.write_text(content, encoding='utf-8')
     return req_file
@@ -111,11 +89,7 @@ def _make_obsidian_project(params, tmp_path, req_files: dict[str, str]):
     metamodel_path = tmp_path / 'project.syntagmax'
     metamodel_path.write_text(metamodel_content, encoding='utf-8')
 
-    cfg_content = (
-        'base = "."\n'
-        '[[input]]\nname = "requirements"\ndir = "REQ"\ndriver = "obsidian"\natype = "REQ"\n'
-        '[metamodel]\nfilename = "project.syntagmax"\n'
-    )
+    cfg_content = 'base = "."\n[[input]]\nname = "requirements"\ndir = "REQ"\ndriver = "obsidian"\natype = "REQ"\n[metamodel]\nfilename = "project.syntagmax"\n'
     cfg_path = tmp_path / 'config.toml'
     cfg_path.write_text(cfg_content, encoding='utf-8')
 
@@ -247,10 +221,7 @@ class TestMarkdownExtractorUpdateAttributes:
     @pytest.fixture
     def setup_extractor(self, params, tmp_path):
         """Create config + extractor for testing."""
-        cfg_content = (
-            'base = "."\n'
-            '[[input]]\nname = "test"\ndir = "."\ndriver = "obsidian"\natype = "REQ"\n'
-        )
+        cfg_content = 'base = "."\n[[input]]\nname = "test"\ndir = "."\ndriver = "obsidian"\natype = "REQ"\n'
         cfg_path = tmp_path / 'config.toml'
         cfg_path.write_text(cfg_content, encoding='utf-8')
         config = Config(params=params, config_filename=cfg_path)
@@ -269,10 +240,7 @@ class TestMarkdownExtractorUpdateAttributes:
 
     def test_yaml_add_new_attr(self, setup_extractor):
         config, extractor, tmp_path = setup_extractor
-        content = (
-            '[REQ]\nBody text\n[id] REQ-001\n'
-            '```yaml\nattrs:\n  id: REQ-001\n  title: Test\n```\n'
-        )
+        content = '[REQ]\nBody text\n[id] REQ-001\n```yaml\nattrs:\n  id: REQ-001\n  title: Test\n```\n'
         req_file = tmp_path / 'test.md'
         req_file.write_text(content, encoding='utf-8')
 
@@ -280,92 +248,75 @@ class TestMarkdownExtractorUpdateAttributes:
         artifact = MarkdownArtifact(config)
         artifact.location = LineLocation('test.md', (1, 8))
         from benedict import benedict
+
         artifact.yaml_data = benedict({'attrs': {'id': 'REQ-001', 'title': 'Test'}})
 
-        result = extractor.update_artifact_attributes(
-            'test.md', [(artifact, {'status': 'draft'}, 'add')], 'attr'
-        )
+        result = extractor.update_artifact_attributes('test.md', [(artifact, {'status': 'draft'}, 'add')], 'attr')
         assert 'status: draft' in result
         assert 'title: Test' in result
 
     def test_yaml_add_skips_existing(self, setup_extractor):
         config, extractor, tmp_path = setup_extractor
-        content = (
-            '[REQ]\nBody text\n[id] REQ-001\n'
-            '```yaml\nattrs:\n  id: REQ-001\n  status: active\n```\n'
-        )
+        content = '[REQ]\nBody text\n[id] REQ-001\n```yaml\nattrs:\n  id: REQ-001\n  status: active\n```\n'
         req_file = tmp_path / 'test.md'
         req_file.write_text(content, encoding='utf-8')
 
         artifact = MarkdownArtifact(config)
         artifact.location = LineLocation('test.md', (1, 8))
         from benedict import benedict
+
         artifact.yaml_data = benedict({'attrs': {'id': 'REQ-001', 'status': 'active'}})
 
-        result = extractor.update_artifact_attributes(
-            'test.md', [(artifact, {'status': 'draft'}, 'add')], 'attr'
-        )
+        result = extractor.update_artifact_attributes('test.md', [(artifact, {'status': 'draft'}, 'add')], 'attr')
         # Status should remain 'active', not changed to 'draft'
         assert 'status: active' in result
         assert 'status: draft' not in result
 
     def test_yaml_del_removes_attr(self, setup_extractor):
         config, extractor, tmp_path = setup_extractor
-        content = (
-            '[REQ]\nBody text\n[id] REQ-001\n'
-            '```yaml\nattrs:\n  id: REQ-001\n  status: draft\n  title: Test\n```\n'
-        )
+        content = '[REQ]\nBody text\n[id] REQ-001\n```yaml\nattrs:\n  id: REQ-001\n  status: draft\n  title: Test\n```\n'
         req_file = tmp_path / 'test.md'
         req_file.write_text(content, encoding='utf-8')
 
         artifact = MarkdownArtifact(config)
         artifact.location = LineLocation('test.md', (1, 9))
         from benedict import benedict
+
         artifact.yaml_data = benedict({'attrs': {'id': 'REQ-001', 'status': 'draft', 'title': 'Test'}})
 
-        result = extractor.update_artifact_attributes(
-            'test.md', [(artifact, {'status': None}, 'del')], 'attr'
-        )
+        result = extractor.update_artifact_attributes('test.md', [(artifact, {'status': None}, 'del')], 'attr')
         assert 'status' not in result
         assert 'title: Test' in result
 
     def test_yaml_replace_updates_existing(self, setup_extractor):
         config, extractor, tmp_path = setup_extractor
-        content = (
-            '[REQ]\nBody text\n[id] REQ-001\n'
-            '```yaml\nattrs:\n  id: REQ-001\n  status: draft\n```\n'
-        )
+        content = '[REQ]\nBody text\n[id] REQ-001\n```yaml\nattrs:\n  id: REQ-001\n  status: draft\n```\n'
         req_file = tmp_path / 'test.md'
         req_file.write_text(content, encoding='utf-8')
 
         artifact = MarkdownArtifact(config)
         artifact.location = LineLocation('test.md', (1, 8))
         from benedict import benedict
+
         artifact.yaml_data = benedict({'attrs': {'id': 'REQ-001', 'status': 'draft'}})
 
-        result = extractor.update_artifact_attributes(
-            'test.md', [(artifact, {'status': 'active'}, 'replace')], 'attr'
-        )
+        result = extractor.update_artifact_attributes('test.md', [(artifact, {'status': 'active'}, 'replace')], 'attr')
         assert 'status: active' in result
         assert 'status: draft' not in result
 
     def test_yaml_replace_adds_if_missing(self, setup_extractor):
         config, extractor, tmp_path = setup_extractor
-        content = (
-            '[REQ]\nBody text\n[id] REQ-001\n'
-            '```yaml\nattrs:\n  id: REQ-001\n```\n'
-        )
+        content = '[REQ]\nBody text\n[id] REQ-001\n```yaml\nattrs:\n  id: REQ-001\n```\n'
         req_file = tmp_path / 'test.md'
         req_file.write_text(content, encoding='utf-8')
 
         artifact = MarkdownArtifact(config)
         artifact.location = LineLocation('test.md', (1, 7))
         from benedict import benedict
+
         artifact.yaml_data = benedict({'attrs': {'id': 'REQ-001'}})
 
-        result = extractor.update_artifact_attributes(
-            'test.md', [(artifact, {'status': 'active'}, 'replace')], 'attr'
-        )
+        result = extractor.update_artifact_attributes('test.md', [(artifact, {'status': 'active'}, 'replace')], 'attr')
         assert 'status: active' in result
 
     def test_inline_field_add(self, setup_extractor):
@@ -379,9 +330,7 @@ class TestMarkdownExtractorUpdateAttributes:
         artifact.yaml_data = None
         artifact.source_metadata = {}
 
-        result = extractor.update_artifact_attributes(
-            'test.md', [(artifact, {'priority': 'high'}, 'add')], 'field'
-        )
+        result = extractor.update_artifact_attributes('test.md', [(artifact, {'priority': 'high'}, 'add')], 'field')
         assert '[priority] high' in result
         # Should be before [/REQ]
         assert result.index('[priority] high') < result.index('[/REQ]')
@@ -397,9 +346,7 @@ class TestMarkdownExtractorUpdateAttributes:
         artifact.yaml_data = None
         artifact.source_metadata = {'priority': 'markdown'}
 
-        result = extractor.update_artifact_attributes(
-            'test.md', [(artifact, {'priority': None}, 'del')], 'field'
-        )
+        result = extractor.update_artifact_attributes('test.md', [(artifact, {'priority': None}, 'del')], 'field')
         assert '[priority]' not in result
         assert '[id] REQ-001' in result
 
@@ -414,9 +361,7 @@ class TestMarkdownExtractorUpdateAttributes:
         artifact.yaml_data = None
         artifact.source_metadata = {'priority': 'markdown', 'status': 'markdown'}
 
-        result = extractor.update_artifact_attributes(
-            'test.md', [(artifact, {'priority': 'critical'}, 'replace')], 'field'
-        )
+        result = extractor.update_artifact_attributes('test.md', [(artifact, {'priority': 'critical'}, 'replace')], 'field')
         assert '[priority] critical' in result
         # Should preserve order: priority before status
         assert result.index('[priority] critical') < result.index('[status] draft')
@@ -430,34 +375,31 @@ class TestMarkdownExtractorUpdateAttributes:
         artifact = MarkdownArtifact(config)
         artifact.location = LineLocation('test.md', (1, 7))
         from benedict import benedict
+
         artifact.yaml_data = benedict({'attrs': {'id': 'REQ-001'}})
 
-        result = extractor.update_artifact_attributes(
-            'test.md', [(artifact, {'status': 'draft'}, 'add')], 'attr'
-        )
+        result = extractor.update_artifact_attributes('test.md', [(artifact, {'status': 'draft'}, 'add')], 'attr')
         # The newly inserted YAML block should use \r\n
         assert 'status: draft\r\n' in result
         assert '\n' not in result.replace('\r\n', '')
+
     def test_yaml_comment_warning(self, setup_extractor, caplog):
         """Test that YAML blocks with comments are preserved (no longer lost)."""
         import logging
+
         config, extractor, tmp_path = setup_extractor
-        content = (
-            '[REQ]\nBody text\n[id] REQ-001\n'
-            '```yaml\n# This is a comment\nattrs:\n  id: REQ-001\n```\n'
-        )
+        content = '[REQ]\nBody text\n[id] REQ-001\n```yaml\n# This is a comment\nattrs:\n  id: REQ-001\n```\n'
         req_file = tmp_path / 'test.md'
         req_file.write_text(content, encoding='utf-8')
 
         artifact = MarkdownArtifact(config)
         artifact.location = LineLocation('test.md', (1, 8))
         from benedict import benedict
+
         artifact.yaml_data = benedict({'attrs': {'id': 'REQ-001'}})
 
         with caplog.at_level(logging.WARNING, logger='syntagmax.extractors.markdown'):
-            result = extractor.update_artifact_attributes(
-                'test.md', [(artifact, {'status': 'draft'}, 'add')], 'attr'
-            )
+            result = extractor.update_artifact_attributes('test.md', [(artifact, {'status': 'draft'}, 'add')], 'attr')
         # Comments are now preserved by round-trip editing
         assert '# This is a comment' in result
         assert 'status: draft' in result
@@ -472,28 +414,10 @@ class TestMarkdownExtractorUpdateAttributes:
 
 class TestManipulateAttributes:
     REQ_WITH_STATUS = (
-        '[REQ]\n'
-        'This is a requirement.\n'
-        '[id] REQ-001\n'
-        '[parent] SYS-001\n'
-        '```yaml\n'
-        'attrs:\n'
-        '  id: REQ-001\n'
-        '  title: Sample Requirement\n'
-        '  status: draft\n'
-        '```\n'
+        '[REQ]\nThis is a requirement.\n[id] REQ-001\n[parent] SYS-001\n```yaml\nattrs:\n  id: REQ-001\n  title: Sample Requirement\n  status: draft\n```\n'
     )
 
-    REQ_NO_STATUS = (
-        '[REQ]\n'
-        'This is a requirement.\n'
-        '[id] REQ-002\n'
-        '```yaml\n'
-        'attrs:\n'
-        '  id: REQ-002\n'
-        '  title: Another Requirement\n'
-        '```\n'
-    )
+    REQ_NO_STATUS = '[REQ]\nThis is a requirement.\n[id] REQ-002\n```yaml\nattrs:\n  id: REQ-002\n  title: Another Requirement\n```\n'
 
     def test_add_attribute_to_artifacts(self, params, tmp_path):
         """Test adding an attribute that doesn't exist yet."""
@@ -631,10 +555,7 @@ class TestManipulateAttributes:
 
     def test_non_obsidian_driver_raises(self, params, tmp_path):
         """Test that non-obsidian drivers raise an error."""
-        cfg_content = (
-            'base = "."\n'
-            '[[input]]\nname = "src"\ndir = "."\ndriver = "text"\natype = "SRC"\n'
-        )
+        cfg_content = 'base = "."\n[[input]]\nname = "src"\ndir = "."\ndriver = "text"\natype = "SRC"\n'
         cfg_path = tmp_path / 'config.toml'
         cfg_path.write_text(cfg_content, encoding='utf-8')
         config = Config(params=params, config_filename=cfg_path)
@@ -687,10 +608,7 @@ class TestManipulateAttributes:
 
     def test_metamodel_driven_add_no_metamodel_raises(self, params, tmp_path):
         """Test that metamodel-driven add without metamodel raises error."""
-        cfg_content = (
-            'base = "."\n'
-            '[[input]]\nname = "reqs"\ndir = "."\ndriver = "obsidian"\natype = "REQ"\n'
-        )
+        cfg_content = 'base = "."\n[[input]]\nname = "reqs"\ndir = "."\ndriver = "obsidian"\natype = "REQ"\n'
         cfg_path = tmp_path / 'config.toml'
         cfg_path.write_text(cfg_content, encoding='utf-8')
         config = Config(params=params, config_filename=cfg_path)
@@ -709,19 +627,8 @@ class TestManipulateAttributes:
 
     def test_multi_attribute_update_on_same_artifact_no_corruption(self, params, tmp_path):
         """Test that updating multiple attributes on the same artifact groups updates and avoids corruption."""
-        req_content = (
-            '[REQ]\n'
-            'Body text\n'
-            '[id] REQ-001\n'
-            '[/REQ]\n'
-            '[REQ]\n'
-            'Other artifact\n'
-            '[id] REQ-002\n'
-            '[/REQ]\n'
-        )
-        config, files = _make_obsidian_project(
-            params, tmp_path, {'REQ-001.md': req_content}
-        )
+        req_content = '[REQ]\nBody text\n[id] REQ-001\n[/REQ]\n[REQ]\nOther artifact\n[id] REQ-002\n[/REQ]\n'
+        config, files = _make_obsidian_project(params, tmp_path, {'REQ-001.md': req_content})
         manipulate_attributes(
             config=config,
             section='requirements',
@@ -740,9 +647,7 @@ class TestManipulateAttributes:
 
     def test_csv_fallback_skips_unmatched_on_add(self, params, tmp_path):
         """Test that add operation skips unmatched artifacts in CSV when no fallback value is provided."""
-        config, files = _make_obsidian_project(
-            params, tmp_path, {'REQ-002.md': self.REQ_NO_STATUS}
-        )
+        config, files = _make_obsidian_project(params, tmp_path, {'REQ-002.md': self.REQ_NO_STATUS})
         csv_mapping = {'REQ-999': 'active'}  # REQ-002 is not matched
         manipulate_attributes(
             config=config,
@@ -756,4 +661,3 @@ class TestManipulateAttributes:
         )
         content = files['REQ-002.md'].read_text(encoding='utf-8')
         assert 'status' not in content
-

@@ -74,7 +74,6 @@ def convert(source_md: Path, output_path: Path, output_format: str, reference_do
     return False, msg
 
 
-
 BUNDLED_TEMPLATE = Path(__file__).parent / 'resources' / 'template.dotm'
 
 

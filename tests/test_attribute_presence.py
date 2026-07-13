@@ -27,8 +27,9 @@ def simple_metamodel():
                 'attributes': {
                     'id': [{'presence': 'mandatory', 'type_info': {'type': 'string'}, 'condition': None}],
                     'contents': [{'presence': 'mandatory', 'type_info': {'type': 'string'}, 'condition': None}],
-                    'parent': [{'presence': 'mandatory', 'type_info': {'type': 'reference', 'to_parent': True},
-                                'condition': {'anchor': 'derive', 'negated': True}}],
+                    'parent': [
+                        {'presence': 'mandatory', 'type_info': {'type': 'reference', 'to_parent': True}, 'condition': {'anchor': 'derive', 'negated': True}}
+                    ],
                     'derive': [{'presence': 'optional', 'type_info': {'type': 'boolean'}, 'condition': None}],
                     'status': [{'presence': 'mandatory', 'type_info': {'type': 'enum', 'allowed': ['draft', 'active']}, 'condition': None}],
                     'priority': [{'presence': 'optional', 'type_info': {'type': 'integer'}, 'condition': None}],
@@ -49,12 +50,19 @@ def custom_boolean_metamodel():
                 'attributes': {
                     'id': [{'presence': 'mandatory', 'type_info': {'type': 'string'}, 'condition': None}],
                     'contents': [{'presence': 'mandatory', 'type_info': {'type': 'string'}, 'condition': None}],
-                    'derived': [{'presence': 'optional', 'type_info': {
-                        'type': 'boolean',
-                        'custom_values': {'true': ['yes', 'si'], 'false': ['no', 'nein']},
-                    }, 'condition': None}],
-                    'parent': [{'presence': 'mandatory', 'type_info': {'type': 'reference', 'to_parent': True},
-                                'condition': {'anchor': 'derived', 'negated': True}}],
+                    'derived': [
+                        {
+                            'presence': 'optional',
+                            'type_info': {
+                                'type': 'boolean',
+                                'custom_values': {'true': ['yes', 'si'], 'false': ['no', 'nein']},
+                            },
+                            'condition': None,
+                        }
+                    ],
+                    'parent': [
+                        {'presence': 'mandatory', 'type_info': {'type': 'reference', 'to_parent': True}, 'condition': {'anchor': 'derived', 'negated': True}}
+                    ],
                 },
             },
         },
@@ -102,38 +110,46 @@ class TestAttributePresenceConfig:
         assert sec.attribute_presence is None
 
     def test_table_section_attribute_presence_via_alias(self):
-        sec = TableSection.model_validate({
-            'type': 'table',
-            'attribute-presence': 'all',
-            'attributes': [{'id': {'alias': 'ID'}}],
-        })
+        sec = TableSection.model_validate(
+            {
+                'type': 'table',
+                'attribute-presence': 'all',
+                'attributes': [{'id': {'alias': 'ID'}}],
+            }
+        )
         assert sec.attribute_presence == 'all'
 
     def test_table_section_attribute_presence_via_field_name(self):
-        sec = TableSection.model_validate({
-            'type': 'table',
-            'attribute_presence': 'mandatory',
-            'attributes': [{'id': {'alias': 'ID'}}],
-        })
+        sec = TableSection.model_validate(
+            {
+                'type': 'table',
+                'attribute_presence': 'mandatory',
+                'attributes': [{'id': {'alias': 'ID'}}],
+            }
+        )
         assert sec.attribute_presence == 'mandatory'
 
     def test_table_section_attribute_presence_invalid_raises(self):
         with pytest.raises(ValidationError):
-            TableSection.model_validate({
-                'type': 'table',
-                'attribute-presence': 'wrong',
-                'attributes': [{'id': {'alias': 'ID'}}],
-            })
+            TableSection.model_validate(
+                {
+                    'type': 'table',
+                    'attribute-presence': 'wrong',
+                    'attributes': [{'id': {'alias': 'ID'}}],
+                }
+            )
 
     def test_text_section_does_not_accept_attribute_presence(self):
         """TextSection has extra='forbid', so attribute-presence is rejected."""
         with pytest.raises(ValidationError):
-            TextSection.model_validate({
-                'type': 'text',
-                'mode': 'block',
-                'attribute-presence': 'all',
-                'attributes': [{'contents': {'alias': 'Content'}}],
-            })
+            TextSection.model_validate(
+                {
+                    'type': 'text',
+                    'mode': 'block',
+                    'attribute-presence': 'all',
+                    'attributes': [{'contents': {'alias': 'Content'}}],
+                }
+            )
 
     def test_attribute_presence_from_yaml(self, tmp_path):
         yaml_content = """
