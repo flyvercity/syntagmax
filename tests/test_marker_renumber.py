@@ -591,11 +591,11 @@ class TestReExtraction:
             assert b.id is not None
 
 
-class TestLFLineEndings:
-    """Verify files are written with LF line endings."""
+class TestLineEndingsPreservation:
+    """Verify original line endings are preserved on write."""
 
-    def test_crlf_normalized_to_lf(self, params, tmp_path):
-        """CRLF in source gets normalized to LF on write."""
+    def test_crlf_preserved(self, params, tmp_path):
+        """CRLF in source gets preserved on write."""
         project_dir, config_file = _make_project(tmp_path, """
             base = "."
             [[input]]
@@ -614,8 +614,8 @@ class TestLFLineEndings:
 
         filepath = project_dir / 'docs' / 'test.md'
         raw = filepath.read_bytes()
-        assert b'\r\n' not in raw
-        assert b'[COM 1]comment[/COM]\n' in raw
+        assert b'\r\n' in raw
+        assert b'[COM 1]comment[/COM]\r\n' in raw
 
 
 class TestMultipleFiles:

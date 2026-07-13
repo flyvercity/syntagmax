@@ -189,6 +189,7 @@ def renumber_markers(
     assigned_count = 0
 
     for filepath, assignments in file_assignments.items():
+        has_crlf = b'\r\n' in filepath.read_bytes()
         content = filepath.read_text(encoding='utf-8')
         rel_path = config.derive_path(filepath)
 
@@ -221,9 +222,9 @@ def renumber_markers(
             assigned_count += 1
 
         if not dry_run:
-            # Write with LF line endings
-            normalized = content.replace('\r\n', '\n')
-            filepath.write_text(normalized, encoding='utf-8', newline='')
+            if has_crlf:
+                content = content.replace('\n', '\r\n')
+            filepath.write_text(content, encoding='utf-8', newline='')
 
         modified_files += 1
 

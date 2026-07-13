@@ -119,8 +119,8 @@ def rewrite_image_references(content: str, context: RenderContext) -> str:
     """
     # Split content into fenced and non-fenced segments
     fence_positions = [m.start() for m in _FENCE_RE.finditer(content)]
-    if len(fence_positions) < 2:
-        # No complete fenced blocks, process entire content
+    if not fence_positions:
+        # No fenced blocks, process entire content
         return _rewrite_images_in_segment(content, context)
 
     # Process segments: alternate between outside-fence and inside-fence

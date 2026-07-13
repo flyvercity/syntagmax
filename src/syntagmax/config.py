@@ -217,6 +217,7 @@ class Config:
                 config_data.merge(global_data)
         except Exception as e:
             errors.append(f'Failed to load global config: {e}')
+            raise FatalError(errors)
 
         try:
             # Project config
