@@ -104,6 +104,15 @@ class ArtifactValidator:
         actual_names = set(artifact.fields.keys())
 
         # 1. Identify active rules for each attribute
+        active_rules_by_name = self._get_active_rules(artifact, artifact_rules)
+
+        # 2. Check for Additional Attributes (Strict Mode)
+        self._check_extra_attributes(artifact, actual_names, active_rules_by_name)
+
+        # 3. Check each attribute's rules
+        self._check_attribute_requirements(artifact, actual_names, active_rules_by_name)
+
+    def _get_active_rules(self, artifact: Artifact, artifact_rules: dict) -> dict[str, list[dict]]:
         active_rules_by_name = {}
         for attr_name, rules in artifact_rules.items():
             if isinstance(rules, dict):
@@ -111,16 +120,15 @@ class ArtifactValidator:
             active = [r for r in rules if self._evaluate_condition(artifact, r.get('condition'))]
             if active:
                 active_rules_by_name[attr_name] = active
+        return active_rules_by_name
 
-        # 2. Check for Additional Attributes (Strict Mode)
-        # An attribute is allowed only if it has at least one active rule.
+    def _check_extra_attributes(self, artifact: Artifact, actual_names: set[str], active_rules_by_name: dict[str, list[dict]]):
         all_allowed_names = set(active_rules_by_name.keys())
         extra_fields = actual_names - all_allowed_names
         for extra in extra_fields:
             self.errors.append(f"Attribute '{extra}' is not allowed for artifact '{artifact.atype}' ({artifact})")
 
-        # 3. Check each attribute's rules
-        # We only need to check attributes that have rules defined in the metamodel.
+    def _check_attribute_requirements(self, artifact: Artifact, actual_names: set[str], active_rules_by_name: dict[str, list[dict]]):
         for attr_name, active_rules in active_rules_by_name.items():
             # Check if mandatory and missing
             is_mandatory = any(r['presence'] == 'mandatory' for r in active_rules)
