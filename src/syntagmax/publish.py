@@ -4,20 +4,33 @@
 # Created: 2026-06-20
 # Description: Publish command - builds a block tree and renders to markdown.
 
+import hashlib
+import logging as lg
 import re
 from typing import Optional
 from syntagmax.blocks import BlockTree, InputBlock, FileRecord, TextBlock, ArtifactBlock, ErrorBlock, Block
 from syntagmax.config import Config, InputRecord
 from syntagmax.extract import EXTRACTORS
 from syntagmax.artifact import Artifact, FileLocation
-from syntagmax.publish_config import PublishConfig, TableSection, TextSection, MarkerRenderSection
+from syntagmax.metamodel import is_attribute_mandatory
+from syntagmax.publish_config import PublishConfig, TableSection, TextSection, MarkerRenderSection, AttributePresence
 from syntagmax.publish_context import (
     RenderContext, ImageManifest, IMAGE_EXTENSIONS,
     resolve_image_to_manifest, _is_remote_url,
 )
 
 
-def build_block_tree(config: Config) -> BlockTree:
+def generate_block_id(marker: str, content: str, filepath: str) -> str:
+    """Generate a deterministic 8-char hex hash for a text block without an explicit ID.
+
+    The hash is derived from the marker type, block content, and file path to ensure
+    stability across runs while avoiding collisions between different blocks.
+    """
+    data = f'{marker}:{filepath}:{content}'.encode('utf-8')
+    return hashlib.sha256(data).hexdigest()[:8]
+
+
+def build_block_tree(config: Config) -> tuple[BlockTree, list[str]]:
     tree = BlockTree()
 
     for record in config.input_records():
@@ -35,7 +48,31 @@ def build_block_tree(config: Config) -> BlockTree:
 
         tree.inputs.append(input_block)
 
-    return tree
+    # Assign deterministic IDs to marked TextBlocks that don't have explicit IDs
+    for input_block in tree.inputs:
+        for file_record in input_block.files:
+            for block in file_record.blocks:
+                if isinstance(block, TextBlock) and block.marker and block.id is None:
+                    block.id = generate_block_id(block.marker, block.content, file_record.path)
+
+    # Validate uniqueness of explicit block IDs within each marker type
+    errors: list[str] = []
+    seen: dict[tuple[str, str], str] = {}  # (marker, id) -> first file path
+
+    for input_block in tree.inputs:
+        for file_record in input_block.files:
+            for block in file_record.blocks:
+                if isinstance(block, TextBlock) and block.explicit_id and block.id and block.marker:
+                    key = (block.marker, block.id)
+                    if key in seen:
+                        errors.append(
+                            f'Duplicate block ID "{block.id}" for marker [{block.marker}] '
+                            f'in {file_record.path} (first defined in {seen[key]})'
+                        )
+                    else:
+                        seen[key] = file_record.path
+
+    return tree, errors
 
 
 def strip_numeric_prefix(header_text: str) -> str:
@@ -84,8 +121,8 @@ def rewrite_image_references(content: str, context: RenderContext) -> str:
     """
     # Split content into fenced and non-fenced segments
     fence_positions = [m.start() for m in _FENCE_RE.finditer(content)]
-    if len(fence_positions) < 2:
-        # No complete fenced blocks, process entire content
+    if not fence_positions:
+        # No fenced blocks, process entire content
         return _rewrite_images_in_segment(content, context)
 
     # Process segments: alternate between outside-fence and inside-fence
@@ -145,7 +182,7 @@ def _replace_obsidian_image(match: re.Match, context: RenderContext) -> str:
         alt = alt.strip()
     else:
         filename = raw.strip()
-        alt = filename.rsplit('.', 1)[0] if '.' in filename else filename
+        alt = ''
 
     # Check extension
     from pathlib import PurePosixPath
@@ -202,19 +239,60 @@ def get_artifact_field_value(artifact: Artifact, field_name: str) -> Optional[st
     return None
 
 
-def render_artifact_fallback(artifact: Artifact, start_level: int) -> str:
+def should_render_attribute(
+    attr_name: str,
+    val: Optional[str],
+    presence_mode: AttributePresence,
+    atype: str,
+    artifact_fields: dict,
+    metamodel: dict | None,
+) -> bool:
+    """Determine whether an attribute should be rendered based on presence mode.
+
+    Args:
+        attr_name: The attribute name.
+        val: The resolved value (from get_artifact_field_value), or None.
+        presence_mode: The effective presence mode ('all', 'mandatory', 'values-only').
+        atype: The artifact type name.
+        artifact_fields: The artifact's field dict.
+        metamodel: The parsed metamodel dict, or None.
+    """
+    if val:
+        return True
+    if presence_mode == 'values-only':
+        return False
+    if presence_mode == 'all':
+        return True
+    # presence_mode == 'mandatory'
+    return is_attribute_mandatory(attr_name, atype, artifact_fields, metamodel)
+
+
+def render_artifact_fallback(artifact: Artifact, content_level: int, table_spacer: int = 1, context: RenderContext | None = None) -> str:
+    """Render an artifact using fallback formatting (no custom render config).
+
+    Args:
+        artifact: The artifact to render.
+        content_level: The heading level at which the artifact ID should appear.
+            This accounts for the file's hierarchical position in the document.
+        table_spacer: Number of visible blank lines to prepend before the metadata table.
+        context: Optional render context for image rewriting.
+    """
     parts = []
-    level = min(6, start_level + 2)
+    level = min(6, content_level)
     parts.append(f'{"#" * level} {artifact.aid}\n\n')
 
     contents = get_artifact_field_value(artifact, 'contents')
     if contents:
-        parts.append(f'{contents.strip()}\n\n')
+        processed = contents.strip()
+        if context:
+            processed = rewrite_image_references(processed, context)
+        parts.append(f'{processed}\n\n')
 
     # Metadata table - skip id and contents
     fields = {k: v for k, v in artifact.fields.items() if k.lower() not in ('id', 'contents')}
     if fields:
         sorted_keys = sorted(fields.keys())
+        parts.append('&nbsp;\n\n' * table_spacer)
         parts.append('| Field | Value |\n|-------|-------|\n')
         for k in sorted_keys:
             v = fields[k]
@@ -225,7 +303,19 @@ def render_artifact_fallback(artifact: Artifact, start_level: int) -> str:
     return ''.join(parts)
 
 
-def render_block(block: Block, pub_config: PublishConfig, context: RenderContext | None = None) -> str:
+def render_block(block: Block, pub_config: PublishConfig, context: RenderContext | None = None, content_level: int | None = None) -> str:
+    """Render a single block to Markdown.
+
+    Args:
+        block: The block to render.
+        pub_config: Publishing configuration.
+        context: Optional render context for image rewriting.
+        content_level: The heading level at which a source H1 should appear in output.
+            Accounts for the file's hierarchical position. When None, defaults to
+            pub_config.start_level (backward compatibility for direct callers).
+    """
+    effective_level = content_level if content_level is not None else pub_config.start_level
+
     if isinstance(block, ErrorBlock):
         return f'> **Publish error:** {block.message}\n\n'
 
@@ -255,7 +345,7 @@ def render_block(block: Block, pub_config: PublishConfig, context: RenderContext
                 # If marker configured but not in render, fall back to plain text
                 content = adjust_text_headings_and_prefixes(
                     block.content,
-                    pub_config.start_level,
+                    effective_level,
                     pub_config.remove_numeric_prefixes_in_headers,
                 )
                 if context:
@@ -267,7 +357,7 @@ def render_block(block: Block, pub_config: PublishConfig, context: RenderContext
                 return ''
             content = adjust_text_headings_and_prefixes(
                 block.content,
-                pub_config.start_level,
+                effective_level,
                 pub_config.remove_numeric_prefixes_in_headers,
             )
             if context:
@@ -298,19 +388,43 @@ def render_block(block: Block, pub_config: PublishConfig, context: RenderContext
                 break
 
         if not render_sections:
-            return image_embed + render_artifact_fallback(a, pub_config.start_level)
+            # When content_level is explicitly provided (from render_block_tree), use it.
+            # When None (direct callers), preserve historical behaviour: start_level + 2.
+            fallback_level = effective_level if content_level is not None else pub_config.start_level + 2
+            return image_embed + render_artifact_fallback(a, fallback_level, pub_config.table_spacer, context=context)
 
         parts = []
         for sec in render_sections:
             if isinstance(sec, TableSection):
+                # Resolve effective presence mode
+                effective_presence: AttributePresence = (
+                    sec.attribute_presence if sec.attribute_presence is not None
+                    else pub_config.attribute_presence
+                )
+
+                # Resolve metamodel
+                metamodel = None
+                if context:
+                    metamodel = context.config.metamodel
+
+                # Degrade 'mandatory' to 'values-only' if metamodel unavailable
+                if effective_presence == 'mandatory' and not metamodel:
+                    lg.warning(
+                        "attribute_presence is 'mandatory' but metamodel is unavailable; "
+                        "degrading to 'values-only'"
+                    )
+                    effective_presence = 'values-only'
+
                 rows = []
                 for attr_dict in sec.attributes:
                     attr_name = list(attr_dict.keys())[0]
                     attr_render = attr_dict[attr_name]
                     val = get_artifact_field_value(a, attr_name)
-                    if val:
-                        rows.append((attr_render.alias, val))
+                    if should_render_attribute(attr_name, val, effective_presence, a.atype, a.fields, metamodel):
+                        rows.append((attr_render.alias, val or ''))
                 if rows:
+                    effective_spacer = sec.spacer if sec.spacer is not None else pub_config.table_spacer
+                    parts.append('&nbsp;\n\n' * effective_spacer)
                     parts.append('|           |       |\n|-----------|-------|\n')
                     for alias, val in rows:
                         parts.append(f'| {alias} | {val} |\n')
@@ -323,9 +437,11 @@ def render_block(block: Block, pub_config: PublishConfig, context: RenderContext
                     if val:
                         processed_val = adjust_text_headings_and_prefixes(
                             val,
-                            pub_config.start_level,
+                            effective_level,
                             pub_config.remove_numeric_prefixes_in_headers,
                         ).strip()
+                        if context:
+                            processed_val = rewrite_image_references(processed_val, context)
                         if sec.mode == 'block':
                             parts.append(f'**{attr_render.alias}**\n\n{processed_val}\n\n')
                         elif sec.mode == 'inline':
@@ -401,28 +517,70 @@ def render_block_tree(tree: BlockTree, config: Optional[Config] = None, multi_re
             # Decompose path into heading components
             components = decompose_file_path(file_record.path, record_dir)
 
+            # Detect content files: last component matches contents_marker (case-insensitive)
+            # Apply numeric prefix stripping before comparison when enabled,
+            # since the user sees/names files by their effective (stripped) name.
+            last_stem = components[-1] if components else ''
+            if pub_config.remove_numeric_prefixes_in_headers:
+                last_stem = strip_numeric_prefix(last_stem)
+            is_content_file = (
+                bool(components)
+                and last_stem.lower() == pub_config.contents_marker.lower()
+            )
+
             if components:
-                # Find longest common prefix with previous file
-                common_len = 0
-                for i, (a, b) in enumerate(zip(last_components, components)):
-                    if a == b:
-                        common_len = i + 1
-                    else:
-                        break
+                if is_content_file:
+                    # Content file: emit headings for directory components only (not the file stem)
+                    dir_components = components[:-1]
 
-                # Emit headings only for new components
-                for i in range(common_len, len(components)):
-                    heading_text = components[i]
-                    if pub_config.remove_numeric_prefixes_in_headers:
-                        heading_text = strip_numeric_prefix(heading_text)
-                    level = min(6, path_base_level + i)
-                    parts.append(f'{"#" * level} {heading_text}\n\n')
+                    # Find longest common prefix with previous file (compare dir parts only)
+                    common_len = 0
+                    for i, (a, b) in enumerate(zip(last_components, dir_components)):
+                        if a == b:
+                            common_len = i + 1
+                        else:
+                            break
 
-                last_components = components
+                    # Emit headings only for new directory components
+                    for i in range(common_len, len(dir_components)):
+                        heading_text = dir_components[i]
+                        if pub_config.remove_numeric_prefixes_in_headers:
+                            heading_text = strip_numeric_prefix(heading_text)
+                        level = min(6, path_base_level + i)
+                        parts.append(f'{"#" * level} {heading_text}\n\n')
 
+                    # Update last_components to directory parts only
+                    last_components = dir_components
+                else:
+                    # Normal file: emit headings for all new components (dirs + file stem)
+                    # Find longest common prefix with previous file
+                    common_len = 0
+                    for i, (a, b) in enumerate(zip(last_components, components)):
+                        if a == b:
+                            common_len = i + 1
+                        else:
+                            break
+
+                    # Emit headings only for new components
+                    for i in range(common_len, len(components)):
+                        heading_text = components[i]
+                        if pub_config.remove_numeric_prefixes_in_headers:
+                            heading_text = strip_numeric_prefix(heading_text)
+                        level = min(6, path_base_level + i)
+                        parts.append(f'{"#" * level} {heading_text}\n\n')
+
+                    last_components = components
+
+            # Content level calculation:
+            # - Normal file: one level deeper than the file's own path heading
+            # - Content file: at the directory's body level (same depth as file heading would be)
+            if is_content_file:
+                content_level = min(6, path_base_level + len(components) - 1) if components else path_base_level
+            else:
+                content_level = min(6, path_base_level + len(components)) if components else path_base_level
 
             for block in file_record.blocks:
-                block_content = render_block(block, pub_config, context)
+                block_content = render_block(block, pub_config, context, content_level=content_level)
                 if block_content:
                     # Ensure each block ends with exactly \n\n for inter-block spacing
                     stripped = block_content.rstrip('\n')

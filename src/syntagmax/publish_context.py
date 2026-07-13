@@ -84,6 +84,21 @@ class RenderContext:
     config: Config
     manifest: ImageManifest = field(default_factory=ImageManifest)
     source_file_path: str | None = None
+    _obsidian_attachment_path: str | None = field(default=None, init=False, repr=False)
+    _obsidian_attachment_path_loaded: bool = field(default=False, init=False, repr=False)
+
+    @property
+    def obsidian_attachment_path(self) -> str | None:
+        """Lazily load Obsidian attachment folder path on first access."""
+        if not self._obsidian_attachment_path_loaded:
+            self._obsidian_attachment_path_loaded = True
+            obsidian_cfg = self.config.obsidian_driver_config
+            if obsidian_cfg.integration:
+                from syntagmax.obsidian_settings import read_obsidian_attachment_path
+                self._obsidian_attachment_path = read_obsidian_attachment_path(
+                    self.config.base_dir(), obsidian_cfg.root
+                )
+        return self._obsidian_attachment_path
 
 
 def _is_remote_url(path: str) -> bool:
@@ -118,8 +133,30 @@ def resolve_image_to_manifest(
     base_dir = context.config.base_dir()
 
     if is_obsidian:
-        # Vault-wide filename search across all input record filepaths
         target_filename = image_ref.strip()
+
+        # O(1) check: look in Obsidian attachment folder first
+        attachment_path = context.obsidian_attachment_path
+        if attachment_path is not None:
+            # Resolve note-relative paths (starting with './' or equal to '.')
+            if attachment_path == '.' or attachment_path.startswith('./'):
+                if context.source_file_path:
+                    source_dir = PurePosixPath(context.source_file_path).parent
+                    folder = (base_dir / Path(str(source_dir)) / attachment_path).resolve()
+                else:
+                    folder = None
+            else:
+                folder = (base_dir / attachment_path).resolve()
+
+            if folder is not None:
+                candidate = folder / target_filename
+                if candidate.is_file():
+                    if not _is_within_base_dir(candidate, base_dir):
+                        lg.warning(f'Attachment folder image escapes project workspace: {candidate}')
+                        return None
+                    return context.manifest.add(candidate, base_dir)
+
+        # O(N) fallback: vault-wide filename search across all input record filepaths
         for record in context.config.input_records():
             for filepath in record.filepaths:
                 if filepath.name == target_filename:

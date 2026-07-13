@@ -278,3 +278,91 @@ def validate_metamodel(metamodel: dict, errors: list[str]):
                             break
                     if not found_valid_anchor:
                         errors.append(f"Trace from '{source_atype}' has invalid anchor '{anchor_name}': must be a non-conditional boolean attribute")
+
+
+
+# --- Shared condition evaluation helpers ---
+
+
+def evaluate_condition(artifact_fields: dict, atype: str, condition: dict | None, metamodel: dict) -> bool:
+    """Evaluate a metamodel condition against an artifact's fields.
+
+    Returns True if the condition holds (or if no condition is present).
+    This is the shared implementation used by both the validator (analyse.py)
+    and the publisher (publish.py).
+
+    Args:
+        artifact_fields: The artifact's field dict (e.g., artifact.fields).
+        atype: The artifact type name (e.g., 'REQ').
+        condition: The condition dict with 'anchor' and 'negated' keys, or None.
+        metamodel: The parsed metamodel dict with 'artifacts' and 'traces' keys.
+    """
+    if not condition:
+        return True
+
+    anchor_name = condition['anchor']
+    negated = condition['negated']
+
+    value = artifact_fields.get(anchor_name)
+    if value is None:
+        res = False
+    else:
+        # Default truthy values for boolean evaluation
+        truthy = {'true', 'yes', '1'}
+
+        # Use custom truthy values if defined in the metamodel
+        artifacts = metamodel.get('artifacts', {})
+        atype_def = artifacts.get(atype)
+        if atype_def:
+            anchor_rules = atype_def.get('attributes', {}).get(anchor_name, [])
+            if isinstance(anchor_rules, dict):
+                anchor_rules = [anchor_rules]
+
+            for rule in anchor_rules:
+                type_info = rule.get('type_info', {})
+                if type_info.get('type') == 'boolean' and 'custom_values' in type_info:
+                    truthy = {v.lower() for v in type_info['custom_values']['true']}
+                    break
+
+        if isinstance(value, list):
+            res = len(value) > 0
+        elif isinstance(value, str) and value.strip() == '':
+            res = False
+        else:
+            res = str(value).lower() in truthy
+
+    return not res if negated else res
+
+
+def is_attribute_mandatory(attr_name: str, atype: str, artifact_fields: dict, metamodel: dict | None) -> bool:
+    """Determine whether a named attribute is mandatory for a given artifact.
+
+    Evaluates metamodel rules with conditions against the artifact's field values.
+    Returns True if any active mandatory rule applies.
+
+    Args:
+        attr_name: The attribute name to check.
+        atype: The artifact type name.
+        artifact_fields: The artifact's field dict.
+        metamodel: The parsed metamodel dict, or None if unavailable.
+    """
+    if not metamodel:
+        return False
+
+    artifacts = metamodel.get('artifacts', {})
+    atype_def = artifacts.get(atype)
+    if not atype_def:
+        return False
+
+    rules = atype_def.get('attributes', {}).get(attr_name, [])
+    if isinstance(rules, dict):
+        rules = [rules]
+
+    for rule in rules:
+        if rule.get('presence') != 'mandatory':
+            continue
+        condition = rule.get('condition')
+        if evaluate_condition(artifact_fields, atype, condition, metamodel):
+            return True
+
+    return False

@@ -25,19 +25,70 @@ from syntagmax.errors import FatalError
 from syntagmax.plugin import PluginConfig
 
 
-VALID_EXCLUDE_ELEMENTS = frozenset({'callouts', 'headings', 'horizontal_rules', 'frontmatter'})
+VALID_EXCLUDE_ELEMENTS = frozenset({'callouts', 'headings', 'horizontal_rules', 'frontmatter', 'tags'})
+VALID_EXCLUDE_MODES = frozenset({'only', 'string', 'string-on-start'})
+
+
+class ExcludeElementConfig(BaseModel):
+    """Configuration for a single element exclusion with removal mode."""
+
+    name: str = Field(..., description='Element name to exclude')
+    mode: str = Field(default='string-on-start', description='Removal mode: only, string, or string-on-start')
+
+    @field_validator('name')
+    @classmethod
+    def validate_name(cls, v: str) -> str:
+        if v not in VALID_EXCLUDE_ELEMENTS:
+            raise ValueError(f'Unknown exclude element "{v}". Valid elements: {sorted(VALID_EXCLUDE_ELEMENTS)}')
+        return v
+
+    @field_validator('mode')
+    @classmethod
+    def validate_mode(cls, v: str) -> str:
+        if v not in VALID_EXCLUDE_MODES:
+            raise ValueError(f'Unknown exclude mode "{v}". Valid modes: {sorted(VALID_EXCLUDE_MODES)}')
+        return v
+
+
+def _validate_no_duplicate_elements(v: list[ExcludeElementConfig]) -> list[ExcludeElementConfig]:
+    """Container-level validator rejecting duplicate element names."""
+    seen: set[str] = set()
+    for elem in v:
+        if elem.name in seen:
+            raise ValueError(f'Duplicate exclude element "{elem.name}" in exclude_elements list')
+        seen.add(elem.name)
+    return v
+
+
+VALID_STRICT_LINE_BREAKS_VALUES = frozenset({'on', 'true', 'off', 'false', 'auto'})
 
 
 class ObsidianDriverConfig(BaseModel):
-    exclude_elements: list[str] = Field(default_factory=list, description='Predefined Markdown elements to exclude at extraction time')
+    exclude_elements: list[ExcludeElementConfig] = Field(default_factory=list, description='Markdown elements to exclude at extraction time')
+    integration: bool = Field(default=False, description='Enable reading Obsidian vault settings (e.g. attachmentFolderPath)')
+    root: str | None = Field(default=None, description='Override path to the .obsidian directory (relative to base dir)')
+    strict_line_breaks: str | bool = Field(
+        default='on',
+        description='Line break mode: on/true (standard Markdown), off/false (Obsidian relaxed), auto (read from app.json)',
+    )
+
+    @field_validator('strict_line_breaks', mode='before')
+    @classmethod
+    def validate_strict_line_breaks(cls, v: str | bool) -> str:
+        if isinstance(v, bool):
+            return 'true' if v else 'false'
+        normalized = str(v).lower().strip()
+        if normalized not in VALID_STRICT_LINE_BREAKS_VALUES:
+            raise ValueError(
+                f'Invalid strict_line_breaks value "{v}". '
+                f'Valid values: {sorted(VALID_STRICT_LINE_BREAKS_VALUES)}'
+            )
+        return normalized
 
     @field_validator('exclude_elements')
     @classmethod
-    def validate_exclude_elements(cls, v: list[str]) -> list[str]:
-        for elem in v:
-            if elem not in VALID_EXCLUDE_ELEMENTS:
-                raise ValueError(f'Unknown exclude element "{elem}". Valid elements: {sorted(VALID_EXCLUDE_ELEMENTS)}')
-        return v
+    def validate_exclude_elements(cls, v: list[ExcludeElementConfig]) -> list[ExcludeElementConfig]:
+        return _validate_no_duplicate_elements(v)
 
 
 class DriversConfig(BaseModel):
@@ -55,7 +106,7 @@ class InputRecord:
     marker: str
     markers: list[str] = field(default_factory=list)
     publish_config: str | None = None
-    exclude_elements: list[str] = field(default_factory=list)
+    exclude_elements: list['ExcludeElementConfig'] = field(default_factory=list)
 
 
 DEFAULT_FILTERS = {'obsidian': '**/*.md', 'ipynb': '**/*.ipynb', 'markdown': '**/*.md'}
@@ -69,18 +120,17 @@ class InputConfig(BaseModel):
     atype: str = Field('REQ', description='Default artifact type for this input source')
     marker: str | None = Field(default=None, description='Custom marker for artifacts (e.g., "REQ"). Defaults to atype.')
     markers: list[str] = Field(default_factory=list, description='Fragment markers for non-artifact text blocks (e.g., ["COM", "NOTE"]). Obsidian driver only.')
-    publish: str | None = Field(default=None, description='Path to publish configuration file relative to the project directory or config folder')
-    exclude_elements: list[str] | None = Field(default=None, description='Markdown elements to exclude at extraction time (merged with global driver defaults)')
+    publish: str | None = Field(default=None, description='Path to publish config file relative to the base directory. Error if not found.')
+    exclude_elements: list[ExcludeElementConfig] | None = Field(
+        default=None, description='Markdown elements to exclude at extraction time (merged with global driver defaults)'
+    )
 
     @field_validator('exclude_elements')
     @classmethod
-    def validate_exclude_elements(cls, v: list[str] | None) -> list[str] | None:
+    def validate_exclude_elements(cls, v: list[ExcludeElementConfig] | None) -> list[ExcludeElementConfig] | None:
         if v is None:
             return v
-        for elem in v:
-            if elem not in VALID_EXCLUDE_ELEMENTS:
-                raise ValueError(f'Unknown exclude element "{elem}". Valid elements: {sorted(VALID_EXCLUDE_ELEMENTS)}')
-        return v
+        return _validate_no_duplicate_elements(v)
 
 
 class MetricsConfig(BaseModel):
@@ -119,6 +169,7 @@ class Metamodel(BaseModel):
 
 class ConfigFile(BaseModel):
     base: str = Field(default='..', description='Base directory for relative paths, relative to this config file')
+    publish: str | None = Field(default=None, description='Global publish config file path, relative to config file directory')
     input: list[InputConfig] = Field(..., description='List of input sources to process')
     metrics: MetricsConfig = Field(MetricsConfig(), description='Configuration for metrics collection')
     impact: ImpactConfig = Field(ImpactConfig(), description='Configuration for impact analysis')
@@ -166,6 +217,7 @@ class Config:
                 config_data.merge(global_data)
         except Exception as e:
             errors.append(f'Failed to load global config: {e}')
+            raise FatalError(errors)
 
         try:
             # Project config
@@ -187,17 +239,30 @@ class Config:
 
         self._base_dir = Path(root_dir, config_model.base)
         lg.debug(f'Base directory: {self._base_dir}')
+        self._global_publish_config = config_model.publish
         self._read_input_records(config_model.input, config_model.drivers)
 
         self.metrics = config_model.metrics
         self.impact = config_model.impact
         self.ai = config_model.ai
+        self._obsidian_driver_config = config_model.drivers.obsidian
+
+        # Validate strict_line_breaks = "auto" requires integration = true
+        if (self._obsidian_driver_config.strict_line_breaks == 'auto'
+                and not self._obsidian_driver_config.integration):
+            errors.append(
+                'strict_line_breaks = "auto" requires integration = true in [drivers.obsidian]'
+            )
 
         if config_model.metamodel.filename:
             self.metamodel = load_metamodel(Path(root_dir, config_model.metamodel.filename), errors)
         else:
             lg.warning('No static validation model')
             self.metamodel = None
+
+        # Validate fragment markers don't collide with metamodel attributes
+        if self.metamodel:
+            self._validate_marker_attribute_collisions(errors)
 
         if errors:
             raise FatalError(errors)
@@ -226,11 +291,19 @@ class Config:
             fragment_markers = input_config.markers
 
             # Resolve exclude_elements: union of global driver default and record-level
-            global_excludes: list[str] = []
+            # Per-record mode takes precedence when both define the same element name
+            global_excludes: list[ExcludeElementConfig] = []
             if input_config.driver == 'obsidian':
                 global_excludes = drivers.obsidian.exclude_elements
             record_excludes = input_config.exclude_elements or []
-            resolved_excludes = sorted(set(global_excludes) | set(record_excludes))
+
+            # Merge: start with global, then overlay per-record (per-record wins on conflict)
+            merged: dict[str, ExcludeElementConfig] = {}
+            for elem in global_excludes:
+                merged[elem.name] = elem
+            for elem in record_excludes:
+                merged[elem.name] = elem
+            resolved_excludes = sorted(merged.values(), key=lambda e: e.name)
 
             # Validate fragment markers
             if fragment_markers:
@@ -280,21 +353,50 @@ class Config:
             lg.info(f'Input record: {input_record.name}')
             lg.debug(f'Input files: {len(input_record.filepaths)}')
 
+    def _validate_marker_attribute_collisions(self, errors: list[str]):
+        """Validate that configured fragment markers do not collide with metamodel attribute names."""
+        artifacts_meta = self.metamodel.get('artifacts', {})
+
+        for record in self._input_records:
+            if not record.markers:
+                continue
+
+            # Get attribute names for this record's artifact type
+            atype = record.default_atype
+            atype_meta = artifacts_meta.get(atype, {})
+            attr_names = set()
+
+            if 'attributes' in atype_meta:
+                for attr_name in atype_meta['attributes'].keys():
+                    attr_names.add(attr_name.upper())
+
+            # Check collision
+            for marker in record.markers:
+                if marker.upper() in attr_names:
+                    errors.append(
+                        f'Input "{record.name}": fragment marker "{marker}" collides with '
+                        f'metamodel attribute "{marker.lower()}" for artifact type "{atype}"'
+                    )
+
     def load_publish_config(self, record: InputRecord) -> 'PublishConfig':
-        from syntagmax.publish_config import load_publish_config
+        from syntagmax.publish_config import load_publish_config, resolve_publish_file
 
         if record.publish_config:
             p = Path(record.publish_config)
-            return load_publish_config(p, self._root_dir)
-        p1 = self._root_dir / 'publish.yaml'
-        if p1.exists():
-            return load_publish_config(Path('publish.yaml'), self._root_dir)
-        p2 = self._root_dir / '.syntagmax' / 'publish.yaml'
-        if p2.exists():
-            return load_publish_config(Path('.syntagmax/publish.yaml'), self._root_dir)
-        p3 = self._root_dir.parent / '.syntagmax' / 'publish.yaml'
-        if p3.exists():
-            return load_publish_config(Path('.syntagmax/publish.yaml'), self._root_dir.parent)
+            return load_publish_config(p, self._base_dir, explicit=True)
+
+        # Fallback chain (documented resolution order):
+        # 1. Global publish field in config.toml (resolved relative to config file dir)
+        if self._global_publish_config:
+            p = Path(self._global_publish_config)
+            return load_publish_config(p, self._root_dir, explicit=True)
+
+        # 2. Auto-discover publish.yaml/yml/toml in .syntagmax directory
+        resolved = resolve_publish_file(self._root_dir)
+        if resolved:
+            return load_publish_config(resolved, self._root_dir)
+
+        # 3. All-default rendering
         return load_publish_config(None, self._root_dir)
 
     def base_dir(self):
@@ -309,6 +411,46 @@ class Config:
 
     def plugins(self):
         return self._plugins
+
+    @property
+    def obsidian_driver_config(self) -> 'ObsidianDriverConfig':
+        return self._obsidian_driver_config
+
+    def resolve_strict_line_breaks(self) -> bool:
+        """Resolve the effective strict_line_breaks setting to a boolean.
+
+        Returns:
+            True if strict mode is ON (standard Markdown, no transformation).
+            False if strict mode is OFF (Obsidian relaxed breaks, apply transformation).
+        """
+        if hasattr(self, '_strict_line_breaks_resolved'):
+            return self._strict_line_breaks_resolved
+
+        value = self._obsidian_driver_config.strict_line_breaks
+        if value in ('on', 'true'):
+            result = True
+            lg.info(f'Strict line breaks: ON (configured as "{value}") - standard Markdown, no transformation')
+        elif value in ('off', 'false'):
+            result = False
+            lg.info(f'Strict line breaks: OFF (configured as "{value}") - Obsidian relaxed breaks, applying hard break transformation')
+        else:
+            # auto mode — read from app.json
+            from syntagmax.obsidian_settings import read_obsidian_strict_line_breaks
+            obsidian_value = read_obsidian_strict_line_breaks(
+                self._base_dir, self._obsidian_driver_config.root
+            )
+            if obsidian_value is None:
+                lg.warning('Could not read strictLineBreaks from Obsidian settings, defaulting to strict mode ON')
+                result = True
+                lg.info('Strict line breaks: ON (auto, fallback) - standard Markdown, no transformation')
+            else:
+                result = obsidian_value
+                mode_str = 'ON' if result else 'OFF'
+                effect = 'no transformation' if result else 'applying hard break transformation'
+                lg.info(f'Strict line breaks: {mode_str} (auto, read from app.json) - {effect}')
+
+        self._strict_line_breaks_resolved = result
+        return result
 
     def get_trace_mode(self, source_atype: str, target_atype: str) -> str:
         if not self.metamodel:

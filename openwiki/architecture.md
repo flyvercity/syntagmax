@@ -30,6 +30,8 @@ The publish path is distinct from analysis and now includes image resolution and
 1. `cli.py publish` loads the project config and selects one or more input records.
 2. `publish.build_block_tree()` extracts blocks per record and preserves file order.
 3. `publish.resolve_images()` resolves and copies images referenced in source documents to the output directory.
+   - If Obsidian integration is enabled (`[drivers.obsidian] integration = true`), `RenderContext` lazily reads `.obsidian/app.json` to discover `attachmentFolderPath`. Image resolution checks this folder first (O(1)) before falling back to a vault-wide file scan.
+   - Note-relative attachment paths (`./...`) are resolved per source file.
 4. `plugin.run_block_transforms()` runs pre-publishing filter plugins that can mutate the block tree.
 5. `publish.render_block_tree()` renders the block tree into Markdown using `PublishConfig`.
 6. `plugin.run_markdown_transforms()` runs post-processing plugins that can transform the Markdown.
@@ -42,6 +44,7 @@ The publishing system is config-driven and record-specific. Each input record ma
 - project TOML parsing
 - global config merge from `~/.config/syntagmax/config.toml`
 - input-record discovery and validation
+- TOML-based publishing configuration support
 - metamodel loading
 - plugin loading
 
@@ -70,6 +73,10 @@ The server initializes by extracting, mapping, assigning PIDs, building the tree
 - Config: `src/syntagmax/config.py`
 - Metamodel: `src/syntagmax/metamodel.py`
 - Publish renderer: `src/syntagmax/publish.py`
+- Publish config: `src/syntagmax/publish_config.py`
+- Plugins: `src/syntagmax/plugin.py`
+- MCP: `src/syntagmax/mcp/server.py`
+h renderer: `src/syntagmax/publish.py`
 - Publish config: `src/syntagmax/publish_config.py`
 - Plugins: `src/syntagmax/plugin.py`
 - MCP: `src/syntagmax/mcp/server.py`

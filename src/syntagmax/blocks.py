@@ -22,6 +22,11 @@ class Block:
 class TextBlock(Block):
     content: str
     marker: str | None = None
+    id: str | None = None
+    explicit_id: bool = False
+    source_offset: int | None = None
+    """Character offset of the opening marker tag (e.g., `[COM]`) in the source file.
+    None for unmarked text blocks or when offset tracking is not active."""
 
 
 @dataclass

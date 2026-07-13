@@ -51,7 +51,7 @@ The server loads and analyzes artifacts first, then serves tools for listing, se
 ## Working with config files
 `config.py` looks for a project config file and can merge a global config from `~/.config/syntagmax/config.toml`. That global config is real runtime behavior and matters when reproducing user environments.
 
-The code also supports per-input publish YAML files. If a record references one, it takes precedence over default publish paths.
+The code supports per-input publish TOML or YAML files. If a record references one, it takes precedence over default publish paths (`.syntagmax/publish.toml` or `.syntagmax/publish.yaml`).
 
 ## Operational caveats
 - Missing config files are a hard error in the CLI.
@@ -68,3 +68,4 @@ The `example/` directory contains runnable samples that exercise the main workfl
 - `example/error-handling/` and `example/renumber-demo/` for edge cases
 
 Those examples are the best place to inspect the expected end-to-end shape of input config, source files, and output artifacts.
+ inspect the expected end-to-end shape of input config, source files, and output artifacts.

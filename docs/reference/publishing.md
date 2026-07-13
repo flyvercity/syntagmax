@@ -86,16 +86,22 @@ syntagmax publish --all --docx --docx-template none
 - DOCX/PDF files are placed alongside the Markdown with the same base name (e.g., `rec1.md` → `rec1.docx`).
 - If Pandoc is not found or conversion fails, a warning is logged with the exit status, the Markdown file is preserved, and the command exits successfully.
 
-## publish.yaml Reference
+## Publish Configuration Reference
 
-Publishing configuration controls how artifacts and text blocks are rendered in the output document. It is defined as a YAML file, resolved in the following order:
+Publishing configuration controls how artifacts and text blocks are rendered in the output document. It can be defined as either a YAML file (`publish.yaml` or `publish.yml`) or a TOML file (`publish.toml`), resolved in the following order:
 
-1. Per-record `publish` field in `config.toml`
-2. `publish.yaml` in the project root directory
-3. `.syntagmax/publish.yaml`
-4. All-default rendering (if no file exists)
+1. **Per-record `publish` field** in `config.toml` — path is resolved relative to the base directory (the `base` setting in your config). If the file is not found, Syntagmax raises an error.
+2. **Top-level `publish` field** in `config.toml` — a global publish config path, resolved relative to the config file's directory (`.syntagmax/`). Used for all records that don't specify their own. If the file is not found, Syntagmax raises an error.
+3. **`.syntagmax/` directory** — auto-discovers `publish.yaml`, `publish.yml`, or `publish.toml` in the `.syntagmax/` project directory (where `config.toml` lives).
+4. **All-default rendering** — if no file exists at any location.
+
+If both a YAML variant and a TOML variant exist in `.syntagmax/`, Syntagmax raises an error. Use only one format.
+
+> **Note:** The base directory is determined by the `base` field in `config.toml`, resolved relative to the config file's location. For example, if your config is at `.syntagmax/config.toml` with `base = ".."`, the base directory is the project root (one level above `.syntagmax/`). Per-record `publish` paths are resolved relative to the base directory; the top-level `publish` and auto-discovery use the config file's directory (`.syntagmax/`).
 
 ### Linking a Custom Publish Config
+
+The `publish` field in an input record specifies a path relative to the base directory:
 
 ```toml
 [[input]]
@@ -103,19 +109,47 @@ name = "system-requirements"
 dir = "SYS"
 driver = "obsidian"
 atype = "SYS"
-publish = "publish-sys-reqs.yaml"
+publish = "publish-sys-reqs.yaml"  # resolved relative to base directory
 ```
 
-### Full Schema
+If the file does not exist at the resolved path, Syntagmax raises a fatal error (it will not silently fall back to defaults).
+
+### Global Publish Config
+
+To apply a single publish configuration to all records without repeating the path in each `[[input]]` block, use the top-level `publish` field:
+
+```toml
+base = ".."
+publish = "publish.yaml"
+
+[[input]]
+name = "system-requirements"
+dir = "SYS"
+driver = "obsidian"
+atype = "SYS"
+
+[[input]]
+name = "software-requirements"
+dir = "SRS"
+driver = "obsidian"
+atype = "SRS"
+```
+
+The path is resolved relative to the config file's directory (i.e. `.syntagmax/`). Per-record `publish` overrides the global setting for that record.
+
+### Full Schema (YAML)
 
 ```yaml
 start_level: 1
 remove_numeric_prefixes_in_headers: true
 include_plain_text: true
+contents_marker: "_contents_"
+table-spacer: 1
 
 render:
   REQ:
     - type: table
+      spacer: 2
       attributes:
         - id:
             alias: "Identifier"
@@ -138,6 +172,48 @@ docx-template:
     implementation: "none"
 ```
 
+### Full Schema (TOML)
+
+```toml
+start_level = 1
+remove_numeric_prefixes_in_headers = true
+include_plain_text = true
+contents_marker = "_contents_"
+table_spacer = 1
+
+[[render.REQ]]
+type = "table"
+spacer = 2
+
+[[render.REQ.attributes]]
+[render.REQ.attributes.id]
+alias = "Identifier"
+
+[[render.REQ.attributes]]
+[render.REQ.attributes.parent]
+alias = "Parent"
+
+[[render.REQ]]
+type = "text"
+mode = "block"
+
+[[render.REQ.attributes]]
+[render.REQ.attributes.contents]
+alias = "Requirement"
+
+[[render.COM]]
+type = "text"
+mode = "block"
+alias = "Comment"
+
+[docx-template]
+default-template = "templates/corporate.dotm"
+
+[docx-template.overrides]
+system-requirements = "templates/sys-template.dotm"
+implementation = "none"
+```
+
 ### Global Parameters
 
 | Parameter | Type | Default | Description |
@@ -145,6 +221,8 @@ docx-template:
 | `start_level` | int | `1` | Starting heading level offset in the output document |
 | `remove_numeric_prefixes_in_headers` | bool | `true` | Strip leading numeric prefixes from all headings: Markdown headings in text, directory/file names, and record names |
 | `include_plain_text` | bool | `true` | Include plain (non-artifact) text in the output |
+| `contents_marker` | string | `_contents_` | Filename marker for content files (headingless rendering) |
+| `table_spacer` / `table-spacer` | int | `1` | Number of visible blank lines to prepend before tables (0–20). Applies to both custom table sections and fallback metadata tables. Each unit produces one `&nbsp;` paragraph line. |
 
 ### Path Headings
 
@@ -170,6 +248,54 @@ Given input files `SYS/01-Intro/02-Overview.md` and `SYS/01-Intro/03-Scope.md` w
 (content blocks...)
 
 ## Scope
+
+(content blocks...)
+```
+
+### Content Files (Headingless Rendering)
+
+By default, every file in a record produces a heading from its filename stem. Sometimes you want a file's content to appear directly as body text for its parent directory, without generating a separate heading. Files whose stem matches the `contents_marker` option (case-insensitive) are treated as **content files**.
+
+**Configuration:**
+
+```yaml
+contents_marker: "_contents_"   # default
+```
+
+**Behaviour:**
+- A file whose stem exactly matches the marker (e.g., `_contents_.md`, `_CONTENTS_.md`) does not produce a filename heading.
+- The file's content renders at the parent directory's body level — the same heading depth where a sibling file's heading would appear.
+- Content files sort normally alongside sibling files (alphabetically by path). This lets you control placement using standard naming (e.g., `00_contents_.md` to appear first, or `_contents_.md` to appear in natural alphabetical position).
+- The marker must be a non-empty string without directory separators (`/`, `\`).
+
+**Example:**
+
+Given files in record dir `SYS`:
+- `SYS/Chapter/_contents_.md` — contains "This chapter introduces..."
+- `SYS/Chapter/Requirements.md` — contains requirements
+
+Published as a single record with default settings:
+
+```markdown
+# Chapter
+
+This chapter introduces...
+
+## Requirements
+
+(content blocks...)
+```
+
+Without the content file feature, the output would have been:
+
+```markdown
+# Chapter
+
+## _contents_
+
+This chapter introduces...
+
+## Requirements
 
 (content blocks...)
 ```
@@ -202,7 +328,7 @@ render:
 
 | Type | Description |
 |------|-------------|
-| `table` | Renders attributes as a table (attribute aliases as column headers) |
+| `table` | Renders attributes as a table (attribute aliases as column headers). Supports an optional `spacer` field (int, 0–20) to override the global `table_spacer` for this section. |
 | `text` | Renders attributes as formatted text with aliases as captions |
 
 **Text mode:**
