@@ -47,7 +47,7 @@ def convert(source_md: Path, output_path: Path, output_format: str, reference_do
     lg.debug(f'Running Pandoc: {" ".join(cmd)}')
 
     try:
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+        result = subprocess.run(cmd, capture_output=True, encoding='utf-8', errors='replace', timeout=120)
     except FileNotFoundError:
         msg = 'pandoc executable not found in PATH'
         lg.warning(msg)
@@ -72,7 +72,6 @@ def convert(source_md: Path, output_path: Path, output_format: str, reference_do
 
     lg.warning(msg)
     return False, msg
-
 
 
 BUNDLED_TEMPLATE = Path(__file__).parent / 'resources' / 'template.dotm'

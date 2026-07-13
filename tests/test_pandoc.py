@@ -39,9 +39,29 @@ class TestConvert:
         mock_run.assert_called_once_with(
             ['pandoc', str(source), '-o', str(output)],
             capture_output=True,
-            text=True,
+            encoding='utf-8',
+            errors='replace',
             timeout=120,
         )
+
+    def test_robust_decoding_with_non_utf8_bytes(self, tmp_path):
+        from syntagmax.pandoc import convert
+
+        source = tmp_path / 'test.md'
+        source.write_text('# Hello\n', encoding='utf-8')
+        output = tmp_path / 'test.pdf'
+
+        mock_result = MagicMock()
+        mock_result.returncode = 1
+        # Simulated stderr output with invalid UTF-8 bytes (e.g., cp1251 bytes in Russian Windows)
+        # Byte 0x98 in cp1251 is an undefined character or invalid UTF-8 byte
+        mock_result.stderr = 'Error \x98 произошла ошибка'
+
+        with patch('syntagmax.pandoc.subprocess.run', return_value=mock_result):
+            success, message = convert(source, output, 'pdf')
+
+        assert success is False
+        assert 'Error \x98' in message or 'Error ' in message or 'произошла ошибка' in message
 
     def test_failed_conversion_nonzero_exit(self, tmp_path):
         from syntagmax.pandoc import convert
@@ -134,8 +154,10 @@ class TestPublishCLIWithPandoc:
         runner = CliRunner()
         out_dir = project_dir / 'out'
 
-        with patch('syntagmax.pandoc.check_pandoc', return_value=True) as mock_check, \
-             patch('syntagmax.pandoc.convert', return_value=(True, 'ok')) as mock_convert:
+        with (
+            patch('syntagmax.pandoc.check_pandoc', return_value=True) as mock_check,
+            patch('syntagmax.pandoc.convert', return_value=(True, 'ok')) as mock_convert,
+        ):
             result = runner.invoke(rms, ['--cwd', str(project_dir), 'publish', '--all', '--docx', '--output', str(out_dir)])
 
         assert result.exit_code == 0, result.output
@@ -157,8 +179,7 @@ class TestPublishCLIWithPandoc:
         runner = CliRunner()
         out_dir = project_dir / 'out'
 
-        with patch('syntagmax.pandoc.check_pandoc', return_value=True), \
-             patch('syntagmax.pandoc.convert', return_value=(True, 'ok')) as mock_convert:
+        with patch('syntagmax.pandoc.check_pandoc', return_value=True), patch('syntagmax.pandoc.convert', return_value=(True, 'ok')) as mock_convert:
             result = runner.invoke(rms, ['--cwd', str(project_dir), 'publish', '--all', '--pdf', '--output', str(out_dir)])
 
         assert result.exit_code == 0, result.output
@@ -174,8 +195,7 @@ class TestPublishCLIWithPandoc:
         runner = CliRunner()
         out_dir = project_dir / 'out'
 
-        with patch('syntagmax.pandoc.check_pandoc', return_value=True), \
-             patch('syntagmax.pandoc.convert', return_value=(True, 'ok')) as mock_convert:
+        with patch('syntagmax.pandoc.check_pandoc', return_value=True), patch('syntagmax.pandoc.convert', return_value=(True, 'ok')) as mock_convert:
             result = runner.invoke(rms, ['--cwd', str(project_dir), 'publish', '--all', '--docx', '--pdf', '--output', str(out_dir)])
 
         assert result.exit_code == 0, result.output
@@ -190,8 +210,7 @@ class TestPublishCLIWithPandoc:
         runner = CliRunner()
         out_dir = project_dir / 'out'
 
-        with patch('syntagmax.pandoc.check_pandoc', return_value=False), \
-             patch('syntagmax.pandoc.convert') as mock_convert:
+        with patch('syntagmax.pandoc.check_pandoc', return_value=False), patch('syntagmax.pandoc.convert') as mock_convert:
             result = runner.invoke(rms, ['--cwd', str(project_dir), 'publish', '--all', '--docx', '--output', str(out_dir)])
 
         assert result.exit_code == 0, result.output
@@ -210,8 +229,10 @@ class TestPublishCLIWithPandoc:
         runner = CliRunner()
         out_dir = project_dir / 'out'
 
-        with patch('syntagmax.pandoc.check_pandoc', return_value=True), \
-             patch('syntagmax.pandoc.convert', return_value=(False, 'pandoc exited with status 1: some error')):
+        with (
+            patch('syntagmax.pandoc.check_pandoc', return_value=True),
+            patch('syntagmax.pandoc.convert', return_value=(False, 'pandoc exited with status 1: some error')),
+        ):
             result = runner.invoke(rms, ['--cwd', str(project_dir), 'publish', '--all', '--docx', '--output', str(out_dir)])
 
         assert result.exit_code == 0, result.output
@@ -228,8 +249,7 @@ class TestPublishCLIWithPandoc:
         runner = CliRunner()
         out_file = project_dir / 'out' / 'combined.md'
 
-        with patch('syntagmax.pandoc.check_pandoc', return_value=True), \
-             patch('syntagmax.pandoc.convert', return_value=(True, 'ok')) as mock_convert:
+        with patch('syntagmax.pandoc.check_pandoc', return_value=True), patch('syntagmax.pandoc.convert', return_value=(True, 'ok')) as mock_convert:
             result = runner.invoke(rms, ['--cwd', str(project_dir), 'publish', '--all', '--single', '--docx', '--output', str(out_file)])
 
         assert result.exit_code == 0, result.output
@@ -238,7 +258,6 @@ class TestPublishCLIWithPandoc:
         call_args = mock_convert.call_args
         expected_docx = out_file.with_suffix('.docx')
         assert call_args[0][1] == expected_docx
-
 
 
 class TestConvertWithReferenceDoc:
@@ -321,9 +340,11 @@ class TestResolveDocxTemplate:
         template_file = templates_dir / 'corp.dotm'
         template_file.write_text('fake', encoding='utf-8')
 
-        pub_config = PublishConfig.model_validate({
-            'docx-template': {'default-template': 'templates/corp.dotm'},
-        })
+        pub_config = PublishConfig.model_validate(
+            {
+                'docx-template': {'default-template': 'templates/corp.dotm'},
+            }
+        )
         result = resolve_docx_template(pub_config, 'my-record', tmp_path)
         assert result == template_file
 
@@ -339,12 +360,14 @@ class TestResolveDocxTemplate:
         default_file = tmp_path / 'default.dotm'
         default_file.write_text('fake', encoding='utf-8')
 
-        pub_config = PublishConfig.model_validate({
-            'docx-template': {
-                'default-template': 'default.dotm',
-                'overrides': {'my-record': 'override.dotm'},
-            },
-        })
+        pub_config = PublishConfig.model_validate(
+            {
+                'docx-template': {
+                    'default-template': 'default.dotm',
+                    'overrides': {'my-record': 'override.dotm'},
+                },
+            }
+        )
         result = resolve_docx_template(pub_config, 'my-record', tmp_path)
         assert result == override_file
 
@@ -352,12 +375,14 @@ class TestResolveDocxTemplate:
         from syntagmax.pandoc import resolve_docx_template
         from syntagmax.publish_config import PublishConfig
 
-        pub_config = PublishConfig.model_validate({
-            'docx-template': {
-                'default-template': 'something.dotm',
-                'overrides': {'my-record': 'none'},
-            },
-        })
+        pub_config = PublishConfig.model_validate(
+            {
+                'docx-template': {
+                    'default-template': 'something.dotm',
+                    'overrides': {'my-record': 'none'},
+                },
+            }
+        )
         result = resolve_docx_template(pub_config, 'my-record', tmp_path)
         assert result is None
 
@@ -365,9 +390,11 @@ class TestResolveDocxTemplate:
         from syntagmax.pandoc import resolve_docx_template
         from syntagmax.publish_config import PublishConfig
 
-        pub_config = PublishConfig.model_validate({
-            'docx-template': {'default-template': 'none'},
-        })
+        pub_config = PublishConfig.model_validate(
+            {
+                'docx-template': {'default-template': 'none'},
+            }
+        )
         result = resolve_docx_template(pub_config, 'my-record', tmp_path)
         assert result is None
 
@@ -376,9 +403,11 @@ class TestResolveDocxTemplate:
         from syntagmax.publish_config import PublishConfig
         from syntagmax.errors import FatalError
 
-        pub_config = PublishConfig.model_validate({
-            'docx-template': {'default-template': 'nonexistent.dotm'},
-        })
+        pub_config = PublishConfig.model_validate(
+            {
+                'docx-template': {'default-template': 'nonexistent.dotm'},
+            }
+        )
         with pytest.raises(FatalError):
             resolve_docx_template(pub_config, 'my-record', tmp_path)
 
@@ -387,11 +416,13 @@ class TestResolveDocxTemplate:
         from syntagmax.publish_config import PublishConfig
         from syntagmax.errors import FatalError
 
-        pub_config = PublishConfig.model_validate({
-            'docx-template': {
-                'overrides': {'my-record': 'missing.dotm'},
-            },
-        })
+        pub_config = PublishConfig.model_validate(
+            {
+                'docx-template': {
+                    'overrides': {'my-record': 'missing.dotm'},
+                },
+            }
+        )
         with pytest.raises(FatalError):
             resolve_docx_template(pub_config, 'my-record', tmp_path)
 
@@ -399,9 +430,11 @@ class TestResolveDocxTemplate:
         from syntagmax.pandoc import resolve_docx_template, BUNDLED_TEMPLATE
         from syntagmax.publish_config import PublishConfig
 
-        pub_config = PublishConfig.model_validate({
-            'docx-template': {},
-        })
+        pub_config = PublishConfig.model_validate(
+            {
+                'docx-template': {},
+            }
+        )
         result = resolve_docx_template(pub_config, 'any-record', tmp_path)
         assert result == BUNDLED_TEMPLATE
 
@@ -413,12 +446,14 @@ class TestResolveDocxTemplate:
         default_file = tmp_path / 'default.dotm'
         default_file.write_text('fake', encoding='utf-8')
 
-        pub_config = PublishConfig.model_validate({
-            'docx-template': {
-                'default-template': 'default.dotm',
-                'overrides': {'other-record': 'none'},
-            },
-        })
+        pub_config = PublishConfig.model_validate(
+            {
+                'docx-template': {
+                    'default-template': 'default.dotm',
+                    'overrides': {'other-record': 'none'},
+                },
+            }
+        )
         result = resolve_docx_template(pub_config, 'my-record', tmp_path)
         assert result == default_file
 
@@ -456,8 +491,7 @@ class TestPublishCLIWithDocxTemplate:
         runner = CliRunner()
         out_dir = project_dir / 'out'
 
-        with patch('syntagmax.pandoc.check_pandoc', return_value=True), \
-             patch('syntagmax.pandoc.convert', return_value=(True, 'ok')) as mock_convert:
+        with patch('syntagmax.pandoc.check_pandoc', return_value=True), patch('syntagmax.pandoc.convert', return_value=(True, 'ok')) as mock_convert:
             result = runner.invoke(rms, ['--cwd', str(project_dir), 'publish', '--all', '--docx', '--output', str(out_dir)])
 
         assert result.exit_code == 0, result.output
@@ -476,12 +510,21 @@ class TestPublishCLIWithDocxTemplate:
         custom_template = project_dir / 'custom.dotm'
         custom_template.write_text('fake template', encoding='utf-8')
 
-        with patch('syntagmax.pandoc.check_pandoc', return_value=True), \
-             patch('syntagmax.pandoc.convert', return_value=(True, 'ok')) as mock_convert:
-            result = runner.invoke(rms, [
-                '--cwd', str(project_dir), 'publish', '--all', '--docx',
-                '--docx-template', str(custom_template), '--output', str(out_dir),
-            ])
+        with patch('syntagmax.pandoc.check_pandoc', return_value=True), patch('syntagmax.pandoc.convert', return_value=(True, 'ok')) as mock_convert:
+            result = runner.invoke(
+                rms,
+                [
+                    '--cwd',
+                    str(project_dir),
+                    'publish',
+                    '--all',
+                    '--docx',
+                    '--docx-template',
+                    str(custom_template),
+                    '--output',
+                    str(out_dir),
+                ],
+            )
 
         assert result.exit_code == 0, result.output
         mock_convert.assert_called_once()
@@ -496,12 +539,21 @@ class TestPublishCLIWithDocxTemplate:
         runner = CliRunner()
         out_dir = project_dir / 'out'
 
-        with patch('syntagmax.pandoc.check_pandoc', return_value=True), \
-             patch('syntagmax.pandoc.convert', return_value=(True, 'ok')) as mock_convert:
-            result = runner.invoke(rms, [
-                '--cwd', str(project_dir), 'publish', '--all', '--docx',
-                '--docx-template', 'none', '--output', str(out_dir),
-            ])
+        with patch('syntagmax.pandoc.check_pandoc', return_value=True), patch('syntagmax.pandoc.convert', return_value=(True, 'ok')) as mock_convert:
+            result = runner.invoke(
+                rms,
+                [
+                    '--cwd',
+                    str(project_dir),
+                    'publish',
+                    '--all',
+                    '--docx',
+                    '--docx-template',
+                    'none',
+                    '--output',
+                    str(out_dir),
+                ],
+            )
 
         assert result.exit_code == 0, result.output
         mock_convert.assert_called_once()
@@ -521,8 +573,7 @@ class TestPublishCLIWithDocxTemplate:
         publish_yaml = dot_syntagmax / 'publish.yaml'
         publish_yaml.write_text('docx-template:\n  default-template: "none"\n', encoding='utf-8')
 
-        with patch('syntagmax.pandoc.check_pandoc', return_value=True), \
-             patch('syntagmax.pandoc.convert', return_value=(True, 'ok')) as mock_convert:
+        with patch('syntagmax.pandoc.check_pandoc', return_value=True), patch('syntagmax.pandoc.convert', return_value=(True, 'ok')) as mock_convert:
             result = runner.invoke(rms, ['--cwd', str(project_dir), 'publish', '--all', '--docx', '--output', str(out_dir)])
 
         assert result.exit_code == 0, result.output
@@ -541,9 +592,7 @@ class TestPublishCLIWithDocxTemplate:
 
         cfg = dot_syntagmax / 'config.toml'
         cfg.write_text(
-            'base = ".."\n'
-            '[[input]]\nname="rec1"\ndir="SYS"\ndriver="text"\natype="SYS"\n'
-            '[[input]]\nname="rec2"\ndir="SRS"\ndriver="text"\natype="SRS"\n',
+            'base = ".."\n[[input]]\nname="rec1"\ndir="SYS"\ndriver="text"\natype="SYS"\n[[input]]\nname="rec2"\ndir="SRS"\ndriver="text"\natype="SRS"\n',
             encoding='utf-8',
         )
 
@@ -572,12 +621,20 @@ class TestPublishCLIWithDocxTemplate:
         runner = CliRunner()
         out_file = tmp_path / 'out' / 'combined.md'
 
-        with patch('syntagmax.pandoc.check_pandoc', return_value=True), \
-             patch('syntagmax.pandoc.convert', return_value=(True, 'ok')):
-            result = runner.invoke(rms, [
-                '--cwd', str(tmp_path), 'publish', '--all', '--single', '--docx',
-                '--output', str(out_file),
-            ])
+        with patch('syntagmax.pandoc.check_pandoc', return_value=True), patch('syntagmax.pandoc.convert', return_value=(True, 'ok')):
+            result = runner.invoke(
+                rms,
+                [
+                    '--cwd',
+                    str(tmp_path),
+                    'publish',
+                    '--all',
+                    '--single',
+                    '--docx',
+                    '--output',
+                    str(out_file),
+                ],
+            )
 
         assert result.exit_code == 0, result.output
         assert 'conflicting' in result.output.lower() or 'Conflicting' in result.output
