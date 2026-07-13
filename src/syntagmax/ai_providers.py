@@ -17,20 +17,41 @@ from syntagmax.config import AIConfig
 
 
 class AIError(RuntimeError):
+    """Exception raised for errors in the AI analysis subsystem."""
+
     pass
 
 
 class AIProvider(ABC):
+    """Base class for all AI provider implementations.
+
+    Provides common functionality for analyzing requirements, basic validation,
+    prompt generation, and sensitive data redaction.
+    """
+
     def __init__(self, config: AIConfig):
+        """Initialize the AI provider with configuration options."""
         self.config = config
 
     def analyze_requirement(self, requirement_text: str) -> Dict[str, Any]:
+        """Analyze a single system requirement statement for quality.
+
+        Args:
+            requirement_text: The system requirement text to analyze.
+
+        Returns:
+            Dict[str, Any]: The structured quality metrics and analysis.
+
+        Raises:
+            ValueError: If the requirement_text is empty or whitespace-only.
+        """
         if not requirement_text or not requirement_text.strip():
             raise ValueError('requirement_text must be a non-empty string')
         return self._analyze_requirement_impl(requirement_text)
 
     @abstractmethod
     def _analyze_requirement_impl(self, requirement_text: str) -> Dict[str, Any]:
+        """Analyze a single system requirement statement (subclass implementation)."""
         pass
 
     def _get_schema(self) -> Dict[str, Any]:
@@ -154,7 +175,10 @@ JSON schema (for grounding; still return JSON only):
 
 
 class OllamaProvider(AIProvider):
+    """AI provider utilizing a local or remote Ollama instance."""
+
     def _analyze_requirement_impl(self, requirement_text: str) -> Dict[str, Any]:
+        """Analyze the requirement using the configured Ollama model."""
         model = os.environ.get('STMX_AI_MODEL') or self.config.model or 'deepseek-v3.1:671b-cloud'
         host = self.config.ollama_host
         timeout_s = self.config.timeout_s
@@ -207,7 +231,10 @@ class OllamaProvider(AIProvider):
 
 
 class AnthropicProvider(AIProvider):
+    """AI provider utilizing the Anthropic Claude API."""
+
     def _analyze_requirement_impl(self, requirement_text: str) -> Dict[str, Any]:
+        """Analyze the requirement using the configured Anthropic model."""
         api_key = self.config.anthropic_api_key or os.environ.get('ANTHROPIC_API_KEY')
         if not api_key:
             raise AIError('Anthropic API Key is required (set via config or ANTHROPIC_API_KEY env var)')
@@ -262,7 +289,10 @@ class AnthropicProvider(AIProvider):
 
 
 class OpenAIProvider(AIProvider):
+    """AI provider utilizing the OpenAI API."""
+
     def _analyze_requirement_impl(self, requirement_text: str) -> Dict[str, Any]:
+        """Analyze the requirement using the configured OpenAI model."""
         api_key = self.config.openai_api_key or os.environ.get('OPENAI_API_KEY')
         if not api_key:
             raise AIError('OpenAI API Key is required (set via config or OPENAI_API_KEY env var)')
@@ -311,7 +341,10 @@ class OpenAIProvider(AIProvider):
 
 
 class GeminiProvider(AIProvider):
+    """AI provider utilizing the Google Gemini API."""
+
     def _analyze_requirement_impl(self, requirement_text: str) -> Dict[str, Any]:
+        """Analyze the requirement using the configured Gemini model."""
         api_key = self.config.gemini_api_key or os.environ.get('GEMINI_API_KEY')
         if not api_key:
             raise AIError('Gemini API Key is required (set via config or GEMINI_API_KEY env var)')
@@ -372,7 +405,10 @@ class GeminiProvider(AIProvider):
 
 
 class BedrockProvider(AIProvider):
+    """AI provider utilizing the AWS Bedrock service."""
+
     def _analyze_requirement_impl(self, requirement_text: str) -> Dict[str, Any]:
+        """Analyze the requirement using the configured AWS Bedrock model."""
         model = os.environ.get('STMX_AI_MODEL') or self.config.model or 'anthropic.claude-3-sonnet-20240229-v1:0'
         region = os.environ.get('STMX_AWS_REGION') or self.config.aws_region_name
         prompt = self._get_prompt(requirement_text)
