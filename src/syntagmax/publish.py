@@ -237,7 +237,7 @@ def get_artifact_field_value(artifact: Artifact, field_name: str) -> Optional[st
     return None
 
 
-def render_artifact_fallback(artifact: Artifact, content_level: int, table_spacer: int = 1) -> str:
+def render_artifact_fallback(artifact: Artifact, content_level: int, table_spacer: int = 1, context: RenderContext | None = None) -> str:
     """Render an artifact using fallback formatting (no custom render config).
 
     Args:
@@ -245,6 +245,7 @@ def render_artifact_fallback(artifact: Artifact, content_level: int, table_space
         content_level: The heading level at which the artifact ID should appear.
             This accounts for the file's hierarchical position in the document.
         table_spacer: Number of visible blank lines to prepend before the metadata table.
+        context: Optional render context for image rewriting.
     """
     parts = []
     level = min(6, content_level)
@@ -252,7 +253,10 @@ def render_artifact_fallback(artifact: Artifact, content_level: int, table_space
 
     contents = get_artifact_field_value(artifact, 'contents')
     if contents:
-        parts.append(f'{contents.strip()}\n\n')
+        processed = contents.strip()
+        if context:
+            processed = rewrite_image_references(processed, context)
+        parts.append(f'{processed}\n\n')
 
     # Metadata table - skip id and contents
     fields = {k: v for k, v in artifact.fields.items() if k.lower() not in ('id', 'contents')}
@@ -357,7 +361,7 @@ def render_block(block: Block, pub_config: PublishConfig, context: RenderContext
             # When content_level is explicitly provided (from render_block_tree), use it.
             # When None (direct callers), preserve historical behaviour: start_level + 2.
             fallback_level = effective_level if content_level is not None else pub_config.start_level + 2
-            return image_embed + render_artifact_fallback(a, fallback_level, pub_config.table_spacer)
+            return image_embed + render_artifact_fallback(a, fallback_level, pub_config.table_spacer, context=context)
 
         parts = []
         for sec in render_sections:
@@ -387,6 +391,8 @@ def render_block(block: Block, pub_config: PublishConfig, context: RenderContext
                             effective_level,
                             pub_config.remove_numeric_prefixes_in_headers,
                         ).strip()
+                        if context:
+                            processed_val = rewrite_image_references(processed_val, context)
                         if sec.mode == 'block':
                             parts.append(f'**{attr_render.alias}**\n\n{processed_val}\n\n')
                         elif sec.mode == 'inline':
