@@ -12,6 +12,8 @@ from syntagmax.artifact import UNDEFINED_ID
 from syntagmax.config import Config
 from syntagmax.extract import extract
 
+_NUM_PATTERN = re.compile(r'\{num(?::(\d+))?\}')
+
 
 def renumber_artifacts(config: Config, atype: str | None = None, schema_override: str | None = None, dry_run: bool = False):
     errors = []
@@ -35,8 +37,6 @@ def renumber_artifacts(config: Config, atype: str | None = None, schema_override
 
     # Group by file for efficiency
     updates_by_file = defaultdict(list)
-
-    num_pattern = re.compile(r'\{num(?::(\d+))?\}')
 
     for artifact in target_artifacts:
         current_atype = artifact.atype
@@ -77,7 +77,7 @@ def renumber_artifacts(config: Config, atype: str | None = None, schema_override
                 return str(project_num).zfill(int(padding))
             return str(project_num)
 
-        new_id = num_pattern.sub(replacer, new_id)
+        new_id = _NUM_PATTERN.sub(replacer, new_id)
 
         # Log what we are doing
         old_id_display = artifact.aid if artifact.aid != UNDEFINED_ID else '<undefined>'

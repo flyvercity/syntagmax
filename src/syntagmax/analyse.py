@@ -80,19 +80,19 @@ class ArtifactValidator:
                 # {num:padding} -> \d{padding,} or \d+
                 pattern = schema.replace('{atype}', artifact.atype)
 
-                final_pattern = ''
+                final_pattern_parts = []
                 last_pos = 0
                 for match in _NUM_PATTERN.finditer(pattern):
-                    final_pattern += re.escape(pattern[last_pos : match.start()])
+                    final_pattern_parts.append(re.escape(pattern[last_pos : match.start()]))
                     padding = match.group(1)
                     if padding:
-                        final_pattern += rf'\d{{{padding}}}'
+                        final_pattern_parts.append(rf'\d{{{padding}}}')
                     else:
-                        final_pattern += r'\d+'
+                        final_pattern_parts.append(r'\d+')
                     last_pos = match.end()
-                final_pattern += re.escape(pattern[last_pos:])
+                final_pattern_parts.append(re.escape(pattern[last_pos:]))
 
-                final_pattern = f'^{final_pattern}$'
+                final_pattern = f'^{"".join(final_pattern_parts)}$'
                 compiled_pattern = re.compile(final_pattern)
                 self._id_schema_cache[cache_key] = compiled_pattern
 
