@@ -94,7 +94,7 @@ def test_populate_revisions_line_location(config, git_repo):
     assert rev2.author_email == 'test@example.com'
 
 
-def test_is_dirty_no_git(tmp_path):
+def test_is_dirty_no_git(tmp_path, caplog):
     # Setup config in a non-git dir
     cfg_path = tmp_path / 'config.toml'
     cfg_path.write_text(
@@ -111,7 +111,11 @@ atype = "requirement"
     params = Params(verbose=False, render_tree=False, ai=False, output='console')
     config = Config(params=params, config_filename=cfg_path)
 
-    assert not is_dirty(config)
+    import logging as lg
+
+    with caplog.at_level(lg.WARNING):
+        assert not is_dirty(config)
+        assert any('Not a git repository' in record.message for record in caplog.records)
 
 
 def test_populate_revisions_no_git(tmp_path, caplog):
