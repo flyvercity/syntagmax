@@ -821,7 +821,7 @@ class MarkdownExtractor(Extractor):
                 req_data = self._transformer.transform(tree)
                 req = benedict(req_data)
 
-                contents = req.get_str('req.contents.text')
+                contents = req.get('req.contents.text') or ''
                 fields = req.get_list('req.fields.list')
                 yaml_info = req.get('req.yaml')
                 yaml_text = yaml_info.get('text') if yaml_info else None
@@ -848,7 +848,7 @@ class MarkdownExtractor(Extractor):
 
                 # Merged dict for ID/AType extraction, YAML takes precedence
                 temp_attrs = {
-                    **{field.get_str('field.marker'): field.get_str('field.contents.text').strip() for field in fields},
+                    **{field.get_str('field.marker'): (field.get('field.contents.text') or '').strip() for field in fields},
                     **yaml_attrs,
                 }
 
@@ -884,7 +884,7 @@ class MarkdownExtractor(Extractor):
                     field_marker = field.get_str('field.marker')
                     if field_marker.lower() in ['id', 'atype']:
                         continue
-                    builder.add_field(field_marker, field.get_str('field.contents.text').strip())
+                    builder.add_field(field_marker, (field.get('field.contents.text') or '').strip())
 
                 # Add fields found in YAML individually
                 for name, value in yaml_attrs.items():
