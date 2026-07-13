@@ -829,3 +829,194 @@ class TestImageRewritingFences:
         res3 = rewrite_image_references(content3, context)
         assert res3 == "REWRITTEN```\nUnclosed Inside"
         assert calls == ["Outside\n"]
+
+
+class TestTableSpacerRendering:
+    """Tests for table spacer rendering in both custom and fallback modes."""
+
+    def test_custom_table_section_default_spacer(self):
+        """Default global table_spacer=1 produces one &nbsp; paragraph before table."""
+        from syntagmax.publish_config import PublishConfig
+        from syntagmax.publish import render_block
+
+        artifact = MagicMock()
+        artifact.atype = 'REQ'
+        artifact.aid = 'REQ-1'
+        artifact.fields = {'id': 'REQ-1', 'parent': 'SYS-1'}
+        artifact.location = None
+
+        pub_config = PublishConfig.model_validate({
+            'render': {
+                'REQ': [{'type': 'table', 'attributes': [{'id': {'alias': 'ID'}}, {'parent': {'alias': 'Parent'}}]}]
+            }
+        })
+        block = ArtifactBlock(artifact=artifact, raw_text='')
+        result = render_block(block, pub_config)
+
+        assert result.count('&nbsp;\n\n') == 1
+        assert '&nbsp;\n\n|' in result
+
+    def test_custom_table_section_spacer_override(self):
+        """Per-section spacer=3 produces three &nbsp; paragraphs before table."""
+        from syntagmax.publish_config import PublishConfig
+        from syntagmax.publish import render_block
+
+        artifact = MagicMock()
+        artifact.atype = 'REQ'
+        artifact.aid = 'REQ-1'
+        artifact.fields = {'id': 'REQ-1', 'parent': 'SYS-1'}
+        artifact.location = None
+
+        pub_config = PublishConfig.model_validate({
+            'table_spacer': 1,
+            'render': {
+                'REQ': [{'type': 'table', 'spacer': 3, 'attributes': [{'id': {'alias': 'ID'}}, {'parent': {'alias': 'Parent'}}]}]
+            }
+        })
+        block = ArtifactBlock(artifact=artifact, raw_text='')
+        result = render_block(block, pub_config)
+
+        assert result.count('&nbsp;\n\n') == 3
+
+    def test_custom_table_section_spacer_zero(self):
+        """Per-section spacer=0 produces no spacer lines."""
+        from syntagmax.publish_config import PublishConfig
+        from syntagmax.publish import render_block
+
+        artifact = MagicMock()
+        artifact.atype = 'REQ'
+        artifact.aid = 'REQ-1'
+        artifact.fields = {'id': 'REQ-1', 'parent': 'SYS-1'}
+        artifact.location = None
+
+        pub_config = PublishConfig.model_validate({
+            'table_spacer': 5,
+            'render': {
+                'REQ': [{'type': 'table', 'spacer': 0, 'attributes': [{'id': {'alias': 'ID'}}, {'parent': {'alias': 'Parent'}}]}]
+            }
+        })
+        block = ArtifactBlock(artifact=artifact, raw_text='')
+        result = render_block(block, pub_config)
+
+        assert '&nbsp;' not in result
+        assert result.startswith('|')
+
+    def test_custom_table_section_uses_global_when_no_override(self):
+        """When no per-section spacer, global table_spacer is used."""
+        from syntagmax.publish_config import PublishConfig
+        from syntagmax.publish import render_block
+
+        artifact = MagicMock()
+        artifact.atype = 'REQ'
+        artifact.aid = 'REQ-1'
+        artifact.fields = {'id': 'REQ-1', 'parent': 'SYS-1'}
+        artifact.location = None
+
+        pub_config = PublishConfig.model_validate({
+            'table_spacer': 4,
+            'render': {
+                'REQ': [{'type': 'table', 'attributes': [{'id': {'alias': 'ID'}}, {'parent': {'alias': 'Parent'}}]}]
+            }
+        })
+        block = ArtifactBlock(artifact=artifact, raw_text='')
+        result = render_block(block, pub_config)
+
+        assert result.count('&nbsp;\n\n') == 4
+
+    def test_custom_table_section_empty_table_no_spacer(self):
+        """When no attributes match (empty table), no spacer is emitted."""
+        from syntagmax.publish_config import PublishConfig
+        from syntagmax.publish import render_block
+
+        artifact = MagicMock()
+        artifact.atype = 'REQ'
+        artifact.aid = 'REQ-1'
+        artifact.fields = {'id': 'REQ-1'}
+        artifact.location = None
+
+        pub_config = PublishConfig.model_validate({
+            'table_spacer': 3,
+            'render': {
+                'REQ': [{'type': 'table', 'attributes': [{'nonexistent': {'alias': 'N/A'}}]}]
+            }
+        })
+        block = ArtifactBlock(artifact=artifact, raw_text='')
+        result = render_block(block, pub_config)
+
+        assert '&nbsp;' not in result
+
+    def test_fallback_rendering_default_spacer(self):
+        """Fallback rendering with default table_spacer=1 produces one &nbsp; paragraph."""
+        from syntagmax.publish import render_artifact_fallback
+
+        artifact = MagicMock()
+        artifact.aid = 'SYS-1'
+        artifact.fields = {'id': 'SYS-1', 'contents': 'Body', 'status': 'active'}
+
+        result = render_artifact_fallback(artifact, content_level=2)
+
+        assert result.count('&nbsp;\n\n') == 1
+        assert '&nbsp;\n\n| Field | Value |' in result
+
+    def test_fallback_rendering_custom_spacer(self):
+        """Fallback rendering with table_spacer=2 produces two &nbsp; paragraphs."""
+        from syntagmax.publish import render_artifact_fallback
+
+        artifact = MagicMock()
+        artifact.aid = 'SYS-1'
+        artifact.fields = {'id': 'SYS-1', 'contents': 'Body', 'status': 'active'}
+
+        result = render_artifact_fallback(artifact, content_level=2, table_spacer=2)
+
+        assert result.count('&nbsp;\n\n') == 2
+
+    def test_fallback_rendering_spacer_zero(self):
+        """Fallback rendering with table_spacer=0 produces no spacer."""
+        from syntagmax.publish import render_artifact_fallback
+
+        artifact = MagicMock()
+        artifact.aid = 'SYS-1'
+        artifact.fields = {'id': 'SYS-1', 'contents': 'Body', 'status': 'active'}
+
+        result = render_artifact_fallback(artifact, content_level=2, table_spacer=0)
+
+        assert '&nbsp;' not in result
+        # Table still present
+        assert '| Field | Value |' in result
+
+    def test_fallback_no_metadata_no_spacer(self):
+        """Fallback with only id and contents (no metadata table) produces no spacer."""
+        from syntagmax.publish import render_artifact_fallback
+
+        artifact = MagicMock()
+        artifact.aid = 'SYS-1'
+        artifact.fields = {'id': 'SYS-1', 'contents': 'Body'}
+
+        result = render_artifact_fallback(artifact, content_level=2, table_spacer=3)
+
+        assert '&nbsp;' not in result
+        assert '| Field | Value |' not in result
+
+    def test_render_block_tree_fallback_uses_global_spacer(self):
+        """render_block_tree passes global table_spacer to fallback rendering."""
+        from syntagmax.config import Config
+        from syntagmax.params import Params
+
+        artifact = MagicMock()
+        artifact.atype = 'REQ'
+        artifact.aid = 'REQ-1'
+        artifact.fields = {'id': 'REQ-1', 'contents': 'Desc', 'status': 'active'}
+        artifact.location = None
+
+        tree = BlockTree(
+            inputs=[
+                InputBlock(
+                    name='reqs',
+                    files=[FileRecord(path='req.md', blocks=[ArtifactBlock(artifact=artifact, raw_text='')])],
+                )
+            ]
+        )
+
+        result, _ = render_block_tree(tree, multi_record=False)
+        # Default table_spacer=1
+        assert '&nbsp;\n\n| Field | Value |' in result

@@ -6,9 +6,9 @@ Tables in published output lack configurable visual spacing before them. When mu
 
 ## Requirements
 
-1. Add a global `table_spacer` setting in the publish config (default: `1`)
-2. Add a per-section `spacer` field on `TableSection` (optional, overrides the global)
-3. Spacer produces `&nbsp;` paragraph lines before the table (each unit = one visible blank line)
+1. Add a global `table_spacer` setting in the publish config (default: `1`, must be an integer between 0 and 20, supports kebab-case `table-spacer`)
+2. Add a per-section `spacer` field on `TableSection` (optional, overrides the global, must be an integer between 0 and 20)
+3. Spacer produces ASCII `&nbsp;` paragraph lines before the table (each unit = one visible blank line). The literal unicode `\xa0` character must not be used to avoid parser validation issues.
 4. Applies to both custom `TableSection` rendering and fallback metadata table
 5. `spacer: 0` means no spacer lines prepended
 
@@ -21,6 +21,7 @@ Tables in published output lack configurable visual spacing before them. When mu
   - Fallback `render_artifact_fallback` function
 - The final output in `render_block_tree` collapses 3+ consecutive newlines into 2 (`re.sub(r'\n{3,}', '\n\n', result)`), so plain newlines cannot produce multiple visible blank lines
 - Using `&nbsp;\n\n` paragraphs as spacers survives the collapse and produces visible blank lines in both Markdown renderers and Pandoc DOCX/PDF export
+- **Important:** The markdown extractor in `src/syntagmax/extractors/markdown.py` detects and flags literal unicode non-breaking spaces (`\xa0`) as validation errors. The publisher must use the ASCII entity `&nbsp;` exclusively — never the literal unicode character `\xa0` — to ensure published output files do not trigger extraction errors if read back as input.
 
 ## Proposed Solution
 
@@ -104,13 +105,15 @@ Each `&nbsp;` paragraph acts as a visible blank line in rendered output.
 **Objective:** Extend the `TableSection` Pydantic model with an optional `spacer` integer field.
 
 **Implementation guidance:**
-- Add `spacer: int | None = Field(default=None)` to `TableSection` in `publish_config.py`
+- Add `spacer: int | None = Field(default=None, ge=0, le=20)` to `TableSection` in `publish_config.py`
 - The field is optional; `None` means "use global `table_spacer`"
 
 **Test requirements:**
 - Unit test: `TableSection` validates with `spacer` present (integer values)
 - Unit test: `TableSection` validates without `spacer` (defaults to `None`)
 - Unit test: `TableSection` rejects non-integer `spacer` values
+- Unit test: `TableSection` rejects negative spacer values (e.g. `-1`)
+- Unit test: `TableSection` rejects spacer values greater than 20 (e.g. `21`)
 
 **Demo:** `TableSection.model_validate({'type': 'table', 'spacer': 2, 'attributes': [{'id': {'alias': 'ID'}}]})` succeeds with `spacer == 2`.
 
@@ -119,13 +122,15 @@ Each `&nbsp;` paragraph acts as a visible blank line in rendered output.
 **Objective:** Add a global `table_spacer` setting with default of `1`.
 
 **Implementation guidance:**
-- Add `table_spacer: int = Field(default=1)` to `PublishConfig` in `publish_config.py`
+- Add `table_spacer: int = Field(default=1, alias='table-spacer', ge=0, le=20)` to `PublishConfig` in `publish_config.py`
 
 **Test requirements:**
 - Unit test: `PublishConfig()` has `table_spacer == 1`
 - Unit test: YAML with `table_spacer: 3` parses correctly
 - Unit test: TOML with `table_spacer = 3` parses correctly
+- Unit test: YAML with kebab-case `table-spacer: 3` parses correctly
 - Unit test: non-integer values are rejected
+- Unit test: `PublishConfig` rejects negative values and values greater than 20
 
 **Demo:** `PublishConfig.model_validate({'table_spacer': 2}).table_spacer == 2`
 

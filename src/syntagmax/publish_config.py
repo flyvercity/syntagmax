@@ -24,6 +24,7 @@ class AttributeRender(BaseModel):
 class TableSection(BaseModel):
     model_config = ConfigDict(extra='forbid')
     type: Literal['table']
+    spacer: int | None = Field(default=None, ge=0, le=20)
     attributes: list[dict[str, AttributeRender]]
 
     @field_validator('attributes')
@@ -67,6 +68,7 @@ class PublishConfig(BaseModel):
     remove_numeric_prefixes_in_headers: bool = Field(default=True)
     include_plain_text: bool = Field(default=True)
     contents_marker: str = Field(default='_contents_', description='Filename marker for headingless content files in publishing')
+    table_spacer: int = Field(default=1, alias='table-spacer', ge=0, le=20)
     render: dict[str, list[RenderSection]] = Field(default_factory=dict)
     docx_template: DocxTemplate | None = Field(default=None, alias='docx-template')
 

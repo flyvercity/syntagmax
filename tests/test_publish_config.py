@@ -889,3 +889,88 @@ atype = "SRS"
 
         pub_config = config.load_publish_config(records[0])
         assert pub_config.start_level == 4
+
+
+class TestTableSpacer:
+    """Tests for the table_spacer global and per-section spacer fields."""
+
+    def test_default_table_spacer(self):
+        config = PublishConfig()
+        assert config.table_spacer == 1
+
+    def test_custom_table_spacer(self):
+        config = PublishConfig.model_validate({'table_spacer': 3})
+        assert config.table_spacer == 3
+
+    def test_table_spacer_kebab_case_alias(self):
+        config = PublishConfig.model_validate({'table-spacer': 5})
+        assert config.table_spacer == 5
+
+    def test_table_spacer_zero(self):
+        config = PublishConfig.model_validate({'table_spacer': 0})
+        assert config.table_spacer == 0
+
+    def test_table_spacer_max_value(self):
+        config = PublishConfig.model_validate({'table_spacer': 20})
+        assert config.table_spacer == 20
+
+    def test_table_spacer_rejects_negative(self):
+        with pytest.raises(ValidationError):
+            PublishConfig.model_validate({'table_spacer': -1})
+
+    def test_table_spacer_rejects_over_max(self):
+        with pytest.raises(ValidationError):
+            PublishConfig.model_validate({'table_spacer': 21})
+
+    def test_table_spacer_rejects_non_integer(self):
+        with pytest.raises(ValidationError):
+            PublishConfig.model_validate({'table_spacer': 'abc'})
+
+    def test_table_spacer_from_yaml(self, tmp_path):
+        yaml_content = "table_spacer: 4\n"
+        p = tmp_path / 'publish.yaml'
+        p.write_text(yaml_content, encoding='utf-8')
+        config = load_publish_config(Path('publish.yaml'), tmp_path)
+        assert config.table_spacer == 4
+
+    def test_table_spacer_kebab_from_yaml(self, tmp_path):
+        yaml_content = "table-spacer: 3\n"
+        p = tmp_path / 'publish.yaml'
+        p.write_text(yaml_content, encoding='utf-8')
+        config = load_publish_config(Path('publish.yaml'), tmp_path)
+        assert config.table_spacer == 3
+
+    def test_table_spacer_from_toml(self, tmp_path):
+        toml_content = "table_spacer = 5\n"
+        p = tmp_path / 'publish.toml'
+        p.write_text(toml_content, encoding='utf-8')
+        config = load_publish_config(Path('publish.toml'), tmp_path)
+        assert config.table_spacer == 5
+
+    def test_table_section_spacer_default_none(self):
+        sec = TableSection.model_validate({'type': 'table', 'attributes': [{'id': {'alias': 'ID'}}]})
+        assert sec.spacer is None
+
+    def test_table_section_spacer_set(self):
+        sec = TableSection.model_validate({'type': 'table', 'spacer': 2, 'attributes': [{'id': {'alias': 'ID'}}]})
+        assert sec.spacer == 2
+
+    def test_table_section_spacer_zero(self):
+        sec = TableSection.model_validate({'type': 'table', 'spacer': 0, 'attributes': [{'id': {'alias': 'ID'}}]})
+        assert sec.spacer == 0
+
+    def test_table_section_spacer_max(self):
+        sec = TableSection.model_validate({'type': 'table', 'spacer': 20, 'attributes': [{'id': {'alias': 'ID'}}]})
+        assert sec.spacer == 20
+
+    def test_table_section_spacer_rejects_negative(self):
+        with pytest.raises(ValidationError):
+            TableSection.model_validate({'type': 'table', 'spacer': -1, 'attributes': [{'id': {'alias': 'ID'}}]})
+
+    def test_table_section_spacer_rejects_over_max(self):
+        with pytest.raises(ValidationError):
+            TableSection.model_validate({'type': 'table', 'spacer': 21, 'attributes': [{'id': {'alias': 'ID'}}]})
+
+    def test_table_section_spacer_rejects_non_integer(self):
+        with pytest.raises(ValidationError):
+            TableSection.model_validate({'type': 'table', 'spacer': 'big', 'attributes': [{'id': {'alias': 'ID'}}]})

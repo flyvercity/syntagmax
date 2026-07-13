@@ -144,10 +144,12 @@ start_level: 1
 remove_numeric_prefixes_in_headers: true
 include_plain_text: true
 contents_marker: "_contents_"
+table-spacer: 1
 
 render:
   REQ:
     - type: table
+      spacer: 2
       attributes:
         - id:
             alias: "Identifier"
@@ -177,9 +179,11 @@ start_level = 1
 remove_numeric_prefixes_in_headers = true
 include_plain_text = true
 contents_marker = "_contents_"
+table_spacer = 1
 
 [[render.REQ]]
 type = "table"
+spacer = 2
 
 [[render.REQ.attributes]]
 [render.REQ.attributes.id]
@@ -218,6 +222,7 @@ implementation = "none"
 | `remove_numeric_prefixes_in_headers` | bool | `true` | Strip leading numeric prefixes from all headings: Markdown headings in text, directory/file names, and record names |
 | `include_plain_text` | bool | `true` | Include plain (non-artifact) text in the output |
 | `contents_marker` | string | `_contents_` | Filename marker for content files (headingless rendering) |
+| `table_spacer` / `table-spacer` | int | `1` | Number of visible blank lines to prepend before tables (0–20). Applies to both custom table sections and fallback metadata tables. Each unit produces one `&nbsp;` paragraph line. |
 
 ### Path Headings
 
@@ -323,7 +328,7 @@ render:
 
 | Type | Description |
 |------|-------------|
-| `table` | Renders attributes as a table (attribute aliases as column headers) |
+| `table` | Renders attributes as a table (attribute aliases as column headers). Supports an optional `spacer` field (int, 0–20) to override the global `table_spacer` for this section. |
 | `text` | Renders attributes as formatted text with aliases as captions |
 
 **Text mode:**

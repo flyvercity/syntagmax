@@ -237,13 +237,14 @@ def get_artifact_field_value(artifact: Artifact, field_name: str) -> Optional[st
     return None
 
 
-def render_artifact_fallback(artifact: Artifact, content_level: int) -> str:
+def render_artifact_fallback(artifact: Artifact, content_level: int, table_spacer: int = 1) -> str:
     """Render an artifact using fallback formatting (no custom render config).
 
     Args:
         artifact: The artifact to render.
         content_level: The heading level at which the artifact ID should appear.
             This accounts for the file's hierarchical position in the document.
+        table_spacer: Number of visible blank lines to prepend before the metadata table.
     """
     parts = []
     level = min(6, content_level)
@@ -257,6 +258,7 @@ def render_artifact_fallback(artifact: Artifact, content_level: int) -> str:
     fields = {k: v for k, v in artifact.fields.items() if k.lower() not in ('id', 'contents')}
     if fields:
         sorted_keys = sorted(fields.keys())
+        parts.append('&nbsp;\n\n' * table_spacer)
         parts.append('| Field | Value |\n|-------|-------|\n')
         for k in sorted_keys:
             v = fields[k]
@@ -355,7 +357,7 @@ def render_block(block: Block, pub_config: PublishConfig, context: RenderContext
             # When content_level is explicitly provided (from render_block_tree), use it.
             # When None (direct callers), preserve historical behaviour: start_level + 2.
             fallback_level = effective_level if content_level is not None else pub_config.start_level + 2
-            return image_embed + render_artifact_fallback(a, fallback_level)
+            return image_embed + render_artifact_fallback(a, fallback_level, pub_config.table_spacer)
 
         parts = []
         for sec in render_sections:
@@ -368,6 +370,8 @@ def render_block(block: Block, pub_config: PublishConfig, context: RenderContext
                     if val:
                         rows.append((attr_render.alias, val))
                 if rows:
+                    effective_spacer = sec.spacer if sec.spacer is not None else pub_config.table_spacer
+                    parts.append('&nbsp;\n\n' * effective_spacer)
                     parts.append('|           |       |\n|-----------|-------|\n')
                     for alias, val in rows:
                         parts.append(f'| {alias} | {val} |\n')
