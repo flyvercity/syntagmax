@@ -387,57 +387,67 @@ class BedrockProvider(AIProvider):
         # Support for AWS Bedrock API Keys
         api_key = self.config.aws_api_key or os.environ.get('AWS_BEDROCK_API_KEY')
         if api_key:
-            if not region:
-                raise AIError('AWS Region is required for Bedrock (set via config or AWS_REGION env var)')
-
-            url = f'https://bedrock-runtime.{region}.amazonaws.com/model/{model}/invoke'
-            headers = {
-                'Authorization': f'Bearer {api_key}',
-                'Content-Type': 'application/json',
-                'Accept': 'application/json',
-            }
-
-            resp = None
-
-            try:
-                lg.debug(f'Calling Bedrock via requests at {url}')
-                resp = requests.post(url, json=body_dict, headers=headers, timeout=timeout_s)
-                resp.raise_for_status()
-                response_body = resp.json()
-            except Exception as e:
-                if resp:
-                    lg.debug(f'Response: {resp.text!r}')
-                raise AIError(f'Failed to call Bedrock via requests: {e}') from e
+            response_body = self._call_bedrock_via_requests(model=model, region=region, body_dict=body_dict, api_key=api_key, timeout_s=timeout_s)
         else:
-            try:
-                import boto3  # type: ignore
-            except ImportError:
-                raise AIError("boto3 is required for AWS Bedrock support. Please install it with: pip install 'syntagmax[bedrock]'")
+            response_body = self._call_bedrock_via_boto3(model=model, region=region, body_dict=body_dict)
 
-            body = json.dumps(body_dict)
+        result = self._parse_bedrock_response(response_body)
+        self._basic_validate(result)
+        return result
 
-            try:
-                kwargs = {'service_name': 'bedrock-runtime'}
-                if region:
-                    kwargs['region_name'] = region
+    def _call_bedrock_via_requests(self, model: str, region: str | None, body_dict: dict, api_key: str, timeout_s: float) -> Dict[str, Any]:
+        if not region:
+            raise AIError('AWS Region is required for Bedrock (set via config or AWS_REGION env var)')
 
-                if self.config.aws_access_key_id and self.config.aws_secret_access_key:
-                    kwargs['aws_access_key_id'] = self.config.aws_access_key_id
-                    kwargs['aws_secret_access_key'] = self.config.aws_secret_access_key
-                    if self.config.aws_session_token:
-                        kwargs['aws_session_token'] = self.config.aws_session_token
+        url = f'https://bedrock-runtime.{region}.amazonaws.com/model/{model}/invoke'
+        headers = {
+            'Authorization': f'Bearer {api_key}',
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+        }
 
-                client = boto3.client(**kwargs)  # type: ignore
+        resp = None
+        try:
+            lg.debug(f'Calling Bedrock via requests at {url}')
+            resp = requests.post(url, json=body_dict, headers=headers, timeout=timeout_s)
+            resp.raise_for_status()
+            return resp.json()
+        except Exception as e:
+            if resp is not None:
+                lg.debug(f'Response: {resp.text!r}')
+            raise AIError(f'Failed to call Bedrock via requests: {e}') from e
 
-                lg.debug(f'Calling Bedrock model {model}')
-                response = client.invoke_model(  # type: ignore
-                    body=body, modelId=model, accept='application/json', contentType='application/json'
-                )
+    def _call_bedrock_via_boto3(self, model: str, region: str | None, body_dict: dict) -> Dict[str, Any]:
+        try:
+            import boto3  # type: ignore
+        except ImportError:
+            raise AIError("boto3 is required for AWS Bedrock support. Please install it with: pip install 'syntagmax[bedrock]'")
 
-                response_body = json.loads(response.get('body').read())  # type: ignore
-            except Exception as e:
-                raise AIError(f'Failed to call Bedrock: {e}') from e
+        body = json.dumps(body_dict)
 
+        try:
+            kwargs: Dict[str, Any] = {'service_name': 'bedrock-runtime'}
+            if region:
+                kwargs['region_name'] = region
+
+            if self.config.aws_access_key_id and self.config.aws_secret_access_key:
+                kwargs['aws_access_key_id'] = self.config.aws_access_key_id
+                kwargs['aws_secret_access_key'] = self.config.aws_secret_access_key
+                if self.config.aws_session_token:
+                    kwargs['aws_session_token'] = self.config.aws_session_token
+
+            client = boto3.client(**kwargs)  # type: ignore
+
+            lg.debug(f'Calling Bedrock model {model}')
+            response = client.invoke_model(  # type: ignore
+                body=body, modelId=model, accept='application/json', contentType='application/json'
+            )
+
+            return json.loads(response.get('body').read())  # type: ignore
+        except Exception as e:
+            raise AIError(f'Failed to call Bedrock: {e}') from e
+
+    def _parse_bedrock_response(self, response_body: Dict[str, Any]) -> Dict[str, Any]:
         try:
             content = response_body.get('content')[0].get('text')
 
@@ -446,10 +456,6 @@ class BedrockProvider(AIProvider):
                 content = match.group(0)
 
             content = self._sanitize_json(content)
-            result = json.loads(content)
-
+            return json.loads(content)
         except Exception as e:
             raise AIError(f'Failed to parse Bedrock response: {e}. response={response_body!r}') from e
-
-        self._basic_validate(result)
-        return result
