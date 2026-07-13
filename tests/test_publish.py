@@ -999,8 +999,6 @@ class TestTableSpacerRendering:
 
     def test_render_block_tree_fallback_uses_global_spacer(self):
         """render_block_tree passes global table_spacer to fallback rendering."""
-        from syntagmax.config import Config
-        from syntagmax.params import Params
 
         artifact = MagicMock()
         artifact.atype = 'REQ'

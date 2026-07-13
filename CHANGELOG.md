@@ -5,6 +5,53 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project uses [Calendar Versioning](https://calver.org/) with the scheme `YYYY.M.D`.
 
+## [2026.7.13] - 2026-07-13
+
+### Added
+
+- Attribute presence mode for publishing (show/hide attributes based on presence)
+- Image reference rewriting in artifact rendering
+- Configurable table spacing for published output
+- `edit markers renumber` command for sequential marker ID assignment
+- `strict_line_breaks` configuration for Obsidian driver (off/auto modes)
+- Global publish configuration support
+- Configurable removal modes for Obsidian element exclusion
+- Identified text blocks (block ID generation in markdown extractor)
+- TOML-based publishing configuration
+- Content files support for headingless rendering
+- Obsidian attachment folder integration (reads `.obsidian/app.json`)
+- Hierarchical heading depth for document content
+- Pre-publishing filter plugin hook (`filter_block`)
+- Automatic image resolution and copying for published documents
+- Configurable DOCX templates for Pandoc export
+- Hierarchical path-based headings for published documents
+- Regression tests for forward trace type filtering
+
+### Fixed
+
+- Remove automatic alt text generation for images
+- Handle missing text fields in markdown extraction
+- Preserve line endings and handle unclosed fences
+- Detect and report conflicting nominal revisions in parent links
+- Bound terminator search to next marker in markdown parser
+- Constrain YAML search when `[/MARKER]` terminator is absent
+- Deduplicate ParentLinks in `populate_pids`
+- Propagate ancestors transitively in `gather_ancestors`
+- Filter wrong-type parents from trace matrix
+- Constrain YAML block search to segment boundaries
+- Prevent Gemini API key exposure in logs and URLs
+- Resolve TBD detection failure for list-valued fields
+- Use ruamel.yaml for robust artifact attribute updates
+- Resolve line update ordering in edit operations
+
+### Changed
+
+- Improved fragment marker parsing and validation
+- Improved blank line consumption logic
+- Improved Pandoc template resolution for individual record exports
+- Moved block ID generation to markdown extractor
+- Removed dead helper functions and imports in render module
+
 ## [2026.7.6] - 2026-07-06
 
 Initial public release.

@@ -7,9 +7,9 @@ from pathlib import Path
 from unittest.mock import MagicMock
 from pydantic import ValidationError
 
-from syntagmax.publish_config import PublishConfig, TableSection, TextSection, AttributePresence, load_publish_config
+from syntagmax.publish_config import PublishConfig, TableSection, TextSection, load_publish_config
 from syntagmax.metamodel import evaluate_condition, is_attribute_mandatory
-from syntagmax.publish import render_block, should_render_attribute, get_artifact_field_value
+from syntagmax.publish import render_block, should_render_attribute
 from syntagmax.blocks import ArtifactBlock
 from syntagmax.artifact import Artifact
 
