@@ -371,7 +371,7 @@ class TestEndToEndPublishWithAttachments:
         result, manifest = render_block_tree(tree, config=config, multi_record=False)
 
         # Image reference should be rewritten
-        assert '![arch-overview](images/' in result
+        assert '![](images/' in result
         assert '![[arch-overview.png]]' not in result
 
         # Manifest should contain the attachment image
@@ -419,6 +419,6 @@ class TestEndToEndPublishWithAttachments:
 
         result, manifest = render_block_tree(tree, config=config, multi_record=False)
 
-        assert '![local-diagram](images/' in result
+        assert '![](images/' in result
         assert '![[local-diagram.png]]' not in result
         assert len(manifest) == 1

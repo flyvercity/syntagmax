@@ -180,7 +180,7 @@ def _replace_obsidian_image(match: re.Match, context: RenderContext) -> str:
         alt = alt.strip()
     else:
         filename = raw.strip()
-        alt = filename.rsplit('.', 1)[0] if '.' in filename else filename
+        alt = ''
 
     # Check extension
     from pathlib import PurePosixPath
