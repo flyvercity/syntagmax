@@ -119,8 +119,8 @@ def rewrite_image_references(content: str, context: RenderContext) -> str:
     """
     # Split content into fenced and non-fenced segments
     fence_positions = [m.start() for m in _FENCE_RE.finditer(content)]
-    if len(fence_positions) < 2:
-        # No complete fenced blocks, process entire content
+    if not fence_positions:
+        # No fenced blocks, process entire content
         return _rewrite_images_in_segment(content, context)
 
     # Process segments: alternate between outside-fence and inside-fence
@@ -352,7 +352,10 @@ def render_block(block: Block, pub_config: PublishConfig, context: RenderContext
                 break
 
         if not render_sections:
-            return image_embed + render_artifact_fallback(a, effective_level)
+            # When content_level is explicitly provided (from render_block_tree), use it.
+            # When None (direct callers), preserve historical behaviour: start_level + 2.
+            fallback_level = effective_level if content_level is not None else pub_config.start_level + 2
+            return image_embed + render_artifact_fallback(a, fallback_level)
 
         parts = []
         for sec in render_sections:

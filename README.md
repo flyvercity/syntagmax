@@ -39,7 +39,7 @@ This command creates a `.syntagmax` directory with:
 Syntagmax uses a TOML configuration file (default `.syntagmax/config.toml`). Key sections include:
 
 - `[[input]]` — input source definitions (driver, artifact type, filters)
-- `publish` — global publish config file path (relative to base directory)
+- `publish` — global publish config file path (relative to config file directory)
 - `[metrics]` — metrics collection settings
 - `[impact]` — impact analysis settings
 - `[metamodel]` — metamodel file path
@@ -245,6 +245,39 @@ syntagmax edit attrs -s requirements -o replace -n doors_id --csv mapping.csv --
 - **Metamodel-driven add**: Omit `--name` to add all mandatory attributes defined in the metamodel.
 - **CSV mapping**: `--csv` takes precedence; `--value` serves as fallback for unmatched IDs.
 - **Atomic writes**: All changes are computed in memory before any file is written.
+
+### Marker Renumbering
+
+The `edit markers renumber` command assigns sequential numeric IDs to non-artifact marked text blocks (e.g., `[COM]`, `[NOTE]`) that don't already have explicit IDs.
+
+```bash
+syntagmax edit markers renumber --all
+```
+
+#### Options:
+- `--all`: Renumber across all input records (required unless `--section` is used).
+- `--section <name>`: Restrict to a specific input record.
+- `--marker <name>`: Only renumber blocks of a specific marker type.
+- `--dry-run`: Show what changes would be made without modifying files.
+
+#### Behaviour:
+- Numbering is independent per marker type (COM numbering does not affect NOTE).
+- New IDs start from `max_existing + 1` (or 1 if no numeric IDs exist for that type).
+- Original marker casing is preserved: `[com]` → `[com 3]`.
+- All marker formats are supported: closed (`[COM]...[/COM]`), unclosed, and line-prefix.
+
+#### Examples:
+
+```bash
+# Renumber all unmarked blocks
+syntagmax edit markers renumber --all
+
+# Preview changes
+syntagmax edit markers renumber --all --dry-run
+
+# Only renumber COM markers in system-requirements
+syntagmax edit markers renumber --section system-requirements --marker COM
+```
 
 ## Publishing
 

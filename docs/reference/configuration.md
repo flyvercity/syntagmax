@@ -69,6 +69,8 @@ This produces the following blocks:
 - Note fragment (marker=`NOTE`): `This is a note.`
 - Artifact: `SYS-001`
 
+For detailed syntax, marker formats, ID rules, and automatic ID assignment, see the [Obsidian driver reference](obsidian.md#fragment-markers).
+
 ## Drivers (`[drivers]`)
 
 Global defaults for driver-specific behaviour. Per-record settings are merged with (not override) these defaults.

@@ -3,7 +3,6 @@
 
 import json
 import pytest
-from pathlib import Path
 from pydantic import ValidationError
 
 from syntagmax.config import Config, ObsidianDriverConfig

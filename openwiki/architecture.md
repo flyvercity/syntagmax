@@ -44,6 +44,7 @@ The publishing system is config-driven and record-specific. Each input record ma
 - project TOML parsing
 - global config merge from `~/.config/syntagmax/config.toml`
 - input-record discovery and validation
+- TOML-based publishing configuration support
 - metamodel loading
 - plugin loading
 
@@ -72,6 +73,10 @@ The server initializes by extracting, mapping, assigning PIDs, building the tree
 - Config: `src/syntagmax/config.py`
 - Metamodel: `src/syntagmax/metamodel.py`
 - Publish renderer: `src/syntagmax/publish.py`
+- Publish config: `src/syntagmax/publish_config.py`
+- Plugins: `src/syntagmax/plugin.py`
+- MCP: `src/syntagmax/mcp/server.py`
+h renderer: `src/syntagmax/publish.py`
 - Publish config: `src/syntagmax/publish_config.py`
 - Plugins: `src/syntagmax/plugin.py`
 - MCP: `src/syntagmax/mcp/server.py`

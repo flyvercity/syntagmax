@@ -67,7 +67,10 @@ class ObsidianDriverConfig(BaseModel):
     exclude_elements: list[ExcludeElementConfig] = Field(default_factory=list, description='Markdown elements to exclude at extraction time')
     integration: bool = Field(default=False, description='Enable reading Obsidian vault settings (e.g. attachmentFolderPath)')
     root: str | None = Field(default=None, description='Override path to the .obsidian directory (relative to base dir)')
-    strict_line_breaks: str | bool = Field(default='on', description='Line break mode: on/true (standard Markdown), off/false (Obsidian relaxed), auto (read from app.json)')
+    strict_line_breaks: str | bool = Field(
+        default='on',
+        description='Line break mode: on/true (standard Markdown), off/false (Obsidian relaxed), auto (read from app.json)',
+    )
 
     @field_validator('strict_line_breaks', mode='before')
     @classmethod
@@ -214,6 +217,7 @@ class Config:
                 config_data.merge(global_data)
         except Exception as e:
             errors.append(f'Failed to load global config: {e}')
+            raise FatalError(errors)
 
         try:
             # Project config

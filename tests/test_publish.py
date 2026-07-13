@@ -790,3 +790,42 @@ class TestContentFiles:
         assert components == ['Chapter', '2.1.0 content']
         # After stripping: 'content'
         assert strip_numeric_prefix(components[-1]) == 'content'
+
+
+class TestImageRewritingFences:
+    def test_rewrite_images_in_unclosed_fence(self, monkeypatch):
+        import syntagmax.publish as pub
+        from syntagmax.publish import rewrite_image_references
+        from syntagmax.publish_context import RenderContext, ImageManifest
+
+        # Mock RenderContext and Config
+        mock_config = MagicMock()
+        context = RenderContext(config=mock_config, manifest=ImageManifest())
+
+        # Monkeypatch _rewrite_images_in_segment to return a marker
+        calls = []
+        def mock_rewrite(segment, ctx):
+            calls.append(segment)
+            return "REWRITTEN"
+
+        monkeypatch.setattr(pub, "_rewrite_images_in_segment", mock_rewrite)
+
+        # 1. Test with no fence
+        content1 = "No fence content"
+        res1 = rewrite_image_references(content1, context)
+        assert res1 == "REWRITTEN"
+        assert calls == ["No fence content"]
+        calls.clear()
+
+        # 2. Test with closed fence
+        content2 = "Outside\n```\nInside\n```\nOutside2"
+        res2 = rewrite_image_references(content2, context)
+        assert res2 == "REWRITTEN```\nInside\n```\nREWRITTEN"
+        assert calls == ["Outside\n", "Outside2"]
+        calls.clear()
+
+        # 3. Test with unclosed fence (BUG-7 fix check)
+        content3 = "Outside\n```\nUnclosed Inside"
+        res3 = rewrite_image_references(content3, context)
+        assert res3 == "REWRITTEN```\nUnclosed Inside"
+        assert calls == ["Outside\n"]
