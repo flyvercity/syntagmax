@@ -13,8 +13,8 @@ Here is how the main directory concepts relate to each other:
 ```mermaid
 flowchart TD
     CWD["Working Directory (CWD)<br/>Where command is run or set by --cwd"]
-    Root["Root Directory<br/>Contains .syntagmax/<br/>(Determined by location of config.toml)"]
-    Base["Base Directory<br/>(base = '..')<br/>Resolved relative to Root"]
+    Root["Root Directory<br/>The .syntagmax/ directory<br/>(Determined by location of config.toml)"]
+    Base["Base Directory<br/>(e.g., base = '..')<br/>Resolved relative to Root"]
     Input["Input Directory<br/>(dir = 'requirements')<br/>Resolved relative to Base"]
     Artifact["Artifact File Paths<br/>(e.g., 'requirements/REQ-01.md')<br/>Stored relative to Base"]
     Global["Global Config<br/>~/.config/syntagmax/config.toml"]
@@ -37,10 +37,10 @@ flowchart TD
 * **Role in resolution:** When initializing a project with `syntagmax init` or searching for the default `.syntagmax/config.toml`, Syntagmax resolves paths relative to this directory.
 
 ### 2. Root Directory
-* **What it is:** The project directory containing the `.syntagmax` configuration directory and settings files.
+* **What it is:** The directory containing the configuration file (`config.toml`). By default, this is the `.syntagmax/` directory.
 * **How it is determined:** Computed as the parent directory of the loaded `config.toml` file (which defaults to `.syntagmax/config.toml` relative to the Working Directory, or can be overridden via `-f / --config-file`).
 * **Role in resolution:**
-  * The **Base Directory** is resolved relative to this Root Directory.
+  * The **Base Directory** is resolved relative to this Root Directory. For example, if Root is `.syntagmax/` and `base = ".."`, the Base Directory resolves to the parent of `.syntagmax/` (which is your project root).
   * Global publish configuration paths are resolved relative to this Root Directory.
   * Metamodel filenames (e.g., `project.syntagmax`) are resolved relative to this Root Directory.
 
@@ -74,9 +74,9 @@ Publish configurations (`publish.yaml` or `publish.toml`) dictate how artifacts 
    * **Resolution:** Resolved relative to the **Base Directory**. If the file is not found, Syntagmax raises a fatal configuration error.
 2. **Global publish configuration:**
    * Configured via the `publish` field under the top-level of `config.toml`.
-   * **Resolution:** Resolved relative to the **Root Directory** (the directory of the configuration file).
+   * **Resolution:** Resolved relative to the **Root Directory** (the directory of the configuration file, typically `.syntagmax/`).
 3. **Auto-discovery:**
-   * If neither per-record nor global publish configuration is defined, Syntagmax searches for `publish.yaml`, `publish.yml`, or `publish.toml` inside the `.syntagmax/` directory of the **Root Directory**.
+   * If neither per-record nor global publish configuration is defined, Syntagmax searches for `publish.yaml`, `publish.yml`, or `publish.toml` inside the Root Directory (typically `.syntagmax/`).
 4. **All-default rendering:**
    * If no publish file is found, Syntagmax falls back to the default rendering template structure.
 
