@@ -286,6 +286,7 @@ def publish(
 
         from syntagmax.publish_context import ImageManifest
         combined_manifest = ImageManifest()
+        published_files: list[tuple[Path, object]] = []  # (file_path, record) for deferred Pandoc
 
         for record in selected_records:
             tree, block_errors = build_block_tree(config)
@@ -340,12 +341,16 @@ def publish(
 
             u.pprint(f'[green]Published {record.name} to {file_path} ({num_artifacts} artifacts, {num_text_blocks} text blocks)[/green]')
 
-            if pandoc_available:
+            published_files.append((file_path, record))
+
+        # Copy images before Pandoc conversion so images/ is available on disc
+        _copy_manifest_images(combined_manifest, out_p)
+
+        # Pandoc conversion (images now present)
+        if pandoc_available:
+            for file_path, record in published_files:
                 reference_doc = _resolve_template_for_record(record) if docx else None
                 _run_pandoc_conversion(file_path, docx, pdf, reference_doc=reference_doc)
-
-        # Copy images after all records are processed
-        _copy_manifest_images(combined_manifest, out_p)
 
 
 @rms.command(help='Export traceability matrix as CSV/TSV')
