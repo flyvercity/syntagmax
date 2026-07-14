@@ -45,7 +45,7 @@ Syntagmax uses a TOML configuration file (default `.syntagmax/config.toml`). Key
 - `[metamodel]` — metamodel file path
 - `[ai]` — AI provider and model settings
 
-For details on how all these paths are resolved relatives to the project configuration file, see the [Paths Reference](docs/reference/paths.md).
+For details on how all these paths are resolved relative to the project configuration file, see the [Paths Reference](docs/reference/paths.md).
 
 ```toml
 base = ".."

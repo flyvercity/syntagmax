@@ -6,11 +6,9 @@ For a detailed explanation of how Syntagmax handles different directories, relat
 
 ## Top-level Options
 
-For details on how top-level paths are resolved relative to the configuration file, refer to the [Paths Reference](paths.md).
-
 | Option | Required | Description |
 |--------|----------|-------------|
-| `base` | Yes | Base directory path (relative to the config file). See [Paths Reference](paths.md) for more details. |
+| `base` | Yes | Base directory path (relative to the config file). |
 | `publish` | No | Global publish config file path (relative to config file directory). See [Publishing Reference](publishing.md). |
 | `input` | Yes | List of input source definitions |
 | `drivers` | No | Driver-specific global defaults |

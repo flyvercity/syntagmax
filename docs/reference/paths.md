@@ -19,7 +19,6 @@ flowchart TD
     Artifact["Artifact File Paths<br/>(e.g., 'requirements/REQ-01.md')<br/>Stored relative to Base"]
     Global["Global Config<br/>~/.config/syntagmax/config.toml"]
 
-    CWD -->|"--cwd overrides default CWD"| CWD
     CWD -->|"(unless -f explicitly specifies config)"| Root
     Root -->|config.toml: 'base'| Base
     Base -->|input: 'dir'| Input
@@ -63,7 +62,7 @@ flowchart TD
 ## Configuration Paths
 
 ### Global Configuration
-* **Path:** `~/.config/syntagmax/config.toml` (on Unix-like systems) or equivalent user configuration directories.
+* **Path:** `~/.config/syntagmax/config.toml`
 * **Resolution:** Loaded first, if present. Errors in global configuration are intentionally fatal and will halt execution. The project-specific `config.toml` is deep-merged on top of the global configuration, with project settings taking precedence.
 
 ### Publish Configuration
