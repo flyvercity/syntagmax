@@ -215,8 +215,8 @@ class TestGetMandatoryAttributes:
         result = _get_mandatory_attributes(metamodel, 'REQ')
         assert 'title' in result
         assert 'status' in result
-        assert 'id' not in result  # excluded
-        assert 'contents' not in result  # excluded
+        assert 'id' in result  # included in bulk-add
+        assert 'contents' not in result  # excluded (body text)
         assert 'priority' not in result  # optional
 
     def test_conditional_mandatory_excluded(self):
