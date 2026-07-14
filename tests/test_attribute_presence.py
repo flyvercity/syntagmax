@@ -244,37 +244,37 @@ class TestEvaluateCondition:
 
 class TestIsAttributeMandatory:
     def test_unconditional_mandatory(self, simple_metamodel):
-        result = is_attribute_mandatory('status', 'REQ', {}, simple_metamodel)
+        result = is_attribute_mandatory('status', 'REQ', simple_metamodel)
         assert result is True
 
     def test_optional_attribute(self, simple_metamodel):
-        result = is_attribute_mandatory('priority', 'REQ', {}, simple_metamodel)
+        result = is_attribute_mandatory('priority', 'REQ', simple_metamodel)
         assert result is False
 
-    def test_conditional_mandatory_condition_holds(self, simple_metamodel):
-        """parent is mandatory if not derive; derive absent -> mandatory."""
-        result = is_attribute_mandatory('parent', 'REQ', {}, simple_metamodel)
+    def test_conditional_mandatory_always_true(self, simple_metamodel):
+        """parent is mandatory if not derive; conditions are not evaluated here."""
+        result = is_attribute_mandatory('parent', 'REQ', simple_metamodel)
         assert result is True
 
-    def test_conditional_mandatory_condition_not_holds(self, simple_metamodel):
-        """parent is mandatory if not derive; derive='yes' -> not mandatory."""
-        result = is_attribute_mandatory('parent', 'REQ', {'derive': 'yes'}, simple_metamodel)
-        assert result is False
+    def test_conditional_mandatory_ignores_fields(self, simple_metamodel):
+        """parent is mandatory if not derive; even with derive='yes', still mandatory."""
+        result = is_attribute_mandatory('parent', 'REQ', simple_metamodel)
+        assert result is True
 
     def test_no_metamodel_returns_false(self):
-        result = is_attribute_mandatory('status', 'REQ', {}, None)
+        result = is_attribute_mandatory('status', 'REQ', None)
         assert result is False
 
     def test_atype_not_in_metamodel(self, simple_metamodel):
-        result = is_attribute_mandatory('status', 'UNKNOWN', {}, simple_metamodel)
+        result = is_attribute_mandatory('status', 'UNKNOWN', simple_metamodel)
         assert result is False
 
     def test_attribute_not_in_metamodel(self, simple_metamodel):
-        result = is_attribute_mandatory('nonexistent', 'REQ', {}, simple_metamodel)
+        result = is_attribute_mandatory('nonexistent', 'REQ', simple_metamodel)
         assert result is False
 
     def test_id_attribute_is_mandatory(self, simple_metamodel):
-        result = is_attribute_mandatory('id', 'REQ', {}, simple_metamodel)
+        result = is_attribute_mandatory('id', 'REQ', simple_metamodel)
         assert result is True
 
 
@@ -285,27 +285,27 @@ class TestShouldRenderAttribute:
     def test_with_value_always_renders(self, simple_metamodel):
         """All modes render when value is present."""
         for mode in ('all', 'mandatory', 'values-only'):
-            assert should_render_attribute('priority', 'high', mode, 'REQ', {}, simple_metamodel) is True
+            assert should_render_attribute('priority', 'high', mode, 'REQ', simple_metamodel) is True
 
     def test_values_only_no_value_skips(self, simple_metamodel):
-        assert should_render_attribute('priority', None, 'values-only', 'REQ', {}, simple_metamodel) is False
+        assert should_render_attribute('priority', None, 'values-only', 'REQ', simple_metamodel) is False
 
     def test_all_no_value_renders(self, simple_metamodel):
-        assert should_render_attribute('priority', None, 'all', 'REQ', {}, simple_metamodel) is True
+        assert should_render_attribute('priority', None, 'all', 'REQ', simple_metamodel) is True
 
     def test_mandatory_mode_mandatory_attr_no_value_renders(self, simple_metamodel):
-        assert should_render_attribute('status', None, 'mandatory', 'REQ', {}, simple_metamodel) is True
+        assert should_render_attribute('status', None, 'mandatory', 'REQ', simple_metamodel) is True
 
     def test_mandatory_mode_optional_attr_no_value_skips(self, simple_metamodel):
-        assert should_render_attribute('priority', None, 'mandatory', 'REQ', {}, simple_metamodel) is False
+        assert should_render_attribute('priority', None, 'mandatory', 'REQ', simple_metamodel) is False
 
     def test_mandatory_mode_conditional_mandatory_renders(self, simple_metamodel):
-        """parent mandatory if not derive; derive absent -> should render."""
-        assert should_render_attribute('parent', None, 'mandatory', 'REQ', {}, simple_metamodel) is True
+        """parent mandatory if not derive; always renders since conditions are not evaluated."""
+        assert should_render_attribute('parent', None, 'mandatory', 'REQ', simple_metamodel) is True
 
-    def test_mandatory_mode_conditional_not_mandatory_skips(self, simple_metamodel):
-        """parent mandatory if not derive; derive='yes' -> should NOT render."""
-        assert should_render_attribute('parent', None, 'mandatory', 'REQ', {'derive': 'yes'}, simple_metamodel) is False
+    def test_mandatory_mode_conditional_always_renders(self, simple_metamodel):
+        """parent mandatory if not derive; conditions ignored, so always renders."""
+        assert should_render_attribute('parent', None, 'mandatory', 'REQ', simple_metamodel) is True
 
 
 # --- Rendering integration tests ---
@@ -379,19 +379,19 @@ class TestTableSectionRendering:
         result = render_block(block, pub_config, context)
         assert '| Identifier | REQ-1 |' in result
         assert '| Status | active |' in result
-        assert '| Parent |  |' in result  # mandatory (condition holds)
+        assert '| Parent |  |' in result  # mandatory (conditions not evaluated in publish)
         assert '| Priority |' not in result  # optional
 
-    def test_mandatory_mode_conditional_not_active(self, simple_metamodel):
-        """mandatory: conditional mandatory does NOT render when condition doesn't hold."""
+    def test_mandatory_mode_conditional_always_renders(self, simple_metamodel):
+        """mandatory: conditional mandatory always renders since conditions are not evaluated in publish."""
         pub_config = self._make_pub_config(global_presence='mandatory')
-        # derive='yes' -> parent is NOT mandatory
+        # derive='yes' -> condition would suppress in analyze, but publish ignores conditions
         artifact = _make_artifact('REQ-1', {'id': 'REQ-1', 'status': 'active', 'derive': 'yes'})
         block = ArtifactBlock(artifact=artifact, raw_text='raw')
         context = self._make_context_with_metamodel(simple_metamodel)
 
         result = render_block(block, pub_config, context)
-        assert '| Parent |' not in result
+        assert '| Parent |  |' in result  # always mandatory in publish
 
     def test_section_override_takes_precedence(self, simple_metamodel):
         """Per-section attribute-presence overrides global."""

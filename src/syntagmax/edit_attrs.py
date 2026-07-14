@@ -78,7 +78,9 @@ def load_csv_mapping(
 def _get_mandatory_attributes(metamodel: dict, atype: str) -> list[str]:
     """Get mandatory attribute names from the metamodel for a given artifact type.
 
-    Excludes 'id' and 'contents' which are always handled separately.
+    Excludes 'contents' which is always handled separately (it is the body text).
+    Conditions are disregarded — all mandatory attributes are included regardless
+    of whether they have a condition attached.
     """
     artifacts = metamodel.get('artifacts', {})
     artifact_def = artifacts.get(atype)
@@ -89,12 +91,12 @@ def _get_mandatory_attributes(metamodel: dict, atype: str) -> list[str]:
     mandatory_attrs = []
 
     for attr_name, rules in attributes.items():
-        if attr_name.lower() in ('id', 'contents'):
+        if attr_name.lower() in ('contents',):
             continue
         if isinstance(rules, dict):
             rules = [rules]
         for rule in rules:
-            if rule.get('presence') == 'mandatory' and rule.get('condition') is None:
+            if rule.get('presence') == 'mandatory':
                 mandatory_attrs.append(attr_name)
                 break
 
