@@ -2,11 +2,15 @@
 
 Syntagmax uses a TOML configuration file (default `.syntagmax/config.toml`).
 
+For a detailed explanation of how Syntagmax handles different directories, relative path resolution, and editor integration (e.g., Obsidian), see the [Paths Reference](paths.md).
+
 ## Top-level Options
+
+For details on how top-level paths are resolved relative to the configuration file, refer to the [Paths Reference](paths.md).
 
 | Option | Required | Description |
 |--------|----------|-------------|
-| `base` | Yes | Base directory path (relative to the config file) |
+| `base` | Yes | Base directory path (relative to the config file). See [Paths Reference](paths.md) for more details. |
 | `publish` | No | Global publish config file path (relative to config file directory). See [Publishing Reference](publishing.md). |
 | `input` | Yes | List of input source definitions |
 | `drivers` | No | Driver-specific global defaults |
