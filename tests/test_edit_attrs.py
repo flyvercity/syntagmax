@@ -219,7 +219,7 @@ class TestGetMandatoryAttributes:
         assert 'contents' not in result  # excluded (body text)
         assert 'priority' not in result  # optional
 
-    def test_conditional_mandatory_excluded(self):
+    def test_conditional_mandatory_included(self):
         metamodel = {
             'artifacts': {
                 'REQ': {
@@ -230,7 +230,7 @@ class TestGetMandatoryAttributes:
             }
         }
         result = _get_mandatory_attributes(metamodel, 'REQ')
-        assert 'justification' not in result
+        assert 'justification' in result
 
     def test_unknown_atype_returns_empty(self):
         metamodel = {'artifacts': {'SYS': {'attributes': {}}}}

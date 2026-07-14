@@ -334,16 +334,16 @@ def evaluate_condition(artifact_fields: dict, atype: str, condition: dict | None
     return not res if negated else res
 
 
-def is_attribute_mandatory(attr_name: str, atype: str, artifact_fields: dict, metamodel: dict | None) -> bool:
-    """Determine whether a named attribute is mandatory for a given artifact.
+def is_attribute_mandatory(attr_name: str, atype: str, metamodel: dict | None) -> bool:
+    """Determine whether a named attribute is mandatory for a given artifact type.
 
-    Evaluates metamodel rules with conditions against the artifact's field values.
-    Returns True if any active mandatory rule applies.
+    Returns True if any rule for the attribute has presence == 'mandatory'.
+    Conditions are not evaluated here — condition evaluation belongs to the
+    analyze pipeline only.
 
     Args:
         attr_name: The attribute name to check.
         atype: The artifact type name.
-        artifact_fields: The artifact's field dict.
         metamodel: The parsed metamodel dict, or None if unavailable.
     """
     if not metamodel:
@@ -359,10 +359,7 @@ def is_attribute_mandatory(attr_name: str, atype: str, artifact_fields: dict, me
         rules = [rules]
 
     for rule in rules:
-        if rule.get('presence') != 'mandatory':
-            continue
-        condition = rule.get('condition')
-        if evaluate_condition(artifact_fields, atype, condition, metamodel):
+        if rule.get('presence') == 'mandatory':
             return True
 
     return False

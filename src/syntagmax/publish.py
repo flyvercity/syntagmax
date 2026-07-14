@@ -244,7 +244,6 @@ def should_render_attribute(
     val: Optional[str],
     presence_mode: AttributePresence,
     atype: str,
-    artifact_fields: dict,
     metamodel: dict | None,
 ) -> bool:
     """Determine whether an attribute should be rendered based on presence mode.
@@ -254,7 +253,6 @@ def should_render_attribute(
         val: The resolved value (from get_artifact_field_value), or None.
         presence_mode: The effective presence mode ('all', 'mandatory', 'values-only').
         atype: The artifact type name.
-        artifact_fields: The artifact's field dict.
         metamodel: The parsed metamodel dict, or None.
     """
     if val:
@@ -264,7 +262,7 @@ def should_render_attribute(
     if presence_mode == 'all':
         return True
     # presence_mode == 'mandatory'
-    return is_attribute_mandatory(attr_name, atype, artifact_fields, metamodel)
+    return is_attribute_mandatory(attr_name, atype, metamodel)
 
 
 def render_artifact_fallback(artifact: Artifact, content_level: int, table_spacer: int = 1, context: RenderContext | None = None) -> str:
@@ -420,7 +418,7 @@ def render_block(block: Block, pub_config: PublishConfig, context: RenderContext
                     attr_name = list(attr_dict.keys())[0]
                     attr_render = attr_dict[attr_name]
                     val = get_artifact_field_value(a, attr_name)
-                    if should_render_attribute(attr_name, val, effective_presence, a.atype, a.fields, metamodel):
+                    if should_render_attribute(attr_name, val, effective_presence, a.atype, metamodel):
                         rows.append((attr_render.alias, val or ''))
                 if rows:
                     effective_spacer = sec.spacer if sec.spacer is not None else pub_config.table_spacer
