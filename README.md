@@ -45,6 +45,8 @@ Syntagmax uses a TOML configuration file (default `.syntagmax/config.toml`). Key
 - `[metamodel]` — metamodel file path
 - `[ai]` — AI provider and model settings
 
+For details on how all these paths are resolved relative to the project configuration file, see the [Paths Reference](docs/reference/paths.md).
+
 ```toml
 base = ".."
 
@@ -64,7 +66,7 @@ provider = "anthropic"
 model = "claude-sonnet-4-6"
 ```
 
-For the full schema, input source options, marked fragments, and AI provider settings, see [docs/reference/configuration.md](docs/reference/configuration.md).
+For the full schema, input source options, marked fragments, and AI provider settings, see [docs/reference/configuration.md](docs/reference/configuration.md). Detailed path resolution rules are described in [docs/reference/paths.md](docs/reference/paths.md).
 
 For detailed Obsidian driver extraction rules, block termination behavior, and fragment marker processing, see [docs/reference/obsidian.md](docs/reference/obsidian.md).
 
