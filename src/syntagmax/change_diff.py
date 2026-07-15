@@ -41,6 +41,7 @@ class ArtifactChange:
     content_changed: bool
     base_raw_text: str
     target_raw_text: str
+    file_path: str = ''
 
 
 @dataclass
@@ -241,6 +242,7 @@ def compare_artifacts(base_records, target_records) -> ArtifactDiff:
                 content_changed=content_changed,
                 base_raw_text=base_block.raw_text,
                 target_raw_text=target_block.raw_text,
+                file_path=target_path,
             ))
 
     lg.debug(
