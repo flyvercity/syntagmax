@@ -287,6 +287,17 @@ The following are omitted: object text content, attribute change tables, link ch
 
 Summary reports use the filename suffix `-summary` (e.g. `requirements-abc1234-to-def5678-20260715-summary.md`).
 
+#### Binary/Sidecar Artifacts
+
+Sidecar-managed binary artifacts (images, diagrams) are automatically included in change reports. For each sidecar artifact, the report shows:
+
+- SHA-256 hash comparison of the primary binary file
+- File size at both revisions
+- Pixel dimensions (when the optional `Pillow` dependency is installed via `pip install syntagmax[images]`)
+- Sidecar metadata (YAML attribute) changes
+
+The binary content property table is only rendered when the file content actually changed. Metadata-only changes (sidecar YAML edits without binary modification) show only the attribute changes table.
+
 #### Output Filenames
 
 - Per-record: `<section>-<base_rev>-to-<target_rev>-<YYYYMMDD>.md`

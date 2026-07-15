@@ -4,11 +4,15 @@
 """Diff computation for the change report command."""
 
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
-from pathlib import Path, PurePosixPath
+from pathlib import Path
+from typing import TYPE_CHECKING
 
 import git
+
+if TYPE_CHECKING:
+    from syntagmax.change_binary import ImageProperties
 
 lg = logging.getLogger(__name__)
 
@@ -576,3 +580,185 @@ def _estimate_line_number(block, all_blocks, index: int) -> int:
         prev_block = all_blocks[i]
         line += prev_block.content.count('\n') + 1
     return line
+
+
+
+# ---------------------------------------------------------------------------
+# Binary / Sidecar Artifact Comparison
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class BinaryArtifactChange:
+    """Represents changes to a sidecar-managed binary artifact."""
+
+    aid: str
+    atype: str
+    file_path: str
+    binary_changed: bool
+    hash_base: str | None  # SHA-256 hex, None if file didn't exist
+    hash_target: str | None
+    base_properties: 'ImageProperties | None' = None
+    target_properties: 'ImageProperties | None' = None
+    field_changes: dict = field(default_factory=dict)
+
+    @property
+    def status(self) -> str:
+        """Derive a human-readable status string."""
+        if self.hash_base is None:
+            return 'added'
+        if self.hash_target is None:
+            return 'removed'
+        if self.binary_changed:
+            return 'modified_binary'
+        return 'modified_metadata'
+
+
+def compare_sidecar_artifacts(
+    base_records: list,
+    target_records: list,
+    base_path: Path,
+    target_path: Path,
+    base_dir_offset: Path,
+) -> list[BinaryArtifactChange]:
+    """Compare sidecar-managed binary artifacts between two revisions.
+
+    Matches artifacts by `aid`. For each matched pair, computes SHA-256
+    hashes of the primary file and extracts image properties when hashes
+    differ. Also compares sidecar YAML fields.
+
+    Args:
+        base_records: List of FileRecord from base revision extraction.
+        target_records: List of FileRecord from target revision extraction.
+        base_path: Worktree path for the base revision.
+        target_path: Worktree path for the target revision.
+        base_dir_offset: Relative path from repo root to config.base_dir().
+
+    Returns:
+        List of BinaryArtifactChange for artifacts with binary or field changes.
+    """
+    from syntagmax.artifact import FileLocation
+    from syntagmax.blocks import ArtifactBlock
+    from syntagmax.change_binary import (
+        ImageProperties,
+        compute_file_hash,
+        extract_image_properties,
+    )
+
+    def _is_sidecar_artifact(block) -> bool:
+        """Check if a block is a sidecar-managed artifact."""
+        if not isinstance(block, ArtifactBlock):
+            return False
+        loc = block.artifact.location
+        return isinstance(loc, FileLocation) and loc.loc_sidecar is not None
+
+    # Build maps: aid -> (ArtifactBlock, file_path)
+    base_map: dict[str, tuple[ArtifactBlock, str]] = {}
+    for fr in base_records:
+        for block in fr.blocks:
+            if _is_sidecar_artifact(block):
+                aid = block.artifact.aid
+                if aid:
+                    base_map[aid] = (block, fr.path)
+
+    target_map: dict[str, tuple[ArtifactBlock, str]] = {}
+    for fr in target_records:
+        for block in fr.blocks:
+            if _is_sidecar_artifact(block):
+                aid = block.artifact.aid
+                if aid:
+                    target_map[aid] = (block, fr.path)
+
+    results: list[BinaryArtifactChange] = []
+
+    # Added: in target but not in base
+    for aid in target_map:
+        if aid not in base_map:
+            block, path = target_map[aid]
+            loc_file = block.artifact.location.loc_file
+            primary = target_path / base_dir_offset / loc_file
+            target_hash = compute_file_hash(primary)
+            target_props = extract_image_properties(primary)
+            results.append(BinaryArtifactChange(
+                aid=aid,
+                atype=block.artifact.atype,
+                file_path=path,
+                binary_changed=True,
+                hash_base=None,
+                hash_target=target_hash,
+                base_properties=None,
+                target_properties=target_props,
+                field_changes={},
+            ))
+
+    # Removed: in base but not in target
+    for aid in base_map:
+        if aid not in target_map:
+            block, path = base_map[aid]
+            loc_file = block.artifact.location.loc_file
+            primary = base_path / base_dir_offset / loc_file
+            base_hash = compute_file_hash(primary)
+            base_props = extract_image_properties(primary)
+            results.append(BinaryArtifactChange(
+                aid=aid,
+                atype=block.artifact.atype,
+                file_path=path,
+                binary_changed=True,
+                hash_base=base_hash,
+                hash_target=None,
+                base_properties=base_props,
+                target_properties=None,
+                field_changes={},
+            ))
+
+    # Modified: in both — check for binary or field changes
+    for aid in base_map:
+        if aid not in target_map:
+            continue
+        base_block, base_file_path = base_map[aid]
+        target_block, target_file_path = target_map[aid]
+
+        # Resolve primary file paths independently (handles renames)
+        base_loc_file = base_block.artifact.location.loc_file
+        target_loc_file = target_block.artifact.location.loc_file
+
+        base_primary = base_path / base_dir_offset / base_loc_file
+        target_primary = target_path / base_dir_offset / target_loc_file
+
+        # Hash comparison
+        base_hash = compute_file_hash(base_primary)
+        target_hash = compute_file_hash(target_primary)
+        binary_changed = base_hash != target_hash
+
+        # Extract properties only when binary content changed
+        base_props: ImageProperties | None = None
+        target_props: ImageProperties | None = None
+        if binary_changed:
+            base_props = extract_image_properties(base_primary)
+            target_props = extract_image_properties(target_primary)
+
+        # Field comparison
+        field_changes = _compare_fields(
+            base_block.artifact.fields,
+            target_block.artifact.fields,
+        )
+
+        # Only report if something actually changed
+        if binary_changed or field_changes:
+            results.append(BinaryArtifactChange(
+                aid=aid,
+                atype=base_block.artifact.atype,
+                file_path=target_file_path,
+                binary_changed=binary_changed,
+                hash_base=base_hash,
+                hash_target=target_hash,
+                base_properties=base_props,
+                target_properties=target_props,
+                field_changes=field_changes,
+            ))
+
+    lg.debug(
+        'Sidecar comparison: %d binary artifact changes detected',
+        len(results),
+    )
+    return results

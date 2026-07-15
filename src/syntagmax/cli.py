@@ -490,6 +490,7 @@ def change_report(
     from syntagmax.change_diff import (
         get_changed_files, filter_changed_files,
         compare_artifacts, compare_text_blocks,
+        compare_sidecar_artifacts,
     )
     from syntagmax.change_render import (
         render_change_report, render_summary_report,
@@ -517,6 +518,10 @@ def change_report(
 
     worktree_base = config.root_dir() / 'worktrees'
     check_worktrees_gitignored(repo, worktree_base)
+
+    # Compute offset from repo root to config.base_dir() for path resolution
+    repo_root = Path(repo.working_tree_dir).resolve()
+    base_dir_offset = config.base_dir().resolve().relative_to(repo_root)
 
     # Resolve revisions
     base_hash = resolve_revision(repo, base)
@@ -594,6 +599,11 @@ def change_report(
             # Compare artifacts
             artifact_diff = compare_artifacts(base_recs, target_recs)
 
+            # Compare sidecar/binary artifacts
+            binary_diff = compare_sidecar_artifacts(
+                base_recs, target_recs, base_path, target_path, base_dir_offset,
+            )
+
             # Compare text blocks if requested
             text_diff = None
             if include_non_artifact:
@@ -608,6 +618,7 @@ def change_report(
                 file_diffs=file_diffs,
                 artifact_diff=artifact_diff,
                 text_diff=text_diff,
+                binary_diff=binary_diff,
                 extraction_errors=[
                     e for e in extraction_errors if e.file_path in
                     {f.path for f in file_diffs} or not file_diffs

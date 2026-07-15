@@ -45,6 +45,10 @@ class SidecarExtractor(Extractor):
         return artifacts, errors
 
     def extract_blocks_from_file(self, filepath: Path) -> list[Block]:
+        # Skip sidecar metadata files themselves if they match the glob
+        if filepath.name.endswith('.stmx') or filepath.name.endswith('.syntagmax'):
+            return []
+
         lg.debug(f'Processing sidecar driver for original file: {filepath}')
 
         stmx_path = filepath.with_name(f'{filepath.name}.stmx')

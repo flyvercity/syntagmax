@@ -5,12 +5,11 @@
 # Description: Block extraction at a specific revision using worktree paths.
 
 import logging
-from copy import copy
 from dataclasses import replace
 from pathlib import Path
 
-from syntagmax.blocks import Block, FileRecord
-from syntagmax.config import Config, InputRecord, DEFAULT_FILTERS
+from syntagmax.blocks import FileRecord
+from syntagmax.config import Config, InputRecord
 from syntagmax.extract import EXTRACTORS
 
 lg = logging.getLogger(__name__)
@@ -64,11 +63,8 @@ def _remap_record(record: InputRecord, worktree_path: Path, original_base: Path)
 
     new_record_base = worktree_path / rel_to_repo
 
-    # Re-glob filepaths in the worktree
-    if record.driver in DEFAULT_FILTERS:
-        glob_pattern = DEFAULT_FILTERS[record.driver]
-    else:
-        glob_pattern = '**/*'
+    # Re-glob filepaths in the worktree using the record's configured filter
+    glob_pattern = record.filter_glob
 
     if new_record_base.exists():
         new_filepaths = sorted(new_record_base.glob(glob_pattern))

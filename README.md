@@ -478,6 +478,7 @@ The report includes:
 - Summary statistics (files changed, artifacts added/modified/removed)
 - Per-file change status
 - For each modified artifact: text changes and attribute change tables
+- For sidecar-managed binary artifacts (images, diagrams): SHA-256 hash comparison, file size, and pixel dimensions (requires optional `Pillow` dependency)
 - Fallback plain-text diffs when artifact extraction fails
 
 ## Required Improvements

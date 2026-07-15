@@ -14,6 +14,7 @@ from syntagmax.change_diff import (
     ArtifactChange,
     TextBlockDiff,
     TextFragmentChange,
+    BinaryArtifactChange,
 )
 
 lg = logging.getLogger(__name__)
@@ -39,6 +40,7 @@ class ChangeReportData:
     file_diffs: list[FileDiff] = field(default_factory=list)
     artifact_diff: ArtifactDiff | None = None
     text_diff: TextBlockDiff | None = None
+    binary_diff: list[BinaryArtifactChange] = field(default_factory=list)
     extraction_errors: list[ExtractionError] = field(default_factory=list)
 
 
@@ -73,6 +75,18 @@ def compute_summary(data: ChangeReportData) -> dict[str, int]:
             + len(data.text_diff.modified)
         )
 
+    binary_added = 0
+    binary_modified = 0
+    binary_removed = 0
+    for bc in data.binary_diff:
+        status = bc.status
+        if status == 'added':
+            binary_added += 1
+        elif status == 'removed':
+            binary_removed += 1
+        else:
+            binary_modified += 1
+
     return {
         'files_changed': files_changed,
         'files_added': files_added,
@@ -81,6 +95,9 @@ def compute_summary(data: ChangeReportData) -> dict[str, int]:
         'artifacts_modified': artifacts_modified,
         'artifacts_removed': artifacts_removed,
         'text_fragments_modified': text_fragments_modified,
+        'binary_added': binary_added,
+        'binary_modified': binary_modified,
+        'binary_removed': binary_removed,
         'extraction_errors': len(data.extraction_errors),
     }
 
@@ -114,6 +131,12 @@ def _render_summary(summary: dict[str, int]) -> list[str]:
         f'| Artifacts removed | {summary["artifacts_removed"]} |',
         f'| Text fragments modified | {summary["text_fragments_modified"]} |',
     ]
+    # Binary artifact stats (only show if any exist)
+    binary_total = summary['binary_added'] + summary['binary_modified'] + summary['binary_removed']
+    if binary_total > 0:
+        lines.append(f'| Binary artifacts added | {summary["binary_added"]} |')
+        lines.append(f'| Binary artifacts modified | {summary["binary_modified"]} |')
+        lines.append(f'| Binary artifacts removed | {summary["binary_removed"]} |')
     if summary['extraction_errors'] > 0:
         lines.append(f'| Extraction errors | {summary["extraction_errors"]} |')
     lines.append('')
@@ -308,6 +331,79 @@ def _render_extraction_error(error: ExtractionError) -> list[str]:
     return lines
 
 
+def _render_binary_artifact_change(change: BinaryArtifactChange) -> list[str]:
+    """Render a single binary artifact change."""
+    from syntagmax.change_binary import format_file_size
+
+    status = change.status
+    if status == 'added':
+        status_label = 'Added (binary)'
+    elif status == 'removed':
+        status_label = 'Removed (binary)'
+    elif status == 'modified_binary':
+        status_label = 'Modified (binary)'
+    else:
+        status_label = 'Modified (metadata)'
+
+    lines = [
+        f'#### {change.atype} {change.aid}',
+        '',
+        f'**Status:** {status_label}',
+        '',
+    ]
+
+    # Binary content property table — only when binary content changed
+    if change.binary_changed:
+        lines.extend([
+            '##### Binary Content',
+            '',
+            '| Property | Previous | Current |',
+            '|----------|----------|---------|',
+        ])
+
+        # SHA-256 row (truncated to 12 chars)
+        base_hash = f'`{change.hash_base[:12]}`' if change.hash_base else '—'
+        target_hash = f'`{change.hash_target[:12]}`' if change.hash_target else '—'
+        lines.append(f'| SHA-256 | {base_hash} | {target_hash} |')
+
+        # Size row
+        base_size = format_file_size(change.base_properties.size_bytes) if change.base_properties else '—'
+        target_size = format_file_size(change.target_properties.size_bytes) if change.target_properties else '—'
+        lines.append(f'| Size | {base_size} | {target_size} |')
+
+        # Dimensions row — only if at least one revision has dimensions
+        base_w = change.base_properties.width if change.base_properties else None
+        target_w = change.target_properties.width if change.target_properties else None
+        if base_w is not None or target_w is not None:
+            if change.base_properties and change.base_properties.width is not None:
+                base_dims = f'{change.base_properties.width}×{change.base_properties.height}'
+            else:
+                base_dims = '—'
+            if change.target_properties and change.target_properties.width is not None:
+                target_dims = f'{change.target_properties.width}×{change.target_properties.height}'
+            else:
+                target_dims = '—'
+            lines.append(f'| Dimensions | {base_dims} | {target_dims} |')
+
+        lines.append('')
+
+    # Attribute changes table
+    if change.field_changes:
+        lines.extend([
+            '##### Attribute Changes',
+            '',
+            '| Attribute | Previous | Current |',
+            '|-----------|----------|---------|',
+        ])
+        for attr_name, (old_val, new_val) in change.field_changes.items():
+            old_str = _format_field_value(old_val) if old_val is not None else '—'
+            new_str = _format_field_value(new_val) if new_val is not None else '—'
+            lines.append(f'| {attr_name} | {old_str} | {new_str} |')
+        lines.append('')
+
+    return lines
+
+
 def _render_detailed_changes(data: ChangeReportData) -> list[str]:
     """Render the Detailed Changes section."""
     lines = ['## Detailed Changes', '']
@@ -330,6 +426,12 @@ def _render_detailed_changes(data: ChangeReportData) -> list[str]:
         for aid, atype, block, file_path in data.artifact_diff.removed:
             has_content = True
             lines.extend(_render_artifact_removed(aid, atype, block, file_path))
+
+    # Render binary artifact changes
+    if data.binary_diff:
+        for bc in data.binary_diff:
+            has_content = True
+            lines.extend(_render_binary_artifact_change(bc))
 
     # Render text block changes
     if data.text_diff:

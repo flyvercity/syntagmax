@@ -104,6 +104,7 @@ class InputRecord:
     driver: str
     default_atype: str
     marker: str
+    filter_glob: str = '**/*'
     markers: list[str] = field(default_factory=list)
     publish_config: str | None = None
     exclude_elements: list['ExcludeElementConfig'] = field(default_factory=list)
@@ -340,6 +341,7 @@ class Config:
                     driver=input_config.driver,
                     default_atype=input_config.atype,
                     marker=artifact_marker,
+                    filter_glob=glob,
                     markers=[m.upper() for m in fragment_markers],
                     publish_config=input_config.publish,
                     exclude_elements=resolved_excludes,
