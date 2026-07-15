@@ -1,4 +1,4 @@
-# [ ] Task 5: Text Block Comparison (Non-Artifact)
+# [x] Task 5: Text Block Comparison (Non-Artifact)
 
 ## Objective
 

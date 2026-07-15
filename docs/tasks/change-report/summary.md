@@ -9,16 +9,16 @@ Each task is self-contained with its own objective, implementation details, test
 
 | # | Task | Target File(s) | Status |
 |---|------|---------------|--------|
-| 1 | [Worktree Management](task-01-worktree-management.md) | `src/syntagmax/change_worktree.py` | [ ] |
-| 2 | [Block Extraction](task-02-block-extraction.md) | `src/syntagmax/change_extract.py` | [ ] |
-| 3 | [File-Level Diff](task-03-file-level-diff.md) | `src/syntagmax/change_diff.py` | [ ] |
-| 4 | [Artifact Comparison](task-04-artifact-comparison.md) | `src/syntagmax/change_diff.py` | [ ] |
-| 5 | [Text Block Comparison](task-05-text-block-comparison.md) | `src/syntagmax/change_diff.py` | [ ] |
-| 6 | [Markdown Renderer](task-06-markdown-renderer.md) | `src/syntagmax/change_render.py` | [ ] |
-| 7 | [CLI Wiring](task-07-cli-wiring.md) | `src/syntagmax/cli.py` | [ ] |
-| 8 | [Error Handling](task-08-error-handling.md) | multiple | [ ] |
-| 9 | [Integration Test](task-09-integration-test.md) | `tests/test_change_report.py` | [ ] |
-| 10 | [Documentation](task-10-documentation.md) | `README.md`, `docs/reference/` | [ ] |
+| 1 | [Worktree Management](task-01-worktree-management.md) | `src/syntagmax/change_worktree.py` | [x] |
+| 2 | [Block Extraction](task-02-block-extraction.md) | `src/syntagmax/change_extract.py` | [x] |
+| 3 | [File-Level Diff](task-03-file-level-diff.md) | `src/syntagmax/change_diff.py` | [x] |
+| 4 | [Artifact Comparison](task-04-artifact-comparison.md) | `src/syntagmax/change_diff.py` | [x] |
+| 5 | [Text Block Comparison](task-05-text-block-comparison.md) | `src/syntagmax/change_diff.py` | [x] |
+| 6 | [Markdown Renderer](task-06-markdown-renderer.md) | `src/syntagmax/change_render.py` | [x] |
+| 7 | [CLI Wiring](task-07-cli-wiring.md) | `src/syntagmax/cli.py` | [x] |
+| 8 | [Error Handling](task-08-error-handling.md) | multiple | [x] |
+| 9 | [Integration Test](task-09-integration-test.md) | `tests/test_change_report.py` | [x] |
+| 10 | [Documentation](task-10-documentation.md) | `README.md`, `docs/reference/` | [x] |
 
 ## Dependency Graph
 

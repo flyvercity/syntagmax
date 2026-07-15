@@ -1,4 +1,4 @@
-# [ ] Task 8: Error Handling and Fallback
+# [x] Task 8: Error Handling and Fallback
 
 ## Objective
 

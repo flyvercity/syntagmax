@@ -1,5 +1,8 @@
 .bug-hunter/
 
+# Syntagmax worktrees (used by change report command)
+.syntagmax/worktrees/
+
 # Custom
 output
 /tmp

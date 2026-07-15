@@ -1,4 +1,4 @@
-# [ ] Task 4: Artifact-Level Comparison
+# [x] Task 4: Artifact-Level Comparison
 
 ## Objective
 

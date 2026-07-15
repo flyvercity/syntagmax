@@ -1,4 +1,4 @@
-# [ ] Task 9: End-to-End Integration Test
+# [x] Task 9: End-to-End Integration Test
 
 ## Objective
 

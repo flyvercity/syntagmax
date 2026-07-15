@@ -1,4 +1,4 @@
-# [ ] Task 1: Worktree Management Utility
+# [x] Task 1: Worktree Management Utility
 
 ## Objective
 

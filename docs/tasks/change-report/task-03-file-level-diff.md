@@ -1,4 +1,4 @@
-# [ ] Task 3: File-Level Diff Identification
+# [x] Task 3: File-Level Diff Identification
 
 ## Objective
 

@@ -1,4 +1,4 @@
-# [ ] Task 6: Markdown Report Renderer
+# [x] Task 6: Markdown Report Renderer
 
 ## Objective
 

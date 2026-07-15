@@ -1,4 +1,4 @@
-# [ ] Task 2: Block Extraction at a Specific Revision
+# [x] Task 2: Block Extraction at a Specific Revision
 
 ## Objective
 

@@ -437,6 +437,224 @@ def trace(
             u.pprint(f'[green]Trace matrix written to {output_path} ({len(matrix.records)} records)[/green]')
 
 
+def _read_file_safe(base_path: Path, rel_path: str) -> str | None:
+    """Read a file safely, returning None if not found."""
+    try:
+        file_path = base_path / rel_path
+        if file_path.is_file():
+            return file_path.read_text(encoding='utf-8')
+    except Exception:
+        pass
+    return None
+
+
+def _generate_fallback_diff(base_content: str | None, target_content: str | None, filepath: str) -> str:
+    """Generate a unified diff as fallback when extraction fails."""
+    import difflib
+
+    base_lines = base_content.splitlines(keepends=True) if base_content else []
+    target_lines = target_content.splitlines(keepends=True) if target_content else []
+
+    diff = difflib.unified_diff(
+        base_lines, target_lines,
+        fromfile=f'a/{filepath}',
+        tofile=f'b/{filepath}',
+    )
+    return ''.join(diff)
+
+
+@rms.group(help='Change Analysis Commands')
+def change():
+    pass
+
+
+@change.command('report', help='Generate change report between two revisions')
+@click.pass_obj
+@click.option('--base', required=True, help='Base Git revision (commit, tag, branch, HEAD, HEAD~N, or "working")')
+@click.option('--target', required=True, help='Target Git revision (commit, tag, branch, HEAD, HEAD~N, or "working")')
+@click.option('--output', 'output_path', default=None, help='Output directory or "console" for stdout')
+@click.option('--include-non-artifact', is_flag=True, help='Include non-artifact text block changes')
+@click.option('--single', is_flag=True, help='Generate a single consolidated report across all input records')
+@click.option('-f', '--config-file', type=click.Path(), default='.syntagmax/config.toml')
+def change_report(
+    obj: Params, base: str, target: str, output_path: str | None,
+    include_non_artifact: bool, single: bool, config_file: Path,
+):
+    from datetime import datetime, timezone
+    from syntagmax.change_worktree import (
+        check_git_version, check_worktrees_gitignored,
+        resolve_revision, worktree_pair,
+    )
+    from syntagmax.change_extract import extract_blocks_at_revision
+    from syntagmax.change_diff import (
+        get_changed_files, filter_changed_files,
+        compare_artifacts, compare_text_blocks,
+    )
+    from syntagmax.change_render import (
+        render_change_report, ChangeReportData, ExtractionError,
+    )
+    import difflib
+    import git
+
+    cfg_path = Path(config_file)
+    if not cfg_path.exists():
+        u.pprint(f'[red]Error: Configuration file "{cfg_path}" does not exist.[/red]')
+        sys.exit(1)
+
+    config = Config(obj, cfg_path)
+
+    # Open repo
+    try:
+        repo = git.Repo(config.base_dir(), search_parent_directories=True)
+    except (git.InvalidGitRepositoryError, git.NoSuchPathError) as e:
+        u.pprint(f'[red]Error: Not a git repository: {e}[/red]')
+        sys.exit(1)
+
+    # Pre-flight checks
+    check_git_version(repo)
+
+    worktree_base = Path(repo.working_tree_dir) / '.syntagmax' / 'worktrees'
+    check_worktrees_gitignored(repo)
+
+    # Resolve revisions
+    base_hash = resolve_revision(repo, base)
+    target_hash = resolve_revision(repo, target)
+
+    if base_hash == target_hash and base_hash != 'working':
+        u.pprint('[yellow]Warning: Base and target resolve to the same revision. No changes expected.[/yellow]')
+
+    # Default output path
+    if output_path is None:
+        output_path = '.syntagmax/reports/change/'
+
+    # Determine short revision labels for filenames
+    base_label = base_hash[:7] if base_hash != 'working' else 'working'
+    target_label = target_hash[:7] if target_hash != 'working' else 'working'
+    date_str = datetime.now().strftime('%Y%m%d')
+    generated_at = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')
+
+    with worktree_pair(repo, base_hash, target_hash, worktree_base) as (base_path, target_path):
+        # Get changed files
+        actual_base = base_hash if base_hash != 'working' else repo.head.commit.hexsha
+        actual_target = target_hash if target_hash != 'working' else repo.head.commit.hexsha
+
+        if base_hash != 'working' and target_hash != 'working':
+            changed_files = get_changed_files(repo, base_hash, target_hash)
+        else:
+            # If either is 'working', get all files (can't diff working tree easily)
+            changed_files = None
+
+        # Filter by input records
+        if changed_files is not None:
+            files_by_record = filter_changed_files(
+                changed_files, config.input_records(), config.base_dir()
+            )
+        else:
+            files_by_record = None
+
+        # Extract blocks at both revisions
+        changed_file_paths = [f.path for f in changed_files] if changed_files else None
+
+        base_blocks, base_errors = extract_blocks_at_revision(config, base_path, changed_file_paths)
+        target_blocks, target_errors = extract_blocks_at_revision(config, target_path, changed_file_paths)
+
+        # Build extraction error objects with fallback diffs
+        extraction_errors: list[ExtractionError] = []
+        error_files = set(fp for fp, _ in base_errors) | set(fp for fp, _ in target_errors)
+        for err_file in error_files:
+            err_msgs = [msg for fp, msg in base_errors + target_errors if fp == err_file]
+            # Generate fallback diff
+            base_content = _read_file_safe(base_path, err_file)
+            target_content = _read_file_safe(target_path, err_file)
+            fallback = _generate_fallback_diff(base_content, target_content, err_file)
+            extraction_errors.append(ExtractionError(
+                file_path=err_file,
+                error_message='; '.join(err_msgs),
+                fallback_diff=fallback,
+            ))
+
+        # Generate reports per record
+        reports: list[tuple[str, str]] = []  # (filename, markdown)
+
+        record_names = set(base_blocks.keys()) | set(target_blocks.keys())
+        if files_by_record:
+            record_names |= set(files_by_record.keys())
+
+        if not record_names:
+            u.pprint('[yellow]No changes detected between the specified revisions.[/yellow]')
+            return
+
+        for record_name in sorted(record_names):
+            base_recs = base_blocks.get(record_name, [])
+            target_recs = target_blocks.get(record_name, [])
+            file_diffs = files_by_record.get(record_name, []) if files_by_record else []
+
+            # Compare artifacts
+            artifact_diff = compare_artifacts(base_recs, target_recs)
+
+            # Compare text blocks if requested
+            text_diff = None
+            if include_non_artifact:
+                text_diff = compare_text_blocks(base_recs, target_recs)
+
+            # Build report data
+            report_data = ChangeReportData(
+                base_revision=base,
+                target_revision=target,
+                generated_at=generated_at,
+                record_name=record_name,
+                file_diffs=file_diffs,
+                artifact_diff=artifact_diff,
+                text_diff=text_diff,
+                extraction_errors=[
+                    e for e in extraction_errors if e.file_path in
+                    {f.path for f in file_diffs} or not file_diffs
+                ],
+            )
+
+            markdown = render_change_report(report_data)
+
+            # Build filename
+            safe_name = record_name.replace(' ', '-').replace('/', '_').replace('\\', '_')
+            filename = f'{safe_name}-{base_label}-to-{target_label}-{date_str}.md'
+            reports.append((filename, markdown))
+
+    # Write output
+    if output_path == 'console':
+        for filename, markdown in reports:
+            if len(reports) > 1:
+                print(f'\n--- {filename} ---\n')
+            print(markdown)
+    elif single and reports:
+        # Consolidate all reports into one
+        out_p = Path(output_path)
+        if out_p.is_dir() or output_path.endswith('/') or output_path.endswith('\\'):
+            out_p.mkdir(parents=True, exist_ok=True)
+            consolidated_name = f'change-{base_label}-to-{target_label}-{date_str}.md'
+            out_p = out_p / consolidated_name
+        else:
+            out_p.parent.mkdir(parents=True, exist_ok=True)
+
+        combined = '\n\n---\n\n'.join(md for _, md in reports)
+        out_p.write_text(combined, encoding='utf-8')
+        u.pprint(f'[green]Change report generated:[/green]')
+        u.pprint(f'  {out_p.absolute()}')
+    else:
+        out_dir = Path(output_path)
+        out_dir.mkdir(parents=True, exist_ok=True)
+
+        u.pprint(f'[green]Change report generated:[/green]')
+        for filename, markdown in reports:
+            file_path = out_dir / filename
+            file_path.write_text(markdown, encoding='utf-8')
+            # Count changes for summary
+            n_artifacts = 0
+            if 'Artifacts added' in markdown:
+                # Simple count from rendered report
+                pass
+            u.pprint(f'  {file_path.absolute()}')
+
+
 @rms.group(help='Project Editing Commands')
 def edit():
     pass

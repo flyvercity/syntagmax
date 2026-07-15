@@ -1,4 +1,4 @@
-# [ ] Task 7: CLI Command Wiring
+# [x] Task 7: CLI Command Wiring
 
 ## Objective
 
