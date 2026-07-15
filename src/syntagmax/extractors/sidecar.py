@@ -15,6 +15,16 @@ from syntagmax.artifact import UNDEFINED_ID
 from syntagmax.blocks import Block, ArtifactBlock, ErrorBlock
 
 
+def _pop_case_insensitive(data: dict, key: str, default):
+    """Pop a key from a dict using case-insensitive matching."""
+    if key in data:
+        return data.pop(key)
+    for k in list(data.keys()):
+        if k.lower() == key.lower():
+            return data.pop(k)
+    return default
+
+
 class SidecarExtractor(Extractor):
     def __init__(self, config: Config, record: InputRecord, metamodel: dict | None = None):
         super().__init__(config, record, metamodel)
@@ -85,8 +95,8 @@ class SidecarExtractor(Extractor):
             msg = f'{self.driver()} :: Missing required "id" field in sidecar {sidecar_path}'
             return [ErrorBlock(message=msg, raw_text='')]
 
-        aid = str(data.pop('id', UNDEFINED_ID))
-        atype = str(data.pop('atype', self._record.default_atype))
+        aid = str(_pop_case_insensitive(data, 'id', UNDEFINED_ID))
+        atype = str(_pop_case_insensitive(data, 'atype', self._record.default_atype))
 
         location = FileLocation(self._config.derive_path(filepath), self._config.derive_path(sidecar_path))
 
