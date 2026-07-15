@@ -52,6 +52,7 @@ Implement a `syntagmax change report` command that generates a human-readable Ma
 - `remove_worktree(repo: git.Repo, path: Path)` — calls `git worktree remove`, wrapped in retry-with-backoff logic to handle Windows file locks. Runs `git worktree prune`.
 - `resolve_revision(repo: git.Repo, rev_str: str) -> str` — validates and resolves to a commit hash. Accepts `working` for active uncommitted files if supported.
 - Context manager `worktree_pair(repo, base_rev, target_rev)` that creates both and ensures robust cleanup.
+- **Pre-flight check:** Before creating worktrees, verify that `.syntagmax/worktrees/` is covered by `.gitignore`. If not, abort with a clear error message instructing the user to add the path to `.gitignore` (or offer to add it automatically).
 
 **Test requirements:** Unit test with a temp git repo, verify worktree creation/removal, test invalid revision error.
 
