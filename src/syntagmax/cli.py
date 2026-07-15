@@ -484,7 +484,7 @@ def change_report(
     from datetime import datetime, timezone
     from syntagmax.change_worktree import (
         check_git_version, check_worktrees_gitignored,
-        resolve_revision, worktree_pair,
+        resolve_revision, validate_records_in_repo, worktree_pair,
     )
     from syntagmax.change_extract import extract_blocks_at_revision
     from syntagmax.change_diff import (
@@ -515,6 +515,7 @@ def change_report(
 
     # Pre-flight checks
     check_git_version(repo)
+    validate_records_in_repo(repo, config.input_records())
 
     worktree_base = config.root_dir() / 'worktrees'
     check_worktrees_gitignored(repo, worktree_base)

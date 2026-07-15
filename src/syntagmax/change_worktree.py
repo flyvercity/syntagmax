@@ -59,6 +59,39 @@ def check_worktrees_gitignored(repo: git.Repo, worktree_base: Path) -> None:
         )
 
 
+def validate_records_in_repo(repo: git.Repo, input_records) -> None:
+    """Verify that all input records reside within the discovered Git repository.
+
+    Raises FatalError if any input record's base directory is not under the
+    repository working tree, which would make revision-based comparison
+    impossible for those records.
+
+    Args:
+        repo: GitPython Repo instance (already discovered).
+        input_records: Iterable of InputRecord objects from the config.
+    """
+    repo_root = Path(repo.working_tree_dir).resolve()
+    outside: list[str] = []
+
+    for record in input_records:
+        record_path = record.record_base.resolve()
+        try:
+            record_path.relative_to(repo_root)
+        except ValueError:
+            outside.append(
+                f'  - "{record.name}" ({record.record_base})'
+            )
+
+    if outside:
+        records_list = '\n'.join(outside)
+        raise FatalError(
+            'All input records must belong to the same Git repository.\n'
+            f'Repository root: {repo_root}\n'
+            f'The following input records are outside the repository:\n'
+            f'{records_list}'
+        )
+
+
 def resolve_revision(repo: git.Repo, rev_str: str) -> str:
     """Resolve a revision string to a full commit SHA.
 
