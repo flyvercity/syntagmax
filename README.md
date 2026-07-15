@@ -432,6 +432,7 @@ syntagmax change report --base release --target develop
 | `--output` | `.syntagmax/reports/change/` | Output directory or `console` for stdout |
 | `--include-non-artifact` | off | Include non-artifact text block changes |
 | `--single` | off | Generate a single consolidated report |
+| `--summary` | off | Generate abbreviated summary report (no content) |
 | `-f, --config-file` | `.syntagmax/config.toml` | Path to config file |
 
 ### Supported Revisions
@@ -451,6 +452,12 @@ Reports are generated per input record with filenames:
 
 Use `--single` to generate one consolidated report across all records.
 Use `--output console` to print to stdout.
+Use `--summary` to generate an abbreviated report showing only file paths, changed object IDs, and text fragment locations — no content or attribute diffs are included. Summary reports use the filename suffix `-summary` (e.g. `<section>-...-summary.md`).
+
+```bash
+# Quick overview of changes between tags
+syntagmax change report --summary --base v1.2.0 --target v1.3.0
+```
 
 ### Prerequisites
 

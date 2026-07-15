@@ -475,10 +475,11 @@ def change():
 @click.option('--output', 'output_path', default=None, help='Output directory or "console" for stdout')
 @click.option('--include-non-artifact', is_flag=True, help='Include non-artifact text block changes')
 @click.option('--single', is_flag=True, help='Generate a single consolidated report across all input records')
+@click.option('--summary', is_flag=True, help='Generate abbreviated summary report (no content)')
 @click.option('-f', '--config-file', type=click.Path(), default='.syntagmax/config.toml')
 def change_report(
     obj: Params, base: str, target: str, output_path: str | None,
-    include_non_artifact: bool, single: bool, config_file: Path,
+    include_non_artifact: bool, single: bool, summary: bool, config_file: Path,
 ):
     from datetime import datetime, timezone
     from syntagmax.change_worktree import (
@@ -491,7 +492,8 @@ def change_report(
         compare_artifacts, compare_text_blocks,
     )
     from syntagmax.change_render import (
-        render_change_report, ChangeReportData, ExtractionError,
+        render_change_report, render_summary_report,
+        ChangeReportData, ExtractionError,
     )
     import difflib
     import git
@@ -612,11 +614,15 @@ def change_report(
                 ],
             )
 
-            markdown = render_change_report(report_data)
+            if summary:
+                markdown = render_summary_report(report_data)
+            else:
+                markdown = render_change_report(report_data)
 
             # Build filename
             safe_name = record_name.replace(' ', '-').replace('/', '_').replace('\\', '_')
-            filename = f'{safe_name}-{base_label}-to-{target_label}-{date_str}.md'
+            suffix = '-summary' if summary else ''
+            filename = f'{safe_name}-{base_label}-to-{target_label}-{date_str}{suffix}.md'
             reports.append((filename, markdown))
 
     # Write output
@@ -630,7 +636,8 @@ def change_report(
         out_p = Path(output_path)
         if out_p.is_dir() or output_path.endswith('/') or output_path.endswith('\\'):
             out_p.mkdir(parents=True, exist_ok=True)
-            consolidated_name = f'change-{base_label}-to-{target_label}-{date_str}.md'
+            suffix = '-summary' if summary else ''
+            consolidated_name = f'change-{base_label}-to-{target_label}-{date_str}{suffix}.md'
             out_p = out_p / consolidated_name
         else:
             out_p.parent.mkdir(parents=True, exist_ok=True)
