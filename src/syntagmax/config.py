@@ -399,6 +399,9 @@ class Config:
         # 3. All-default rendering
         return load_publish_config(None, self._root_dir)
 
+    def root_dir(self) -> Path:
+        return self._root_dir
+
     def base_dir(self):
         return self._base_dir
 

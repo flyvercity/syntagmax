@@ -33,20 +33,28 @@ def check_git_version(repo: git.Repo) -> None:
         )
 
 
-def check_worktrees_gitignored(repo: git.Repo) -> None:
-    """Check that .syntagmax/worktrees/ is listed in .gitignore.
+def check_worktrees_gitignored(repo: git.Repo, worktree_base: Path) -> None:
+    """Check that the worktrees directory is listed in .gitignore.
 
     Raises FatalError if the worktree directory is not ignored by git,
     since committing worktree contents would corrupt the repository.
     """
-    # Use a path relative to cwd for check-ignore (works with both root and subdirs)
-    worktree_dir = '.syntagmax/worktrees/'
+    # Compute path relative to the repo working tree for check-ignore
+    try:
+        rel_path = worktree_base.resolve().relative_to(
+            Path(repo.working_tree_dir).resolve()
+        )
+        worktree_dir = str(rel_path).replace('\\', '/') + '/'
+    except ValueError:
+        # worktree_base is outside the repo — cannot check
+        worktree_dir = str(worktree_base) + '/'
+
     try:
         repo.git.check_ignore(worktree_dir)
     except git.GitCommandError:
         raise FatalError(
-            'The path .syntagmax/worktrees/ is not ignored by git. '
-            'Please add ".syntagmax/worktrees/" to your .gitignore file '
+            f'The path {worktree_dir} is not ignored by git. '
+            f'Please add "{worktree_dir}" to your .gitignore file '
             'to prevent worktree contents from being committed.'
         )
 

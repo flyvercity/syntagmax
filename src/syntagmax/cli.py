@@ -515,8 +515,8 @@ def change_report(
     # Pre-flight checks
     check_git_version(repo)
 
-    worktree_base = Path(repo.working_tree_dir) / '.syntagmax' / 'worktrees'
-    check_worktrees_gitignored(repo)
+    worktree_base = config.root_dir() / 'worktrees'
+    check_worktrees_gitignored(repo, worktree_base)
 
     # Resolve revisions
     base_hash = resolve_revision(repo, base)
