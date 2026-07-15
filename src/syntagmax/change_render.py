@@ -395,3 +395,207 @@ def render_change_report(data: ChangeReportData) -> str:
     lines.extend(_render_detailed_changes(data))
 
     return '\n'.join(lines)
+
+
+
+# ---------------------------------------------------------------------------
+# Summary Report Rendering
+# ---------------------------------------------------------------------------
+
+
+def _format_line_range(start: int, end: int) -> str:
+    """Format a line range as a compact string.
+
+    Single-line ranges omit the separator (e.g. 'lines 45' not 'lines 45–45').
+    """
+    if start == end:
+        return f'lines {start}'
+    return f'lines {start}\u2013{end}'
+
+
+def _format_text_fragment_entry(change: TextFragmentChange) -> str:
+    """Format a text fragment change as a compact line description.
+
+    Examples:
+        'Modified (lines 45–52 → 45–56)'
+        'Added (lines 128)'
+        'Removed (lines 210–218)'
+    """
+    status = change.status.value
+
+    if change.status == FileStatus.MODIFIED:
+        old_range = _format_line_range(*change.old_lines) if change.old_lines else '?'
+        new_range = _format_line_range(*change.new_lines) if change.new_lines else '?'
+        return f'{status} ({old_range} \u2192 {new_range})'
+    elif change.status == FileStatus.ADDED:
+        new_range = _format_line_range(*change.new_lines) if change.new_lines else '?'
+        return f'{status} ({new_range})'
+    else:
+        # Removed
+        old_range = _format_line_range(*change.old_lines) if change.old_lines else '?'
+        return f'{status} ({old_range})'
+
+
+def _group_artifacts_by_file(
+    data: ChangeReportData,
+) -> dict[str, list[tuple[str, str, str]]]:
+    """Group artefact changes by file path.
+
+    Returns:
+        Dict mapping file_path -> list of (aid, atype, status_str).
+    """
+    result: dict[str, list[tuple[str, str, str]]] = {}
+
+    if not data.artifact_diff:
+        return result
+
+    for aid, atype, _block, file_path in data.artifact_diff.added:
+        result.setdefault(file_path, []).append((aid, atype, 'Added'))
+
+    for change in data.artifact_diff.modified:
+        result.setdefault(change.file_path, []).append(
+            (change.aid, change.atype, 'Modified')
+        )
+
+    for aid, atype, _block, file_path in data.artifact_diff.removed:
+        result.setdefault(file_path, []).append((aid, atype, 'Removed'))
+
+    return result
+
+
+def _group_text_fragments_by_file(
+    data: ChangeReportData,
+) -> dict[str, list[str]]:
+    """Group text fragment changes by file path.
+
+    Returns:
+        Dict mapping file_path -> list of formatted line descriptions.
+    """
+    result: dict[str, list[str]] = {}
+
+    if not data.text_diff:
+        return result
+
+    all_changes = (
+        data.text_diff.added + data.text_diff.modified + data.text_diff.removed
+    )
+    for change in all_changes:
+        entry = _format_text_fragment_entry(change)
+        result.setdefault(change.file_path, []).append(entry)
+
+    return result
+
+
+def _match_file_path(fd_path: str, path_map: dict) -> list:
+    """Match a file diff path against artifact/fragment keys.
+
+    The file diff path is relative to the repo root, while extraction paths
+    are relative to the config's base_dir. We match by checking if the
+    diff path ends with the artifact path or vice versa.
+    """
+    # Exact match first
+    if fd_path in path_map:
+        return path_map[fd_path]
+
+    # Try suffix matching: the shorter path should be a suffix of the longer
+    for key, value in path_map.items():
+        if fd_path.endswith('/' + key) or fd_path == key:
+            return value
+        if key.endswith('/' + fd_path) or key == fd_path:
+            return value
+
+    return []
+
+
+def _render_summary_changed_files(
+    data: ChangeReportData,
+    artifacts_by_file: dict[str, list[tuple[str, str, str]]],
+    fragments_by_file: dict[str, list[str]],
+) -> list[str]:
+    """Render per-file breakdown for the summary report."""
+    lines = ['## Changed Files', '']
+
+    has_content = False
+
+    for fd in data.file_diffs:
+        has_content = True
+        lines.append(f'### {fd.path}')
+        lines.append('')
+
+        # Status line
+        if fd.status == FileStatus.RENAMED and fd.old_path:
+            lines.append(f'Status: Renamed (from {fd.old_path})')
+        else:
+            lines.append(f'Status: {fd.status.value}')
+        lines.append('')
+
+        # Objects — match using suffix-aware lookup
+        file_artifacts = _match_file_path(fd.path, artifacts_by_file)
+        if file_artifacts:
+            lines.append('**Objects**')
+            lines.append('')
+            for aid, atype, status in file_artifacts:
+                lines.append(f'- {atype} {aid} ({status})')
+            lines.append('')
+
+        # Text fragments — match using suffix-aware lookup
+        file_fragments = _match_file_path(fd.path, fragments_by_file)
+        if file_fragments:
+            lines.append('**Text fragments**')
+            lines.append('')
+            for entry in file_fragments:
+                lines.append(f'- {entry}')
+            lines.append('')
+
+    # Extraction errors (show file path + error message, no fallback diff)
+    if data.extraction_errors:
+        for error in data.extraction_errors:
+            has_content = True
+            lines.append(f'### {error.file_path}')
+            lines.append('')
+            lines.append('Status: Error')
+            lines.append('')
+            lines.append(error.error_message)
+            lines.append('')
+
+    if not has_content:
+        lines.append('No changes detected.')
+        lines.append('')
+
+    return lines
+
+
+def render_summary_report(data: ChangeReportData) -> str:
+    """Build an abbreviated summary change report.
+
+    The summary report shows which files, artefacts, and text fragments
+    changed, without displaying content, attribute diffs, or OLD/NEW blocks.
+
+    Args:
+        data: The change report data (same structure as for the full report).
+
+    Returns:
+        A complete Markdown summary report string.
+    """
+    lines: list[str] = []
+
+    # Title
+    lines.extend(['# Change Report (Summary)', '', '---', ''])
+
+    # Repository Information (reuse existing helper)
+    lines.extend(_render_repo_info(data))
+    lines.extend(['---', ''])
+
+    # Summary statistics (reuse existing helper)
+    summary = compute_summary(data)
+    lines.extend(_render_summary(summary))
+    lines.extend(['---', ''])
+
+    # Per-file breakdown
+    artifacts_by_file = _group_artifacts_by_file(data)
+    fragments_by_file = _group_text_fragments_by_file(data)
+    lines.extend(_render_summary_changed_files(
+        data, artifacts_by_file, fragments_by_file,
+    ))
+
+    return '\n'.join(lines)
