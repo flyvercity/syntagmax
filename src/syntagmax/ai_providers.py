@@ -220,7 +220,8 @@ class OllamaProvider(AIProvider):
             raise AIError(f'Unexpected Ollama response shape: {raw!r}') from e
 
         try:
-            content = content.lstrip('```json').rstrip('```')
+            content = content.strip()
+            content = content.removeprefix('```json').removesuffix('```').strip()
             content = self._sanitize_json(content)
             result = json.loads(content)
         except json.JSONDecodeError as e:
@@ -270,7 +271,7 @@ class AnthropicProvider(AIProvider):
         try:
             content = raw['content'][0]['text']
             # Sometimes Claude wraps json in markdown block
-            content = content.strip().lstrip('```json').rstrip('```')
+            content = content.strip().removeprefix('```json').removesuffix('```').strip()
             # Fix for potential trailing ```
             if content.endswith('```'):
                 content = content[:-3]
@@ -384,7 +385,7 @@ class GeminiProvider(AIProvider):
             content = raw['candidates'][0]['content']['parts'][0]['text']
 
             # Sometimes Gemini wraps json in markdown block or returns some prose
-            content = content.strip().lstrip('```json').rstrip('```')
+            content = content.strip().removeprefix('```json').removesuffix('```').strip()
             if content.endswith('```'):
                 content = content[:-3]
 
