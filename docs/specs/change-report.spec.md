@@ -48,10 +48,10 @@ Implement a `syntagmax change report` command that generates a human-readable Ma
 **Objective:** Create `src/syntagmax/change_worktree.py` with functions to create/remove git worktrees under `.syntagmax/worktrees/`.
 
 **Implementation:**
-- `create_worktree(repo: git.Repo, revision: str, label: str) -> Path` — calls `git worktree add`
-- `remove_worktree(repo: git.Repo, path: Path)` — calls `git worktree remove`
-- `resolve_revision(repo: git.Repo, rev_str: str) -> str` — validates and resolves to a commit hash
-- Context manager `worktree_pair(repo, base_rev, target_rev)` that creates both and ensures cleanup
+- `create_worktree(repo: git.Repo, revision: str, label: str) -> Path` — calls `git worktree add`. Validates system Git version is >= 2.5.
+- `remove_worktree(repo: git.Repo, path: Path)` — calls `git worktree remove`, wrapped in retry-with-backoff logic to handle Windows file locks. Runs `git worktree prune`.
+- `resolve_revision(repo: git.Repo, rev_str: str) -> str` — validates and resolves to a commit hash. Accepts `working` for active uncommitted files if supported.
+- Context manager `worktree_pair(repo, base_rev, target_rev)` that creates both and ensures robust cleanup.
 
 **Test requirements:** Unit test with a temp git repo, verify worktree creation/removal, test invalid revision error.
 
@@ -63,8 +63,9 @@ Implement a `syntagmax change report` command that generates a human-readable Ma
 
 **Implementation:**
 - `extract_blocks_at_revision(config: Config, worktree_path: Path) -> dict[str, list[FileRecord]]` keyed by input record name
-- Rebuild `InputRecord.filepaths` by re-globbing within the worktree directory
-- Instantiate extractors pointing at worktree paths, call `extract_blocks_from_file` per file
+- Safely clone the `Config` instance or map filepaths to the worktree path without mutating the original `Config` object in-place
+- Re-glob `InputRecord.filepaths` relative to the worktree root path
+- Instantiate extractors pointing at worktree paths, call `extract_blocks_from_file` per file, ensuring all file streams are closed
 - Return a per-record mapping of `FileRecord` objects (path → blocks)
 
 **Test requirements:** Create a temp git repo with sample markdown files, commit, modify, extract at both revisions, verify block counts.
@@ -106,7 +107,7 @@ Implement a `syntagmax change report` command that generates a human-readable Ma
 **Implementation:**
 - `compare_text_blocks(base_blocks: list[FileRecord], target_blocks: list[FileRecord]) -> list[TextFragmentChange]`
 - `TextFragmentChange`: `status` (Added/Removed/Modified), `old_content`, `new_content`, `old_lines: tuple[int,int]`, `new_lines: tuple[int,int]`
-- Use Python's `difflib.SequenceMatcher` to align text blocks by position/content similarity within same file
+- Use Python's `difflib.SequenceMatcher` to align text blocks by position/content similarity within same file. For blocks exceeding 200 lines, skip `SequenceMatcher` and fall back to standard line-by-line diff to prevent performance bottlenecks.
 - Track line ranges based on block position in original file
 
 **Test requirements:** Test detection of modified, added, removed text fragments.
@@ -137,8 +138,10 @@ Implement a `syntagmax change report` command that generates a human-readable Ma
 - Add `report` subcommand with options: `--base`, `--target`, `--output`, `--include-non-artifact`, `-f/--config-file`
 - Wire together: resolve revisions → create worktrees → extract blocks at both revisions → compute file diffs → compute artifact diffs → (optionally) compute text diffs → render reports → write per-record output files → cleanup worktrees
 - Default output path: `.syntagmax/reports/change/`
-- File naming: `<section>-<YYYYMMDD>.md`
-- Support `--output console` for stdout
+- File naming: `<section>-<base_rev>-to-<target_rev>-<YYYYMMDD>.md` to avoid date-only file collisions.
+- Output paths: Print the absolute path of each generated report file to stdout on success.
+- Support `--output console` for stdout.
+- Add `--single` / `--combined` option to generate a single consolidated report across all input records.
 
 **Test requirements:** Integration test using Click's `CliRunner` with a temp git repo containing sample artifacts.
 
@@ -215,3 +218,18 @@ src/syntagmax/
 tests/
 └── test_change_report.py  # Integration and unit tests
 ```
+
+---
+
+### Task 10: Documentation Updates
+
+**Objective:** Update all relevant project documentation to cover the new `change report` command.
+
+**Implementation:**
+- Add command description, options, and usage examples to `README.md`.
+- Update `docs/reference/CLI.md` to document the new `change` group and `report` subcommand.
+- Document default output path and behavior of the `--include-non-artifact` option.
+- Document the `--single` option for consolidated reports.
+- Document the `working` keyword for comparing uncommitted changes.
+
+**Test requirements:** Verify that built/rendered documentation includes the new command details.
