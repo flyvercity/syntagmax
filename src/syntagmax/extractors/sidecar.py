@@ -99,9 +99,9 @@ class SidecarExtractor(Extractor):
             for key, value in data.items():
                 if isinstance(value, list):
                     for v in value:
-                        builder.add_field(key, v)
+                        builder.add_field(key, str(v))
                 else:
-                    builder.add_field(key, value)
+                    builder.add_field(key, str(value))
 
             artifact = builder.build()
             raw_text = sidecar_path.read_text(encoding='utf-8')
