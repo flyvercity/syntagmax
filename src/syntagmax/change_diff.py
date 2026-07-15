@@ -566,19 +566,17 @@ def _match_text_blocks(
 def _estimate_line_number(block, all_blocks, index: int) -> int:
     """Estimate the starting line number of a text block.
 
-    Uses source_offset if available, otherwise estimates from position.
+    Counts newlines in preceding block contents to estimate line position.
+    Uses 1-based line numbering.
     """
-    if block.source_offset is not None:
-        # Count newlines in content before the offset to estimate line number
-        # This is a rough estimate — we don't have the full file content here
-        # Use 1-based line numbering
-        return block.source_offset + 1
-
-    # Fallback: estimate from position in block list
+    # Estimate from position in block list by counting content lines
     line = 1
     for i in range(index):
         prev_block = all_blocks[i]
-        line += prev_block.content.count('\n') + 1
+        if hasattr(prev_block, 'content') and prev_block.content:
+            line += prev_block.content.count('\n') + 1
+        elif hasattr(prev_block, 'raw_text') and prev_block.raw_text:
+            line += prev_block.raw_text.count('\n') + 1
     return line
 
 
