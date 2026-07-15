@@ -570,7 +570,7 @@ flight_control-20260715.md
 
 ## 28.6 Regeneration
 
-When regenerating a report for the same date, a file with a matching name must be overwritten unless a different operating mode is specified.
+When regenerating a report for the same date, a file with a matching name must be overwritten.
 
 ## 28.7 Uniqueness Requirements
 
