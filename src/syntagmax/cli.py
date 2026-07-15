@@ -437,6 +437,32 @@ def trace(
             u.pprint(f'[green]Trace matrix written to {output_path} ({len(matrix.records)} records)[/green]')
 
 
+def _get_working_tree_changed_files(repo, compare_hash: str):
+    """Get changed files between a commit and the working tree.
+
+    Uses git diff --name-status to compare a given revision against the
+    current working directory state.
+    """
+    from syntagmax.change_diff import FileDiff, FileStatus
+
+    raw = repo.git.diff('--name-status', compare_hash)
+    results = []
+    for line in raw.splitlines():
+        if not line.strip():
+            continue
+        parts = line.split('\t')
+        status_code = parts[0][0]  # First character: A, D, M, R
+        if status_code == 'A':
+            results.append(FileDiff(path=parts[1], status=FileStatus.ADDED))
+        elif status_code == 'D':
+            results.append(FileDiff(path=parts[1], status=FileStatus.REMOVED))
+        elif status_code == 'M':
+            results.append(FileDiff(path=parts[1], status=FileStatus.MODIFIED))
+        elif status_code == 'R':
+            results.append(FileDiff(path=parts[2] if len(parts) > 2 else parts[1], status=FileStatus.RENAMED, old_path=parts[1]))
+    return results
+
+
 def _read_file_safe(base_path: Path, rel_path: str) -> str | None:
     """Read a file safely, returning None if not found."""
     try:
@@ -549,8 +575,9 @@ def change_report(
         if base_hash != 'working' and target_hash != 'working':
             changed_files = get_changed_files(repo, base_hash, target_hash)
         else:
-            # If either is 'working', get all files (can't diff working tree easily)
-            changed_files = None
+            # Diff against working tree: compare the non-working revision to HEAD working tree
+            compare_hash = base_hash if target_hash == 'working' else target_hash
+            changed_files = _get_working_tree_changed_files(repo, compare_hash)
 
         # Filter by input records
         if changed_files is not None:
