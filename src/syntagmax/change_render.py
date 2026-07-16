@@ -540,7 +540,11 @@ def _format_field_value(val) -> str:
         if '\n' in s:
             first_line = next((ln for ln in s.splitlines() if ln.strip()), s.splitlines()[0])
             s = f'{first_line.strip()} …'
-        return s.replace('|', '\\|')
+        s = s.replace('|', '\\|')
+        # Wrap in backticks if value contains angle brackets to prevent HTML interpretation
+        if '<' in s and '>' in s:
+            s = f'`{s}`'
+        return s
 
     if isinstance(val, list):
         return ', '.join(_format_single(v) for v in val)

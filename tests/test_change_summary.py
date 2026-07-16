@@ -86,6 +86,12 @@ class TestFormatFieldValue:
     def test_list_with_pipe(self):
         assert _format_field_value(['a|b', 'c']) == 'a\\|b, c'
 
+    def test_angle_brackets_backticked(self):
+        assert _format_field_value('<undefined>') == '`<undefined>`'
+
+    def test_no_backticks_without_both_brackets(self):
+        assert _format_field_value('a < b') == 'a < b'
+
 
 class TestBlockquoteContent:
     """Tests for _blockquote_content helper."""
