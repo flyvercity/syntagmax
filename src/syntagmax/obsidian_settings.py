@@ -51,7 +51,6 @@ def read_obsidian_attachment_path(base_dir: Path, root_override: str | None = No
     return attachment_path
 
 
-
 def read_obsidian_strict_line_breaks(base_dir: Path, root_override: str | None = None) -> bool | None:
     """Read the strictLineBreaks setting from Obsidian's app.json.
 

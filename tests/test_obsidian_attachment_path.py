@@ -28,7 +28,7 @@ class TestObsidianDriverConfigFields:
             '[drivers.obsidian]\nintegration = true\nroot = ".obsidian-custom"\n',
             encoding='utf-8',
         )
-        req_dir = (tmp_path / '..' / 'REQ')
+        req_dir = tmp_path / '..' / 'REQ'
         req_dir.mkdir(parents=True, exist_ok=True)
 
         config = Config(params=params, config_filename=cfg_path)
@@ -38,11 +38,10 @@ class TestObsidianDriverConfigFields:
     def test_defaults_when_absent(self, params, tmp_path):
         cfg_path = tmp_path / 'config.toml'
         cfg_path.write_text(
-            'base = ".."\n'
-            '[[input]]\nname="reqs"\ndir="REQ"\ndriver="obsidian"\natype="REQ"\n',
+            'base = ".."\n[[input]]\nname="reqs"\ndir="REQ"\ndriver="obsidian"\natype="REQ"\n',
             encoding='utf-8',
         )
-        req_dir = (tmp_path / '..' / 'REQ')
+        req_dir = tmp_path / '..' / 'REQ'
         req_dir.mkdir(parents=True, exist_ok=True)
 
         config = Config(params=params, config_filename=cfg_path)
@@ -103,11 +102,10 @@ class TestRenderContextLazyLoading:
     def test_no_io_when_integration_disabled(self, params, tmp_path):
         cfg_path = tmp_path / 'config.toml'
         cfg_path.write_text(
-            'base = ".."\n'
-            '[[input]]\nname="reqs"\ndir="REQ"\ndriver="obsidian"\natype="REQ"\n',
+            'base = ".."\n[[input]]\nname="reqs"\ndir="REQ"\ndriver="obsidian"\natype="REQ"\n',
             encoding='utf-8',
         )
-        req_dir = (tmp_path / '..' / 'REQ')
+        req_dir = tmp_path / '..' / 'REQ'
         req_dir.mkdir(parents=True, exist_ok=True)
 
         config = Config(params=params, config_filename=cfg_path)
@@ -126,15 +124,11 @@ class TestRenderContextLazyLoading:
 
         obsidian_dir = base_dir / '.obsidian'
         obsidian_dir.mkdir()
-        (obsidian_dir / 'app.json').write_text(
-            json.dumps({'attachmentFolderPath': 'attachments'}), encoding='utf-8'
-        )
+        (obsidian_dir / 'app.json').write_text(json.dumps({'attachmentFolderPath': 'attachments'}), encoding='utf-8')
 
         cfg_path = syntagmax_dir / 'config.toml'
         cfg_path.write_text(
-            'base = ".."\n'
-            '[[input]]\nname="reqs"\ndir="REQ"\ndriver="obsidian"\natype="REQ"\n\n'
-            '[drivers.obsidian]\nintegration = true\n',
+            'base = ".."\n[[input]]\nname="reqs"\ndir="REQ"\ndriver="obsidian"\natype="REQ"\n\n[drivers.obsidian]\nintegration = true\n',
             encoding='utf-8',
         )
 
@@ -157,9 +151,7 @@ class TestImageResolutionWithAttachmentFolder:
         syntagmax_dir.mkdir()
         req_dir = base_dir / 'REQ'
         req_dir.mkdir()
-        (req_dir / 'REQ-001.md').write_text(
-            '---\nid: REQ-001\ncontents: See ![[diagram.png]]\n---\n', encoding='utf-8'
-        )
+        (req_dir / 'REQ-001.md').write_text('---\nid: REQ-001\ncontents: See ![[diagram.png]]\n---\n', encoding='utf-8')
 
         # Create attachment folder with image
         attach_dir = base_dir / Path(attachment_path)
@@ -170,16 +162,12 @@ class TestImageResolutionWithAttachmentFolder:
         # Create .obsidian/app.json
         obsidian_dir = base_dir / '.obsidian'
         obsidian_dir.mkdir()
-        (obsidian_dir / 'app.json').write_text(
-            json.dumps({'attachmentFolderPath': attachment_path}), encoding='utf-8'
-        )
+        (obsidian_dir / 'app.json').write_text(json.dumps({'attachmentFolderPath': attachment_path}), encoding='utf-8')
 
         integration_line = f'integration = {"true" if integration else "false"}'
         cfg_path = syntagmax_dir / 'config.toml'
         cfg_path.write_text(
-            'base = ".."\n'
-            '[[input]]\nname="reqs"\ndir="REQ"\ndriver="obsidian"\natype="REQ"\n\n'
-            f'[drivers.obsidian]\n{integration_line}\n',
+            f'base = ".."\n[[input]]\nname="reqs"\ndir="REQ"\ndriver="obsidian"\natype="REQ"\n\n[drivers.obsidian]\n{integration_line}\n',
             encoding='utf-8',
         )
 
@@ -224,15 +212,11 @@ class TestImageResolutionWithAttachmentFolder:
 
         obsidian_dir = base_dir / '.obsidian'
         obsidian_dir.mkdir()
-        (obsidian_dir / 'app.json').write_text(
-            json.dumps({'attachmentFolderPath': './attachments'}), encoding='utf-8'
-        )
+        (obsidian_dir / 'app.json').write_text(json.dumps({'attachmentFolderPath': './attachments'}), encoding='utf-8')
 
         cfg_path = syntagmax_dir / 'config.toml'
         cfg_path.write_text(
-            'base = ".."\n'
-            '[[input]]\nname="reqs"\ndir="REQ"\ndriver="obsidian"\natype="REQ"\n\n'
-            '[drivers.obsidian]\nintegration = true\n',
+            'base = ".."\n[[input]]\nname="reqs"\ndir="REQ"\ndriver="obsidian"\natype="REQ"\n\n[drivers.obsidian]\nintegration = true\n',
             encoding='utf-8',
         )
 
@@ -259,18 +243,14 @@ class TestImageResolutionWithAttachmentFolder:
 
         obsidian_dir = base_dir / '.obsidian'
         obsidian_dir.mkdir()
-        (obsidian_dir / 'app.json').write_text(
-            json.dumps({'attachmentFolderPath': 'attachments'}), encoding='utf-8'
-        )
+        (obsidian_dir / 'app.json').write_text(json.dumps({'attachmentFolderPath': 'attachments'}), encoding='utf-8')
 
         # Create empty attachments folder (image NOT there)
         (base_dir / 'attachments').mkdir()
 
         cfg_path = syntagmax_dir / 'config.toml'
         cfg_path.write_text(
-            'base = ".."\n'
-            '[[input]]\nname="sys"\ndir="SYS"\ndriver="obsidian"\natype="SYS"\nfilter="**/*"\n\n'
-            '[drivers.obsidian]\nintegration = true\n',
+            'base = ".."\n[[input]]\nname="sys"\ndir="SYS"\ndriver="obsidian"\natype="SYS"\nfilter="**/*"\n\n[drivers.obsidian]\nintegration = true\n',
             encoding='utf-8',
         )
 
@@ -303,15 +283,11 @@ class TestImageResolutionWithAttachmentFolder:
 
         obsidian_dir = base_dir / '.obsidian'
         obsidian_dir.mkdir()
-        (obsidian_dir / 'app.json').write_text(
-            json.dumps({'attachmentFolderPath': 'attachments'}), encoding='utf-8'
-        )
+        (obsidian_dir / 'app.json').write_text(json.dumps({'attachmentFolderPath': 'attachments'}), encoding='utf-8')
 
         cfg_path = syntagmax_dir / 'config.toml'
         cfg_path.write_text(
-            'base = ".."\n'
-            '[[input]]\nname="sys"\ndir="SYS"\ndriver="obsidian"\natype="SYS"\nfilter="**/*"\n\n'
-            '[drivers.obsidian]\nintegration = true\n',
+            'base = ".."\n[[input]]\nname="sys"\ndir="SYS"\ndriver="obsidian"\natype="SYS"\nfilter="**/*"\n\n[drivers.obsidian]\nintegration = true\n',
             encoding='utf-8',
         )
 
@@ -339,9 +315,7 @@ class TestEndToEndPublishWithAttachments:
         req_dir = base_dir / 'REQ'
         req_dir.mkdir()
         (req_dir / 'REQ-001.md').write_text(
-            '---\nid: REQ-001\ncontents: Requirements overview\nstatus: active\n---\n\n'
-            'See the architecture diagram:\n\n'
-            '![[arch-overview.png]]\n',
+            '---\nid: REQ-001\ncontents: Requirements overview\nstatus: active\n---\n\nSee the architecture diagram:\n\n![[arch-overview.png]]\n',
             encoding='utf-8',
         )
 
@@ -353,15 +327,11 @@ class TestEndToEndPublishWithAttachments:
         # Create .obsidian/app.json
         obsidian_dir = base_dir / '.obsidian'
         obsidian_dir.mkdir()
-        (obsidian_dir / 'app.json').write_text(
-            json.dumps({'attachmentFolderPath': 'attachments'}), encoding='utf-8'
-        )
+        (obsidian_dir / 'app.json').write_text(json.dumps({'attachmentFolderPath': 'attachments'}), encoding='utf-8')
 
         cfg_path = syntagmax_dir / 'config.toml'
         cfg_path.write_text(
-            'base = ".."\n'
-            '[[input]]\nname="reqs"\ndir="REQ"\ndriver="obsidian"\natype="REQ"\n\n'
-            '[drivers.obsidian]\nintegration = true\n',
+            'base = ".."\n[[input]]\nname="reqs"\ndir="REQ"\ndriver="obsidian"\natype="REQ"\n\n[drivers.obsidian]\nintegration = true\n',
             encoding='utf-8',
         )
 
@@ -390,8 +360,7 @@ class TestEndToEndPublishWithAttachments:
         req_dir = base_dir / 'REQ'
         req_dir.mkdir()
         (req_dir / 'REQ-001.md').write_text(
-            '---\nid: REQ-001\ncontents: Detail\nstatus: draft\n---\n\n'
-            '![[local-diagram.png]]\n',
+            '---\nid: REQ-001\ncontents: Detail\nstatus: draft\n---\n\n![[local-diagram.png]]\n',
             encoding='utf-8',
         )
 
@@ -402,15 +371,11 @@ class TestEndToEndPublishWithAttachments:
 
         obsidian_dir = base_dir / '.obsidian'
         obsidian_dir.mkdir()
-        (obsidian_dir / 'app.json').write_text(
-            json.dumps({'attachmentFolderPath': './assets'}), encoding='utf-8'
-        )
+        (obsidian_dir / 'app.json').write_text(json.dumps({'attachmentFolderPath': './assets'}), encoding='utf-8')
 
         cfg_path = syntagmax_dir / 'config.toml'
         cfg_path.write_text(
-            'base = ".."\n'
-            '[[input]]\nname="reqs"\ndir="REQ"\ndriver="obsidian"\natype="REQ"\n\n'
-            '[drivers.obsidian]\nintegration = true\n',
+            'base = ".."\n[[input]]\nname="reqs"\ndir="REQ"\ndriver="obsidian"\natype="REQ"\n\n[drivers.obsidian]\nintegration = true\n',
             encoding='utf-8',
         )
 
