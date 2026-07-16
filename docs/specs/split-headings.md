@@ -8,13 +8,16 @@ When only a heading changes in an input Markdown file (outside artifacts), the c
 
 1. ATX-style headings (`#` through `######`) outside artifacts are extracted as individual `TextBlock` instances with `marker="HEADING"`.
 2. Heading splitting is code-block-aware: headings inside fenced code blocks (```` ``` ````) must not be split.
-3. `source_offset` is correctly preserved for all resulting blocks.
-4. No explicit `id` on heading blocks — positional/content matching in `compare_text_blocks` handles diffs.
-5. The behaviour is unconditional (no configuration flag).
-6. The change report renderer labels heading changes as "Heading" instead of "Text fragment".
-7. The `exclude_elements` filter correctly handles pre-split heading blocks.
-8. Existing tests remain green.
-9. No impact on publish, metrics, edit attrs, or edit markers subsystems.
+3. Heading regex is CommonMark-compliant: at most 3 leading spaces before `#` (4+ spaces is an indented code block).
+4. `source_offset` is correctly preserved for all resulting blocks, computed incrementally (no `list.index()` usage).
+5. Whitespace-only text blocks between headings are preserved (not dropped) to maintain formatting fidelity.
+6. No explicit `id` on heading blocks — positional/content matching in `compare_text_blocks` handles diffs.
+7. The behaviour is unconditional (no configuration flag).
+8. The change report renderer labels heading changes as "Heading" instead of "Text fragment".
+9. The `exclude_elements` filter correctly handles pre-split heading blocks.
+10. The `edit_markers` renumber command ignores `"HEADING"` blocks (only processes user-configured markers).
+11. The publish pipeline treats `"HEADING"` blocks as unmarked text for purposes of `include_plain_text` filtering.
+12. Existing tests remain green.
 
 ## Background
 
@@ -38,6 +41,14 @@ The comparison is atomic per block — any change within a block marks the entir
 ### Change Report Rendering
 
 `_render_text_fragment` in `src/syntagmax/change_render.py` (line 335) renders `TextFragmentChange` objects. The `marker` field is available on the change object but not currently used in the heading label. The enhancement point is to check `change.marker == "HEADING"` and use a distinct label.
+
+### Edit Markers Subsystem
+
+`renumber_markers` in `src/syntagmax/edit_markers.py` iterates all `TextBlock`s with `marker is not None` and `not block.explicit_id`. It will pick up `"HEADING"` blocks unless explicitly filtered. Since headings don't have `[HEADING]` bracket syntax in the source, `_compute_tag_replacement` will fail and produce warnings.
+
+### Publish Subsystem
+
+`render_block` in `src/syntagmax/publish.py` routes blocks with `marker is not None` through a marker-lookup path. If the marker is not in `pub_config.render` (which `"HEADING"` won't be), it falls through to plain-text rendering — but *without* checking `pub_config.include_plain_text`. This means heading blocks would render even when `include_plain_text = false`.
 
 ### Test Patterns
 
@@ -72,7 +83,7 @@ No new dataclasses. Heading blocks are `TextBlock` instances with:
 def _split_headings(self, blocks: list[Block]) -> list[Block]:
     """Split ATX headings out of unmarked TextBlocks as separate heading blocks."""
     result: list[Block] = []
-    heading_re = re.compile(r'^(\s*#{1,6}\s)')
+    heading_re = re.compile(r'^([ ]{0,3}#{1,6}\s)')
 
     for block in blocks:
         if not isinstance(block, TextBlock) or block.marker is not None:
@@ -82,6 +93,7 @@ def _split_headings(self, blocks: list[Block]) -> list[Block]:
         lines = block.content.splitlines(keepends=True)
         base_offset = block.source_offset
         accumulator: list[str] = []
+        current_offset = base_offset
         acc_offset = base_offset
         in_code_block = False
 
@@ -91,40 +103,47 @@ def _split_headings(self, blocks: list[Block]) -> list[Block]:
             # Track fenced code block state
             if stripped.startswith('```'):
                 in_code_block = not in_code_block
+                if not accumulator and current_offset is not None:
+                    acc_offset = current_offset
                 accumulator.append(line)
+                if current_offset is not None:
+                    current_offset += len(line)
                 continue
 
             if in_code_block:
+                if not accumulator and current_offset is not None:
+                    acc_offset = current_offset
                 accumulator.append(line)
+                if current_offset is not None:
+                    current_offset += len(line)
                 continue
 
             if heading_re.match(line):
-                # Flush preceding text
+                # Flush preceding text (preserve whitespace-only blocks)
                 if accumulator:
                     text = ''.join(accumulator)
-                    if text.strip():
-                        result.append(TextBlock(content=text, source_offset=acc_offset))
+                    result.append(TextBlock(content=text, source_offset=acc_offset))
                     accumulator = []
 
                 # Emit heading block
-                heading_offset = (base_offset + sum(len(l) for l in lines[:lines.index(line)])) if base_offset is not None else None
-                result.append(TextBlock(content=line, marker='HEADING', source_offset=heading_offset))
-                acc_offset = (heading_offset + len(line)) if heading_offset is not None else None
+                result.append(TextBlock(content=line, marker='HEADING', source_offset=current_offset))
+                if current_offset is not None:
+                    current_offset += len(line)
+                acc_offset = current_offset
             else:
-                if not accumulator and base_offset is not None:
-                    acc_offset = base_offset + sum(len(l) for l in lines[:lines.index(line)])
+                if not accumulator and current_offset is not None:
+                    acc_offset = current_offset
                 accumulator.append(line)
+                if current_offset is not None:
+                    current_offset += len(line)
 
-        # Flush remaining text
+        # Flush remaining text (preserve whitespace-only blocks)
         if accumulator:
             text = ''.join(accumulator)
-            if text.strip():
-                result.append(TextBlock(content=text, source_offset=acc_offset))
+            result.append(TextBlock(content=text, source_offset=acc_offset))
 
     return result
 ```
-
-*Note: The actual implementation should compute offsets incrementally rather than using `lines.index()` for performance.*
 
 ### Change Render Enhancement
 
@@ -138,6 +157,28 @@ else:
 lines = [f'##### {label} ({_(change.status.value)})', '']
 ```
 
+### Edit Markers Guard
+
+In `renumber_markers` (edit_markers.py), add a filter to skip blocks whose marker is not in the record's configured markers:
+
+```python
+if block.marker not in record.markers:
+    continue
+```
+
+### Publish Guard
+
+In `render_block` (publish.py), treat `"HEADING"` blocks as unmarked text:
+
+```python
+if isinstance(block, TextBlock):
+    marker = block.marker
+    if marker == 'HEADING':
+        marker = None  # Treat heading blocks as unmarked text
+    if marker is not None:
+        # ... existing marker rendering logic ...
+```
+
 ## Task Breakdown
 
 ### Task 1: Implement `_split_headings` in `MarkdownExtractor`
@@ -147,18 +188,21 @@ lines = [f'##### {label} ({_(change.status.value)})', '']
 **Implementation guidance:**
 - File: `src/syntagmax/extractors/markdown.py`
 - Add `_split_headings(self, blocks: list[Block]) -> list[Block]` method.
+- Use heading regex `r'^([ ]{0,3}#{1,6}\s)'` (CommonMark-compliant, max 3 leading spaces).
 - Logic: iterate blocks; skip non-`TextBlock` or blocks with `marker is not None`; for qualifying blocks scan lines tracking fenced-code state; on heading line flush accumulator as `TextBlock(marker=None)`, emit heading as `TextBlock(marker="HEADING")`.
+- Compute `source_offset` incrementally using a `current_offset` accumulator (NOT `list.index()`).
+- Preserve whitespace-only text blocks (do NOT drop them with `if text.strip()`).
 - Wire it at the end of `_extract_blocks_from_markdown`, after the marker-splitting pass (unconditionally, regardless of whether markers are configured).
-- Compute `source_offset` incrementally (maintain a running character position per block).
 
 **Test requirements:** Unit tests in `tests/test_heading_split.py`:
 - Single heading at start of block → heading + body.
 - Multiple headings → multiple heading blocks with body blocks between them.
 - Heading inside fenced code block → NOT split.
-- Consecutive headings → consecutive heading blocks, no empty body blocks.
-- Empty/whitespace-only body between headings → no spurious empty TextBlocks.
-- `source_offset` is correctly computed for each resulting block.
+- Consecutive headings → consecutive heading blocks (no empty body blocks between them).
+- Whitespace-only body between headings → preserved as a TextBlock.
+- `source_offset` is correctly computed for each resulting block (test with duplicate lines).
 - Blocks with `marker != None` (e.g. `"COM"`) are not processed.
+- Heading with 4+ leading spaces → NOT split (treated as indented code).
 
 **Demo:** `uv run pytest tests/test_heading_split.py -v`
 
@@ -184,7 +228,29 @@ lines = [f'##### {label} ({_(change.status.value)})', '']
 
 ---
 
-### Task 3: Enhance change report renderer
+### Task 3: Fix edit_markers and publish integration
+
+**Objective:** Prevent `"HEADING"` blocks from causing side effects in marker renumbering and publishing.
+
+**Implementation guidance:**
+
+Edit Markers:
+- File: `src/syntagmax/edit_markers.py`, in the block iteration loop (~line 147).
+- Add guard: skip blocks whose `marker` is not in `record.markers`. This ensures only user-configured markers are processed.
+
+Publishing:
+- File: `src/syntagmax/publish.py`, function `render_block` (~line 347).
+- At the start of the `TextBlock` handling, if `marker == "HEADING"`, set local `marker = None`. This routes heading blocks through the unmarked text path, respecting `include_plain_text`.
+
+**Test requirements:**
+- `tests/test_heading_split.py`: Add a test that heading blocks are NOT included in `renumber_markers` output.
+- `tests/test_publish.py`: Add a test that heading blocks are excluded when `include_plain_text = false`, and rendered normally when `include_plain_text = true`.
+
+**Demo:** `uv run pytest tests/test_heading_split.py tests/test_publish.py -v`
+
+---
+
+### Task 4: Enhance change report renderer
 
 **Objective:** Label heading changes as "Heading" in the change report.
 
@@ -200,18 +266,18 @@ lines = [f'##### {label} ({_(change.status.value)})', '']
 - Create a repo with a file containing a heading + body text + artifact.
 - Commit, then modify only the heading, commit again.
 - Run `change report --base HEAD~1 --target HEAD`.
-- Assert output contains "Heading" (or localised equivalent) and NOT the full body text.
+- Assert output contains "Heading" (or localised equivalent) and NOT the full body text as a single modified fragment.
 
 **Demo:** `uv run pytest tests/test_change_report.py -v`
 
 ---
 
-### Task 4: End-to-end verification
+### Task 5: End-to-end verification
 
 **Objective:** Verify the full pipeline with the example project and full test suite.
 
 **Implementation guidance:**
-- Run `uv run syntagmax --render-tree --cwd ./example/obsidian-driver/ analyze` — confirm no regressions; heading blocks appear as separate entries if tree rendering shows text blocks.
+- Run `uv run syntagmax --render-tree --cwd ./example/obsidian-driver/ analyze` — confirm no regressions.
 - Run full test suite.
 - Run linter.
 
@@ -223,12 +289,12 @@ lines = [f'##### {label} ({_(change.status.value)})', '']
 
 ---
 
-### Task 5: Documentation update
+### Task 6: Documentation update
 
 **Objective:** Document the heading block behaviour.
 
 **Implementation guidance:**
-- `docs/reference/obsidian.md`: Add a subsection after the existing "Text Blocks" / "Overview" section explaining that headings are automatically extracted as separate text blocks with `marker="HEADING"`. Mention: code-block awareness, no configuration needed, improves change report granularity.
+- `docs/reference/obsidian.md`: Add a subsection after the existing "Overview" section explaining that headings are automatically extracted as separate text blocks with `marker="HEADING"`. Mention: CommonMark-compliant (max 3 leading spaces), code-block awareness, no configuration needed, improves change report granularity.
 - `README.md`: No change needed (the feature is transparent; no new CLI flags or config).
 - `docs/reference/configuration.md`: No change needed (no new config option).
 
