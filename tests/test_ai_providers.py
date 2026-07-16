@@ -246,3 +246,60 @@ def test_provider_logging_redacts_body(caplog):
                 assert 'anthropic-secret-api-key' not in msg
                 if 'Headers' in msg:
                     assert '***REDACTED***' in msg
+
+
+def test_gemini_provider_logs_redacted(caplog):
+    import logging
+
+    from syntagmax.ai_providers import GeminiProvider
+
+    config = AIConfig(
+        provider='gemini',
+        gemini_api_key='fake-gemini-key',
+        model='gemini-1.5-pro',
+    )
+    provider = GeminiProvider(config)
+
+    mock_response_body = {
+        'candidates': [
+            {
+                'content': {
+                    'parts': [
+                        {
+                            'text': json.dumps(
+                                {
+                                    'metrics': {
+                                        'ambiguity': 0.1,
+                                        'completeness': 0.9,
+                                        'verifiability': 0.8,
+                                        'singularity': 0.95,
+                                    },
+                                    'evidence': [],
+                                    'questions': [],
+                                    'rewrite': {
+                                        'shall': 'The system shall do Z.',
+                                        'acceptance_criteria': [],
+                                    },
+                                }
+                            )
+                        }
+                    ]
+                }
+            }
+        ]
+    }
+
+    with patch('requests.post') as mock_post:
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = mock_response_body
+        mock_post.return_value = mock_resp
+
+        with caplog.at_level(logging.DEBUG):
+            result = provider.analyze_requirement('The system should do Z.')
+
+        assert result['metrics']['ambiguity'] == 0.1
+        log_texts = [record.message for record in caplog.records]
+        assert any('Calling Gemini at' in text for text in log_texts)
+        assert any('Body:' in text for text in log_texts)
+        for log_text in log_texts:
+            assert 'fake-gemini-key' not in log_text
