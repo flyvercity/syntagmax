@@ -95,6 +95,7 @@ class Artifact:
         self.children: set[str] = set()
         self.ancestors: set[str] = set()
         self.fields: dict[str, str | list[str]] = {}
+        self._normalized_fields: dict[str, str | None] | None = None
         self.revisions: set[Revision] = set()
 
     @property

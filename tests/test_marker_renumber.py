@@ -80,7 +80,9 @@ class TestOffsetTracking:
 
     def test_closed_marker_offset(self, params, tmp_path):
         """Closed marker [COM]...[/COM] gets correct source_offset."""
-        project_dir, config_file = _make_project(tmp_path, """
+        project_dir, config_file = _make_project(
+            tmp_path,
+            """
             base = "."
             [[input]]
             name = "test"
@@ -89,9 +91,11 @@ class TestOffsetTracking:
             atype = "SYS"
             marker = "SYS"
             markers = ["COM"]
-        """, {
-            'test.md': 'Hello [COM]comment[/COM] world',
-        })
+        """,
+            {
+                'test.md': 'Hello [COM]comment[/COM] world',
+            },
+        )
 
         config = Config(params=params, config_filename=config_file)
         record = config.input_records()[0]
@@ -104,7 +108,9 @@ class TestOffsetTracking:
 
     def test_unclosed_marker_offset(self, params, tmp_path):
         """Unclosed marker gets correct source_offset."""
-        project_dir, config_file = _make_project(tmp_path, """
+        project_dir, config_file = _make_project(
+            tmp_path,
+            """
             base = "."
             [[input]]
             name = "test"
@@ -113,9 +119,11 @@ class TestOffsetTracking:
             atype = "SYS"
             marker = "SYS"
             markers = ["COM"]
-        """, {
-            'test.md': 'Preamble\n[COM]unclosed content\n\nAfter',
-        })
+        """,
+            {
+                'test.md': 'Preamble\n[COM]unclosed content\n\nAfter',
+            },
+        )
 
         config = Config(params=params, config_filename=config_file)
         record = config.input_records()[0]
@@ -129,7 +137,9 @@ class TestOffsetTracking:
 
     def test_line_prefix_marker_offset(self, params, tmp_path):
         """Line-prefix marker gets correct source_offset."""
-        project_dir, config_file = _make_project(tmp_path, """
+        project_dir, config_file = _make_project(
+            tmp_path,
+            """
             base = "."
             [[input]]
             name = "test"
@@ -138,9 +148,11 @@ class TestOffsetTracking:
             atype = "SYS"
             marker = "SYS"
             markers = ["COM"]
-        """, {
-            'test.md': '[COM] line prefix content',
-        })
+        """,
+            {
+                'test.md': '[COM] line prefix content',
+            },
+        )
 
         config = Config(params=params, config_filename=config_file)
         record = config.input_records()[0]
@@ -153,7 +165,9 @@ class TestOffsetTracking:
 
     def test_explicit_id_has_offset(self, params, tmp_path):
         """Marker with explicit ID still gets source_offset."""
-        project_dir, config_file = _make_project(tmp_path, """
+        project_dir, config_file = _make_project(
+            tmp_path,
+            """
             base = "."
             [[input]]
             name = "test"
@@ -162,9 +176,11 @@ class TestOffsetTracking:
             atype = "SYS"
             marker = "SYS"
             markers = ["COM"]
-        """, {
-            'test.md': '[COM 5]existing id[/COM]',
-        })
+        """,
+            {
+                'test.md': '[COM 5]existing id[/COM]',
+            },
+        )
 
         config = Config(params=params, config_filename=config_file)
         record = config.input_records()[0]
@@ -186,7 +202,9 @@ class TestRenumberBasic:
 
     def test_single_unmarked_block_gets_id_1(self, params, tmp_path):
         """A single unmarked COM block gets ID 1 when no existing IDs."""
-        project_dir, config_file = _make_project(tmp_path, """
+        project_dir, config_file = _make_project(
+            tmp_path,
+            """
             base = "."
             [[input]]
             name = "test"
@@ -195,9 +213,11 @@ class TestRenumberBasic:
             atype = "SYS"
             marker = "SYS"
             markers = ["COM"]
-        """, {
-            'test.md': '[COM]some comment[/COM]',
-        })
+        """,
+            {
+                'test.md': '[COM]some comment[/COM]',
+            },
+        )
 
         config = Config(params=params, config_filename=config_file)
         renumber_markers(config)
@@ -207,7 +227,9 @@ class TestRenumberBasic:
 
     def test_starts_after_max_existing(self, params, tmp_path):
         """New IDs start from max existing + 1."""
-        project_dir, config_file = _make_project(tmp_path, """
+        project_dir, config_file = _make_project(
+            tmp_path,
+            """
             base = "."
             [[input]]
             name = "test"
@@ -216,9 +238,11 @@ class TestRenumberBasic:
             atype = "SYS"
             marker = "SYS"
             markers = ["COM"]
-        """, {
-            'test.md': '[COM 5]existing[/COM]\n[COM]new one[/COM]\n[COM]new two[/COM]',
-        })
+        """,
+            {
+                'test.md': '[COM 5]existing[/COM]\n[COM]new one[/COM]\n[COM]new two[/COM]',
+            },
+        )
 
         config = Config(params=params, config_filename=config_file)
         renumber_markers(config)
@@ -230,7 +254,9 @@ class TestRenumberBasic:
 
     def test_independent_numbering_per_marker_type(self, params, tmp_path):
         """Each marker type has independent numbering."""
-        project_dir, config_file = _make_project(tmp_path, """
+        project_dir, config_file = _make_project(
+            tmp_path,
+            """
             base = "."
             [[input]]
             name = "test"
@@ -239,9 +265,11 @@ class TestRenumberBasic:
             atype = "SYS"
             marker = "SYS"
             markers = ["COM", "NOTE"]
-        """, {
-            'test.md': '[COM 3]existing com[/COM]\n[COM]new com[/COM]\n[NOTE]new note[/NOTE]',
-        })
+        """,
+            {
+                'test.md': '[COM 3]existing com[/COM]\n[COM]new com[/COM]\n[NOTE]new note[/NOTE]',
+            },
+        )
 
         config = Config(params=params, config_filename=config_file)
         renumber_markers(config)
@@ -253,7 +281,9 @@ class TestRenumberBasic:
 
     def test_existing_ids_preserved(self, params, tmp_path):
         """Blocks with explicit IDs are never modified."""
-        project_dir, config_file = _make_project(tmp_path, """
+        project_dir, config_file = _make_project(
+            tmp_path,
+            """
             base = "."
             [[input]]
             name = "test"
@@ -262,9 +292,11 @@ class TestRenumberBasic:
             atype = "SYS"
             marker = "SYS"
             markers = ["COM"]
-        """, {
-            'test.md': '[COM 2]keep this[/COM]\n[COM intro]also keep[/COM]',
-        })
+        """,
+            {
+                'test.md': '[COM 2]keep this[/COM]\n[COM intro]also keep[/COM]',
+            },
+        )
 
         config = Config(params=params, config_filename=config_file)
         renumber_markers(config)
@@ -275,7 +307,9 @@ class TestRenumberBasic:
 
     def test_non_numeric_id_does_not_affect_max(self, params, tmp_path):
         """Non-numeric IDs don't contribute to max computation."""
-        project_dir, config_file = _make_project(tmp_path, """
+        project_dir, config_file = _make_project(
+            tmp_path,
+            """
             base = "."
             [[input]]
             name = "test"
@@ -284,9 +318,11 @@ class TestRenumberBasic:
             atype = "SYS"
             marker = "SYS"
             markers = ["COM"]
-        """, {
-            'test.md': '[COM intro]text[/COM]\n[COM]new[/COM]',
-        })
+        """,
+            {
+                'test.md': '[COM intro]text[/COM]\n[COM]new[/COM]',
+            },
+        )
 
         config = Config(params=params, config_filename=config_file)
         renumber_markers(config)
@@ -300,7 +336,9 @@ class TestCasePreservation:
     """Test that original marker casing is preserved."""
 
     def test_lowercase_preserved(self, params, tmp_path):
-        project_dir, config_file = _make_project(tmp_path, """
+        project_dir, config_file = _make_project(
+            tmp_path,
+            """
             base = "."
             [[input]]
             name = "test"
@@ -309,9 +347,11 @@ class TestCasePreservation:
             atype = "SYS"
             marker = "SYS"
             markers = ["COM"]
-        """, {
-            'test.md': '[com]lowercase[/com]',
-        })
+        """,
+            {
+                'test.md': '[com]lowercase[/com]',
+            },
+        )
 
         config = Config(params=params, config_filename=config_file)
         renumber_markers(config)
@@ -320,7 +360,9 @@ class TestCasePreservation:
         assert '[com 1]lowercase[/com]' in content
 
     def test_mixed_case_preserved(self, params, tmp_path):
-        project_dir, config_file = _make_project(tmp_path, """
+        project_dir, config_file = _make_project(
+            tmp_path,
+            """
             base = "."
             [[input]]
             name = "test"
@@ -329,9 +371,11 @@ class TestCasePreservation:
             atype = "SYS"
             marker = "SYS"
             markers = ["COM"]
-        """, {
-            'test.md': '[Com]mixed case[/Com]',
-        })
+        """,
+            {
+                'test.md': '[Com]mixed case[/Com]',
+            },
+        )
 
         config = Config(params=params, config_filename=config_file)
         renumber_markers(config)
@@ -344,7 +388,9 @@ class TestMarkerFormats:
     """Test all three marker formats are handled correctly."""
 
     def test_closed_format(self, params, tmp_path):
-        project_dir, config_file = _make_project(tmp_path, """
+        project_dir, config_file = _make_project(
+            tmp_path,
+            """
             base = "."
             [[input]]
             name = "test"
@@ -353,9 +399,11 @@ class TestMarkerFormats:
             atype = "SYS"
             marker = "SYS"
             markers = ["COM"]
-        """, {
-            'test.md': 'Before [COM]closed content[/COM] after',
-        })
+        """,
+            {
+                'test.md': 'Before [COM]closed content[/COM] after',
+            },
+        )
 
         config = Config(params=params, config_filename=config_file)
         renumber_markers(config)
@@ -364,7 +412,9 @@ class TestMarkerFormats:
         assert '[COM 1]closed content[/COM]' in content
 
     def test_unclosed_format(self, params, tmp_path):
-        project_dir, config_file = _make_project(tmp_path, """
+        project_dir, config_file = _make_project(
+            tmp_path,
+            """
             base = "."
             [[input]]
             name = "test"
@@ -373,9 +423,11 @@ class TestMarkerFormats:
             atype = "SYS"
             marker = "SYS"
             markers = ["COM"]
-        """, {
-            'test.md': 'Preamble\n[COM]unclosed content\n\nAfter paragraph',
-        })
+        """,
+            {
+                'test.md': 'Preamble\n[COM]unclosed content\n\nAfter paragraph',
+            },
+        )
 
         config = Config(params=params, config_filename=config_file)
         renumber_markers(config)
@@ -384,7 +436,9 @@ class TestMarkerFormats:
         assert '[COM 1]unclosed content' in content
 
     def test_line_prefix_format(self, params, tmp_path):
-        project_dir, config_file = _make_project(tmp_path, """
+        project_dir, config_file = _make_project(
+            tmp_path,
+            """
             base = "."
             [[input]]
             name = "test"
@@ -393,9 +447,11 @@ class TestMarkerFormats:
             atype = "SYS"
             marker = "SYS"
             markers = ["COM"]
-        """, {
-            'test.md': '[COM] line prefix content',
-        })
+        """,
+            {
+                'test.md': '[COM] line prefix content',
+            },
+        )
 
         config = Config(params=params, config_filename=config_file)
         renumber_markers(config)
@@ -406,7 +462,9 @@ class TestMarkerFormats:
 
     def test_all_formats_in_one_file(self, params, tmp_path):
         """Mix of all three formats in a single file."""
-        project_dir, config_file = _make_project(tmp_path, """
+        project_dir, config_file = _make_project(
+            tmp_path,
+            """
             base = "."
             [[input]]
             name = "test"
@@ -415,9 +473,11 @@ class TestMarkerFormats:
             atype = "SYS"
             marker = "SYS"
             markers = ["COM", "NOTE"]
-        """, {
-            'test.md': 'Intro [COM]closed com[/COM] text\n[NOTE]unclosed note\n\n[COM] prefix com',
-        })
+        """,
+            {
+                'test.md': 'Intro [COM]closed com[/COM] text\n[NOTE]unclosed note\n\n[COM] prefix com',
+            },
+        )
 
         config = Config(params=params, config_filename=config_file)
         renumber_markers(config)
@@ -441,7 +501,9 @@ class TestCodeBlockSafety:
     def test_marker_in_code_block_is_renumbered(self, params, tmp_path):
         """Literal [COM] inside a fenced code block is currently renumbered
         (known limitation of fragment marker splitting)."""
-        project_dir, config_file = _make_project(tmp_path, """
+        project_dir, config_file = _make_project(
+            tmp_path,
+            """
             base = "."
             [[input]]
             name = "test"
@@ -450,9 +512,11 @@ class TestCodeBlockSafety:
             atype = "SYS"
             marker = "SYS"
             markers = ["COM"]
-        """, {
-            'test.md': '[COM]real comment[/COM]\n\n```\n[COM]code example[/COM]\n```\n',
-        })
+        """,
+            {
+                'test.md': '[COM]real comment[/COM]\n\n```\n[COM]code example[/COM]\n```\n',
+            },
+        )
 
         config = Config(params=params, config_filename=config_file)
         renumber_markers(config)
@@ -467,7 +531,9 @@ class TestDryRun:
     """Dry-run mode does not modify files."""
 
     def test_dry_run_no_file_changes(self, params, tmp_path):
-        project_dir, config_file = _make_project(tmp_path, """
+        project_dir, config_file = _make_project(
+            tmp_path,
+            """
             base = "."
             [[input]]
             name = "test"
@@ -476,9 +542,11 @@ class TestDryRun:
             atype = "SYS"
             marker = "SYS"
             markers = ["COM"]
-        """, {
-            'test.md': '[COM]some content[/COM]',
-        })
+        """,
+            {
+                'test.md': '[COM]some content[/COM]',
+            },
+        )
 
         config = Config(params=params, config_filename=config_file)
         renumber_markers(config, dry_run=True)
@@ -500,7 +568,8 @@ class TestSectionFilter:
         notes_dir.mkdir()
 
         config_file = project_dir / 'config.toml'
-        config_file.write_text(textwrap.dedent("""
+        config_file.write_text(
+            textwrap.dedent("""
             base = "."
             [[input]]
             name = "requirements"
@@ -517,7 +586,9 @@ class TestSectionFilter:
             atype = "NOTE"
             marker = "NOTE"
             markers = ["COM"]
-        """).strip(), encoding='utf-8')
+        """).strip(),
+            encoding='utf-8',
+        )
 
         (docs_dir / 'test.md').write_text('[COM]in docs[/COM]', encoding='utf-8')
         (notes_dir / 'test.md').write_text('[COM]in notes[/COM]', encoding='utf-8')
@@ -536,7 +607,9 @@ class TestMarkerFilter:
     """Test --marker filtering."""
 
     def test_marker_filter_only_targets_specific_type(self, params, tmp_path):
-        project_dir, config_file = _make_project(tmp_path, """
+        project_dir, config_file = _make_project(
+            tmp_path,
+            """
             base = "."
             [[input]]
             name = "test"
@@ -545,9 +618,11 @@ class TestMarkerFilter:
             atype = "SYS"
             marker = "SYS"
             markers = ["COM", "NOTE"]
-        """, {
-            'test.md': '[COM]a comment[/COM]\n[NOTE]a note[/NOTE]',
-        })
+        """,
+            {
+                'test.md': '[COM]a comment[/COM]\n[NOTE]a note[/NOTE]',
+            },
+        )
 
         config = Config(params=params, config_filename=config_file)
         renumber_markers(config, marker_filter='COM')
@@ -562,7 +637,9 @@ class TestReExtraction:
 
     def test_re_extract_after_renumber(self, params, tmp_path):
         """After renumbering, re-extraction shows explicit_id=True for all blocks."""
-        project_dir, config_file = _make_project(tmp_path, """
+        project_dir, config_file = _make_project(
+            tmp_path,
+            """
             base = "."
             [[input]]
             name = "test"
@@ -571,9 +648,11 @@ class TestReExtraction:
             atype = "SYS"
             marker = "SYS"
             markers = ["COM", "NOTE"]
-        """, {
-            'test.md': '[COM]comment one[/COM]\n[NOTE]note one[/NOTE]\n[COM]comment two[/COM]',
-        })
+        """,
+            {
+                'test.md': '[COM]comment one[/COM]\n[NOTE]note one[/NOTE]\n[COM]comment two[/COM]',
+            },
+        )
 
         config = Config(params=params, config_filename=config_file)
         renumber_markers(config)
@@ -596,7 +675,9 @@ class TestLineEndingsPreservation:
 
     def test_crlf_preserved(self, params, tmp_path):
         """CRLF in source gets preserved on write."""
-        project_dir, config_file = _make_project(tmp_path, """
+        project_dir, config_file = _make_project(
+            tmp_path,
+            """
             base = "."
             [[input]]
             name = "test"
@@ -605,9 +686,11 @@ class TestLineEndingsPreservation:
             atype = "SYS"
             marker = "SYS"
             markers = ["COM"]
-        """, {
-            'test.md': '[COM]comment[/COM]\r\nsome other line\r\n',
-        })
+        """,
+            {
+                'test.md': '[COM]comment[/COM]\r\nsome other line\r\n',
+            },
+        )
 
         config = Config(params=params, config_filename=config_file)
         renumber_markers(config)
@@ -623,7 +706,9 @@ class TestMultipleFiles:
 
     def test_ids_shared_across_files(self, params, tmp_path):
         """IDs continue from max across all files in a section."""
-        project_dir, config_file = _make_project(tmp_path, """
+        project_dir, config_file = _make_project(
+            tmp_path,
+            """
             base = "."
             [[input]]
             name = "test"
@@ -632,11 +717,13 @@ class TestMultipleFiles:
             atype = "SYS"
             marker = "SYS"
             markers = ["COM"]
-        """, {
-            'a.md': '[COM 2]existing[/COM]',
-            'b.md': '[COM]first new[/COM]',
-            'c.md': '[COM]second new[/COM]',
-        })
+        """,
+            {
+                'a.md': '[COM 2]existing[/COM]',
+                'b.md': '[COM]first new[/COM]',
+                'c.md': '[COM]second new[/COM]',
+            },
+        )
 
         config = Config(params=params, config_filename=config_file)
         renumber_markers(config)
@@ -654,7 +741,9 @@ class TestLeadingZeros:
     """Test that existing IDs with leading zeros are parsed correctly."""
 
     def test_leading_zeros_contribute_to_max(self, params, tmp_path):
-        project_dir, config_file = _make_project(tmp_path, """
+        project_dir, config_file = _make_project(
+            tmp_path,
+            """
             base = "."
             [[input]]
             name = "test"
@@ -663,9 +752,11 @@ class TestLeadingZeros:
             atype = "SYS"
             marker = "SYS"
             markers = ["COM"]
-        """, {
-            'test.md': '[COM 005]padded[/COM]\n[COM]new[/COM]',
-        })
+        """,
+            {
+                'test.md': '[COM 005]padded[/COM]\n[COM]new[/COM]',
+            },
+        )
 
         config = Config(params=params, config_filename=config_file)
         renumber_markers(config)

@@ -78,6 +78,4 @@ class Extractor:
         operation is 'add', 'del', or 'replace'. value=None means deletion.
         target_type is 'attr' (YAML) or 'field' (inline [FIELD] markers).
         """
-        raise NotImplementedError(
-            f'Driver "{self._record.driver}" does not support attribute manipulation'
-        )
+        raise NotImplementedError(f'Driver "{self._record.driver}" does not support attribute manipulation')

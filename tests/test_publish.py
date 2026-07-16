@@ -296,26 +296,31 @@ class TestPublishCLI:
 class TestPathDecomposition:
     def test_decompose_strips_record_dir(self):
         from syntagmax.publish import decompose_file_path
+
         result = decompose_file_path('SYS/01-Intro/02-Functional.md', 'SYS')
         assert result == ['01-Intro', '02-Functional']
 
     def test_decompose_nested_record_dir(self):
         from syntagmax.publish import decompose_file_path
+
         result = decompose_file_path('requirements/REQS/chapter/file.md', 'requirements/REQS')
         assert result == ['chapter', 'file']
 
     def test_decompose_file_only(self):
         from syntagmax.publish import decompose_file_path
+
         result = decompose_file_path('SYS/myfile.md', 'SYS')
         assert result == ['myfile']
 
     def test_decompose_no_match(self):
         from syntagmax.publish import decompose_file_path
+
         result = decompose_file_path('OTHER/file.md', 'SYS')
         assert result == ['OTHER', 'file']
 
     def test_decompose_dot_dir(self):
         from syntagmax.publish import decompose_file_path
+
         result = decompose_file_path('file.md', '.')
         assert result == ['file']
 
@@ -575,7 +580,6 @@ class TestContentLevelHierarchy:
         assert '## Title' in result
 
 
-
 class TestContentFiles:
     """Tests for content files (headingless file rendering)."""
 
@@ -804,31 +808,32 @@ class TestImageRewritingFences:
 
         # Monkeypatch _rewrite_images_in_segment to return a marker
         calls = []
+
         def mock_rewrite(segment, ctx):
             calls.append(segment)
-            return "REWRITTEN"
+            return 'REWRITTEN'
 
-        monkeypatch.setattr(pub, "_rewrite_images_in_segment", mock_rewrite)
+        monkeypatch.setattr(pub, '_rewrite_images_in_segment', mock_rewrite)
 
         # 1. Test with no fence
-        content1 = "No fence content"
+        content1 = 'No fence content'
         res1 = rewrite_image_references(content1, context)
-        assert res1 == "REWRITTEN"
-        assert calls == ["No fence content"]
+        assert res1 == 'REWRITTEN'
+        assert calls == ['No fence content']
         calls.clear()
 
         # 2. Test with closed fence
-        content2 = "Outside\n```\nInside\n```\nOutside2"
+        content2 = 'Outside\n```\nInside\n```\nOutside2'
         res2 = rewrite_image_references(content2, context)
-        assert res2 == "REWRITTEN```\nInside\n```\nREWRITTEN"
-        assert calls == ["Outside\n", "Outside2"]
+        assert res2 == 'REWRITTEN```\nInside\n```\nREWRITTEN'
+        assert calls == ['Outside\n', 'Outside2']
         calls.clear()
 
         # 3. Test with unclosed fence (BUG-7 fix check)
-        content3 = "Outside\n```\nUnclosed Inside"
+        content3 = 'Outside\n```\nUnclosed Inside'
         res3 = rewrite_image_references(content3, context)
-        assert res3 == "REWRITTEN```\nUnclosed Inside"
-        assert calls == ["Outside\n"]
+        assert res3 == 'REWRITTEN```\nUnclosed Inside'
+        assert calls == ['Outside\n']
 
 
 class TestTableSpacerRendering:
@@ -845,11 +850,9 @@ class TestTableSpacerRendering:
         artifact.fields = {'id': 'REQ-1', 'parent': 'SYS-1'}
         artifact.location = None
 
-        pub_config = PublishConfig.model_validate({
-            'render': {
-                'REQ': [{'type': 'table', 'attributes': [{'id': {'alias': 'ID'}}, {'parent': {'alias': 'Parent'}}]}]
-            }
-        })
+        pub_config = PublishConfig.model_validate(
+            {'render': {'REQ': [{'type': 'table', 'attributes': [{'id': {'alias': 'ID'}}, {'parent': {'alias': 'Parent'}}]}]}}
+        )
         block = ArtifactBlock(artifact=artifact, raw_text='')
         result = render_block(block, pub_config)
 
@@ -867,12 +870,9 @@ class TestTableSpacerRendering:
         artifact.fields = {'id': 'REQ-1', 'parent': 'SYS-1'}
         artifact.location = None
 
-        pub_config = PublishConfig.model_validate({
-            'table_spacer': 1,
-            'render': {
-                'REQ': [{'type': 'table', 'spacer': 3, 'attributes': [{'id': {'alias': 'ID'}}, {'parent': {'alias': 'Parent'}}]}]
-            }
-        })
+        pub_config = PublishConfig.model_validate(
+            {'table_spacer': 1, 'render': {'REQ': [{'type': 'table', 'spacer': 3, 'attributes': [{'id': {'alias': 'ID'}}, {'parent': {'alias': 'Parent'}}]}]}}
+        )
         block = ArtifactBlock(artifact=artifact, raw_text='')
         result = render_block(block, pub_config)
 
@@ -889,12 +889,9 @@ class TestTableSpacerRendering:
         artifact.fields = {'id': 'REQ-1', 'parent': 'SYS-1'}
         artifact.location = None
 
-        pub_config = PublishConfig.model_validate({
-            'table_spacer': 5,
-            'render': {
-                'REQ': [{'type': 'table', 'spacer': 0, 'attributes': [{'id': {'alias': 'ID'}}, {'parent': {'alias': 'Parent'}}]}]
-            }
-        })
+        pub_config = PublishConfig.model_validate(
+            {'table_spacer': 5, 'render': {'REQ': [{'type': 'table', 'spacer': 0, 'attributes': [{'id': {'alias': 'ID'}}, {'parent': {'alias': 'Parent'}}]}]}}
+        )
         block = ArtifactBlock(artifact=artifact, raw_text='')
         result = render_block(block, pub_config)
 
@@ -912,12 +909,9 @@ class TestTableSpacerRendering:
         artifact.fields = {'id': 'REQ-1', 'parent': 'SYS-1'}
         artifact.location = None
 
-        pub_config = PublishConfig.model_validate({
-            'table_spacer': 4,
-            'render': {
-                'REQ': [{'type': 'table', 'attributes': [{'id': {'alias': 'ID'}}, {'parent': {'alias': 'Parent'}}]}]
-            }
-        })
+        pub_config = PublishConfig.model_validate(
+            {'table_spacer': 4, 'render': {'REQ': [{'type': 'table', 'attributes': [{'id': {'alias': 'ID'}}, {'parent': {'alias': 'Parent'}}]}]}}
+        )
         block = ArtifactBlock(artifact=artifact, raw_text='')
         result = render_block(block, pub_config)
 
@@ -934,12 +928,9 @@ class TestTableSpacerRendering:
         artifact.fields = {'id': 'REQ-1'}
         artifact.location = None
 
-        pub_config = PublishConfig.model_validate({
-            'table_spacer': 3,
-            'render': {
-                'REQ': [{'type': 'table', 'attributes': [{'nonexistent': {'alias': 'N/A'}}]}]
-            }
-        })
+        pub_config = PublishConfig.model_validate(
+            {'table_spacer': 3, 'render': {'REQ': [{'type': 'table', 'attributes': [{'nonexistent': {'alias': 'N/A'}}]}]}}
+        )
         block = ArtifactBlock(artifact=artifact, raw_text='')
         result = render_block(block, pub_config)
 

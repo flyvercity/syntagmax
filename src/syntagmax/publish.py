@@ -15,8 +15,11 @@ from syntagmax.artifact import Artifact, FileLocation
 from syntagmax.metamodel import is_attribute_mandatory
 from syntagmax.publish_config import PublishConfig, TableSection, TextSection, MarkerRenderSection, AttributePresence
 from syntagmax.publish_context import (
-    RenderContext, ImageManifest, IMAGE_EXTENSIONS,
-    resolve_image_to_manifest, _is_remote_url,
+    RenderContext,
+    ImageManifest,
+    IMAGE_EXTENSIONS,
+    resolve_image_to_manifest,
+    _is_remote_url,
 )
 
 
@@ -65,10 +68,7 @@ def build_block_tree(config: Config) -> tuple[BlockTree, list[str]]:
                 if isinstance(block, TextBlock) and block.explicit_id and block.id and block.marker:
                     key = (block.marker, block.id)
                     if key in seen:
-                        errors.append(
-                            f'Duplicate block ID "{block.id}" for marker [{block.marker}] '
-                            f'in {file_record.path} (first defined in {seen[key]})'
-                        )
+                        errors.append(f'Duplicate block ID "{block.id}" for marker [{block.marker}] in {file_record.path} (first defined in {seen[key]})')
                     else:
                         seen[key] = file_record.path
 
@@ -162,13 +162,9 @@ def rewrite_image_references(content: str, context: RenderContext) -> str:
 def _rewrite_images_in_segment(segment: str, context: RenderContext) -> str:
     """Rewrite image references in a non-fenced text segment."""
     # First pass: Obsidian wiki-link images ![[filename|alt]]
-    segment = _OBSIDIAN_IMAGE_RE.sub(
-        lambda m: _replace_obsidian_image(m, context), segment
-    )
+    segment = _OBSIDIAN_IMAGE_RE.sub(lambda m: _replace_obsidian_image(m, context), segment)
     # Second pass: standard markdown images ![alt](path)
-    segment = _STANDARD_IMAGE_RE.sub(
-        lambda m: _replace_standard_image(m, context), segment
-    )
+    segment = _STANDARD_IMAGE_RE.sub(lambda m: _replace_standard_image(m, context), segment)
     return segment
 
 
@@ -186,6 +182,7 @@ def _replace_obsidian_image(match: re.Match, context: RenderContext) -> str:
 
     # Check extension
     from pathlib import PurePosixPath
+
     ext = PurePosixPath(filename).suffix.lower()
     if ext not in IMAGE_EXTENSIONS:
         return match.group(0)  # Not an image, leave unchanged
@@ -212,6 +209,7 @@ def _replace_standard_image(match: re.Match, context: RenderContext) -> str:
 
     # Check extension
     from pathlib import PurePosixPath
+
     ext = PurePosixPath(path.split('?')[0]).suffix.lower()  # strip query params
     if ext not in IMAGE_EXTENSIONS:
         return match.group(0)  # Not an image, leave unchanged
@@ -228,15 +226,25 @@ def get_artifact_field_value(artifact: Artifact, field_name: str) -> Optional[st
     if target_key == 'id':
         return artifact.aid
 
-    # Case-insensitive lookup in fields
-    for k, v in artifact.fields.items():
-        if k.lower() == target_key:
+    # Check if we have a lazy cache initialized
+    norm_fields = getattr(artifact, '_normalized_fields', None)
+    if not isinstance(norm_fields, dict):
+        norm_fields = {}
+        for k, v in artifact.fields.items():
+            k_lower = k.lower()
             if isinstance(v, list):
                 joined = ', '.join(str(x) for x in v if str(x).strip())
-                return joined if joined.strip() else None
-            val = str(v)
-            return val if val.strip() else None
-    return None
+                val = joined if joined.strip() else None
+            else:
+                val_str = str(v)
+                val = val_str if val_str.strip() else None
+            norm_fields[k_lower] = val
+        try:
+            artifact._normalized_fields = norm_fields
+        except AttributeError:
+            pass
+
+    return norm_fields.get(target_key)
 
 
 def should_render_attribute(
@@ -369,11 +377,13 @@ def render_block(block: Block, pub_config: PublishConfig, context: RenderContext
         image_embed = ''
         if context and isinstance(a.location, FileLocation):
             from pathlib import PurePosixPath
+
             ext = PurePosixPath(a.location.loc_file).suffix.lower()
             if ext in IMAGE_EXTENSIONS:
                 base_dir = context.config.base_dir()
                 source = (base_dir / a.location.loc_file).resolve()
                 from syntagmax.publish_context import _is_within_base_dir
+
                 if _is_within_base_dir(source, base_dir):
                     target = context.manifest.add(source, base_dir)
                     alt_text = get_artifact_field_value(a, 'title') or a.aid
@@ -395,10 +405,7 @@ def render_block(block: Block, pub_config: PublishConfig, context: RenderContext
         for sec in render_sections:
             if isinstance(sec, TableSection):
                 # Resolve effective presence mode
-                effective_presence: AttributePresence = (
-                    sec.attribute_presence if sec.attribute_presence is not None
-                    else pub_config.attribute_presence
-                )
+                effective_presence: AttributePresence = sec.attribute_presence if sec.attribute_presence is not None else pub_config.attribute_presence
 
                 # Resolve metamodel
                 metamodel = None
@@ -407,10 +414,7 @@ def render_block(block: Block, pub_config: PublishConfig, context: RenderContext
 
                 # Degrade 'mandatory' to 'values-only' if metamodel unavailable
                 if effective_presence == 'mandatory' and not metamodel:
-                    lg.warning(
-                        "attribute_presence is 'mandatory' but metamodel is unavailable; "
-                        "degrading to 'values-only'"
-                    )
+                    lg.warning("attribute_presence is 'mandatory' but metamodel is unavailable; degrading to 'values-only'")
                     effective_presence = 'values-only'
 
                 rows = []
@@ -462,8 +466,8 @@ def decompose_file_path(file_path: str, record_dir: str) -> list[str]:
     dir_parts = PurePosixPath(record_dir).parts
 
     # Strip leading components matching record dir
-    if parts[:len(dir_parts)] == dir_parts:
-        parts = parts[len(dir_parts):]
+    if parts[: len(dir_parts)] == dir_parts:
+        parts = parts[len(dir_parts) :]
 
     # Strip extension from last component (filename)
     if parts:
@@ -521,10 +525,7 @@ def render_block_tree(tree: BlockTree, config: Optional[Config] = None, multi_re
             last_stem = components[-1] if components else ''
             if pub_config.remove_numeric_prefixes_in_headers:
                 last_stem = strip_numeric_prefix(last_stem)
-            is_content_file = (
-                bool(components)
-                and last_stem.lower() == pub_config.contents_marker.lower()
-            )
+            is_content_file = bool(components) and last_stem.lower() == pub_config.contents_marker.lower()
 
             if components:
                 if is_content_file:
