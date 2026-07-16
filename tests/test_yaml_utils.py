@@ -109,6 +109,24 @@ class TestRoundtripModifyAttrsErrorHandling:
         with pytest.raises(YAMLParsingError):
             roundtrip_modify_attrs(raw_yaml, {'x': '1'}, 'add')
 
+    def test_yaml_error_exception_handling_with_details(self):
+        """Passing completely invalid/malformed YAML triggers YAMLError.
+        We assert that YAMLParsingError is raised, message matches,
+        details are populated with the underlying parser error,
+        and cause is correctly chained.
+        """
+        from ruamel.yaml.error import YAMLError
+
+        raw_yaml = 'attrs: "unclosed string'
+        with pytest.raises(YAMLParsingError) as exc_info:
+            roundtrip_modify_attrs(raw_yaml, {'status': 'draft'}, 'add')
+
+        assert str(exc_info.value) == 'Failed to parse YAML block'
+        assert exc_info.value.details is not None
+        assert isinstance(exc_info.value.__cause__, YAMLError)
+        assert len(exc_info.value.details) > 0
+        assert 'while scanning a quoted scalar' in exc_info.value.details
+
     def test_scalar_root_raises_error(self):
         """YAML that parses to a scalar should raise YAMLParsingError."""
         raw_yaml = 'just a string value\n'

@@ -273,6 +273,9 @@ def should_render_attribute(
     return is_attribute_mandatory(attr_name, atype, metamodel)
 
 
+_EXCLUDED_FIELDS = {'id', 'ID', 'Id', 'iD', 'contents', 'CONTENTS', 'Contents'}
+
+
 def render_artifact_fallback(artifact: Artifact, content_level: int, table_spacer: int = 1, context: RenderContext | None = None) -> str:
     """Render an artifact using fallback formatting (no custom render config).
 
@@ -295,7 +298,7 @@ def render_artifact_fallback(artifact: Artifact, content_level: int, table_space
         parts.append(f'{processed}\n\n')
 
     # Metadata table - skip id and contents
-    fields = {k: v for k, v in artifact.fields.items() if k.lower() not in ('id', 'contents')}
+    fields = {k: v for k, v in artifact.fields.items() if k not in _EXCLUDED_FIELDS}
     if fields:
         sorted_keys = sorted(fields.keys())
         parts.append('&nbsp;\n\n' * table_spacer)
