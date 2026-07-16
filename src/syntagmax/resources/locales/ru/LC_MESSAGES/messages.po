@@ -1,11 +1,11 @@
-# Russian translations for syntagmax metrics.
+# Russian translations for Syntagmax.
 msgid ""
 msgstr ""
-"Project-Id-Version: syntagmax 0.0.1\n"
+"Project-Id-Version: syntagmax 2026.7.13\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-03-22 14:08+0200\n"
-"PO-Revision-Date: 2026-02-15 12:00+0000\n"
-"Last-Translator: \n"
+"POT-Creation-Date: 2026-07-16 16:00+0300\n"
+"PO-Revision-Date: 2026-07-16 16:00+0300\n"
+"Last-Translator: Boris Resnick <boris@flyver.city>\n"
 "Language: ru\n"
 "Language-Team: ru <LL@li.org>\n"
 "Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && "
@@ -15,72 +15,241 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.18.0\n"
 
-#: src/syntagmax/resources/impact.j2:1
-msgid "Impact Analysis Report"
-msgstr "Отчет об анализе влияния"
+#. Analysis report template
+msgid "Analysis Report"
+msgstr "Отчет об анализе"
 
-#: src/syntagmax/resources/impact.j2:3
-msgid "Summary"
-msgstr "Сводка"
+msgid "Errors"
+msgstr "Ошибки"
 
-#: src/syntagmax/resources/impact.j2:4
-msgid "Total suspicious links"
-msgstr "Всего подозрительных связей"
+msgid "Total errors:"
+msgstr "Всего ошибок:"
 
-#: src/syntagmax/resources/impact.j2:6
-msgid "Suspicious Links"
-msgstr "Подозрительные связи"
+msgid "Artifact Tree"
+msgstr "Дерево артефактов"
 
-#: src/syntagmax/resources/impact.j2:8
-msgid "Artifact"
-msgstr "Артефакт"
+msgid "Metrics"
+msgstr "Метрики"
 
-#: src/syntagmax/resources/impact.j2:8
-msgid "Parent"
-msgstr "Родитель"
-
-#: src/syntagmax/resources/impact.j2:8
-msgid "Required Revision"
-msgstr "Требуемая ревизия"
-
-#: src/syntagmax/resources/impact.j2:8
-msgid "Actual Revision"
-msgstr "Фактическая ревизия"
-
-#: src/syntagmax/resources/impact.j2:14
-#, fuzzy
-msgid "Suspicious Tree"
-msgstr "Подозрительные связи"
-
-#: src/syntagmax/resources/impact.j2:19
-msgid "No suspicious links found."
-msgstr "Подозрительных связей не обнаружено."
-
-#: src/syntagmax/resources/metrics.j2:1
-msgid "Project Metrics"
-msgstr "Метрики проекта"
-
-#: src/syntagmax/resources/metrics.j2:3
 msgid "Total Requirements"
 msgstr "Всего требований"
 
-#: src/syntagmax/resources/metrics.j2:5
 msgid "Requirements by Status"
 msgstr "Требования по статусу"
 
-#: src/syntagmax/resources/metrics.j2:7
 msgid "Status"
 msgstr "Статус"
 
-#: src/syntagmax/resources/metrics.j2:7
 msgid "Count"
 msgstr "Количество"
 
-#: src/syntagmax/resources/metrics.j2:11
 msgid "Requirements without verification (%)"
 msgstr "Требования без верификации (%)"
 
-#: src/syntagmax/resources/metrics.j2:12
 msgid "Requirements with TBD (%)"
 msgstr "Требования с TBD (%)"
 
+msgid "Impact Analysis"
+msgstr "Анализ влияния"
+
+msgid "Total suspicious links"
+msgstr "Всего подозрительных связей"
+
+msgid "Artifact"
+msgstr "Артефакт"
+
+msgid "Parent"
+msgstr "Родитель"
+
+msgid "Required Revision"
+msgstr "Требуемая ревизия"
+
+msgid "Actual Revision"
+msgstr "Фактическая ревизия"
+
+msgid "Suspicious Tree"
+msgstr "Дерево подозрительных связей"
+
+msgid "AI Analysis"
+msgstr "Анализ ИИ"
+
+msgid "Ambiguity"
+msgstr "Двусмысленность"
+
+msgid "Completeness"
+msgstr "Полнота"
+
+msgid "Verifiability"
+msgstr "Проверяемость"
+
+msgid "Singularity"
+msgstr "Единичность"
+
+#. Change report renderer
+msgid "Change Report"
+msgstr "Отчет об изменениях"
+
+msgid "Change Report (Summary)"
+msgstr "Отчет об изменениях (Сводка)"
+
+msgid "Repository Information"
+msgstr "Информация о репозитории"
+
+msgid "Summary"
+msgstr "Сводка"
+
+msgid "Changed Files"
+msgstr "Измененные файлы"
+
+msgid "Detailed Changes"
+msgstr "Детальные изменения"
+
+msgid "Base revision"
+msgstr "Базовая ревизия"
+
+msgid "Target revision"
+msgstr "Целевая ревизия"
+
+msgid "Generated"
+msgstr "Создан"
+
+msgid "Input record"
+msgstr "Входная запись"
+
+msgid "Parameter"
+msgstr "Параметр"
+
+msgid "Value"
+msgstr "Значение"
+
+msgid "Files changed"
+msgstr "Файлов изменено"
+
+msgid "Files added"
+msgstr "Файлов добавлено"
+
+msgid "Files removed"
+msgstr "Файлов удалено"
+
+msgid "Artifacts added"
+msgstr "Артефактов добавлено"
+
+msgid "Artifacts modified"
+msgstr "Артефактов изменено"
+
+msgid "Artifacts removed"
+msgstr "Артефактов удалено"
+
+msgid "Text fragments modified"
+msgstr "Текстовых фрагментов изменено"
+
+msgid "Binary artifacts added"
+msgstr "Бинарных артефактов добавлено"
+
+msgid "Binary artifacts modified"
+msgstr "Бинарных артефактов изменено"
+
+msgid "Binary artifacts removed"
+msgstr "Бинарных артефактов удалено"
+
+msgid "Extraction errors"
+msgstr "Ошибки извлечения"
+
+msgid "Filename"
+msgstr "Имя файла"
+
+msgid "Objects changed"
+msgstr "Измененные объекты"
+
+msgid "Added"
+msgstr "Добавлен"
+
+msgid "Removed"
+msgstr "Удален"
+
+msgid "Modified"
+msgstr "Изменен"
+
+msgid "Renamed"
+msgstr "Переименован"
+
+msgid "Text"
+msgstr "Текст"
+
+msgid "Attributes"
+msgstr "Атрибуты"
+
+msgid "Attribute Changes"
+msgstr "Изменения атрибутов"
+
+msgid "Link Changes"
+msgstr "Изменения связей"
+
+msgid "Attribute"
+msgstr "Атрибут"
+
+msgid "Previous"
+msgstr "Предыдущее"
+
+msgid "Current"
+msgstr "Текущее"
+
+msgid "Binary Content"
+msgstr "Бинарное содержимое"
+
+msgid "Property"
+msgstr "Свойство"
+
+msgid "Size"
+msgstr "Размер"
+
+msgid "Dimensions"
+msgstr "Размеры"
+
+msgid "Added (binary)"
+msgstr "Добавлен (бинарный)"
+
+msgid "Removed (binary)"
+msgstr "Удален (бинарный)"
+
+msgid "Modified (binary)"
+msgstr "Изменен (бинарный)"
+
+msgid "Modified (metadata)"
+msgstr "Изменен (метаданные)"
+
+msgid "Text fragment"
+msgstr "Текстовый фрагмент"
+
+msgid "Old lines"
+msgstr "Старые строки"
+
+msgid "New lines"
+msgstr "Новые строки"
+
+msgid "No changes detected."
+msgstr "Изменений не обнаружено."
+
+msgid "Extraction Error"
+msgstr "Ошибка извлечения"
+
+msgid "Fallback plain-text diff:"
+msgstr "Резервный текстовый diff:"
+
+msgid "Artifacts"
+msgstr "Артефакты"
+
+msgid "Text fragments"
+msgstr "Текстовые фрагменты"
+
+msgid "Binary Artifacts"
+msgstr "Бинарные артефакты"
+
+msgid "Extraction Errors"
+msgstr "Ошибки извлечения"
+
+msgid "Objects"
+msgstr "Объекты"
+
+msgid "Error"
+msgstr "Ошибка"

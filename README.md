@@ -485,6 +485,42 @@ The report includes:
 - For sidecar-managed binary artifacts (images, diagrams): SHA-256 hash comparison, file size, and pixel dimensions (requires optional `Pillow` dependency)
 - Fallback plain-text diffs when artifact extraction fails
 
+## Localization
+
+Syntagmax supports localized report output.
+
+### Configuration
+
+Set the output language in your `config.toml`:
+
+```toml
+language = "code"
+```
+
+Or use the global CLI flag (overrides the config file):
+
+```bash
+syntagmax --lang ru analyze
+syntagmax --lang ru change report --base HEAD~1 --target HEAD
+```
+
+### Resolution Order
+
+1. CLI `--lang` flag (highest priority)
+2. Project `config.toml` `language` field
+3. Global `~/.config/syntagmax/config.toml` `language` field
+4. Default: `en`
+
+### Scope
+
+Localization applies to:
+- Analysis reports (metrics, impact, AI analysis, errors)
+- Change reports (full and summary)
+
+It does **not** apply to:
+- `publish` command output (renders user content as-is)
+- MCP server responses (remain English for LLM compatibility)
+
 ## Required Improvements
 
 - Implement automatic change propagation

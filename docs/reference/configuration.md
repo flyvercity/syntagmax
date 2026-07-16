@@ -9,6 +9,7 @@ For a detailed explanation of how Syntagmax handles different directories, relat
 | Option | Required | Description |
 |--------|----------|-------------|
 | `base` | Yes | Base directory path (relative to the config file). |
+| `language` | No | Output language for reports (`en` or `ru`). Default: `en`. Can be overridden by `--lang` CLI flag. |
 | `publish` | No | Global publish config file path (relative to config file directory). See [Publishing Reference](publishing.md). |
 | `input` | Yes | List of input source definitions |
 | `drivers` | No | Driver-specific global defaults |
@@ -252,6 +253,28 @@ Impact analysis helps identify potentially outdated artifacts by comparing their
 | Field | Required | Default | Description |
 |-------|----------|---------|-------------|
 | `filename` | No | — | Path to the `.syntagmax` file defining the project's metamodel. |
+
+## Localization (`language`)
+
+Controls the output language for generated reports (analysis reports and change reports).
+
+| Field | Required | Default | Description |
+|-------|----------|---------|-------------|
+| `language` | No | `en` | Output language code. |
+
+The language can also be set via the `--lang` CLI flag, which takes precedence over the config file value:
+
+```bash
+syntagmax --lang ru analyze
+```
+
+**Resolution order:**
+1. CLI `--lang` flag
+2. Project `config.toml` `language` field
+3. Global `~/.config/syntagmax/config.toml` `language` field
+4. Default: `en`
+
+**Scope:** Localization applies to analysis reports and change reports only. The `publish` command and MCP server are not affected.
 
 ## AI Configuration (`[ai]`)
 
