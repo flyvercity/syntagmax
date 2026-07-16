@@ -42,7 +42,7 @@ Total suspicious links: {{ report.impact.total_suspicious }}
 
 | Artifact | Parent | Required Revision | Actual Revision |
 |----------|--------|-------------------|-----------------|
-{% for link in report.impact.suspicious_links %}| {{ link.artifact_atype }}:{{ link.artifact_aid }} | {{ link.parent_atype }}:{{ link.parent_aid }} | {{ link.nominal_revision }} | {{ link.actual_revision }} |
+{% for link in report.impact.suspicious_links %}| {{ link.artifact_atype }}:{% if link.artifact_aid == "<undefined>" %}`<undefined>`{% else %}{{ link.artifact_aid }}{% endif %} | {{ link.parent_atype }}:{% if link.parent_aid == "<undefined>" %}`<undefined>`{% else %}{{ link.parent_aid }}{% endif %} | {{ link.nominal_revision }} | {{ link.actual_revision }} |
 {% endfor %}
 {% if report.impact.suspicious_tree %}
 
@@ -60,6 +60,6 @@ Total suspicious links: {{ report.impact.total_suspicious }}
 
 | Artifact | Ambiguity | Completeness | Verifiability | Singularity |
 |----------|-----------|--------------|---------------|-------------|
-{% for r in report.ai_results %}| {{ r.atype }}:{{ r.aid }} | {{ r.ambiguity }} | {{ r.completeness }} | {{ r.verifiability }} | {{ r.singularity }} |
+{% for r in report.ai_results %}| {{ r.atype }}:{% if r.aid == "<undefined>" %}`<undefined>`{% else %}{{ r.aid }}{% endif %} | {{ r.ambiguity }} | {{ r.completeness }} | {{ r.verifiability }} | {{ r.singularity }} |
 {% endfor %}
 {% endif %}

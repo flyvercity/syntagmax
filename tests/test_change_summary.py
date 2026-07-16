@@ -190,6 +190,7 @@ class TestBuildObjectsByFile:
                 atype = 'REQ'
                 fields = {}
                 pids = []
+
             raw_text = ''
 
         diff = ArtifactDiff(
@@ -235,9 +236,11 @@ class TestRenderChangedFiles:
         assert result == []
 
     def test_table_header_present(self):
-        data = self._make_data(file_diffs=[
-            FileDiff(path='REQ/file.md', status=FileStatus.MODIFIED),
-        ])
+        data = self._make_data(
+            file_diffs=[
+                FileDiff(path='REQ/file.md', status=FileStatus.MODIFIED),
+            ]
+        )
         result = _render_changed_files(data)
         output = '\n'.join(result)
         assert '| Filename | Status | Objects changed |' in output
@@ -249,6 +252,7 @@ class TestRenderChangedFiles:
                 atype = 'REQ'
                 fields = {}
                 pids = []
+
             raw_text = ''
 
         diff = ArtifactDiff(
@@ -265,17 +269,21 @@ class TestRenderChangedFiles:
         assert 'REQ-001 (Added)' in output
 
     def test_file_without_artifacts(self):
-        data = self._make_data(file_diffs=[
-            FileDiff(path='REQ/other.md', status=FileStatus.MODIFIED),
-        ])
+        data = self._make_data(
+            file_diffs=[
+                FileDiff(path='REQ/other.md', status=FileStatus.MODIFIED),
+            ]
+        )
         result = _render_changed_files(data)
         output = '\n'.join(result)
         assert '| REQ/other.md | Modified | — |' in output
 
     def test_renamed_file(self):
-        data = self._make_data(file_diffs=[
-            FileDiff(path='REQ/new.md', status=FileStatus.RENAMED, old_path='REQ/old.md'),
-        ])
+        data = self._make_data(
+            file_diffs=[
+                FileDiff(path='REQ/new.md', status=FileStatus.RENAMED, old_path='REQ/old.md'),
+            ]
+        )
         result = _render_changed_files(data)
         output = '\n'.join(result)
         assert 'Renamed (from REQ/old.md)' in output
@@ -370,6 +378,7 @@ class TestGroupArtifactsByFile:
                 atype = 'REQ'
                 fields = {}
                 pids = []
+
             raw_text = 'text'
 
         diff = ArtifactDiff(
@@ -406,6 +415,7 @@ class TestGroupArtifactsByFile:
                 atype = 'REQ'
                 fields = {}
                 pids = []
+
             raw_text = ''
 
         diff = ArtifactDiff(
@@ -440,30 +450,36 @@ class TestGroupTextFragmentsByFile:
 
     def test_fragments_grouped_by_file(self):
         diff = TextBlockDiff(
-            added=[TextFragmentChange(
-                status=FileStatus.ADDED,
-                file_path='REQ/file1.md',
-                old_content=None,
-                new_content='new text',
-                old_lines=None,
-                new_lines=(10, 15),
-            )],
-            removed=[TextFragmentChange(
-                status=FileStatus.REMOVED,
-                file_path='REQ/file2.md',
-                old_content='old text',
-                new_content=None,
-                old_lines=(20, 25),
-                new_lines=None,
-            )],
-            modified=[TextFragmentChange(
-                status=FileStatus.MODIFIED,
-                file_path='REQ/file1.md',
-                old_content='before',
-                new_content='after',
-                old_lines=(1, 5),
-                new_lines=(1, 8),
-            )],
+            added=[
+                TextFragmentChange(
+                    status=FileStatus.ADDED,
+                    file_path='REQ/file1.md',
+                    old_content=None,
+                    new_content='new text',
+                    old_lines=None,
+                    new_lines=(10, 15),
+                )
+            ],
+            removed=[
+                TextFragmentChange(
+                    status=FileStatus.REMOVED,
+                    file_path='REQ/file2.md',
+                    old_content='old text',
+                    new_content=None,
+                    old_lines=(20, 25),
+                    new_lines=None,
+                )
+            ],
+            modified=[
+                TextFragmentChange(
+                    status=FileStatus.MODIFIED,
+                    file_path='REQ/file1.md',
+                    old_content='before',
+                    new_content='after',
+                    old_lines=(1, 5),
+                    new_lines=(1, 8),
+                )
+            ],
         )
         data = self._make_data(diff)
         result = _group_text_fragments_by_file(data)
@@ -489,6 +505,7 @@ class TestRenderSummaryReport:
                 atype = 'REQ'
                 fields = {'contents': 'some text'}
                 pids = []
+
             raw_text = 'some text'
 
         return ChangeReportData(
@@ -522,14 +539,16 @@ class TestRenderSummaryReport:
                 ],
             ),
             text_diff=TextBlockDiff(
-                added=[TextFragmentChange(
-                    status=FileStatus.ADDED,
-                    file_path='REQ/REQ-001.md',
-                    old_content=None,
-                    new_content='new para',
-                    old_lines=None,
-                    new_lines=(50, 55),
-                )],
+                added=[
+                    TextFragmentChange(
+                        status=FileStatus.ADDED,
+                        file_path='REQ/REQ-001.md',
+                        old_content=None,
+                        new_content='new para',
+                        old_lines=None,
+                        new_lines=(50, 55),
+                    )
+                ],
                 removed=[],
                 modified=[],
             ),
@@ -623,6 +642,27 @@ class TestRenderSummaryReport:
         assert '```diff' not in output
         assert '--- a/REQ/broken.md' not in output
 
+    def test_undefined_id_backticked_in_summary(self):
+        from syntagmax.artifact import UNDEFINED_ID
+
+        data = self._make_report_data()
+        # Set one artifact ID to UNDEFINED_ID
+        item = data.artifact_diff.added[0]
+        data.artifact_diff.added[0] = (UNDEFINED_ID, item[1], item[2], item[3])
+        output = render_summary_report(data)
+        assert '- REQ `<undefined>` (Added)' in output
+
+    def test_undefined_id_backticked_in_changed_files(self):
+        from syntagmax.artifact import UNDEFINED_ID
+
+        data = self._make_report_data()
+        # Set one artifact ID to UNDEFINED_ID
+        item = data.artifact_diff.added[0]
+        data.artifact_diff.added[0] = (UNDEFINED_ID, item[1], item[2], item[3])
+        lines = _render_changed_files(data)
+        output = '\n'.join(lines)
+        assert '`<undefined>` (Added)' in output
+
     def test_empty_report_no_changes(self):
         data = ChangeReportData(
             base_revision='abc',
@@ -653,7 +693,8 @@ def _setup_test_repo(tmp_path):
     gitignore.write_text('.syntagmax/worktrees/\n', encoding='utf-8')
 
     config = syntagmax_dir / 'config.toml'
-    config.write_text("""
+    config.write_text(
+        """
 base = ".."
 
 [[input]]
@@ -665,22 +706,28 @@ marker = "REQ"
 
 [metamodel]
 filename = "project.syntagmax"
-""", encoding='utf-8')
+""",
+        encoding='utf-8',
+    )
 
     metamodel = syntagmax_dir / 'project.syntagmax'
-    metamodel.write_text("""
+    metamodel.write_text(
+        """
 artifact REQ:
     id is string
     attribute contents is mandatory string
     attribute status is mandatory enum [draft, active, retired]
     attribute priority is mandatory enum [low, medium, high, critical]
-""", encoding='utf-8')
+""",
+        encoding='utf-8',
+    )
 
     req_dir = tmp_path / 'REQ'
     req_dir.mkdir()
 
     req1 = req_dir / 'REQ-001.md'
-    req1.write_text("""[REQ]
+    req1.write_text(
+        """[REQ]
 The system shall do something.
 [id] REQ-001
 ```yaml
@@ -688,10 +735,13 @@ attrs:
   status: draft
   priority: high
 ```
-""", encoding='utf-8')
+""",
+        encoding='utf-8',
+    )
 
     req2 = req_dir / 'REQ-002.md'
-    req2.write_text("""[REQ]
+    req2.write_text(
+        """[REQ]
 The system shall do something else.
 [id] REQ-002
 ```yaml
@@ -699,16 +749,24 @@ attrs:
   status: draft
   priority: medium
 ```
-""", encoding='utf-8')
+""",
+        encoding='utf-8',
+    )
 
-    repo.index.add([
-        '.gitignore', '.syntagmax/config.toml', '.syntagmax/project.syntagmax',
-        'REQ/REQ-001.md', 'REQ/REQ-002.md',
-    ])
+    repo.index.add(
+        [
+            '.gitignore',
+            '.syntagmax/config.toml',
+            '.syntagmax/project.syntagmax',
+            'REQ/REQ-001.md',
+            'REQ/REQ-002.md',
+        ]
+    )
     repo.index.commit('Initial commit', author=git.Actor('Test', 'test@test.com'))
 
     # Make changes: modify REQ-001, add REQ-003, remove REQ-002
-    req1.write_text("""[REQ]
+    req1.write_text(
+        """[REQ]
 The system shall do something important.
 [id] REQ-001
 ```yaml
@@ -716,10 +774,13 @@ attrs:
   status: active
   priority: critical
 ```
-""", encoding='utf-8')
+""",
+        encoding='utf-8',
+    )
 
     req3 = req_dir / 'REQ-003.md'
-    req3.write_text("""[REQ]
+    req3.write_text(
+        """[REQ]
 The system shall have a new feature.
 [id] REQ-003
 ```yaml
@@ -727,7 +788,9 @@ attrs:
   status: draft
   priority: low
 ```
-""", encoding='utf-8')
+""",
+        encoding='utf-8',
+    )
 
     req2.unlink()
 
@@ -750,14 +813,22 @@ class TestSummaryIntegration:
         """Test --summary with --output console."""
         _repo, repo_path = summary_test_repo
         runner = CliRunner()
-        result = runner.invoke(rms, [
-            '--cwd', str(repo_path),
-            'change', 'report',
-            '--summary',
-            '--base', 'HEAD~1',
-            '--target', 'HEAD',
-            '--output', 'console',
-        ])
+        result = runner.invoke(
+            rms,
+            [
+                '--cwd',
+                str(repo_path),
+                'change',
+                'report',
+                '--summary',
+                '--base',
+                'HEAD~1',
+                '--target',
+                'HEAD',
+                '--output',
+                'console',
+            ],
+        )
         assert result.exit_code == 0, f'CLI failed: {result.output}'
         assert '# Change Report (Summary)' in result.output
 
@@ -765,14 +836,22 @@ class TestSummaryIntegration:
         """Test that summary mode does NOT include detailed changes."""
         _repo, repo_path = summary_test_repo
         runner = CliRunner()
-        result = runner.invoke(rms, [
-            '--cwd', str(repo_path),
-            'change', 'report',
-            '--summary',
-            '--base', 'HEAD~1',
-            '--target', 'HEAD',
-            '--output', 'console',
-        ])
+        result = runner.invoke(
+            rms,
+            [
+                '--cwd',
+                str(repo_path),
+                'change',
+                'report',
+                '--summary',
+                '--base',
+                'HEAD~1',
+                '--target',
+                'HEAD',
+                '--output',
+                'console',
+            ],
+        )
         assert result.exit_code == 0
         assert '## Detailed Changes' not in result.output
         assert '```text' not in result.output
@@ -783,14 +862,22 @@ class TestSummaryIntegration:
         """Test that artifacts are listed by ID and status."""
         _repo, repo_path = summary_test_repo
         runner = CliRunner()
-        result = runner.invoke(rms, [
-            '--cwd', str(repo_path),
-            'change', 'report',
-            '--summary',
-            '--base', 'HEAD~1',
-            '--target', 'HEAD',
-            '--output', 'console',
-        ])
+        result = runner.invoke(
+            rms,
+            [
+                '--cwd',
+                str(repo_path),
+                'change',
+                'report',
+                '--summary',
+                '--base',
+                'HEAD~1',
+                '--target',
+                'HEAD',
+                '--output',
+                'console',
+            ],
+        )
         assert result.exit_code == 0
         output = result.output
         assert 'REQ-001' in output
@@ -804,13 +891,20 @@ class TestSummaryIntegration:
         """Test that summary output filename contains -summary."""
         _repo, repo_path = summary_test_repo
         runner = CliRunner()
-        result = runner.invoke(rms, [
-            '--cwd', str(repo_path),
-            'change', 'report',
-            '--summary',
-            '--base', 'HEAD~1',
-            '--target', 'HEAD',
-        ])
+        result = runner.invoke(
+            rms,
+            [
+                '--cwd',
+                str(repo_path),
+                'change',
+                'report',
+                '--summary',
+                '--base',
+                'HEAD~1',
+                '--target',
+                'HEAD',
+            ],
+        )
         assert result.exit_code == 0
         report_dir = repo_path / '.syntagmax' / 'reports' / 'change'
         reports = list(report_dir.glob('*-summary.md'))
@@ -820,14 +914,21 @@ class TestSummaryIntegration:
         """Test --summary combined with --single."""
         _repo, repo_path = summary_test_repo
         runner = CliRunner()
-        result = runner.invoke(rms, [
-            '--cwd', str(repo_path),
-            'change', 'report',
-            '--summary',
-            '--single',
-            '--base', 'HEAD~1',
-            '--target', 'HEAD',
-        ])
+        result = runner.invoke(
+            rms,
+            [
+                '--cwd',
+                str(repo_path),
+                'change',
+                'report',
+                '--summary',
+                '--single',
+                '--base',
+                'HEAD~1',
+                '--target',
+                'HEAD',
+            ],
+        )
         assert result.exit_code == 0
         report_dir = repo_path / '.syntagmax' / 'reports' / 'change'
         reports = list(report_dir.glob('change-*-summary.md'))
@@ -837,14 +938,22 @@ class TestSummaryIntegration:
         """Test that summary includes the statistics table."""
         _repo, repo_path = summary_test_repo
         runner = CliRunner()
-        result = runner.invoke(rms, [
-            '--cwd', str(repo_path),
-            'change', 'report',
-            '--summary',
-            '--base', 'HEAD~1',
-            '--target', 'HEAD',
-            '--output', 'console',
-        ])
+        result = runner.invoke(
+            rms,
+            [
+                '--cwd',
+                str(repo_path),
+                'change',
+                'report',
+                '--summary',
+                '--base',
+                'HEAD~1',
+                '--target',
+                'HEAD',
+                '--output',
+                'console',
+            ],
+        )
         assert result.exit_code == 0
         assert '## Summary' in result.output
         assert '| Artifacts added | 1 |' in result.output

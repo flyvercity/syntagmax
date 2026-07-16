@@ -17,6 +17,7 @@ from syntagmax.change_diff import (
     TextFragmentChange,
     BinaryArtifactChange,
 )
+from syntagmax.artifact import UNDEFINED_ID
 
 lg = logging.getLogger(__name__)
 
@@ -70,11 +71,7 @@ def compute_summary(data: ChangeReportData) -> dict[str, int]:
 
     text_fragments_modified = 0
     if data.text_diff:
-        text_fragments_modified = (
-            len(data.text_diff.added)
-            + len(data.text_diff.removed)
-            + len(data.text_diff.modified)
-        )
+        text_fragments_modified = len(data.text_diff.added) + len(data.text_diff.removed) + len(data.text_diff.modified)
 
     binary_added = 0
     binary_modified = 0
@@ -169,9 +166,7 @@ def _build_objects_by_file(data: ChangeReportData) -> dict[str, list[tuple[str, 
             result.setdefault(file_path, []).append((aid, atype, 'Added'))
 
         for change in data.artifact_diff.modified:
-            result.setdefault(change.file_path, []).append(
-                (change.aid, change.atype, 'Modified')
-            )
+            result.setdefault(change.file_path, []).append((change.aid, change.atype, 'Modified'))
 
         for aid, atype, _block, file_path in data.artifact_diff.removed:
             result.setdefault(file_path, []).append((aid, atype, 'Removed'))
@@ -207,9 +202,7 @@ def _render_changed_files(data: ChangeReportData) -> list[str]:
         # Look up artefacts for this file using suffix matching
         file_objects = _match_file_path(fd.path, objects_by_file)
         if file_objects:
-            objects_str = ', '.join(
-                f'{aid} ({status})' for aid, _atype, status in file_objects
-            )
+            objects_str = ', '.join((f'`{aid}` ({status})' if aid == UNDEFINED_ID else f'{aid} ({status})') for aid, _atype, status in file_objects)
         else:
             objects_str = '—'
 
@@ -232,21 +225,25 @@ def _render_artifact_added(aid: str, atype: str, block, file_path: str) -> list[
     ]
     contents = block.artifact.fields.get('contents', '')
     if contents:
-        lines.extend([
-            '###### Text',
-            '',
-        ])
+        lines.extend(
+            [
+                '###### Text',
+                '',
+            ]
+        )
         lines.extend(_blockquote_content(contents))
         lines.append('')
     # Show attributes
     attrs = {k: v for k, v in block.artifact.fields.items() if k != 'contents'}
     if attrs:
-        lines.extend([
-            '###### Attributes',
-            '',
-            '| Attribute | Value |',
-            '|-----------|-------|',
-        ])
+        lines.extend(
+            [
+                '###### Attributes',
+                '',
+                '| Attribute | Value |',
+                '|-----------|-------|',
+            ]
+        )
         for attr_name, attr_val in attrs.items():
             lines.append(f'| {attr_name} | {_format_field_value(attr_val)} |')
         lines.append('')
@@ -261,10 +258,12 @@ def _render_artifact_removed(aid: str, atype: str, block, file_path: str) -> lis
     ]
     contents = block.artifact.fields.get('contents', '')
     if contents:
-        lines.extend([
-            '###### Text',
-            '',
-        ])
+        lines.extend(
+            [
+                '###### Text',
+                '',
+            ]
+        )
         lines.extend(_blockquote_content(contents))
         lines.append('')
     return lines
@@ -279,30 +278,36 @@ def _render_artifact_modified(change: ArtifactChange) -> list[str]:
 
     # Text changes
     if change.content_changed:
-        lines.extend([
-            '###### Text',
-            '',
-            '**Previous**',
-            '',
-        ])
+        lines.extend(
+            [
+                '###### Text',
+                '',
+                '**Previous**',
+                '',
+            ]
+        )
         lines.extend(_blockquote_content(change.base_raw_text.strip()))
         lines.append('')
-        lines.extend([
-            '**Current**',
-            '',
-        ])
+        lines.extend(
+            [
+                '**Current**',
+                '',
+            ]
+        )
         lines.extend(_blockquote_content(change.target_raw_text.strip()))
         lines.append('')
 
     # Attribute changes (exclude _parents for separate handling)
     field_changes = {k: v for k, v in change.changed_fields.items() if k != '_parents'}
     if field_changes:
-        lines.extend([
-            '###### Attribute Changes',
-            '',
-            '| Attribute | Previous | Current |',
-            '|-----------|----------|---------|',
-        ])
+        lines.extend(
+            [
+                '###### Attribute Changes',
+                '',
+                '| Attribute | Previous | Current |',
+                '|-----------|----------|---------|',
+            ]
+        )
         for attr_name, (old_val, new_val) in field_changes.items():
             old_str = _format_field_value(old_val) if old_val is not None else '—'
             new_str = _format_field_value(new_val) if new_val is not None else '—'
@@ -312,14 +317,16 @@ def _render_artifact_modified(change: ArtifactChange) -> list[str]:
     # Link (parent) changes
     if '_parents' in change.changed_fields:
         old_pids, new_pids = change.changed_fields['_parents']
-        lines.extend([
-            '###### Link Changes',
-            '',
-            '| Attribute | Previous | Current |',
-            '|-----------|----------|---------|',
-            f'| parents | {", ".join(old_pids) if old_pids else "—"} | {", ".join(new_pids) if new_pids else "—"} |',
-            '',
-        ])
+        lines.extend(
+            [
+                '###### Link Changes',
+                '',
+                '| Attribute | Previous | Current |',
+                '|-----------|----------|---------|',
+                f'| parents | {", ".join(old_pids) if old_pids else "—"} | {", ".join(new_pids) if new_pids else "—"} |',
+                '',
+            ]
+        )
 
     return lines
 
@@ -398,12 +405,14 @@ def _render_binary_artifact_change(change: BinaryArtifactChange) -> list[str]:
 
     # Binary content property table — only when binary content changed
     if change.binary_changed:
-        lines.extend([
-            '###### Binary Content',
-            '',
-            '| Property | Previous | Current |',
-            '|----------|----------|---------|',
-        ])
+        lines.extend(
+            [
+                '###### Binary Content',
+                '',
+                '| Property | Previous | Current |',
+                '|----------|----------|---------|',
+            ]
+        )
 
         # SHA-256 row (truncated to 12 chars)
         base_hash = f'`{change.hash_base[:12]}`' if change.hash_base else '—'
@@ -433,12 +442,14 @@ def _render_binary_artifact_change(change: BinaryArtifactChange) -> list[str]:
 
     # Attribute changes table
     if change.field_changes:
-        lines.extend([
-            '###### Attribute Changes',
-            '',
-            '| Attribute | Previous | Current |',
-            '|-----------|----------|---------|',
-        ])
+        lines.extend(
+            [
+                '###### Attribute Changes',
+                '',
+                '| Attribute | Previous | Current |',
+                '|-----------|----------|---------|',
+            ]
+        )
         for attr_name, (old_val, new_val) in change.field_changes.items():
             old_str = _format_field_value(old_val) if old_val is not None else '—'
             new_str = _format_field_value(new_val) if new_val is not None else '—'
@@ -473,9 +484,7 @@ def _render_detailed_changes(data: ChangeReportData) -> list[str]:
 
     # --- Text fragments section ---
     if data.text_diff:
-        all_text_changes = (
-            data.text_diff.added + data.text_diff.modified + data.text_diff.removed
-        )
+        all_text_changes = data.text_diff.added + data.text_diff.modified + data.text_diff.removed
         if all_text_changes:
             has_content = True
             fragments_by_file: dict[str, list[TextFragmentChange]] = {}
@@ -595,7 +604,6 @@ def render_change_report(data: ChangeReportData) -> str:
     return '\n'.join(lines)
 
 
-
 # ---------------------------------------------------------------------------
 # Summary Report Rendering
 # ---------------------------------------------------------------------------
@@ -651,9 +659,7 @@ def _group_artifacts_by_file(
         result.setdefault(file_path, []).append((aid, atype, 'Added'))
 
     for change in data.artifact_diff.modified:
-        result.setdefault(change.file_path, []).append(
-            (change.aid, change.atype, 'Modified')
-        )
+        result.setdefault(change.file_path, []).append((change.aid, change.atype, 'Modified'))
 
     for aid, atype, _block, file_path in data.artifact_diff.removed:
         result.setdefault(file_path, []).append((aid, atype, 'Removed'))
@@ -674,9 +680,7 @@ def _group_text_fragments_by_file(
     if not data.text_diff:
         return result
 
-    all_changes = (
-        data.text_diff.added + data.text_diff.modified + data.text_diff.removed
-    )
+    all_changes = data.text_diff.added + data.text_diff.modified + data.text_diff.removed
     for change in all_changes:
         entry = _format_text_fragment_entry(change)
         result.setdefault(change.file_path, []).append(entry)
@@ -765,7 +769,8 @@ def _render_summary_changed_files(
             lines.append('**Objects**')
             lines.append('')
             for aid, atype, status in file_artifacts:
-                lines.append(f'- {atype} {aid} ({status})')
+                aid_disp = f'`{aid}`' if aid == UNDEFINED_ID else aid
+                lines.append(f'- {atype} {aid_disp} ({status})')
             lines.append('')
 
         # Text fragments — match using suffix-aware lookup
@@ -824,8 +829,12 @@ def render_summary_report(data: ChangeReportData) -> str:
     # Per-file breakdown
     artifacts_by_file = _group_artifacts_by_file(data)
     fragments_by_file = _group_text_fragments_by_file(data)
-    lines.extend(_render_summary_changed_files(
-        data, artifacts_by_file, fragments_by_file,
-    ))
+    lines.extend(
+        _render_summary_changed_files(
+            data,
+            artifacts_by_file,
+            fragments_by_file,
+        )
+    )
 
     return '\n'.join(lines)
