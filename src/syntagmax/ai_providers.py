@@ -209,6 +209,33 @@ JSON schema (for grounding; still return JSON only):
 
         return re.sub(r'\\.', escape_invalid_slashes, content)
 
+    def _clean_json_response(self, text: str) -> str:
+        """Clean a model response to extract the JSON payload.
+
+        Handles leading/trailing whitespace, markdown code block markers,
+        and potential trailing backticks.
+        """
+        text = text.strip()
+
+        # Remove markdown code block formatting safely without over-stripping
+        if text.startswith('```json'):
+            text = text[7:]
+        elif text.startswith('```'):
+            text = text[3:]
+
+        # Fix for potential trailing ```
+        if text.endswith('```'):
+            text = text[:-3]
+
+        text = text.strip()
+
+        # Fallback to extracting anything between first '{' and last '}'
+        match = re.search(r'\{.*\}', text, re.DOTALL)
+        if match:
+            text = match.group(0)
+
+        return text
+
 
 class OllamaProvider(AIProvider):
     """AI provider utilizing a local or remote Ollama instance."""
@@ -256,7 +283,7 @@ class OllamaProvider(AIProvider):
             raise AIError(f'Unexpected Ollama response shape: {raw!r}') from e
 
         try:
-            content = content.lstrip('```json').rstrip('```')
+            content = self._clean_json_response(content)
             content = self._sanitize_json(content)
             result = json.loads(content)
         except json.JSONDecodeError as e:
@@ -287,7 +314,7 @@ class AnthropicProvider(AIProvider):
         resp = None
         try:
             lg.debug(f'Calling Anthropic at {self._redact_sensitive_info(url)}')
-            lg.debug(f'Headers: {self._redact_sensitive_info(headers)}')
+            lg.debug('Headers: ***REDACTED***')
             lg.debug(f'Body: {json.dumps(self._redact_sensitive_info(body))}')
             resp = requests.post(
                 url,
@@ -305,16 +332,7 @@ class AnthropicProvider(AIProvider):
 
         try:
             content = raw['content'][0]['text']
-            # Sometimes Claude wraps json in markdown block
-            content = content.strip().lstrip('```json').rstrip('```')
-            # Fix for potential trailing ```
-            if content.endswith('```'):
-                content = content[:-3]
-
-            match = re.search(r'\{.*\}', content, re.DOTALL)
-            if match:
-                content = match.group(0)
-
+            content = self._clean_json_response(content)
             content = self._sanitize_json(content)
             result = json.loads(content)
         except (KeyError, IndexError, json.JSONDecodeError) as e:
@@ -352,7 +370,7 @@ class OpenAIProvider(AIProvider):
         resp = None
         try:
             lg.debug(f'Calling OpenAI at {self._redact_sensitive_info(url)}')
-            lg.debug(f'Headers: {self._redact_sensitive_info(headers)}')
+            lg.debug('Headers: ***REDACTED***')
             lg.debug(f'Body: {json.dumps(self._redact_sensitive_info(body))}')
             resp = requests.post(
                 url,
@@ -370,6 +388,8 @@ class OpenAIProvider(AIProvider):
 
         try:
             content = raw['choices'][0]['message']['content']
+            content = self._clean_json_response(content)
+            content = self._sanitize_json(content)
             result = json.loads(content)
         except (KeyError, IndexError, json.JSONDecodeError) as e:
             raise AIError(f'Unexpected OpenAI response: {raw!r}') from e
@@ -401,7 +421,7 @@ class GeminiProvider(AIProvider):
         resp = None
         try:
             lg.debug(f'Calling Gemini at {self._redact_sensitive_info(url)}')
-            lg.debug(f'Headers: {self._redact_sensitive_info({"Content-Type": "application/json", "x-goog-api-key": api_key})}')
+            lg.debug('Headers: ***REDACTED***')
             lg.debug(f'Body: {json.dumps(self._redact_sensitive_info(body))}')
             resp = requests.post(
                 url,
@@ -421,18 +441,8 @@ class GeminiProvider(AIProvider):
 
         try:
             content = raw['candidates'][0]['content']['parts'][0]['text']
-
-            # Sometimes Gemini wraps json in markdown block or returns some prose
-            content = content.strip().lstrip('```json').rstrip('```')
-            if content.endswith('```'):
-                content = content[:-3]
-
-            match = re.search(r'\{.*\}', content, re.DOTALL)
-            if match:
-                content = match.group(0)
-
+            content = self._clean_json_response(content)
             content = self._sanitize_json(content)
-
             result = json.loads(content)
         except (KeyError, IndexError) as e:
             raise AIError(f'Unexpected Gemini response shape: {raw!r}') from e
@@ -484,7 +494,7 @@ class BedrockProvider(AIProvider):
         resp = None
         try:
             lg.debug(f'Calling Bedrock via requests at {self._redact_sensitive_info(url)}')
-            lg.debug(f'Headers: {self._redact_sensitive_info(headers)}')
+            lg.debug('Headers: ***REDACTED***')
             lg.debug(f'Body: {json.dumps(self._redact_sensitive_info(body_dict))}')
             resp = requests.post(url, json=body_dict, headers=headers, timeout=timeout_s)
             resp.raise_for_status()
@@ -530,11 +540,7 @@ class BedrockProvider(AIProvider):
     def _parse_bedrock_response(self, response_body: Dict[str, Any]) -> Dict[str, Any]:
         try:
             content = response_body.get('content')[0].get('text')
-
-            match = re.search(r'\{.*\}', content, re.DOTALL)
-            if match:
-                content = match.group(0)
-
+            content = self._clean_json_response(content)
             content = self._sanitize_json(content)
             return json.loads(content)
         except Exception as e:

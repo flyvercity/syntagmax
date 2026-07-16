@@ -158,6 +158,32 @@ def test_bedrock_provider_boto3_success():
         assert result['metrics']['ambiguity'] == 0.2
 
 
+def test_clean_json_response_various_formats():
+    config = MagicMock(spec=AIConfig)
+    provider = OllamaProvider(config)
+
+    # Test pure JSON
+    assert provider._clean_json_response('{"foo": "bar"}') == '{"foo": "bar"}'
+
+    # Test JSON with leading/trailing whitespaces
+    assert provider._clean_json_response('  \n {"foo": "bar"} \t ') == '{"foo": "bar"}'
+
+    # Test markdown code blocks
+    assert provider._clean_json_response('```json\n{"foo": "bar"}\n```') == '{"foo": "bar"}'
+    assert provider._clean_json_response('```\n{"foo": "bar"}\n```') == '{"foo": "bar"}'
+
+    # Test potential trailing backticks (e.g. invalid formatting from LLM)
+    assert provider._clean_json_response('{"foo": "bar"}```') == '{"foo": "bar"}'
+    assert provider._clean_json_response('{"foo": "bar"} ```') == '{"foo": "bar"}'
+    assert provider._clean_json_response('```json\n{"foo": "bar"}\n```\n```') == '{"foo": "bar"}'
+
+    # Test code block with whitespace and trailing backticks
+    assert provider._clean_json_response('\n```json\n{"foo": "bar"}\n```   ') == '{"foo": "bar"}'
+
+    # Test surrounding conversational prose/text
+    assert provider._clean_json_response('Here is the requested output:\n```json\n{"foo": "bar"}\n```\nHope this helps!') == '{"foo": "bar"}'
+
+
 def test_redact_sensitive_info():
     config = MagicMock(spec=AIConfig)
     provider = OllamaProvider(config)
