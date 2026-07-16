@@ -11,6 +11,13 @@ from syntagmax.i18n import setup_i18n, _, get_translations, SUPPORTED_LANGUAGES
 from syntagmax.errors import FatalError
 
 
+@pytest.fixture(autouse=True)
+def reset_i18n():
+    """Reset i18n to English after each test to avoid polluting other tests."""
+    yield
+    setup_i18n('en')
+
+
 class TestSetupI18n:
     """Tests for setup_i18n() function."""
 
