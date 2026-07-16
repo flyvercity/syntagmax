@@ -66,6 +66,7 @@ cover/
 # Translations
 *.mo
 *.pot
+!src/syntagmax/resources/locales/**/*.mo
 
 # Django stuff:
 *.log

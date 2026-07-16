@@ -1,11 +1,11 @@
-# English translations for syntagmax metrics.
+# English translations for Syntagmax (source language).
 msgid ""
 msgstr ""
-"Project-Id-Version: syntagmax 0.0.1\n"
+"Project-Id-Version: syntagmax 2026.7.13\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-03-22 14:08+0200\n"
-"PO-Revision-Date: 2026-02-15 12:00+0000\n"
-"Last-Translator: \n"
+"POT-Creation-Date: 2026-07-16 16:00+0300\n"
+"PO-Revision-Date: 2026-07-16 16:00+0300\n"
+"Last-Translator: Boris Resnick <boris@flyver.city>\n"
 "Language: en\n"
 "Language-Team: en <LL@li.org>\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
@@ -14,72 +14,241 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.18.0\n"
 
-#: src/syntagmax/resources/impact.j2:1
-msgid "Impact Analysis Report"
-msgstr "Impact Analysis Report"
+#. Analysis report template
+msgid "Analysis Report"
+msgstr "Analysis Report"
 
-#: src/syntagmax/resources/impact.j2:3
-msgid "Summary"
-msgstr "Summary"
+msgid "Errors"
+msgstr "Errors"
 
-#: src/syntagmax/resources/impact.j2:4
-msgid "Total suspicious links"
-msgstr "Total suspicious links"
+msgid "Total errors:"
+msgstr "Total errors:"
 
-#: src/syntagmax/resources/impact.j2:6
-msgid "Suspicious Links"
-msgstr "Suspicious Links"
+msgid "Artifact Tree"
+msgstr "Artifact Tree"
 
-#: src/syntagmax/resources/impact.j2:8
-msgid "Artifact"
-msgstr "Artifact"
+msgid "Metrics"
+msgstr "Metrics"
 
-#: src/syntagmax/resources/impact.j2:8
-msgid "Parent"
-msgstr "Parent"
-
-#: src/syntagmax/resources/impact.j2:8
-msgid "Required Revision"
-msgstr "Required Revision"
-
-#: src/syntagmax/resources/impact.j2:8
-msgid "Actual Revision"
-msgstr "Actual Revision"
-
-#: src/syntagmax/resources/impact.j2:14
-#, fuzzy
-msgid "Suspicious Tree"
-msgstr "Suspicious Links"
-
-#: src/syntagmax/resources/impact.j2:19
-msgid "No suspicious links found."
-msgstr "No suspicious links found."
-
-#: src/syntagmax/resources/metrics.j2:1
-msgid "Project Metrics"
-msgstr "Project Metrics"
-
-#: src/syntagmax/resources/metrics.j2:3
 msgid "Total Requirements"
 msgstr "Total Requirements"
 
-#: src/syntagmax/resources/metrics.j2:5
 msgid "Requirements by Status"
 msgstr "Requirements by Status"
 
-#: src/syntagmax/resources/metrics.j2:7
 msgid "Status"
 msgstr "Status"
 
-#: src/syntagmax/resources/metrics.j2:7
 msgid "Count"
 msgstr "Count"
 
-#: src/syntagmax/resources/metrics.j2:11
 msgid "Requirements without verification (%)"
 msgstr "Requirements without verification (%)"
 
-#: src/syntagmax/resources/metrics.j2:12
 msgid "Requirements with TBD (%)"
 msgstr "Requirements with TBD (%)"
 
+msgid "Impact Analysis"
+msgstr "Impact Analysis"
+
+msgid "Total suspicious links"
+msgstr "Total suspicious links"
+
+msgid "Artifact"
+msgstr "Artifact"
+
+msgid "Parent"
+msgstr "Parent"
+
+msgid "Required Revision"
+msgstr "Required Revision"
+
+msgid "Actual Revision"
+msgstr "Actual Revision"
+
+msgid "Suspicious Tree"
+msgstr "Suspicious Tree"
+
+msgid "AI Analysis"
+msgstr "AI Analysis"
+
+msgid "Ambiguity"
+msgstr "Ambiguity"
+
+msgid "Completeness"
+msgstr "Completeness"
+
+msgid "Verifiability"
+msgstr "Verifiability"
+
+msgid "Singularity"
+msgstr "Singularity"
+
+#. Change report renderer
+msgid "Change Report"
+msgstr "Change Report"
+
+msgid "Change Report (Summary)"
+msgstr "Change Report (Summary)"
+
+msgid "Repository Information"
+msgstr "Repository Information"
+
+msgid "Summary"
+msgstr "Summary"
+
+msgid "Changed Files"
+msgstr "Changed Files"
+
+msgid "Detailed Changes"
+msgstr "Detailed Changes"
+
+msgid "Base revision"
+msgstr "Base revision"
+
+msgid "Target revision"
+msgstr "Target revision"
+
+msgid "Generated"
+msgstr "Generated"
+
+msgid "Input record"
+msgstr "Input record"
+
+msgid "Parameter"
+msgstr "Parameter"
+
+msgid "Value"
+msgstr "Value"
+
+msgid "Files changed"
+msgstr "Files changed"
+
+msgid "Files added"
+msgstr "Files added"
+
+msgid "Files removed"
+msgstr "Files removed"
+
+msgid "Artifacts added"
+msgstr "Artifacts added"
+
+msgid "Artifacts modified"
+msgstr "Artifacts modified"
+
+msgid "Artifacts removed"
+msgstr "Artifacts removed"
+
+msgid "Text fragments modified"
+msgstr "Text fragments modified"
+
+msgid "Binary artifacts added"
+msgstr "Binary artifacts added"
+
+msgid "Binary artifacts modified"
+msgstr "Binary artifacts modified"
+
+msgid "Binary artifacts removed"
+msgstr "Binary artifacts removed"
+
+msgid "Extraction errors"
+msgstr "Extraction errors"
+
+msgid "Filename"
+msgstr "Filename"
+
+msgid "Objects changed"
+msgstr "Objects changed"
+
+msgid "Added"
+msgstr "Added"
+
+msgid "Removed"
+msgstr "Removed"
+
+msgid "Modified"
+msgstr "Modified"
+
+msgid "Renamed"
+msgstr "Renamed"
+
+msgid "Text"
+msgstr "Text"
+
+msgid "Attributes"
+msgstr "Attributes"
+
+msgid "Attribute Changes"
+msgstr "Attribute Changes"
+
+msgid "Link Changes"
+msgstr "Link Changes"
+
+msgid "Attribute"
+msgstr "Attribute"
+
+msgid "Previous"
+msgstr "Previous"
+
+msgid "Current"
+msgstr "Current"
+
+msgid "Binary Content"
+msgstr "Binary Content"
+
+msgid "Property"
+msgstr "Property"
+
+msgid "Size"
+msgstr "Size"
+
+msgid "Dimensions"
+msgstr "Dimensions"
+
+msgid "Added (binary)"
+msgstr "Added (binary)"
+
+msgid "Removed (binary)"
+msgstr "Removed (binary)"
+
+msgid "Modified (binary)"
+msgstr "Modified (binary)"
+
+msgid "Modified (metadata)"
+msgstr "Modified (metadata)"
+
+msgid "Text fragment"
+msgstr "Text fragment"
+
+msgid "Old lines"
+msgstr "Old lines"
+
+msgid "New lines"
+msgstr "New lines"
+
+msgid "No changes detected."
+msgstr "No changes detected."
+
+msgid "Extraction Error"
+msgstr "Extraction Error"
+
+msgid "Fallback plain-text diff:"
+msgstr "Fallback plain-text diff:"
+
+msgid "Artifacts"
+msgstr "Artifacts"
+
+msgid "Text fragments"
+msgstr "Text fragments"
+
+msgid "Binary Artifacts"
+msgstr "Binary Artifacts"
+
+msgid "Extraction Errors"
+msgstr "Extraction Errors"
+
+msgid "Objects"
+msgstr "Objects"
+
+msgid "Error"
+msgstr "Error"
