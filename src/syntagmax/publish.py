@@ -241,15 +241,25 @@ def get_artifact_field_value(artifact: Artifact, field_name: str) -> Optional[st
     if target_key == 'id':
         return artifact.aid
 
-    # Case-insensitive lookup in fields
-    for k, v in artifact.fields.items():
-        if k.lower() == target_key:
+    # Check if we have a lazy cache initialized
+    norm_fields = getattr(artifact, '_normalized_fields', None)
+    if not isinstance(norm_fields, dict):
+        norm_fields = {}
+        for k, v in artifact.fields.items():
+            k_lower = k.lower()
             if isinstance(v, list):
                 joined = ', '.join(str(x) for x in v if str(x).strip())
-                return joined if joined.strip() else None
-            val = str(v)
-            return val if val.strip() else None
-    return None
+                val = joined if joined.strip() else None
+            else:
+                val_str = str(v)
+                val = val_str if val_str.strip() else None
+            norm_fields[k_lower] = val
+        try:
+            artifact._normalized_fields = norm_fields
+        except AttributeError:
+            pass
+
+    return norm_fields.get(target_key)
 
 
 def should_render_attribute(
@@ -278,6 +288,9 @@ def should_render_attribute(
     return is_attribute_mandatory(attr_name, atype, metamodel)
 
 
+_EXCLUDED_FIELDS = {'id', 'ID', 'Id', 'iD', 'contents', 'CONTENTS', 'Contents'}
+
+
 def render_artifact_fallback(artifact: Artifact, content_level: int, table_spacer: int = 1, context: RenderContext | None = None) -> str:
     """Render an artifact using fallback formatting (no custom render config).
 
@@ -300,7 +313,7 @@ def render_artifact_fallback(artifact: Artifact, content_level: int, table_space
         parts.append(f'{processed}\n\n')
 
     # Metadata table - skip id and contents
-    fields = {k: v for k, v in artifact.fields.items() if k.lower() not in ('id', 'contents')}
+    fields = {k: v for k, v in artifact.fields.items() if k not in _EXCLUDED_FIELDS}
     if fields:
         sorted_keys = sorted(fields.keys())
         parts.append('&nbsp;\n\n' * table_spacer)
