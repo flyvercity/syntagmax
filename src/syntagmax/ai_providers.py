@@ -151,11 +151,22 @@ JSON schema (for grounding; still return JSON only):
         if isinstance(data, dict):
             redacted = {}
             for k, v in data.items():
-                if k.lower() in ('x-api-key', 'authorization', 'api-key'):
+                if k.lower() in (
+                    'x-api-key',
+                    'authorization',
+                    'api-key',
+                    'x-goog-api-key',
+                    'aws-api-key',
+                    'aws_access_key_id',
+                    'aws_secret_access_key',
+                    'aws_session_token',
+                ):
                     redacted[k] = '***REDACTED***'
                 else:
-                    redacted[k] = v
+                    redacted[k] = self._redact_sensitive_info(v)
             return redacted
+        elif isinstance(data, list):
+            return [self._redact_sensitive_info(item) for item in data]
         elif isinstance(data, str):
             return re.sub(r'([?&]key=)[^&]+', r'\1***REDACTED***', data)
         return data
@@ -199,7 +210,7 @@ class OllamaProvider(AIProvider):
 
         resp = None
         try:
-            lg.debug(f'Calling Ollama at {url}')
+            lg.debug(f'Calling Ollama at {self._redact_sensitive_info(url)}')
             resp = requests.post(
                 url,
                 json=body,
@@ -209,7 +220,7 @@ class OllamaProvider(AIProvider):
             resp.raise_for_status()
             raw = resp.json()
         except Exception as e:
-            lg.debug(f'Failed to call Ollama with {body!r}')
+            lg.debug(f'Failed to call Ollama with {self._redact_sensitive_info(body)!r}')
             if resp:
                 lg.debug(f'Response: {resp.text!r}')
             raise AIError(f'Failed to call Ollama: {e}') from e
@@ -250,9 +261,9 @@ class AnthropicProvider(AIProvider):
 
         resp = None
         try:
-            lg.debug(f'Calling Anthropic at {url}')
+            lg.debug(f'Calling Anthropic at {self._redact_sensitive_info(url)}')
             lg.debug(f'Headers: {self._redact_sensitive_info(headers)}')
-            lg.debug(f'Body: {json.dumps(body)}')
+            lg.debug(f'Body: {json.dumps(self._redact_sensitive_info(body))}')
             resp = requests.post(
                 url,
                 json=body,
@@ -262,7 +273,7 @@ class AnthropicProvider(AIProvider):
             resp.raise_for_status()
             raw = resp.json()
         except Exception as e:
-            lg.debug(f'Failed to call Anthropic with {body!r}')
+            lg.debug(f'Failed to call Anthropic with {self._redact_sensitive_info(body)!r}')
             if resp:
                 lg.debug(f'Response: {resp.text!r}')
             raise AIError(f'Failed to call Anthropic: {e}') from e
@@ -315,7 +326,7 @@ class OpenAIProvider(AIProvider):
 
         resp = None
         try:
-            lg.debug(f'Calling OpenAI at {url}')
+            lg.debug(f'Calling OpenAI at {self._redact_sensitive_info(url)}')
             resp = requests.post(
                 url,
                 json=body,
@@ -325,7 +336,7 @@ class OpenAIProvider(AIProvider):
             resp.raise_for_status()
             raw = resp.json()
         except Exception as e:
-            lg.debug(f'Failed to call OpenAI with {body!r}')
+            lg.debug(f'Failed to call OpenAI with {self._redact_sensitive_info(body)!r}')
             if resp:
                 lg.debug(f'Response: {resp.text!r}')
             raise AIError(f'Failed to call OpenAI: {e}') from e
@@ -362,8 +373,8 @@ class GeminiProvider(AIProvider):
 
         resp = None
         try:
-            lg.debug(f'Calling Gemini at {url}')
-            lg.debug(f'Body: {json.dumps(body)}')
+            lg.debug(f'Calling Gemini at {self._redact_sensitive_info(url)}')
+            lg.debug(f'Body: {json.dumps(self._redact_sensitive_info(body))}')
             resp = requests.post(
                 url,
                 json=body,
@@ -373,7 +384,7 @@ class GeminiProvider(AIProvider):
             resp.raise_for_status()
             raw = resp.json()
         except Exception as e:
-            lg.debug(f'Failed to call Gemini with {body!r}')
+            lg.debug(f'Failed to call Gemini with {self._redact_sensitive_info(body)!r}')
             if resp:
                 lg.debug(f'Response: {resp.text!r}')
             raise AIError(f'Failed to call Gemini: {e}') from e
@@ -444,7 +455,7 @@ class BedrockProvider(AIProvider):
 
         resp = None
         try:
-            lg.debug(f'Calling Bedrock via requests at {url}')
+            lg.debug(f'Calling Bedrock via requests at {self._redact_sensitive_info(url)}')
             resp = requests.post(url, json=body_dict, headers=headers, timeout=timeout_s)
             resp.raise_for_status()
             return resp.json()
@@ -474,7 +485,7 @@ class BedrockProvider(AIProvider):
 
             client = boto3.client(**kwargs)  # type: ignore
 
-            lg.debug(f'Calling Bedrock model {model}')
+            lg.debug(f'Calling Bedrock model {self._redact_sensitive_info(model)}')
             response = client.invoke_model(  # type: ignore
                 body=body, modelId=model, accept='application/json', contentType='application/json'
             )
