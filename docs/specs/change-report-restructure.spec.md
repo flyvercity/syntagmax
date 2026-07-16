@@ -19,6 +19,7 @@ The current `## Detailed Changes` section lists artifacts flat (all added → al
 ##### Text fragment (Status)
 ...
 ### Binary Artifacts
+#### <filename>
 ##### {atype} {aid} (Status)
 ...
 ### Extraction Errors
@@ -49,6 +50,7 @@ The current `## Detailed Changes` section lists artifacts flat (all added → al
 **Objective:** Create a helper that groups all artifact changes by file while preserving full render data and natural order.
 
 **Implementation guidance:**
+- Import `Any` from `typing` in `change_render.py`.
 - Create `_group_artifact_changes_by_file(data: ChangeReportData) -> dict[str, list[tuple[str, Any]]]` returning `file_path → list of ('added'|'modified'|'removed', payload)`.
 - Payload: for added/removed it's the `(aid, atype, block, file_path)` tuple; for modified it's the `ArtifactChange`.
 - Use `dict` (insertion-order) to maintain file ordering from the diff.
@@ -126,8 +128,13 @@ def _render_detailed_changes(data: ChangeReportData) -> list[str]:
     if data.binary_diff:
         has_content = True
         lines.extend(['### Binary Artifacts', ''])
+        binary_by_file: dict[str, list] = {}
         for bc in data.binary_diff:
-            lines.extend(_render_binary_artifact_change(bc))
+            binary_by_file.setdefault(bc.file_path, []).append(bc)
+        for file_path, changes in binary_by_file.items():
+            lines.extend([f'#### {file_path}', ''])
+            for bc in changes:
+                lines.extend(_render_binary_artifact_change(bc))
 
     # --- Extraction Errors section ---
     if data.extraction_errors:
@@ -169,6 +176,7 @@ def _render_detailed_changes(data: ChangeReportData) -> list[str]:
 **Implementation guidance:**
 - README.md "Example Report Structure" section: update to show new hierarchy.
 - `docs/specs/change-report.spec.md`: update section order description.
+- Verify and update reference documentation pages (such as `docs/reference/CLI.md`) to align with the new change report format if needed.
 
 **Test requirements:** N/A
 
@@ -234,6 +242,8 @@ def _render_detailed_changes(data: ChangeReportData) -> list[str]:
 > New paragraph content here.
 
 ### Binary Artifacts
+
+#### IMG/diagram.png
 
 ##### IMG diagram.png (Modified)
 
