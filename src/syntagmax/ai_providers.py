@@ -148,17 +148,53 @@ JSON schema (for grounding; still return JSON only):
             raise AIError("Missing/invalid 'rewrite'")
 
     def _redact_sensitive_info(self, data: Any) -> Any:
-        if isinstance(data, dict):
-            redacted = {}
-            for k, v in data.items():
-                if k.lower() in ('x-api-key', 'authorization', 'api-key'):
-                    redacted[k] = '***REDACTED***'
-                else:
-                    redacted[k] = v
-            return redacted
-        elif isinstance(data, str):
-            return re.sub(r'([?&]key=)[^&]+', r'\1***REDACTED***', data)
-        return data
+        memo = {}
+
+        def _redact(val: Any) -> Any:
+            if isinstance(val, dict):
+                val_id = id(val)
+                if val_id in memo:
+                    return memo[val_id]
+
+                redacted = {}
+                memo[val_id] = redacted
+                for k, v in val.items():
+                    k_lower = str(k).lower()
+                    if any(
+                        s in k_lower
+                        for s in (
+                            'api-key',
+                            'api_key',
+                            'apikey',
+                            'authorization',
+                            'secret',
+                            'password',
+                            'token',
+                            'access-key',
+                            'session-token',
+                        )
+                    ):
+                        redacted[k] = '***REDACTED***'
+                    else:
+                        redacted[k] = _redact(v)
+                return redacted
+            elif isinstance(val, list):
+                val_id = id(val)
+                if val_id in memo:
+                    return memo[val_id]
+
+                redacted_list = []
+                memo[val_id] = redacted_list
+                for item in val:
+                    redacted_list.append(_redact(item))
+                return redacted_list
+            elif isinstance(val, str):
+                val = re.sub(r'([?&]key=)[^&]+', r'\1***REDACTED***', val, flags=re.IGNORECASE)
+                val = re.sub(r'([?&]api[-_]?key=)[^&]+', r'\1***REDACTED***', val, flags=re.IGNORECASE)
+                return val
+            return val
+
+        return _redact(data)
 
     def _sanitize_json(self, content: str) -> str:
         # Sanitization: Models often return single backslashes in mathematical notation
@@ -199,7 +235,7 @@ class OllamaProvider(AIProvider):
 
         resp = None
         try:
-            lg.debug(f'Calling Ollama at {url}')
+            lg.debug(f'Calling Ollama at {self._redact_sensitive_info(url)}')
             resp = requests.post(
                 url,
                 json=body,
@@ -209,9 +245,9 @@ class OllamaProvider(AIProvider):
             resp.raise_for_status()
             raw = resp.json()
         except Exception as e:
-            lg.debug(f'Failed to call Ollama with {body!r}')
+            lg.debug(f'Failed to call Ollama with {self._redact_sensitive_info(body)!r}')
             if resp:
-                lg.debug(f'Response: {resp.text!r}')
+                lg.debug(f'Response: {self._redact_sensitive_info(resp.text)!r}')
             raise AIError(f'Failed to call Ollama: {e}') from e
 
         try:
@@ -250,9 +286,9 @@ class AnthropicProvider(AIProvider):
 
         resp = None
         try:
-            lg.debug(f'Calling Anthropic at {url}')
+            lg.debug(f'Calling Anthropic at {self._redact_sensitive_info(url)}')
             lg.debug(f'Headers: {self._redact_sensitive_info(headers)}')
-            lg.debug(f'Body: {json.dumps(body)}')
+            lg.debug(f'Body: {json.dumps(self._redact_sensitive_info(body))}')
             resp = requests.post(
                 url,
                 json=body,
@@ -262,9 +298,9 @@ class AnthropicProvider(AIProvider):
             resp.raise_for_status()
             raw = resp.json()
         except Exception as e:
-            lg.debug(f'Failed to call Anthropic with {body!r}')
+            lg.debug(f'Failed to call Anthropic with {self._redact_sensitive_info(body)!r}')
             if resp:
-                lg.debug(f'Response: {resp.text!r}')
+                lg.debug(f'Response: {self._redact_sensitive_info(resp.text)!r}')
             raise AIError(f'Failed to call Anthropic: {e}') from e
 
         try:
@@ -315,7 +351,9 @@ class OpenAIProvider(AIProvider):
 
         resp = None
         try:
-            lg.debug(f'Calling OpenAI at {url}')
+            lg.debug(f'Calling OpenAI at {self._redact_sensitive_info(url)}')
+            lg.debug(f'Headers: {self._redact_sensitive_info(headers)}')
+            lg.debug(f'Body: {json.dumps(self._redact_sensitive_info(body))}')
             resp = requests.post(
                 url,
                 json=body,
@@ -325,9 +363,9 @@ class OpenAIProvider(AIProvider):
             resp.raise_for_status()
             raw = resp.json()
         except Exception as e:
-            lg.debug(f'Failed to call OpenAI with {body!r}')
+            lg.debug(f'Failed to call OpenAI with {self._redact_sensitive_info(body)!r}')
             if resp:
-                lg.debug(f'Response: {resp.text!r}')
+                lg.debug(f'Response: {self._redact_sensitive_info(resp.text)!r}')
             raise AIError(f'Failed to call OpenAI: {e}') from e
 
         try:
@@ -362,8 +400,9 @@ class GeminiProvider(AIProvider):
 
         resp = None
         try:
-            lg.debug(f'Calling Gemini at {url}')
-            lg.debug(f'Body: {json.dumps(body)}')
+            lg.debug(f'Calling Gemini at {self._redact_sensitive_info(url)}')
+            lg.debug(f'Headers: {self._redact_sensitive_info({"Content-Type": "application/json", "x-goog-api-key": api_key})}')
+            lg.debug(f'Body: {json.dumps(self._redact_sensitive_info(body))}')
             resp = requests.post(
                 url,
                 json=body,
@@ -373,9 +412,9 @@ class GeminiProvider(AIProvider):
             resp.raise_for_status()
             raw = resp.json()
         except Exception as e:
-            lg.debug(f'Failed to call Gemini with {body!r}')
+            lg.debug(f'Failed to call Gemini with {self._redact_sensitive_info(body)!r}')
             if resp:
-                lg.debug(f'Response: {resp.text!r}')
+                lg.debug(f'Response: {self._redact_sensitive_info(resp.text)!r}')
             raise AIError(f'Failed to call Gemini: {e}') from e
 
         content = None
@@ -444,13 +483,16 @@ class BedrockProvider(AIProvider):
 
         resp = None
         try:
-            lg.debug(f'Calling Bedrock via requests at {url}')
+            lg.debug(f'Calling Bedrock via requests at {self._redact_sensitive_info(url)}')
+            lg.debug(f'Headers: {self._redact_sensitive_info(headers)}')
+            lg.debug(f'Body: {json.dumps(self._redact_sensitive_info(body_dict))}')
             resp = requests.post(url, json=body_dict, headers=headers, timeout=timeout_s)
             resp.raise_for_status()
             return resp.json()
         except Exception as e:
+            lg.debug(f'Failed to call Bedrock via requests with {self._redact_sensitive_info(body_dict)!r}')
             if resp is not None:
-                lg.debug(f'Response: {resp.text!r}')
+                lg.debug(f'Response: {self._redact_sensitive_info(resp.text)!r}')
             raise AIError(f'Failed to call Bedrock via requests: {e}') from e
 
     def _call_bedrock_via_boto3(self, model: str, region: str | None, body_dict: dict) -> Dict[str, Any]:
@@ -475,12 +517,14 @@ class BedrockProvider(AIProvider):
             client = boto3.client(**kwargs)  # type: ignore
 
             lg.debug(f'Calling Bedrock model {model}')
+            lg.debug(f'Body: {json.dumps(self._redact_sensitive_info(body_dict))}')
             response = client.invoke_model(  # type: ignore
                 body=body, modelId=model, accept='application/json', contentType='application/json'
             )
 
             return json.loads(response.get('body').read())  # type: ignore
         except Exception as e:
+            lg.debug(f'Failed to call Bedrock via boto3 with {self._redact_sensitive_info(body_dict)!r}')
             raise AIError(f'Failed to call Bedrock: {e}') from e
 
     def _parse_bedrock_response(self, response_body: Dict[str, Any]) -> Dict[str, Any]:
