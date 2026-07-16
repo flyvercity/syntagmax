@@ -166,6 +166,27 @@ class DSLIndenter(indenter.Indenter):
     tab_len = 4
 
 
+_TRUTHY_CACHE = {}
+
+
+def _precompute_truthy_values(metamodel: dict):
+    m_id = id(metamodel)
+    artifacts = metamodel.get('artifacts', {})
+    for atype, atype_def in artifacts.items():
+        attributes = atype_def.get('attributes', {})
+        for attr_name, rules in attributes.items():
+            if isinstance(rules, dict):
+                rules = [rules]
+
+            truthy = {'true', 'yes', '1'}
+            for rule in rules:
+                type_info = rule.get('type_info', {})
+                if type_info.get('type') == 'boolean' and 'custom_values' in type_info:
+                    truthy = {v.lower() for v in type_info['custom_values']['true']}
+                    break
+            _TRUTHY_CACHE[(m_id, atype, attr_name)] = truthy
+
+
 def load_metamodel(model_filename: Path, errors, validate=True):
     try:
         grammar = (Path(__file__).parent / 'metamodel.lark').read_text()
@@ -198,6 +219,8 @@ def load_metamodel(model_filename: Path, errors, validate=True):
         validate_metamodel(metamodel, errors)
         if errors:
             raise FatalError(errors)
+
+    _precompute_truthy_values(metamodel)
 
     return metamodel
 
@@ -280,7 +303,6 @@ def validate_metamodel(metamodel: dict, errors: list[str]):
                         errors.append(f"Trace from '{source_atype}' has invalid anchor '{anchor_name}': must be a non-conditional boolean attribute")
 
 
-
 # --- Shared condition evaluation helpers ---
 
 
@@ -288,8 +310,10 @@ def evaluate_condition(artifact_fields: dict, atype: str, condition: dict | None
     """Evaluate a metamodel condition against an artifact's fields.
 
     Returns True if the condition holds (or if no condition is present).
-    This is the shared implementation used by the validator (analyse.py).
-    (The publish pipeline does not evaluate conditions.)
+    This is the shared implementation used by the validator (analyse.py).
+
+    (The publish pipeline does not evaluate conditions.)
+
 
     Args:
         artifact_fields: The artifact's field dict (e.g., artifact.fields).
@@ -307,22 +331,27 @@ def evaluate_condition(artifact_fields: dict, atype: str, condition: dict | None
     if value is None:
         res = False
     else:
-        # Default truthy values for boolean evaluation
-        truthy = {'true', 'yes', '1'}
+        cache_key = (id(metamodel), atype, anchor_name)
+        if cache_key in _TRUTHY_CACHE:
+            truthy = _TRUTHY_CACHE[cache_key]
+        else:
+            # Default truthy values for boolean evaluation
+            truthy = {'true', 'yes', '1'}
 
-        # Use custom truthy values if defined in the metamodel
-        artifacts = metamodel.get('artifacts', {})
-        atype_def = artifacts.get(atype)
-        if atype_def:
-            anchor_rules = atype_def.get('attributes', {}).get(anchor_name, [])
-            if isinstance(anchor_rules, dict):
-                anchor_rules = [anchor_rules]
+            # Use custom truthy values if defined in the metamodel
+            artifacts = metamodel.get('artifacts', {})
+            atype_def = artifacts.get(atype)
+            if atype_def:
+                anchor_rules = atype_def.get('attributes', {}).get(anchor_name, [])
+                if isinstance(anchor_rules, dict):
+                    anchor_rules = [anchor_rules]
 
-            for rule in anchor_rules:
-                type_info = rule.get('type_info', {})
-                if type_info.get('type') == 'boolean' and 'custom_values' in type_info:
-                    truthy = {v.lower() for v in type_info['custom_values']['true']}
-                    break
+                for rule in anchor_rules:
+                    type_info = rule.get('type_info', {})
+                    if type_info.get('type') == 'boolean' and 'custom_values' in type_info:
+                        truthy = {v.lower() for v in type_info['custom_values']['true']}
+                        break
+            _TRUTHY_CACHE[cache_key] = truthy
 
         if isinstance(value, list):
             res = len(value) > 0
