@@ -310,7 +310,6 @@ def compare_text_blocks(base_records, target_records) -> TextBlockDiff:
     Returns:
         TextBlockDiff with added, removed, and modified text fragments.
     """
-    import difflib
     from syntagmax.blocks import TextBlock
 
     MAX_LINES_FOR_SEQUENCE_MATCHER = 200

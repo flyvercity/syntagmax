@@ -5,7 +5,6 @@
 
 import pytest
 import git
-from pathlib import Path
 from click.testing import CliRunner
 from syntagmax.cli import rms
 

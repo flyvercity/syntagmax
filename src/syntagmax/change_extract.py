@@ -38,14 +38,7 @@ def _remap_record(record: InputRecord, worktree_path: Path, original_base: Path)
     # Since record.record_base = original_base / record.dir, and the worktree
     # has the same structure, we need to find the relative path of record_base
     # from the repo working dir.
-    try:
-        # Try to get repo root from the worktree path or original base
-        import git as _git
-        repo = _git.Repo(worktree_path, search_parent_directories=False)
-        repo_root = Path(repo.working_tree_dir).absolute()
-    except Exception:
-        # Fallback: the worktree IS the repo root
-        repo_root = worktree_path.absolute()
+    import git as _git
 
     # Get the original record_base relative to original repo root
     original_record_base = record.record_base.resolve()

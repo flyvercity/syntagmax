@@ -522,7 +522,6 @@ def change_report(
         render_change_report, render_summary_report,
         ChangeReportData, ExtractionError,
     )
-    import difflib
     import git
 
     cfg_path = Path(config_file)
@@ -568,10 +567,6 @@ def change_report(
     generated_at = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')
 
     with worktree_pair(repo, base_hash, target_hash, worktree_base) as (base_path, target_path):
-        # Get changed files
-        actual_base = base_hash if base_hash != 'working' else repo.head.commit.hexsha
-        actual_target = target_hash if target_hash != 'working' else repo.head.commit.hexsha
-
         if base_hash != 'working' and target_hash != 'working':
             changed_files = get_changed_files(repo, base_hash, target_hash)
         else:
@@ -683,21 +678,16 @@ def change_report(
 
         combined = '\n\n---\n\n'.join(md for _, md in reports)
         out_p.write_text(combined, encoding='utf-8')
-        u.pprint(f'[green]Change report generated:[/green]')
+        u.pprint('[green]Change report generated:[/green]')
         u.pprint(f'  {out_p.absolute()}')
     else:
         out_dir = Path(output_path)
         out_dir.mkdir(parents=True, exist_ok=True)
 
-        u.pprint(f'[green]Change report generated:[/green]')
+        u.pprint('[green]Change report generated:[/green]')
         for filename, markdown in reports:
             file_path = out_dir / filename
             file_path.write_text(markdown, encoding='utf-8')
-            # Count changes for summary
-            n_artifacts = 0
-            if 'Artifacts added' in markdown:
-                # Simple count from rendered report
-                pass
             u.pprint(f'  {file_path.absolute()}')
 
 
