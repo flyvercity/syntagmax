@@ -23,6 +23,11 @@ from syntagmax.change_render import (
     _format_text_fragment_entry,
     _group_artifacts_by_file,
     _group_text_fragments_by_file,
+    _format_field_value,
+    _blockquote_content,
+    _build_objects_by_file,
+    _normalize_binary_status,
+    _render_changed_files,
 )
 from syntagmax.cli import rms
 
@@ -46,6 +51,228 @@ class TestFormatLineRange:
 
     def test_large_range(self):
         assert _format_line_range(100, 500) == 'lines 100\u2013500'
+
+
+class TestFormatFieldValue:
+    """Tests for _format_field_value helper."""
+
+    def test_none_returns_dash(self):
+        assert _format_field_value(None) == '—'
+
+    def test_simple_string(self):
+        assert _format_field_value('simple') == 'simple'
+
+    def test_multiline_truncates(self):
+        assert _format_field_value('line1\nline2') == 'line1 …'
+
+    def test_list_joined(self):
+        assert _format_field_value(['a', 'b']) == 'a, b'
+
+    def test_multiline_with_bullets(self):
+        assert _format_field_value('first\n- bullet\n- bullet') == 'first …'
+
+    def test_empty_first_line_skipped(self):
+        assert _format_field_value('\n\nreal') == 'real …'
+
+    def test_pipe_escaped(self):
+        assert _format_field_value('a | b') == 'a \\| b'
+
+    def test_list_with_multiline_element(self):
+        assert _format_field_value(['line1\nline2', 'ok']) == 'line1 …, ok'
+
+    def test_integer_value(self):
+        assert _format_field_value(42) == '42'
+
+    def test_list_with_pipe(self):
+        assert _format_field_value(['a|b', 'c']) == 'a\\|b, c'
+
+
+class TestBlockquoteContent:
+    """Tests for _blockquote_content helper."""
+
+    def test_plain_text(self):
+        result = _blockquote_content('hello\nworld')
+        assert result == ['> hello', '> world']
+
+    def test_header_escaped(self):
+        result = _blockquote_content('# Header')
+        assert result == ['> \\# Header']
+
+    def test_h2_escaped(self):
+        result = _blockquote_content('## Sub')
+        assert result == ['> \\## Sub']
+
+    def test_empty_string(self):
+        result = _blockquote_content('')
+        assert result == []
+
+    def test_whitespace_only(self):
+        result = _blockquote_content('   ')
+        assert result == []
+
+    def test_leading_whitespace_before_hash(self):
+        result = _blockquote_content('  # indented header')
+        assert result == ['>   \\# indented header']
+
+    def test_hash_inside_code_block_not_escaped(self):
+        text = '```python\n# comment\nprint("hi")\n```'
+        result = _blockquote_content(text)
+        assert result == [
+            '> ```python',
+            '> # comment',
+            '> print("hi")',
+            '> ```',
+        ]
+
+    def test_multiple_code_blocks_toggle(self):
+        text = '# Title\n```\n# not escaped\n```\n# Escaped again'
+        result = _blockquote_content(text)
+        assert result == [
+            '> \\# Title',
+            '> ```',
+            '> # not escaped',
+            '> ```',
+            '> \\# Escaped again',
+        ]
+
+    def test_no_escaping_for_non_header_hash(self):
+        result = _blockquote_content('value is #FF0000')
+        assert result == ['> value is #FF0000']
+
+
+class TestNormalizeBinaryStatus:
+    """Tests for _normalize_binary_status helper."""
+
+    def test_added(self):
+        assert _normalize_binary_status('added') == 'Added'
+
+    def test_removed(self):
+        assert _normalize_binary_status('removed') == 'Removed'
+
+    def test_modified_binary(self):
+        assert _normalize_binary_status('modified_binary') == 'Modified'
+
+    def test_modified_metadata(self):
+        assert _normalize_binary_status('modified_metadata') == 'Modified'
+
+    def test_unknown_uses_title(self):
+        assert _normalize_binary_status('something') == 'Something'
+
+
+class TestBuildObjectsByFile:
+    """Tests for _build_objects_by_file helper."""
+
+    def _make_data(self, artifact_diff=None, binary_diff=None):
+        return ChangeReportData(
+            base_revision='abc1234',
+            target_revision='def5678',
+            generated_at='2026-07-15 12:00 UTC',
+            record_name='requirements',
+            artifact_diff=artifact_diff,
+            binary_diff=binary_diff or [],
+        )
+
+    def test_empty(self):
+        data = self._make_data()
+        result = _build_objects_by_file(data)
+        assert result == {}
+
+    def test_artifact_changes(self):
+        class FakeBlock:
+            class artifact:
+                aid = 'X'
+                atype = 'REQ'
+                fields = {}
+                pids = []
+            raw_text = ''
+
+        diff = ArtifactDiff(
+            added=[('REQ-003', 'REQ', FakeBlock(), 'REQ/REQ-003.md')],
+            removed=[('REQ-002', 'REQ', FakeBlock(), 'REQ/REQ-002.md')],
+            modified=[
+                ArtifactChange(
+                    aid='REQ-001',
+                    atype='REQ',
+                    changed_fields={},
+                    content_changed=True,
+                    base_raw_text='old',
+                    target_raw_text='new',
+                    file_path='REQ/REQ-001.md',
+                ),
+            ],
+        )
+        data = self._make_data(artifact_diff=diff)
+        result = _build_objects_by_file(data)
+
+        assert ('REQ-003', 'REQ', 'Added') in result['REQ/REQ-003.md']
+        assert ('REQ-002', 'REQ', 'Removed') in result['REQ/REQ-002.md']
+        assert ('REQ-001', 'REQ', 'Modified') in result['REQ/REQ-001.md']
+
+
+class TestRenderChangedFiles:
+    """Tests for _render_changed_files as a table."""
+
+    def _make_data(self, file_diffs, artifact_diff=None, binary_diff=None):
+        return ChangeReportData(
+            base_revision='abc1234',
+            target_revision='def5678',
+            generated_at='2026-07-15 12:00 UTC',
+            record_name='requirements',
+            file_diffs=file_diffs,
+            artifact_diff=artifact_diff,
+            binary_diff=binary_diff or [],
+        )
+
+    def test_empty_file_diffs(self):
+        data = self._make_data(file_diffs=[])
+        result = _render_changed_files(data)
+        assert result == []
+
+    def test_table_header_present(self):
+        data = self._make_data(file_diffs=[
+            FileDiff(path='REQ/file.md', status=FileStatus.MODIFIED),
+        ])
+        result = _render_changed_files(data)
+        output = '\n'.join(result)
+        assert '| Filename | Status | Objects changed |' in output
+
+    def test_file_with_artifacts(self):
+        class FakeBlock:
+            class artifact:
+                aid = 'X'
+                atype = 'REQ'
+                fields = {}
+                pids = []
+            raw_text = ''
+
+        diff = ArtifactDiff(
+            added=[('REQ-001', 'REQ', FakeBlock(), 'REQ/file.md')],
+            removed=[],
+            modified=[],
+        )
+        data = self._make_data(
+            file_diffs=[FileDiff(path='REQ/file.md', status=FileStatus.ADDED)],
+            artifact_diff=diff,
+        )
+        result = _render_changed_files(data)
+        output = '\n'.join(result)
+        assert 'REQ-001 (Added)' in output
+
+    def test_file_without_artifacts(self):
+        data = self._make_data(file_diffs=[
+            FileDiff(path='REQ/other.md', status=FileStatus.MODIFIED),
+        ])
+        result = _render_changed_files(data)
+        output = '\n'.join(result)
+        assert '| REQ/other.md | Modified | — |' in output
+
+    def test_renamed_file(self):
+        data = self._make_data(file_diffs=[
+            FileDiff(path='REQ/new.md', status=FileStatus.RENAMED, old_path='REQ/old.md'),
+        ])
+        result = _render_changed_files(data)
+        output = '\n'.join(result)
+        assert 'Renamed (from REQ/old.md)' in output
 
 
 class TestFormatTextFragmentEntry:

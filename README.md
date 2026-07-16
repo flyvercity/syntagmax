@@ -470,14 +470,14 @@ syntagmax change report --summary --base v1.2.0 --target v1.3.0
 # Change Report
 ## Repository Information
 ## Summary
-## Changed Files
+## Changed Files (table: Filename | Status | Objects changed)
 ## Detailed Changes
 ```
 
 The report includes:
 - Summary statistics (files changed, artifacts added/modified/removed)
-- Per-file change status
-- For each modified artifact: text changes and attribute change tables
+- Changed files as a table listing affected object IDs and their statuses
+- For each modified artifact: text changes rendered as blockquoted markdown and attribute change tables
 - For sidecar-managed binary artifacts (images, diagrams): SHA-256 hash comparison, file size, and pixel dimensions (requires optional `Pillow` dependency)
 - Fallback plain-text diffs when artifact extraction fails
 

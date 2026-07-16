@@ -143,21 +143,78 @@ def _render_summary(summary: dict[str, int]) -> list[str]:
     return lines
 
 
+def _normalize_binary_status(status: str) -> str:
+    """Normalise binary artefact status strings to title-case labels."""
+    mapping = {
+        'added': 'Added',
+        'removed': 'Removed',
+        'modified_binary': 'Modified',
+        'modified_metadata': 'Modified',
+    }
+    return mapping.get(status, status.title())
+
+
+def _build_objects_by_file(data: ChangeReportData) -> dict[str, list[tuple[str, str, str]]]:
+    """Build a mapping of file path → list of (aid, atype, status) for all artefacts.
+
+    Combines both regular artefact changes and binary artefact changes.
+    This is separate from _group_artifacts_by_file to avoid affecting
+    render_summary_report (R4 isolation).
+    """
+    result: dict[str, list[tuple[str, str, str]]] = {}
+
+    if data.artifact_diff:
+        for aid, atype, _block, file_path in data.artifact_diff.added:
+            result.setdefault(file_path, []).append((aid, atype, 'Added'))
+
+        for change in data.artifact_diff.modified:
+            result.setdefault(change.file_path, []).append(
+                (change.aid, change.atype, 'Modified')
+            )
+
+        for aid, atype, _block, file_path in data.artifact_diff.removed:
+            result.setdefault(file_path, []).append((aid, atype, 'Removed'))
+
+    if data.binary_diff:
+        for bc in data.binary_diff:
+            status_label = _normalize_binary_status(bc.status)
+            result.setdefault(bc.file_path, []).append((bc.aid, bc.atype, status_label))
+
+    return result
+
+
 def _render_changed_files(data: ChangeReportData) -> list[str]:
-    """Render the Changed Files overview section."""
+    """Render the Changed Files overview section as a table."""
     if not data.file_diffs:
         return []
 
-    lines = ['## Changed Files', '']
+    objects_by_file = _build_objects_by_file(data)
+
+    lines = [
+        '## Changed Files',
+        '',
+        '| Filename | Status | Objects changed |',
+        '|----------|--------|-----------------|',
+    ]
 
     for fd in data.file_diffs:
-        lines.append(f'### {fd.path}')
-        lines.append('')
-        lines.append(f'- **Status:** {fd.status.value}')
         if fd.status == FileStatus.RENAMED and fd.old_path:
-            lines.append(f'- **Renamed from:** {fd.old_path}')
-        lines.append('')
+            status_str = f'Renamed (from {fd.old_path})'
+        else:
+            status_str = fd.status.value
 
+        # Look up artefacts for this file using suffix matching
+        file_objects = _match_file_path(fd.path, objects_by_file)
+        if file_objects:
+            objects_str = ', '.join(
+                f'{aid} ({status})' for aid, _atype, status in file_objects
+            )
+        else:
+            objects_str = '—'
+
+        lines.append(f'| {fd.path} | {status_str} | {objects_str} |')
+
+    lines.append('')
     return lines
 
 
@@ -174,11 +231,9 @@ def _render_artifact_added(aid: str, atype: str, block, file_path: str) -> list[
         lines.extend([
             '##### Text',
             '',
-            '```text',
-            contents,
-            '```',
-            '',
         ])
+        lines.extend(_blockquote_content(contents))
+        lines.append('')
     # Show attributes
     attrs = {k: v for k, v in block.artifact.fields.items() if k != 'contents'}
     if attrs:
@@ -207,11 +262,9 @@ def _render_artifact_removed(aid: str, atype: str, block, file_path: str) -> lis
         lines.extend([
             '##### Text',
             '',
-            '```text',
-            contents,
-            '```',
-            '',
         ])
+        lines.extend(_blockquote_content(contents))
+        lines.append('')
     return lines
 
 
@@ -231,17 +284,15 @@ def _render_artifact_modified(change: ArtifactChange) -> list[str]:
             '',
             '###### Previous',
             '',
-            '```text',
-            change.base_raw_text.strip(),
-            '```',
-            '',
+        ])
+        lines.extend(_blockquote_content(change.base_raw_text.strip()))
+        lines.append('')
+        lines.extend([
             '###### Current',
             '',
-            '```text',
-            change.target_raw_text.strip(),
-            '```',
-            '',
         ])
+        lines.extend(_blockquote_content(change.target_raw_text.strip()))
+        lines.append('')
 
     # Attribute changes (exclude _parents for separate handling)
     field_changes = {k: v for k, v in change.changed_fields.items() if k != '_parents'}
@@ -289,25 +340,23 @@ def _render_text_fragment(change: TextFragmentChange) -> list[str]:
 
     if change.status == FileStatus.ADDED:
         if change.new_content:
-            lines.extend(['```text', change.new_content.strip(), '```', ''])
+            lines.extend(_blockquote_content(change.new_content.strip()))
+            lines.append('')
     elif change.status == FileStatus.REMOVED:
         if change.old_content:
-            lines.extend([
-                '##### Previous', '',
-                '```text', change.old_content.strip(), '```', '',
-            ])
+            lines.extend(['##### Previous', ''])
+            lines.extend(_blockquote_content(change.old_content.strip()))
+            lines.append('')
     else:
         # Modified
         if change.old_content:
-            lines.extend([
-                '##### Previous', '',
-                '```text', change.old_content.strip(), '```', '',
-            ])
+            lines.extend(['##### Previous', ''])
+            lines.extend(_blockquote_content(change.old_content.strip()))
+            lines.append('')
         if change.new_content:
-            lines.extend([
-                '##### Current', '',
-                '```text', change.new_content.strip(), '```', '',
-            ])
+            lines.extend(['##### Current', ''])
+            lines.extend(_blockquote_content(change.new_content.strip()))
+            lines.append('')
 
     return lines
 
@@ -455,13 +504,47 @@ def _render_detailed_changes(data: ChangeReportData) -> list[str]:
     return lines
 
 
+def _blockquote_content(text: str) -> list[str]:
+    """Convert text to blockquoted lines with headers escaped.
+
+    - Each line is prefixed with '> '.
+    - Lines starting with '#' outside of fenced code blocks are escaped:
+      '# Foo' → '\\# Foo'.
+    - Lines inside fenced code blocks (``` markers) are left untouched.
+    """
+    if not text or not text.strip():
+        return []
+    lines = []
+    in_code_block = False
+    for line in text.splitlines():
+        stripped = line.strip()
+        if stripped.startswith('```'):
+            in_code_block = not in_code_block
+
+        # Only escape headers outside code blocks
+        if not in_code_block and line.lstrip().startswith('#'):
+            idx = len(line) - len(line.lstrip())
+            line = line[:idx] + '\\' + line[idx:]
+
+        lines.append(f'> {line}')
+    return lines
+
+
 def _format_field_value(val) -> str:
-    """Format a field value for display in a table cell."""
+    """Format a field value for display in a table cell, handling newlines and pipes."""
     if val is None:
         return '—'
+
+    def _format_single(v) -> str:
+        s = str(v)
+        if '\n' in s:
+            first_line = next((ln for ln in s.splitlines() if ln.strip()), s.splitlines()[0])
+            s = f'{first_line.strip()} …'
+        return s.replace('|', '\\|')
+
     if isinstance(val, list):
-        return ', '.join(str(v) for v in val)
-    return str(val)
+        return ', '.join(_format_single(v) for v in val)
+    return _format_single(val)
 
 
 def render_change_report(data: ChangeReportData) -> str:
