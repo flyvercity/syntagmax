@@ -656,6 +656,75 @@ class MarkdownExtractor(Extractor):
             result.append(TextBlock(content=after, marker=None, source_offset=offset))
         return result if result else [TextBlock(content=content, marker=None, source_offset=base_offset)]
 
+    def _split_headings(self, blocks: list[Block]) -> list[Block]:
+        """Split ATX headings out of unmarked TextBlocks as separate heading blocks.
+
+        Headings are identified by CommonMark rules: at most 3 leading spaces
+        followed by 1-6 '#' characters and a space. Headings inside fenced code
+        blocks are not split. Whitespace-only text blocks are preserved.
+        """
+        heading_re = re.compile(r'^([ ]{0,3}#{1,6}\s)')
+        result: list[Block] = []
+
+        for block in blocks:
+            if not isinstance(block, TextBlock) or block.marker is not None:
+                result.append(block)
+                continue
+
+            lines = block.content.splitlines(keepends=True)
+            base_offset = block.source_offset
+            accumulator: list[str] = []
+            current_offset = base_offset
+            acc_offset = base_offset
+            in_code_block = False
+
+            for line in lines:
+                stripped = line.lstrip()
+
+                # Track fenced code block state
+                if stripped.startswith('```'):
+                    in_code_block = not in_code_block
+                    if not accumulator and current_offset is not None:
+                        acc_offset = current_offset
+                    accumulator.append(line)
+                    if current_offset is not None:
+                        current_offset += len(line)
+                    continue
+
+                if in_code_block:
+                    if not accumulator and current_offset is not None:
+                        acc_offset = current_offset
+                    accumulator.append(line)
+                    if current_offset is not None:
+                        current_offset += len(line)
+                    continue
+
+                if heading_re.match(line):
+                    # Flush preceding text (preserve whitespace-only blocks)
+                    if accumulator:
+                        text = ''.join(accumulator)
+                        result.append(TextBlock(content=text, source_offset=acc_offset))
+                        accumulator = []
+
+                    # Emit heading block
+                    result.append(TextBlock(content=line, marker='HEADING', source_offset=current_offset))
+                    if current_offset is not None:
+                        current_offset += len(line)
+                    acc_offset = current_offset
+                else:
+                    if not accumulator and current_offset is not None:
+                        acc_offset = current_offset
+                    accumulator.append(line)
+                    if current_offset is not None:
+                        current_offset += len(line)
+
+            # Flush remaining text
+            if accumulator:
+                text = ''.join(accumulator)
+                result.append(TextBlock(content=text, source_offset=acc_offset))
+
+        return result
+
     def _find_segment_boundary(
         self,
         markdown: str,
@@ -932,6 +1001,9 @@ class MarkdownExtractor(Extractor):
                     split_blocks.append(block)
             blocks = split_blocks
 
+        # Post-process: split headings into separate TextBlocks
+        blocks = self._split_headings(blocks)
+
         return blocks
 
     def extract_blocks_from_file(self, filepath: Path) -> list[Block]:
@@ -945,11 +1017,45 @@ class MarkdownExtractor(Extractor):
         if not exclude:
             return blocks
 
+        # Determine headings exclusion mode (if configured)
+        headings_mode: str | None = None
+        for e in exclude:
+            if e.name == 'headings':
+                headings_mode = e.mode
+                break
+
         filtered: list[Block] = []
         is_file_start = True
 
         for block in blocks:
             if isinstance(block, TextBlock):
+                # Handle pre-split HEADING blocks
+                if block.marker == 'HEADING' and headings_mode:
+                    is_file_start = False
+                    if headings_mode in ('string', 'string-on-start'):
+                        # Drop the heading block entirely
+                        continue
+                    elif headings_mode == 'only':
+                        # Strip # prefix, convert to plain text block
+                        heading_only_re = re.compile(r'^(\s*)#{1,6}\s+(.*)$')
+                        m = heading_only_re.match(block.content.rstrip('\r\n'))
+                        if m:
+                            ending = block.content[len(block.content.rstrip('\r\n')):]
+                            content = m.group(1) + m.group(2) + ending
+                        else:
+                            content = block.content
+                        if content and content.strip():
+                            filtered.append(
+                                TextBlock(
+                                    content=content,
+                                    marker=None,
+                                    id=block.id,
+                                    explicit_id=block.explicit_id,
+                                    source_offset=block.source_offset,
+                                )
+                            )
+                    continue
+
                 content = self._filter_text_content(block.content, is_file_start, exclude)
                 is_file_start = False
                 if content and content.strip():

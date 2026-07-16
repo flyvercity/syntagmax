@@ -334,7 +334,8 @@ def _render_artifact_modified(change: ArtifactChange) -> list[str]:
 
 def _render_text_fragment(change: TextFragmentChange) -> list[str]:
     """Render a single text fragment change."""
-    lines = [f'##### {_("Text fragment")} ({_(change.status.value)})', '']
+    label = _('Heading') if change.marker == 'HEADING' else _('Text fragment')
+    lines = [f'##### {label} ({_(change.status.value)})', '']
 
     if change.old_lines:
         lines.append(f'- **{_("Old lines")}:** {change.old_lines[0]}-{change.old_lines[1]}')

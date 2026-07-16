@@ -221,6 +221,9 @@ msgstr "Изменен (метаданные)"
 msgid "Text fragment"
 msgstr "Текстовый фрагмент"
 
+msgid "Heading"
+msgstr "Заголовок"
+
 msgid "Old lines"
 msgstr "Старые строки"
 

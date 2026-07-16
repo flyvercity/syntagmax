@@ -220,6 +220,9 @@ msgstr "Modified (metadata)"
 msgid "Text fragment"
 msgstr "Text fragment"
 
+msgid "Heading"
+msgstr "Heading"
+
 msgid "Old lines"
 msgstr "Old lines"
 

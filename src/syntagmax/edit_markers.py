@@ -148,6 +148,10 @@ def renumber_markers(
                 if block.marker is None:
                     continue
 
+                # Skip internal markers not configured by the user
+                if block.marker not in record.markers:
+                    continue
+
                 # Apply marker filter
                 if marker_filter and block.marker != marker_filter:
                     continue

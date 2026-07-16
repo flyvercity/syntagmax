@@ -70,7 +70,7 @@ def build_block_tree(config: Config) -> tuple[BlockTree, list[str]]:
     for input_block in tree.inputs:
         for file_record in input_block.files:
             for block in file_record.blocks:
-                if isinstance(block, TextBlock) and block.marker and block.id is None:
+                if isinstance(block, TextBlock) and block.marker and block.marker != 'HEADING' and block.id is None:
                     block.id = generate_block_id(block.marker, block.content, file_record.path)
 
     # Validate uniqueness of explicit block IDs within each marker type
@@ -345,6 +345,8 @@ def render_block(block: Block, pub_config: PublishConfig, context: RenderContext
 
     if isinstance(block, TextBlock):
         marker = block.marker
+        if marker == 'HEADING':
+            marker = None  # Treat heading blocks as unmarked text
         if marker is not None:
             # Look up marker case-insensitively
             render_sections = None
