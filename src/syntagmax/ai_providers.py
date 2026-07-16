@@ -314,7 +314,7 @@ class AnthropicProvider(AIProvider):
         resp = None
         try:
             lg.debug(f'Calling Anthropic at {self._redact_sensitive_info(url)}')
-            lg.debug(f'Headers: {self._redact_sensitive_info(headers)}')
+            lg.debug('Headers: ***REDACTED***')
             lg.debug(f'Body: {json.dumps(self._redact_sensitive_info(body))}')
             resp = requests.post(
                 url,
@@ -421,7 +421,7 @@ class GeminiProvider(AIProvider):
         resp = None
         try:
             lg.debug(f'Calling Gemini at {self._redact_sensitive_info(url)}')
-            lg.debug(f'Headers: {self._redact_sensitive_info({"Content-Type": "application/json", "x-goog-api-key": api_key})}')
+            lg.debug('Headers: ***REDACTED***')
             lg.debug(f'Body: {json.dumps(self._redact_sensitive_info(body))}')
             resp = requests.post(
                 url,
@@ -494,7 +494,7 @@ class BedrockProvider(AIProvider):
         resp = None
         try:
             lg.debug(f'Calling Bedrock via requests at {self._redact_sensitive_info(url)}')
-            lg.debug(f'Headers: {self._redact_sensitive_info(headers)}')
+            lg.debug('Headers: ***REDACTED***')
             lg.debug(f'Body: {json.dumps(self._redact_sensitive_info(body_dict))}')
             resp = requests.post(url, json=body_dict, headers=headers, timeout=timeout_s)
             resp.raise_for_status()
