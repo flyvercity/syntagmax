@@ -143,7 +143,6 @@ atype = "SRS"
     assert config_r2.start_level == 2
 
 
-
 class TestDocxTemplate:
     def test_docx_template_absent(self):
         config = PublishConfig()
@@ -332,14 +331,14 @@ sys-reqs = "templates/sys.dotm"
             load_publish_config(Path('publish.json'), tmp_path)
 
     def test_load_publish_config_case_insensitive_extension(self, tmp_path):
-        toml_content = "start_level = 4\n"
+        toml_content = 'start_level = 4\n'
         p = tmp_path / 'publish.TOML'
         p.write_text(toml_content, encoding='utf-8')
         config = load_publish_config(Path('publish.TOML'), tmp_path)
         assert config.start_level == 4
 
     def test_load_publish_config_yml_extension(self, tmp_path):
-        yaml_content = "start_level: 5\n"
+        yaml_content = 'start_level: 5\n'
         p = tmp_path / 'publish.yml'
         p.write_text(yaml_content, encoding='utf-8')
         config = load_publish_config(Path('publish.yml'), tmp_path)
@@ -357,7 +356,7 @@ sys-reqs = "templates/sys.dotm"
 
     def test_load_publish_config_full_path(self, tmp_path):
         """Test that load_publish_config works with absolute paths."""
-        toml_content = "start_level = 7\n"
+        toml_content = 'start_level = 7\n'
         p = tmp_path / 'publish.toml'
         p.write_text(toml_content, encoding='utf-8')
         config = load_publish_config(p, tmp_path)
@@ -599,7 +598,7 @@ publish = "publish.yaml"
         config = Config(params=params, config_filename=cfg_path)
         records = config.input_records()
 
-        with pytest.raises(FatalError, match="Publish config file not found"):
+        with pytest.raises(FatalError, match='Publish config file not found'):
             config.load_publish_config(records[0])
 
     def test_base_dir_publish_not_auto_discovered(self, tmp_path):
@@ -705,14 +704,13 @@ atype = "SRS"
 
     def test_load_publish_config_explicit_nonexistent_raises(self, tmp_path):
         """load_publish_config with explicit=True raises FatalError for missing file."""
-        with pytest.raises(FatalError, match="Publish config file not found"):
+        with pytest.raises(FatalError, match='Publish config file not found'):
             load_publish_config(Path('nonexistent.yaml'), tmp_path, explicit=True)
 
     def test_load_publish_config_non_explicit_nonexistent_returns_defaults(self, tmp_path):
         """load_publish_config without explicit=True returns defaults for missing file."""
         config = load_publish_config(Path('nonexistent.yaml'), tmp_path)
         assert config.start_level == 1
-
 
 
 class TestGlobalPublishConfig:
@@ -854,7 +852,7 @@ atype = "SRS"
         config = Config(params=params, config_filename=cfg_path)
         records = config.input_records()
 
-        with pytest.raises(FatalError, match="Publish config file not found"):
+        with pytest.raises(FatalError, match='Publish config file not found'):
             config.load_publish_config(records[0])
 
     def test_global_publish_not_set_falls_through(self, tmp_path):
@@ -927,21 +925,21 @@ class TestTableSpacer:
             PublishConfig.model_validate({'table_spacer': 'abc'})
 
     def test_table_spacer_from_yaml(self, tmp_path):
-        yaml_content = "table_spacer: 4\n"
+        yaml_content = 'table_spacer: 4\n'
         p = tmp_path / 'publish.yaml'
         p.write_text(yaml_content, encoding='utf-8')
         config = load_publish_config(Path('publish.yaml'), tmp_path)
         assert config.table_spacer == 4
 
     def test_table_spacer_kebab_from_yaml(self, tmp_path):
-        yaml_content = "table-spacer: 3\n"
+        yaml_content = 'table-spacer: 3\n'
         p = tmp_path / 'publish.yaml'
         p.write_text(yaml_content, encoding='utf-8')
         config = load_publish_config(Path('publish.yaml'), tmp_path)
         assert config.table_spacer == 3
 
     def test_table_spacer_from_toml(self, tmp_path):
-        toml_content = "table_spacer = 5\n"
+        toml_content = 'table_spacer = 5\n'
         p = tmp_path / 'publish.toml'
         p.write_text(toml_content, encoding='utf-8')
         config = load_publish_config(Path('publish.toml'), tmp_path)
