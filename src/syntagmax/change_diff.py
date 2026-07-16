@@ -79,9 +79,7 @@ class TextBlockDiff:
     modified: list[TextFragmentChange]
 
 
-def get_changed_files(
-    repo: git.Repo, base_hash: str, target_hash: str
-) -> list[FileDiff]:
+def get_changed_files(repo: git.Repo, base_hash: str, target_hash: str) -> list[FileDiff]:
     """Compute file-level diff between two commits.
 
     Args:
@@ -108,11 +106,13 @@ def get_changed_files(
         results.append(FileDiff(path=diff.b_path, status=FileStatus.MODIFIED))
 
     for diff in diff_index.iter_change_type('R'):
-        results.append(FileDiff(
-            path=diff.b_path,
-            status=FileStatus.RENAMED,
-            old_path=diff.a_path,
-        ))
+        results.append(
+            FileDiff(
+                path=diff.b_path,
+                status=FileStatus.RENAMED,
+                old_path=diff.a_path,
+            )
+        )
 
     lg.debug('Found %d changed files between %s and %s', len(results), base_hash, target_hash)
     return results
@@ -241,19 +241,23 @@ def compare_artifacts(base_records, target_records) -> ArtifactDiff:
             changed_fields['_parents'] = (base_pids, target_pids)
 
         if changed_fields or content_changed:
-            modified.append(ArtifactChange(
-                aid=aid,
-                atype=base_block.artifact.atype,
-                changed_fields=changed_fields,
-                content_changed=content_changed,
-                base_raw_text=base_contents,
-                target_raw_text=target_contents,
-                file_path=target_path,
-            ))
+            modified.append(
+                ArtifactChange(
+                    aid=aid,
+                    atype=base_block.artifact.atype,
+                    changed_fields=changed_fields,
+                    content_changed=content_changed,
+                    base_raw_text=base_contents,
+                    target_raw_text=target_contents,
+                    file_path=target_path,
+                )
+            )
 
     lg.debug(
         'Artifact comparison: %d added, %d removed, %d modified',
-        len(added), len(removed), len(modified),
+        len(added),
+        len(removed),
+        len(modified),
     )
     return ArtifactDiff(added=added, removed=removed, modified=modified)
 
@@ -342,15 +346,17 @@ def compare_text_blocks(base_records, target_records) -> TextBlockDiff:
             for i, block in enumerate(target_blocks):
                 line_start = _estimate_line_number(block, target_blocks, i)
                 line_count = block.content.count('\n') + 1
-                added.append(TextFragmentChange(
-                    status=FileStatus.ADDED,
-                    file_path=file_path,
-                    old_content=None,
-                    new_content=block.content,
-                    old_lines=None,
-                    new_lines=(line_start, line_start + line_count - 1),
-                    marker=block.marker,
-                ))
+                added.append(
+                    TextFragmentChange(
+                        status=FileStatus.ADDED,
+                        file_path=file_path,
+                        old_content=None,
+                        new_content=block.content,
+                        old_lines=None,
+                        new_lines=(line_start, line_start + line_count - 1),
+                        marker=block.marker,
+                    )
+                )
             continue
 
         if base_blocks and not target_blocks:
@@ -358,34 +364,46 @@ def compare_text_blocks(base_records, target_records) -> TextBlockDiff:
             for i, block in enumerate(base_blocks):
                 line_start = _estimate_line_number(block, base_blocks, i)
                 line_count = block.content.count('\n') + 1
-                removed.append(TextFragmentChange(
-                    status=FileStatus.REMOVED,
-                    file_path=file_path,
-                    old_content=block.content,
-                    new_content=None,
-                    old_lines=(line_start, line_start + line_count - 1),
-                    new_lines=None,
-                    marker=block.marker,
-                ))
+                removed.append(
+                    TextFragmentChange(
+                        status=FileStatus.REMOVED,
+                        file_path=file_path,
+                        old_content=block.content,
+                        new_content=None,
+                        old_lines=(line_start, line_start + line_count - 1),
+                        new_lines=None,
+                        marker=block.marker,
+                    )
+                )
             continue
 
         # Both have blocks — match by ID if available, otherwise by position
         _match_text_blocks(
-            base_blocks, target_blocks, file_path,
-            added, removed, modified,
+            base_blocks,
+            target_blocks,
+            file_path,
+            added,
+            removed,
+            modified,
             MAX_LINES_FOR_SEQUENCE_MATCHER,
         )
 
     lg.debug(
         'Text block comparison: %d added, %d removed, %d modified',
-        len(added), len(removed), len(modified),
+        len(added),
+        len(removed),
+        len(modified),
     )
     return TextBlockDiff(added=added, removed=removed, modified=modified)
 
 
 def _match_text_blocks(
-    base_blocks, target_blocks, file_path: str,
-    added: list, removed: list, modified: list,
+    base_blocks,
+    target_blocks,
+    file_path: str,
+    added: list,
+    removed: list,
+    modified: list,
     max_lines: int,
 ):
     """Match text blocks between base and target within a single file."""
@@ -426,52 +444,54 @@ def _match_text_blocks(
                 target_line = _estimate_line_number(target_block, target_blocks, target_idx)
                 base_count = base_block.content.count('\n') + 1
                 target_count = target_block.content.count('\n') + 1
-                modified.append(TextFragmentChange(
-                    status=FileStatus.MODIFIED,
-                    file_path=file_path,
-                    old_content=base_block.content,
-                    new_content=target_block.content,
-                    old_lines=(base_line, base_line + base_count - 1),
-                    new_lines=(target_line, target_line + target_count - 1),
-                    marker=base_block.marker,
-                ))
+                modified.append(
+                    TextFragmentChange(
+                        status=FileStatus.MODIFIED,
+                        file_path=file_path,
+                        old_content=base_block.content,
+                        new_content=target_block.content,
+                        old_lines=(base_line, base_line + base_count - 1),
+                        new_lines=(target_line, target_line + target_count - 1),
+                        marker=base_block.marker,
+                    )
+                )
 
     # ID-only additions and removals
     for block_id, (block, idx) in base_by_id.items():
         if block_id not in target_by_id:
             line_start = _estimate_line_number(block, base_blocks, idx)
             line_count = block.content.count('\n') + 1
-            removed.append(TextFragmentChange(
-                status=FileStatus.REMOVED,
-                file_path=file_path,
-                old_content=block.content,
-                new_content=None,
-                old_lines=(line_start, line_start + line_count - 1),
-                new_lines=None,
-                marker=block.marker,
-            ))
+            removed.append(
+                TextFragmentChange(
+                    status=FileStatus.REMOVED,
+                    file_path=file_path,
+                    old_content=block.content,
+                    new_content=None,
+                    old_lines=(line_start, line_start + line_count - 1),
+                    new_lines=None,
+                    marker=block.marker,
+                )
+            )
 
     for block_id, (block, idx) in target_by_id.items():
         if block_id not in base_by_id:
             line_start = _estimate_line_number(block, target_blocks, idx)
             line_count = block.content.count('\n') + 1
-            added.append(TextFragmentChange(
-                status=FileStatus.ADDED,
-                file_path=file_path,
-                old_content=None,
-                new_content=block.content,
-                old_lines=None,
-                new_lines=(line_start, line_start + line_count - 1),
-                marker=block.marker,
-            ))
+            added.append(
+                TextFragmentChange(
+                    status=FileStatus.ADDED,
+                    file_path=file_path,
+                    old_content=None,
+                    new_content=block.content,
+                    old_lines=None,
+                    new_lines=(line_start, line_start + line_count - 1),
+                    marker=block.marker,
+                )
+            )
 
     # For remaining unmatched blocks, use SequenceMatcher on content
-    remaining_base = [
-        (b, i) for b, i in base_unmatched if i not in matched_base_indices
-    ]
-    remaining_target = [
-        (b, i) for b, i in target_unmatched if i not in matched_target_indices
-    ]
+    remaining_base = [(b, i) for b, i in base_unmatched if i not in matched_base_indices]
+    remaining_target = [(b, i) for b, i in target_unmatched if i not in matched_target_indices]
 
     if not remaining_base and not remaining_target:
         return
@@ -498,20 +518,55 @@ def _match_text_blocks(
                     target_line = _estimate_line_number(target_block, target_blocks, target_idx)
                     base_count = base_block.content.count('\n') + 1
                     target_count = target_block.content.count('\n') + 1
-                    modified.append(TextFragmentChange(
-                        status=FileStatus.MODIFIED,
-                        file_path=file_path,
-                        old_content=base_block.content,
-                        new_content=target_block.content,
-                        old_lines=(base_line, base_line + base_count - 1),
-                        new_lines=(target_line, target_line + target_count - 1),
-                        marker=base_block.marker,
-                    ))
+                    modified.append(
+                        TextFragmentChange(
+                            status=FileStatus.MODIFIED,
+                            file_path=file_path,
+                            old_content=base_block.content,
+                            new_content=target_block.content,
+                            old_lines=(base_line, base_line + base_count - 1),
+                            new_lines=(target_line, target_line + target_count - 1),
+                            marker=base_block.marker,
+                        )
+                    )
                 else:
                     # Extra base blocks — removed
                     line_start = _estimate_line_number(base_block, base_blocks, base_idx)
                     line_count = base_block.content.count('\n') + 1
-                    removed.append(TextFragmentChange(
+                    removed.append(
+                        TextFragmentChange(
+                            status=FileStatus.REMOVED,
+                            file_path=file_path,
+                            old_content=base_block.content,
+                            new_content=None,
+                            old_lines=(line_start, line_start + line_count - 1),
+                            new_lines=None,
+                            marker=base_block.marker,
+                        )
+                    )
+            # Extra target blocks — added
+            for ti in range(j1 + (i2 - i1), j2):
+                target_block, target_idx = remaining_target[ti]
+                line_start = _estimate_line_number(target_block, target_blocks, target_idx)
+                line_count = target_block.content.count('\n') + 1
+                added.append(
+                    TextFragmentChange(
+                        status=FileStatus.ADDED,
+                        file_path=file_path,
+                        old_content=None,
+                        new_content=target_block.content,
+                        old_lines=None,
+                        new_lines=(line_start, line_start + line_count - 1),
+                        marker=target_block.marker,
+                    )
+                )
+        elif tag == 'delete':
+            for bi in range(i1, i2):
+                base_block, base_idx = remaining_base[bi]
+                line_start = _estimate_line_number(base_block, base_blocks, base_idx)
+                line_count = base_block.content.count('\n') + 1
+                removed.append(
+                    TextFragmentChange(
                         status=FileStatus.REMOVED,
                         file_path=file_path,
                         old_content=base_block.content,
@@ -519,49 +574,24 @@ def _match_text_blocks(
                         old_lines=(line_start, line_start + line_count - 1),
                         new_lines=None,
                         marker=base_block.marker,
-                    ))
-            # Extra target blocks — added
-            for ti in range(j1 + (i2 - i1), j2):
-                target_block, target_idx = remaining_target[ti]
-                line_start = _estimate_line_number(target_block, target_blocks, target_idx)
-                line_count = target_block.content.count('\n') + 1
-                added.append(TextFragmentChange(
-                    status=FileStatus.ADDED,
-                    file_path=file_path,
-                    old_content=None,
-                    new_content=target_block.content,
-                    old_lines=None,
-                    new_lines=(line_start, line_start + line_count - 1),
-                    marker=target_block.marker,
-                ))
-        elif tag == 'delete':
-            for bi in range(i1, i2):
-                base_block, base_idx = remaining_base[bi]
-                line_start = _estimate_line_number(base_block, base_blocks, base_idx)
-                line_count = base_block.content.count('\n') + 1
-                removed.append(TextFragmentChange(
-                    status=FileStatus.REMOVED,
-                    file_path=file_path,
-                    old_content=base_block.content,
-                    new_content=None,
-                    old_lines=(line_start, line_start + line_count - 1),
-                    new_lines=None,
-                    marker=base_block.marker,
-                ))
+                    )
+                )
         elif tag == 'insert':
             for ti in range(j1, j2):
                 target_block, target_idx = remaining_target[ti]
                 line_start = _estimate_line_number(target_block, target_blocks, target_idx)
                 line_count = target_block.content.count('\n') + 1
-                added.append(TextFragmentChange(
-                    status=FileStatus.ADDED,
-                    file_path=file_path,
-                    old_content=None,
-                    new_content=target_block.content,
-                    old_lines=None,
-                    new_lines=(line_start, line_start + line_count - 1),
-                    marker=target_block.marker,
-                ))
+                added.append(
+                    TextFragmentChange(
+                        status=FileStatus.ADDED,
+                        file_path=file_path,
+                        old_content=None,
+                        new_content=target_block.content,
+                        old_lines=None,
+                        new_lines=(line_start, line_start + line_count - 1),
+                        marker=target_block.marker,
+                    )
+                )
 
 
 def _estimate_line_number(block, all_blocks, index: int) -> int:
@@ -579,7 +609,6 @@ def _estimate_line_number(block, all_blocks, index: int) -> int:
         elif hasattr(prev_block, 'raw_text') and prev_block.raw_text:
             line += prev_block.raw_text.count('\n') + 1
     return line
-
 
 
 # ---------------------------------------------------------------------------
@@ -678,17 +707,19 @@ def compare_sidecar_artifacts(
             primary = target_path / base_dir_offset / loc_file
             target_hash = compute_file_hash(primary)
             target_props = extract_image_properties(primary)
-            results.append(BinaryArtifactChange(
-                aid=aid,
-                atype=block.artifact.atype,
-                file_path=path,
-                binary_changed=True,
-                hash_base=None,
-                hash_target=target_hash,
-                base_properties=None,
-                target_properties=target_props,
-                field_changes={},
-            ))
+            results.append(
+                BinaryArtifactChange(
+                    aid=aid,
+                    atype=block.artifact.atype,
+                    file_path=path,
+                    binary_changed=True,
+                    hash_base=None,
+                    hash_target=target_hash,
+                    base_properties=None,
+                    target_properties=target_props,
+                    field_changes={},
+                )
+            )
 
     # Removed: in base but not in target
     for aid in base_map:
@@ -698,17 +729,19 @@ def compare_sidecar_artifacts(
             primary = base_path / base_dir_offset / loc_file
             base_hash = compute_file_hash(primary)
             base_props = extract_image_properties(primary)
-            results.append(BinaryArtifactChange(
-                aid=aid,
-                atype=block.artifact.atype,
-                file_path=path,
-                binary_changed=True,
-                hash_base=base_hash,
-                hash_target=None,
-                base_properties=base_props,
-                target_properties=None,
-                field_changes={},
-            ))
+            results.append(
+                BinaryArtifactChange(
+                    aid=aid,
+                    atype=block.artifact.atype,
+                    file_path=path,
+                    binary_changed=True,
+                    hash_base=base_hash,
+                    hash_target=None,
+                    base_properties=base_props,
+                    target_properties=None,
+                    field_changes={},
+                )
+            )
 
     # Modified: in both — check for binary or field changes
     for aid in base_map:
@@ -744,17 +777,19 @@ def compare_sidecar_artifacts(
 
         # Only report if something actually changed
         if binary_changed or field_changes:
-            results.append(BinaryArtifactChange(
-                aid=aid,
-                atype=base_block.artifact.atype,
-                file_path=target_file_path,
-                binary_changed=binary_changed,
-                hash_base=base_hash,
-                hash_target=target_hash,
-                base_properties=base_props,
-                target_properties=target_props,
-                field_changes=field_changes,
-            ))
+            results.append(
+                BinaryArtifactChange(
+                    aid=aid,
+                    atype=base_block.artifact.atype,
+                    file_path=target_file_path,
+                    binary_changed=binary_changed,
+                    hash_base=base_hash,
+                    hash_target=target_hash,
+                    base_properties=base_props,
+                    target_properties=target_props,
+                    field_changes=field_changes,
+                )
+            )
 
     lg.debug(
         'Sidecar comparison: %d binary artifact changes detected',

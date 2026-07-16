@@ -79,10 +79,7 @@ class ObsidianDriverConfig(BaseModel):
             return 'true' if v else 'false'
         normalized = str(v).lower().strip()
         if normalized not in VALID_STRICT_LINE_BREAKS_VALUES:
-            raise ValueError(
-                f'Invalid strict_line_breaks value "{v}". '
-                f'Valid values: {sorted(VALID_STRICT_LINE_BREAKS_VALUES)}'
-            )
+            raise ValueError(f'Invalid strict_line_breaks value "{v}". Valid values: {sorted(VALID_STRICT_LINE_BREAKS_VALUES)}')
         return normalized
 
     @field_validator('exclude_elements')
@@ -184,11 +181,9 @@ class ConfigFile(BaseModel):
     @classmethod
     def validate_language(cls, v: str) -> str:
         from syntagmax.i18n import SUPPORTED_LANGUAGES
+
         if v not in SUPPORTED_LANGUAGES:
-            raise ValueError(
-                f"Unsupported language '{v}'. "
-                f"Supported languages: {', '.join(SUPPORTED_LANGUAGES)}"
-            )
+            raise ValueError(f"Unsupported language '{v}'. Supported languages: {', '.join(SUPPORTED_LANGUAGES)}")
         return v
 
 
@@ -262,15 +257,13 @@ class Config:
 
         # Resolve language: CLI --lang > config language > default 'en'
         from syntagmax.i18n import setup_i18n
+
         self.language = self.params.get('language') or config_model.language or 'en'
         setup_i18n(self.language)
 
         # Validate strict_line_breaks = "auto" requires integration = true
-        if (self._obsidian_driver_config.strict_line_breaks == 'auto'
-                and not self._obsidian_driver_config.integration):
-            errors.append(
-                'strict_line_breaks = "auto" requires integration = true in [drivers.obsidian]'
-            )
+        if self._obsidian_driver_config.strict_line_breaks == 'auto' and not self._obsidian_driver_config.integration:
+            errors.append('strict_line_breaks = "auto" requires integration = true in [drivers.obsidian]')
 
         if config_model.metamodel.filename:
             self.metamodel = load_metamodel(Path(root_dir, config_model.metamodel.filename), errors)
@@ -393,8 +386,7 @@ class Config:
             for marker in record.markers:
                 if marker.upper() in attr_names:
                     errors.append(
-                        f'Input "{record.name}": fragment marker "{marker}" collides with '
-                        f'metamodel attribute "{marker.lower()}" for artifact type "{atype}"'
+                        f'Input "{record.name}": fragment marker "{marker}" collides with metamodel attribute "{marker.lower()}" for artifact type "{atype}"'
                     )
 
     def load_publish_config(self, record: InputRecord) -> 'PublishConfig':
@@ -458,9 +450,8 @@ class Config:
         else:
             # auto mode — read from app.json
             from syntagmax.obsidian_settings import read_obsidian_strict_line_breaks
-            obsidian_value = read_obsidian_strict_line_breaks(
-                self._base_dir, self._obsidian_driver_config.root
-            )
+
+            obsidian_value = read_obsidian_strict_line_breaks(self._base_dir, self._obsidian_driver_config.root)
             if obsidian_value is None:
                 lg.warning('Could not read strictLineBreaks from Obsidian settings, defaulting to strict mode ON')
                 result = True

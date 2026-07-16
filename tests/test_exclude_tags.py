@@ -4,8 +4,13 @@
 import textwrap
 import pytest
 from syntagmax.config import (
-    Config, InputRecord, VALID_EXCLUDE_ELEMENTS, VALID_EXCLUDE_MODES,
-    ObsidianDriverConfig, InputConfig, ExcludeElementConfig,
+    Config,
+    InputRecord,
+    VALID_EXCLUDE_ELEMENTS,
+    VALID_EXCLUDE_MODES,
+    ObsidianDriverConfig,
+    InputConfig,
+    ExcludeElementConfig,
 )
 from syntagmax.extractors.obsidian import ObsidianExtractor
 from syntagmax.blocks import TextBlock, ArtifactBlock
@@ -14,6 +19,7 @@ from pydantic import ValidationError
 
 
 # --- Fixtures ---
+
 
 @pytest.fixture
 def params():
@@ -39,8 +45,13 @@ def config(params, config_file):
 def input_record_tags_only(tmp_path):
     """Tags with mode=only (strip inline, keep surrounding text)."""
     return InputRecord(
-        name='test', dir='.', record_base=tmp_path, filepaths=[],
-        driver='obsidian', default_atype='REQ', marker='REQ',
+        name='test',
+        dir='.',
+        record_base=tmp_path,
+        filepaths=[],
+        driver='obsidian',
+        default_atype='REQ',
+        marker='REQ',
         exclude_elements=[ExcludeElementConfig(name='tags', mode='only')],
     )
 
@@ -49,8 +60,13 @@ def input_record_tags_only(tmp_path):
 def input_record_tags_string(tmp_path):
     """Tags with mode=string (remove entire line if tag present)."""
     return InputRecord(
-        name='test', dir='.', record_base=tmp_path, filepaths=[],
-        driver='obsidian', default_atype='REQ', marker='REQ',
+        name='test',
+        dir='.',
+        record_base=tmp_path,
+        filepaths=[],
+        driver='obsidian',
+        default_atype='REQ',
+        marker='REQ',
         exclude_elements=[ExcludeElementConfig(name='tags', mode='string')],
     )
 
@@ -59,8 +75,13 @@ def input_record_tags_string(tmp_path):
 def input_record_tags_string_on_start(tmp_path):
     """Tags with mode=string-on-start (remove line if tag starts it, else strip inline)."""
     return InputRecord(
-        name='test', dir='.', record_base=tmp_path, filepaths=[],
-        driver='obsidian', default_atype='REQ', marker='REQ',
+        name='test',
+        dir='.',
+        record_base=tmp_path,
+        filepaths=[],
+        driver='obsidian',
+        default_atype='REQ',
+        marker='REQ',
         exclude_elements=[ExcludeElementConfig(name='tags', mode='string-on-start')],
     )
 
@@ -68,14 +89,19 @@ def input_record_tags_string_on_start(tmp_path):
 @pytest.fixture
 def input_record_no_exclude(tmp_path):
     return InputRecord(
-        name='test', dir='.', record_base=tmp_path, filepaths=[],
-        driver='obsidian', default_atype='REQ', marker='REQ',
+        name='test',
+        dir='.',
+        record_base=tmp_path,
+        filepaths=[],
+        driver='obsidian',
+        default_atype='REQ',
+        marker='REQ',
         exclude_elements=[],
     )
 
 
-
 # --- Configuration validation tests ---
+
 
 class TestConfigValidation:
     def test_tags_in_valid_exclude_elements(self):
@@ -85,16 +111,12 @@ class TestConfigValidation:
         assert VALID_EXCLUDE_MODES == {'only', 'string', 'string-on-start'}
 
     def test_config_accepts_structured_format(self):
-        cfg = ObsidianDriverConfig(
-            exclude_elements=[{'name': 'tags', 'mode': 'string'}]
-        )
+        cfg = ObsidianDriverConfig(exclude_elements=[{'name': 'tags', 'mode': 'string'}])
         assert cfg.exclude_elements[0].name == 'tags'
         assert cfg.exclude_elements[0].mode == 'string'
 
     def test_config_default_mode_is_string_on_start(self):
-        cfg = ObsidianDriverConfig(
-            exclude_elements=[{'name': 'callouts'}]
-        )
+        cfg = ObsidianDriverConfig(exclude_elements=[{'name': 'callouts'}])
         assert cfg.exclude_elements[0].mode == 'string-on-start'
 
     def test_config_accepts_combined_elements(self):
@@ -127,7 +149,9 @@ class TestConfigValidation:
 
     def test_input_config_accepts_structured_format(self):
         ic = InputConfig(
-            name='test', dir='.', driver='obsidian',
+            name='test',
+            dir='.',
+            driver='obsidian',
             exclude_elements=[{'name': 'tags', 'mode': 'string-on-start'}],
         )
         assert ic.exclude_elements[0].name == 'tags'
@@ -135,21 +159,26 @@ class TestConfigValidation:
     def test_input_config_rejects_plain_string(self):
         with pytest.raises(ValidationError):
             InputConfig(
-                name='test', dir='.', driver='obsidian',
+                name='test',
+                dir='.',
+                driver='obsidian',
                 exclude_elements=['tags'],
             )
 
     def test_input_config_rejects_duplicate_names(self):
         with pytest.raises(ValidationError):
             InputConfig(
-                name='test', dir='.', driver='obsidian',
+                name='test',
+                dir='.',
+                driver='obsidian',
                 exclude_elements=[{'name': 'tags'}, {'name': 'tags', 'mode': 'only'}],
             )
 
     def test_merge_logic_per_record_overrides_global(self, params, tmp_path):
         """Per-record mode takes precedence over global mode for same element."""
         cfg_path = tmp_path / 'config.toml'
-        cfg_path.write_text(textwrap.dedent("""\
+        cfg_path.write_text(
+            textwrap.dedent("""\
         base = "."
 
         [drivers.obsidian]
@@ -161,7 +190,9 @@ class TestConfigValidation:
         driver = "obsidian"
         atype = "REQ"
         exclude_elements = [{name = "tags", mode = "string"}]
-        """), encoding='utf-8')
+        """),
+            encoding='utf-8',
+        )
 
         config = Config(params=params, config_filename=cfg_path)
         record = config.input_records()[0]
@@ -171,7 +202,8 @@ class TestConfigValidation:
     def test_merge_logic_union_of_elements(self, params, tmp_path):
         """Union: global and per-record elements are merged."""
         cfg_path = tmp_path / 'config.toml'
-        cfg_path.write_text(textwrap.dedent("""\
+        cfg_path.write_text(
+            textwrap.dedent("""\
         base = "."
 
         [drivers.obsidian]
@@ -183,7 +215,9 @@ class TestConfigValidation:
         driver = "obsidian"
         atype = "REQ"
         exclude_elements = [{name = "callouts", mode = "only"}]
-        """), encoding='utf-8')
+        """),
+            encoding='utf-8',
+        )
 
         config = Config(params=params, config_filename=cfg_path)
         record = config.input_records()[0]
@@ -191,8 +225,8 @@ class TestConfigValidation:
         assert names == {'frontmatter', 'callouts'}
 
 
-
 # --- Tag stripping: mode=only (inline removal, preserve surrounding text) ---
+
 
 class TestTagStripOnly:
     """Tags mode=only strips tags inline, preserving surrounding text."""
@@ -295,8 +329,8 @@ class TestTagStripOnly:
         assert '#safety' in result
 
 
-
 # --- Tag stripping: mode=string (remove entire line if tag present) ---
+
 
 class TestTagStripString:
     """Tags mode=string removes the entire line if it contains any tag."""
@@ -344,6 +378,7 @@ class TestTagStripString:
 
 # --- Tag stripping: mode=string-on-start ---
 
+
 class TestTagStripStringOnStart:
     """Tags mode=string-on-start removes line if tag is first non-ws, else strips inline."""
 
@@ -390,16 +425,21 @@ class TestTagStripStringOnStart:
         assert '#tag_inside' in result
 
 
-
 # --- Callouts mode tests ---
+
 
 class TestCalloutsModes:
     """Tests for callouts with different removal modes."""
 
     def _filter(self, config, exclude, content, is_file_start=False):
         record = InputRecord(
-            name='test', dir='.', record_base=config._base_dir, filepaths=[],
-            driver='obsidian', default_atype='REQ', marker='REQ',
+            name='test',
+            dir='.',
+            record_base=config._base_dir,
+            filepaths=[],
+            driver='obsidian',
+            default_atype='REQ',
+            marker='REQ',
             exclude_elements=exclude,
         )
         extractor = ObsidianExtractor(config, record)
@@ -440,13 +480,19 @@ class TestCalloutsModes:
 
 # --- Headings mode tests ---
 
+
 class TestHeadingsModes:
     """Tests for headings with different removal modes."""
 
     def _filter(self, config, exclude, content, is_file_start=False):
         record = InputRecord(
-            name='test', dir='.', record_base=config._base_dir, filepaths=[],
-            driver='obsidian', default_atype='REQ', marker='REQ',
+            name='test',
+            dir='.',
+            record_base=config._base_dir,
+            filepaths=[],
+            driver='obsidian',
+            default_atype='REQ',
+            marker='REQ',
             exclude_elements=exclude,
         )
         extractor = ObsidianExtractor(config, record)
@@ -486,13 +532,19 @@ class TestHeadingsModes:
 
 # --- Horizontal rules mode tests ---
 
+
 class TestHorizontalRulesModes:
     """Tests for horizontal_rules — all modes remove the line."""
 
     def _filter(self, config, exclude, content, is_file_start=False):
         record = InputRecord(
-            name='test', dir='.', record_base=config._base_dir, filepaths=[],
-            driver='obsidian', default_atype='REQ', marker='REQ',
+            name='test',
+            dir='.',
+            record_base=config._base_dir,
+            filepaths=[],
+            driver='obsidian',
+            default_atype='REQ',
+            marker='REQ',
             exclude_elements=exclude,
         )
         extractor = ObsidianExtractor(config, record)
@@ -524,8 +576,8 @@ class TestHorizontalRulesModes:
         assert '---' in lines  # inside code block
 
 
-
 # --- Integration tests ---
+
 
 class TestIntegration:
     """Integration tests verifying full extraction pipeline."""
@@ -564,8 +616,13 @@ class TestIntegration:
     def test_combined_callouts_only_and_tags_string_on_start(self, config, tmp_path):
         """Mixed modes: callouts=only strips prefix, tags=string-on-start removes/strips."""
         record = InputRecord(
-            name='test', dir='.', record_base=tmp_path, filepaths=[],
-            driver='obsidian', default_atype='REQ', marker='REQ',
+            name='test',
+            dir='.',
+            record_base=tmp_path,
+            filepaths=[],
+            driver='obsidian',
+            default_atype='REQ',
+            marker='REQ',
             exclude_elements=[
                 ExcludeElementConfig(name='callouts', mode='only'),
                 ExcludeElementConfig(name='tags', mode='string-on-start'),
@@ -599,7 +656,8 @@ class TestIntegration:
     def test_config_driven_structured_format(self, params, tmp_path):
         """Full config-driven test with structured exclude_elements in TOML."""
         cfg_path = tmp_path / 'config.toml'
-        cfg_path.write_text(textwrap.dedent("""\
+        cfg_path.write_text(
+            textwrap.dedent("""\
         base = "."
 
         [drivers.obsidian]
@@ -610,10 +668,13 @@ class TestIntegration:
         dir = "."
         driver = "obsidian"
         atype = "REQ"
-        """), encoding='utf-8')
+        """),
+            encoding='utf-8',
+        )
 
         md_path = tmp_path / 'REQ-001.md'
-        md_path.write_text(textwrap.dedent("""\
+        md_path.write_text(
+            textwrap.dedent("""\
         #internal should remove this line
         Notes with #draft stripped inline
 
@@ -624,7 +685,9 @@ class TestIntegration:
         attrs:
           status: active
         ```
-        """), encoding='utf-8')
+        """),
+            encoding='utf-8',
+        )
 
         config = Config(params=params, config_filename=cfg_path)
         record = config.input_records()[0]
@@ -651,7 +714,8 @@ class TestIntegration:
     def test_config_driven_multiple_modes(self, params, tmp_path):
         """Config with multiple elements at different modes."""
         cfg_path = tmp_path / 'config.toml'
-        cfg_path.write_text(textwrap.dedent("""\
+        cfg_path.write_text(
+            textwrap.dedent("""\
         base = "."
 
         [drivers.obsidian]
@@ -666,10 +730,13 @@ class TestIntegration:
         dir = "."
         driver = "obsidian"
         atype = "REQ"
-        """), encoding='utf-8')
+        """),
+            encoding='utf-8',
+        )
 
         md_path = tmp_path / 'REQ-001.md'
-        md_path.write_text(textwrap.dedent("""\
+        md_path.write_text(
+            textwrap.dedent("""\
         ## Section Title
         > Callout to remove
         Line with #tag should go
@@ -682,7 +749,9 @@ class TestIntegration:
         attrs:
           status: active
         ```
-        """), encoding='utf-8')
+        """),
+            encoding='utf-8',
+        )
 
         config = Config(params=params, config_filename=cfg_path)
         record = config.input_records()[0]
@@ -690,8 +759,10 @@ class TestIntegration:
         extractor = ObsidianExtractor(config, record)
         blocks = extractor.extract_blocks_from_file(md_path)
 
-        text_blocks = [b for b in blocks if isinstance(b, TextBlock)]
-        combined = ''.join(tb.content for tb in text_blocks)
+        from syntagmax.blocks import HeadingBlock
+
+        text_and_heading_blocks = [b for b in blocks if isinstance(b, (TextBlock, HeadingBlock))]
+        combined = ''.join(b.content for b in text_and_heading_blocks)
 
         # Heading prefix stripped but text kept
         assert '##' not in combined

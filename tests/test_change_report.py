@@ -23,7 +23,8 @@ def _setup_test_repo(tmp_path):
     gitignore.write_text('.syntagmax/worktrees/\n', encoding='utf-8')
 
     config = syntagmax_dir / 'config.toml'
-    config.write_text("""
+    config.write_text(
+        """
 base = ".."
 
 [[input]]
@@ -35,24 +36,30 @@ marker = "REQ"
 
 [metamodel]
 filename = "project.syntagmax"
-""", encoding='utf-8')
+""",
+        encoding='utf-8',
+    )
 
     # Create metamodel
     metamodel = syntagmax_dir / 'project.syntagmax'
-    metamodel.write_text("""
+    metamodel.write_text(
+        """
 artifact REQ:
     id is string
     attribute contents is mandatory string
     attribute status is mandatory enum [draft, active, retired]
     attribute priority is mandatory enum [low, medium, high, critical]
-""", encoding='utf-8')
+""",
+        encoding='utf-8',
+    )
 
     # Create REQ directory with sample artifacts
     req_dir = tmp_path / 'REQ'
     req_dir.mkdir()
 
     req1 = req_dir / 'REQ-001.md'
-    req1.write_text("""[REQ]
+    req1.write_text(
+        """[REQ]
 The system shall do something.
 [id] REQ-001
 ```yaml
@@ -60,10 +67,13 @@ attrs:
   status: draft
   priority: high
 ```
-""", encoding='utf-8')
+""",
+        encoding='utf-8',
+    )
 
     req2 = req_dir / 'REQ-002.md'
-    req2.write_text("""[REQ]
+    req2.write_text(
+        """[REQ]
 The system shall do something else.
 [id] REQ-002
 ```yaml
@@ -71,16 +81,18 @@ attrs:
   status: draft
   priority: medium
 ```
-""", encoding='utf-8')
+""",
+        encoding='utf-8',
+    )
 
     # First commit
-    repo.index.add(['.gitignore', '.syntagmax/config.toml', '.syntagmax/project.syntagmax',
-                    'REQ/REQ-001.md', 'REQ/REQ-002.md'])
+    repo.index.add(['.gitignore', '.syntagmax/config.toml', '.syntagmax/project.syntagmax', 'REQ/REQ-001.md', 'REQ/REQ-002.md'])
     repo.index.commit('Initial commit', author=git.Actor('Test', 'test@test.com'))
 
     # Make changes
     # Modify REQ-001 (change status and content)
-    req1.write_text("""[REQ]
+    req1.write_text(
+        """[REQ]
 The system shall do something important.
 [id] REQ-001
 ```yaml
@@ -88,11 +100,14 @@ attrs:
   status: active
   priority: critical
 ```
-""", encoding='utf-8')
+""",
+        encoding='utf-8',
+    )
 
     # Add new REQ-003
     req3 = req_dir / 'REQ-003.md'
-    req3.write_text("""[REQ]
+    req3.write_text(
+        """[REQ]
 The system shall have a new feature.
 [id] REQ-003
 ```yaml
@@ -100,7 +115,9 @@ attrs:
   status: draft
   priority: low
 ```
-""", encoding='utf-8')
+""",
+        encoding='utf-8',
+    )
 
     # Remove REQ-002
     req2.unlink()
@@ -122,12 +139,19 @@ def test_basic_change_report(change_report_repo):
     """Test that a basic change report is generated successfully."""
     repo, repo_path = change_report_repo
     runner = CliRunner()
-    result = runner.invoke(rms, [
-        '--cwd', str(repo_path),
-        'change', 'report',
-        '--base', 'HEAD~1',
-        '--target', 'HEAD',
-    ])
+    result = runner.invoke(
+        rms,
+        [
+            '--cwd',
+            str(repo_path),
+            'change',
+            'report',
+            '--base',
+            'HEAD~1',
+            '--target',
+            'HEAD',
+        ],
+    )
     assert result.exit_code == 0, f'CLI failed: {result.output}'
     # Check report file was created
     report_dir = repo_path / '.syntagmax' / 'reports' / 'change'
@@ -140,13 +164,21 @@ def test_report_contains_all_sections(change_report_repo):
     """Test that the report contains all required sections."""
     repo, repo_path = change_report_repo
     runner = CliRunner()
-    result = runner.invoke(rms, [
-        '--cwd', str(repo_path),
-        'change', 'report',
-        '--base', 'HEAD~1',
-        '--target', 'HEAD',
-        '--output', 'console',
-    ])
+    result = runner.invoke(
+        rms,
+        [
+            '--cwd',
+            str(repo_path),
+            'change',
+            'report',
+            '--base',
+            'HEAD~1',
+            '--target',
+            'HEAD',
+            '--output',
+            'console',
+        ],
+    )
     assert result.exit_code == 0
     output = result.output
     assert '# Change Report' in output
@@ -160,13 +192,21 @@ def test_summary_statistics(change_report_repo):
     """Test that summary statistics are accurate."""
     repo, repo_path = change_report_repo
     runner = CliRunner()
-    result = runner.invoke(rms, [
-        '--cwd', str(repo_path),
-        'change', 'report',
-        '--base', 'HEAD~1',
-        '--target', 'HEAD',
-        '--output', 'console',
-    ])
+    result = runner.invoke(
+        rms,
+        [
+            '--cwd',
+            str(repo_path),
+            'change',
+            'report',
+            '--base',
+            'HEAD~1',
+            '--target',
+            'HEAD',
+            '--output',
+            'console',
+        ],
+    )
     assert result.exit_code == 0
     output = result.output
     # 1 modified (REQ-001), 1 added (REQ-003), 1 removed (REQ-002)
@@ -179,13 +219,21 @@ def test_output_console(change_report_repo):
     """Test --output console prints to stdout."""
     repo, repo_path = change_report_repo
     runner = CliRunner()
-    result = runner.invoke(rms, [
-        '--cwd', str(repo_path),
-        'change', 'report',
-        '--base', 'HEAD~1',
-        '--target', 'HEAD',
-        '--output', 'console',
-    ])
+    result = runner.invoke(
+        rms,
+        [
+            '--cwd',
+            str(repo_path),
+            'change',
+            'report',
+            '--base',
+            'HEAD~1',
+            '--target',
+            'HEAD',
+            '--output',
+            'console',
+        ],
+    )
     assert result.exit_code == 0
     assert '# Change Report' in result.output
 
@@ -194,13 +242,21 @@ def test_artifact_changes_detected(change_report_repo):
     """Test that artifact changes are correctly identified."""
     repo, repo_path = change_report_repo
     runner = CliRunner()
-    result = runner.invoke(rms, [
-        '--cwd', str(repo_path),
-        'change', 'report',
-        '--base', 'HEAD~1',
-        '--target', 'HEAD',
-        '--output', 'console',
-    ])
+    result = runner.invoke(
+        rms,
+        [
+            '--cwd',
+            str(repo_path),
+            'change',
+            'report',
+            '--base',
+            'HEAD~1',
+            '--target',
+            'HEAD',
+            '--output',
+            'console',
+        ],
+    )
     assert result.exit_code == 0
     output = result.output
     # Modified artifact
@@ -215,12 +271,19 @@ def test_filename_format(change_report_repo):
     """Test the report filename follows the naming convention."""
     repo, repo_path = change_report_repo
     runner = CliRunner()
-    result = runner.invoke(rms, [
-        '--cwd', str(repo_path),
-        'change', 'report',
-        '--base', 'HEAD~1',
-        '--target', 'HEAD',
-    ])
+    result = runner.invoke(
+        rms,
+        [
+            '--cwd',
+            str(repo_path),
+            'change',
+            'report',
+            '--base',
+            'HEAD~1',
+            '--target',
+            'HEAD',
+        ],
+    )
     assert result.exit_code == 0
     report_dir = repo_path / '.syntagmax' / 'reports' / 'change'
     reports = list(report_dir.glob('requirements-*-to-*-*.md'))
@@ -241,12 +304,19 @@ def test_invalid_revision(tmp_path):
     repo.index.commit('init', author=git.Actor('Test', 'test@test.com'))
 
     runner = CliRunner()
-    result = runner.invoke(rms, [
-        '--cwd', str(tmp_path),
-        'change', 'report',
-        '--base', 'nonexistent-rev',
-        '--target', 'HEAD',
-    ])
+    result = runner.invoke(
+        rms,
+        [
+            '--cwd',
+            str(tmp_path),
+            'change',
+            'report',
+            '--base',
+            'nonexistent-rev',
+            '--target',
+            'HEAD',
+        ],
+    )
     assert result.exit_code != 0
 
 
@@ -254,11 +324,18 @@ def test_no_changes(change_report_repo):
     """Test that same revision comparison reports no changes."""
     repo, repo_path = change_report_repo
     runner = CliRunner()
-    result = runner.invoke(rms, [
-        '--cwd', str(repo_path),
-        'change', 'report',
-        '--base', 'HEAD',
-        '--target', 'HEAD',
-    ])
+    result = runner.invoke(
+        rms,
+        [
+            '--cwd',
+            str(repo_path),
+            'change',
+            'report',
+            '--base',
+            'HEAD',
+            '--target',
+            'HEAD',
+        ],
+    )
     assert result.exit_code == 0
     assert 'No changes' in result.output or 'same revision' in result.output.lower()

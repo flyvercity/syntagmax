@@ -14,7 +14,7 @@ from benedict import benedict
 from syntagmax.extractors.extractor import Extractor, ExtractorResult
 from syntagmax.config import Config, InputRecord, ExcludeElementConfig
 from syntagmax.artifact import ArtifactBuilder, Artifact, Location, UNDEFINED_ID
-from syntagmax.blocks import Block, TextBlock, ArtifactBlock, ErrorBlock
+from syntagmax.blocks import Block, TextBlock, ArtifactBlock, ErrorBlock, HeadingBlock
 
 _VALID_BLOCK_ID_RE = re.compile(r'^[a-zA-Z0-9_.\-]+$')
 
@@ -26,6 +26,7 @@ def _validate_block_id(id_str: str) -> bool:
 
 # Patterns for detecting Markdown block-level elements
 _HEADING_RE = re.compile(r'^\s*#{1,6}\s')
+_HEADING_LINE_RE = re.compile(r'^( {0,3})(#{1,6})(?:[ \t]+([^\r\n]*))?(?:\r?\n|$)', re.MULTILINE)
 _TABLE_ROW_RE = re.compile(r'^\s*\|')
 _UNORDERED_LIST_RE = re.compile(r'^\s*[-*+]\s')
 _ORDERED_LIST_RE = re.compile(r'^\s*\d+[.)]\s')
@@ -472,6 +473,69 @@ class MarkdownExtractor(Extractor):
         artifacts = [b.artifact for b in blocks if isinstance(b, ArtifactBlock)]
         errors = [b.message for b in blocks if isinstance(b, ErrorBlock)]
         return artifacts, errors
+
+    def _split_text_block_by_headings(self, text_block: TextBlock) -> list[Block]:
+        """Split a TextBlock into TextBlocks and HeadingBlocks based on standard Markdown headings."""
+        content = text_block.content
+        base_offset = text_block.source_offset
+
+        matches = list(_HEADING_LINE_RE.finditer(content))
+        if not matches:
+            return [text_block]
+
+        result: list[Block] = []
+        pos = 0
+        for match in matches:
+            # Add text before the heading
+            before = content[pos : match.start()]
+            if before:
+                offset = (base_offset + pos) if base_offset is not None else None
+                result.append(
+                    TextBlock(
+                        content=before,
+                        marker=text_block.marker,
+                        id=text_block.id,
+                        explicit_id=text_block.explicit_id,
+                        source_offset=offset,
+                    )
+                )
+
+            # Extract heading information
+            heading_text = match.group(0)
+            if heading_text.endswith('\r\n'):
+                heading_content = heading_text[:-2]
+            elif heading_text.endswith('\n'):
+                heading_content = heading_text[:-1]
+            else:
+                heading_content = heading_text
+
+            level = len(match.group(2))
+            tag_offset = (base_offset + match.start()) if base_offset is not None else None
+
+            result.append(
+                HeadingBlock(
+                    content=heading_content,
+                    level=level,
+                    source_offset=tag_offset,
+                )
+            )
+            pos = match.end()
+
+        # Add remaining text after the last heading
+        after = content[pos:]
+        if after:
+            offset = (base_offset + pos) if base_offset is not None else None
+            result.append(
+                TextBlock(
+                    content=after,
+                    marker=text_block.marker,
+                    id=text_block.id,
+                    explicit_id=text_block.explicit_id,
+                    source_offset=offset,
+                )
+            )
+
+        return result
 
     def _split_text_block_by_markers(self, text_block: TextBlock) -> list[Block]:
         """Split a TextBlock into marked and unmarked fragments based on configured markers.
@@ -922,6 +986,15 @@ class MarkdownExtractor(Extractor):
         if text_after:
             blocks.append(TextBlock(content=text_after, source_offset=pos))
 
+        # Post-process: split TextBlocks by headings first
+        split_blocks_headings: list[Block] = []
+        for block in blocks:
+            if isinstance(block, TextBlock) and block.marker is None:
+                split_blocks_headings.extend(self._split_text_block_by_headings(block))
+            else:
+                split_blocks_headings.append(block)
+        blocks = split_blocks_headings
+
         # Post-process: split TextBlocks by fragment markers
         if self._record.markers:
             split_blocks: list[Block] = []
@@ -940,16 +1013,33 @@ class MarkdownExtractor(Extractor):
         return self._apply_element_filters(blocks)
 
     def _apply_element_filters(self, blocks: list[Block]) -> list[Block]:
-        """Apply exclude_elements filtering to TextBlocks."""
+        """Apply exclude_elements filtering to TextBlocks and HeadingBlocks."""
         exclude = self._record.exclude_elements
         if not exclude:
             return blocks
+
+        exclude_map: dict[str, str] = {e.name: e.mode for e in exclude}
+        headings_mode = exclude_map.get('headings')
 
         filtered: list[Block] = []
         is_file_start = True
 
         for block in blocks:
-            if isinstance(block, TextBlock):
+            if isinstance(block, HeadingBlock):
+                is_file_start = False
+                if headings_mode:
+                    if headings_mode == 'only':
+                        heading_only_re = re.compile(r'^(\s*)#{1,6}\s+(.*)$')
+                        m = heading_only_re.match(block.content)
+                        if m:
+                            block.content = m.group(1) + m.group(2)
+                        filtered.append(block)
+                    else:
+                        # 'string' or 'string-on-start' -> skip completely
+                        pass
+                else:
+                    filtered.append(block)
+            elif isinstance(block, TextBlock):
                 content = self._filter_text_content(block.content, is_file_start, exclude)
                 is_file_start = False
                 if content and content.strip():

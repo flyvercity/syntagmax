@@ -99,6 +99,7 @@ class WorktreeConfig:
         # Compute the equivalent base_dir within the worktree
         # Original base_dir is relative to repo root — same offset in worktree
         import git as _git
+
         try:
             original_repo = _git.Repo(original.base_dir(), search_parent_directories=True)
             original_repo_root = Path(original_repo.working_tree_dir).resolve()
@@ -169,10 +170,7 @@ def extract_blocks_at_revision(
         filepaths = remapped.filepaths
         if changed_files is not None:
             changed_set = set(changed_files)
-            filepaths = [
-                fp for fp in filepaths
-                if _relative_posix(fp, worktree_path) in changed_set
-            ]
+            filepaths = [fp for fp in filepaths if _relative_posix(fp, worktree_path) in changed_set]
 
         if not filepaths:
             lg.debug('No changed files for record %s', record.name)

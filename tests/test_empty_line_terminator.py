@@ -118,16 +118,19 @@ class TestArtifactBlocks:
 
     def test_heading_terminates(self, obsidian_config, input_record_with_markers, tmp_path):
         """A Markdown heading at BOL terminates the artifact block (context-aware)."""
+        from syntagmax.blocks import HeadingBlock
+
         content = '[REQ]\nThe system shall do X.\n[id] REQ-001\n# Next Section\nMore text.'
         blocks = _extract_blocks(obsidian_config, input_record_with_markers, tmp_path, content)
 
         artifact_blocks = [b for b in blocks if isinstance(b, ArtifactBlock)]
-        text_blocks = [b for b in blocks if isinstance(b, TextBlock)]
+        heading_blocks = [b for b in blocks if isinstance(b, HeadingBlock)]
 
         assert len(artifact_blocks) == 1
         assert artifact_blocks[0].artifact.aid == 'REQ-001'
-        # The heading should be in subsequent text (not consumed)
-        assert any('# Next Section' in b.content for b in text_blocks)
+        # The heading should be a HeadingBlock
+        assert len(heading_blocks) == 1
+        assert heading_blocks[0].content == '# Next Section'
 
     def test_obsidian_tag_does_not_terminate(self, obsidian_config, input_record_with_markers, tmp_path):
         """A line starting with # without a space (Obsidian tag) does NOT terminate."""

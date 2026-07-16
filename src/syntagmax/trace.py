@@ -15,9 +15,9 @@ from syntagmax.artifact import ArtifactMap
 class TraceRecord:
     """A single row in the trace matrix."""
 
-    record_number: int        # 1-based sequential row index
-    lead_id: str              # ChildID (forward) or ParentID (reverse)
-    linked_id: str            # ParentID (forward) or ChildID (reverse) — "; " separated in flat mode, empty if no links
+    record_number: int  # 1-based sequential row index
+    lead_id: str  # ChildID (forward) or ParentID (reverse)
+    linked_id: str  # ParentID (forward) or ChildID (reverse) — "; " separated in flat mode, empty if no links
     attributes: dict[str, str] = field(default_factory=dict)
 
 
@@ -25,7 +25,7 @@ class TraceRecord:
 class TraceMatrix:
     """Complete trace matrix ready for export."""
 
-    direction: str            # "forward" or "reverse"
+    direction: str  # "forward" or "reverse"
     child_type: str
     parent_type: str
     attribute_names: list[str] = field(default_factory=list)
@@ -100,31 +100,37 @@ def build_trace_matrix(
                 attrs[attr_name] = _serialize_attribute(lead.fields.get(attr_name))
 
             if flat:
-                matrix.records.append(TraceRecord(
-                    record_number=record_number,
-                    lead_id=lead.aid,
-                    linked_id='; '.join(linked_ids) if linked_ids else '',
-                    attributes=attrs,
-                ))
+                matrix.records.append(
+                    TraceRecord(
+                        record_number=record_number,
+                        lead_id=lead.aid,
+                        linked_id='; '.join(linked_ids) if linked_ids else '',
+                        attributes=attrs,
+                    )
+                )
                 record_number += 1
             else:
                 if not linked_ids:
                     # Left outer join: emit row with empty linked ID
-                    matrix.records.append(TraceRecord(
-                        record_number=record_number,
-                        lead_id=lead.aid,
-                        linked_id='',
-                        attributes=attrs,
-                    ))
+                    matrix.records.append(
+                        TraceRecord(
+                            record_number=record_number,
+                            lead_id=lead.aid,
+                            linked_id='',
+                            attributes=attrs,
+                        )
+                    )
                     record_number += 1
                 else:
                     for linked_id in linked_ids:
-                        matrix.records.append(TraceRecord(
-                            record_number=record_number,
-                            lead_id=lead.aid,
-                            linked_id=linked_id,
-                            attributes=dict(attrs),
-                        ))
+                        matrix.records.append(
+                            TraceRecord(
+                                record_number=record_number,
+                                lead_id=lead.aid,
+                                linked_id=linked_id,
+                                attributes=dict(attrs),
+                            )
+                        )
                         record_number += 1
 
     elif direction == 'reverse':
@@ -136,9 +142,7 @@ def build_trace_matrix(
 
         for lead in lead_artifacts:
             # Find children of the target type
-            linked_ids = sorted(
-                [cid for cid in lead.children if cid in artifacts and artifacts[cid].atype == child_type]
-            )
+            linked_ids = sorted([cid for cid in lead.children if cid in artifacts and artifacts[cid].atype == child_type])
 
             # Serialize attributes
             attrs = {}
@@ -146,31 +150,37 @@ def build_trace_matrix(
                 attrs[attr_name] = _serialize_attribute(lead.fields.get(attr_name))
 
             if flat:
-                matrix.records.append(TraceRecord(
-                    record_number=record_number,
-                    lead_id=lead.aid,
-                    linked_id='; '.join(linked_ids) if linked_ids else '',
-                    attributes=attrs,
-                ))
+                matrix.records.append(
+                    TraceRecord(
+                        record_number=record_number,
+                        lead_id=lead.aid,
+                        linked_id='; '.join(linked_ids) if linked_ids else '',
+                        attributes=attrs,
+                    )
+                )
                 record_number += 1
             else:
                 if not linked_ids:
                     # Left outer join: emit row with empty linked ID
-                    matrix.records.append(TraceRecord(
-                        record_number=record_number,
-                        lead_id=lead.aid,
-                        linked_id='',
-                        attributes=attrs,
-                    ))
+                    matrix.records.append(
+                        TraceRecord(
+                            record_number=record_number,
+                            lead_id=lead.aid,
+                            linked_id='',
+                            attributes=attrs,
+                        )
+                    )
                     record_number += 1
                 else:
                     for linked_id in linked_ids:
-                        matrix.records.append(TraceRecord(
-                            record_number=record_number,
-                            lead_id=lead.aid,
-                            linked_id=linked_id,
-                            attributes=dict(attrs),
-                        ))
+                        matrix.records.append(
+                            TraceRecord(
+                                record_number=record_number,
+                                lead_id=lead.aid,
+                                linked_id=linked_id,
+                                attributes=dict(attrs),
+                            )
+                        )
                         record_number += 1
 
     return matrix

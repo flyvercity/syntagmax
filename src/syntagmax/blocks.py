@@ -19,6 +19,13 @@ class Block:
 
 
 @dataclass
+class HeadingBlock(Block):
+    content: str
+    level: int
+    source_offset: int | None = None
+
+
+@dataclass
 class TextBlock(Block):
     content: str
     marker: str | None = None

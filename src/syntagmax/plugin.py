@@ -37,6 +37,7 @@ class PluginConfig(BaseModel):
             raise ValueError('Plugin name must not contain path separators')
         return v
 
+
 @dataclass
 class LoadedPlugin:
     """A loaded plugin module with its configuration."""
@@ -83,10 +84,7 @@ def _load_local_plugin(name: str, root_dir: Path) -> ModuleType:
     if package_init.is_file():
         return _load_module_from_file(name, package_init)
 
-    raise FatalError(
-        f'Plugin "{name}": local plugin not found. '
-        f'Expected "{single_file}" or "{package_init}"'
-    )
+    raise FatalError(f'Plugin "{name}": local plugin not found. Expected "{single_file}" or "{package_init}"')
 
 
 def _load_module_from_file(name: str, filepath: Path) -> ModuleType:
@@ -119,8 +117,7 @@ def _load_package_plugin(name: str) -> ModuleType:
 
     if not ep_list:
         raise FatalError(
-            f'Plugin "{name}": no package entry-point found in group "syntagmax.plugins". '
-            f'Ensure the plugin package is installed in the current environment.'
+            f'Plugin "{name}": no package entry-point found in group "syntagmax.plugins". Ensure the plugin package is installed in the current environment.'
         )
 
     ep = ep_list[0]
@@ -138,10 +135,7 @@ def _load_package_plugin(name: str) -> ModuleType:
             actual_module = sys.modules.get(module.__module__)
             if actual_module:
                 return actual_module
-        raise FatalError(
-            f'Plugin "{name}": entry-point did not resolve to a module. '
-            f'Ensure the entry-point value points to a module, not a function or class.'
-        )
+        raise FatalError(f'Plugin "{name}": entry-point did not resolve to a module. Ensure the entry-point value points to a module, not a function or class.')
 
     return module
 
@@ -205,10 +199,7 @@ def run_block_transforms(plugins: list[LoadedPlugin], tree: BlockTree, config) -
             raise FatalError(f'Plugin "{plugin.name}": transform_blocks raised an exception: {e}')
 
         if not isinstance(result, BlockTree):
-            raise FatalError(
-                f'Plugin "{plugin.name}": transform_blocks must return a BlockTree instance, '
-                f'got {type(result).__name__}'
-            )
+            raise FatalError(f'Plugin "{plugin.name}": transform_blocks must return a BlockTree instance, got {type(result).__name__}')
 
         tree = result
 
@@ -240,9 +231,7 @@ def find_plugin_by_name(plugins: list[LoadedPlugin], name: str) -> LoadedPlugin:
             f'Check that the plugin is configured in config.toml and enabled.'
         )
     else:
-        raise FatalError(
-            f'Plugin "{name}" not found. No plugins are configured or enabled in config.toml.'
-        )
+        raise FatalError(f'Plugin "{name}" not found. No plugins are configured or enabled in config.toml.')
 
 
 def run_trace_export(plugin: LoadedPlugin, matrix, config) -> None:
@@ -257,9 +246,7 @@ def run_trace_export(plugin: LoadedPlugin, matrix, config) -> None:
         FatalError: If the plugin does not have an export_trace hook or if it raises.
     """
     if not hasattr(plugin.module, 'export_trace'):
-        raise FatalError(
-            f'Plugin "{plugin.name}" does not implement the export_trace hook'
-        )
+        raise FatalError(f'Plugin "{plugin.name}" does not implement the export_trace hook')
 
     lg.info(f'Running export_trace for plugin "{plugin.name}"')
 
@@ -301,15 +288,11 @@ def run_markdown_transforms(plugins: list[LoadedPlugin], markdown: str, config) 
             raise FatalError(f'Plugin "{plugin.name}": transform_markdown raised an exception: {e}')
 
         if not isinstance(result, str):
-            raise FatalError(
-                f'Plugin "{plugin.name}": transform_markdown must return a str instance, '
-                f'got {type(result).__name__}'
-            )
+            raise FatalError(f'Plugin "{plugin.name}": transform_markdown must return a str instance, got {type(result).__name__}')
 
         markdown = result
 
     return markdown
-
 
 
 def run_pre_filter(plugin: LoadedPlugin, tree: BlockTree, config) -> BlockTree:
@@ -331,9 +314,7 @@ def run_pre_filter(plugin: LoadedPlugin, tree: BlockTree, config) -> BlockTree:
                     an exception or returns an invalid type.
     """
     if not hasattr(plugin.module, 'filter_block'):
-        raise FatalError(
-            f'Plugin "{plugin.name}" does not implement the filter_block hook'
-        )
+        raise FatalError(f'Plugin "{plugin.name}" does not implement the filter_block hook')
 
     lg.info(f'Running filter_block for plugin "{plugin.name}"')
 
@@ -347,18 +328,14 @@ def run_pre_filter(plugin: LoadedPlugin, tree: BlockTree, config) -> BlockTree:
                     raise
                 except Exception as e:
                     lg.debug(f'Plugin "{plugin.name}" filter_block error:\n{traceback.format_exc()}')
-                    raise FatalError(
-                        f'Plugin "{plugin.name}": filter_block raised an exception '
-                        f'in file "{file_record.path}": {e}'
-                    )
+                    raise FatalError(f'Plugin "{plugin.name}": filter_block raised an exception in file "{file_record.path}": {e}')
 
                 if result is None:
                     continue
 
                 if not isinstance(result, Block):
                     raise FatalError(
-                        f'Plugin "{plugin.name}": filter_block must return a Block instance or None, '
-                        f'got {type(result).__name__} in file "{file_record.path}"'
+                        f'Plugin "{plugin.name}": filter_block must return a Block instance or None, got {type(result).__name__} in file "{file_record.path}"'
                     )
 
                 new_blocks.append(result)

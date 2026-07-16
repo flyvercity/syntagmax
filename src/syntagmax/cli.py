@@ -108,8 +108,7 @@ def _run_pandoc_conversion(md_path: Path, docx: bool, pdf: bool, reference_doc: 
         formats.append(('pdf', md_path.with_suffix('.pdf')))
 
     for fmt, out_path in formats:
-        success, message = convert(md_path, out_path, fmt, reference_doc=reference_doc if fmt == 'docx' else None,
-                                   resource_path=md_path.parent)
+        success, message = convert(md_path, out_path, fmt, reference_doc=reference_doc if fmt == 'docx' else None, resource_path=md_path.parent)
         if success:
             u.pprint(f'[green]Converted to {fmt.upper()}: {out_path}[/green]')
         else:
@@ -160,9 +159,17 @@ def _copy_manifest_images(manifest, output_dir: Path):
 @click.option('--docx-template', 'docx_template_path', default=None, help='Override DOCX reference template path (use "none" to disable)')
 @click.option('--pre-filter', 'pre_filter_name', default=None, help='Run a pre-publishing block filter plugin')
 def publish(
-    obj: Params, records: tuple[str, ...], publish_all: bool, single: bool,
-    output_path: str | None, config_file: Path, date_suffix: bool, docx: bool, pdf: bool,
-    docx_template_path: str | None, pre_filter_name: str | None,
+    obj: Params,
+    records: tuple[str, ...],
+    publish_all: bool,
+    single: bool,
+    output_path: str | None,
+    config_file: Path,
+    date_suffix: bool,
+    docx: bool,
+    pdf: bool,
+    docx_template_path: str | None,
+    pre_filter_name: str | None,
 ):
     from datetime import datetime
     from syntagmax.publish import build_block_tree, render_block_tree
@@ -207,6 +214,7 @@ def publish(
     pandoc_available = False
     if docx or pdf:
         from syntagmax.pandoc import check_pandoc
+
         pandoc_available = check_pandoc()
         if not pandoc_available:
             lg.warning('pandoc executable not found in PATH')
@@ -222,9 +230,11 @@ def publish(
             cli_template = Path(docx_template_path)
             if not cli_template.exists():
                 from syntagmax.errors import FatalError
+
                 raise FatalError([f'DOCX template not found: {cli_template} (--docx-template)'])
             return cli_template
         from syntagmax.pandoc import resolve_docx_template
+
         pub_config = config.load_publish_config(record)
         return resolve_docx_template(pub_config, record.name, cfg_path.parent)
 
@@ -286,6 +296,7 @@ def publish(
         date_str = datetime.now().strftime('%Y-%m-%d')
 
         from syntagmax.publish_context import ImageManifest
+
         combined_manifest = ImageManifest()
         published_files: list[tuple[Path, object]] = []  # (file_path, record) for deferred Pandoc
 
@@ -313,19 +324,15 @@ def publish(
             safe_record_name = Path(record.name).name.replace('/', '_').replace('\\', '_')
 
             if safe_record_name in ('.', '..') or not safe_record_name:
-
                 u.pprint(f'[red]Error: Invalid record name for output filename: "{record.name}".[/red]')
 
                 sys.exit(1)
-
-
 
             if date_suffix:
                 filename = f'{safe_record_name}_{date_str}.md'
 
             else:
                 filename = f'{safe_record_name}.md'
-
 
             file_path = out_p / filename
             file_path.write_text(markdown, encoding='utf-8')
@@ -366,8 +373,16 @@ def publish(
 @click.option('--output', default='.syntagmax/reports/trace.csv', help='Output file path (use "console" for stdout)')
 @click.option('-f', '--config-file', type=click.Path(), default='.syntagmax/config.toml')
 def trace(
-    obj: Params, child: str, parent: str, forward: bool, attribute: tuple[str, ...],
-    flat: bool, delimiter: str | None, plugin_name: str | None, output: str, config_file: Path,
+    obj: Params,
+    child: str,
+    parent: str,
+    forward: bool,
+    attribute: tuple[str, ...],
+    flat: bool,
+    delimiter: str | None,
+    plugin_name: str | None,
+    output: str,
+    config_file: Path,
 ):
     from syntagmax.extract import extract, build_artifact_map
     from syntagmax.tree import populate_pids, build_tree
@@ -483,7 +498,8 @@ def _generate_fallback_diff(base_content: str | None, target_content: str | None
     target_lines = target_content.splitlines(keepends=True) if target_content else []
 
     diff = difflib.unified_diff(
-        base_lines, target_lines,
+        base_lines,
+        target_lines,
         fromfile=f'a/{filepath}',
         tofile=f'b/{filepath}',
     )
@@ -505,23 +521,36 @@ def change():
 @click.option('--summary', is_flag=True, help='Generate abbreviated summary report (no content)')
 @click.option('-f', '--config-file', type=click.Path(), default='.syntagmax/config.toml')
 def change_report(
-    obj: Params, base: str, target: str, output_path: str | None,
-    include_non_artifact: bool, single: bool, summary: bool, config_file: Path,
+    obj: Params,
+    base: str,
+    target: str,
+    output_path: str | None,
+    include_non_artifact: bool,
+    single: bool,
+    summary: bool,
+    config_file: Path,
 ):
     from datetime import datetime, timezone
     from syntagmax.change_worktree import (
-        check_git_version, check_worktrees_gitignored,
-        resolve_revision, validate_records_in_repo, worktree_pair,
+        check_git_version,
+        check_worktrees_gitignored,
+        resolve_revision,
+        validate_records_in_repo,
+        worktree_pair,
     )
     from syntagmax.change_extract import extract_blocks_at_revision
     from syntagmax.change_diff import (
-        get_changed_files, filter_changed_files,
-        compare_artifacts, compare_text_blocks,
+        get_changed_files,
+        filter_changed_files,
+        compare_artifacts,
+        compare_text_blocks,
         compare_sidecar_artifacts,
     )
     from syntagmax.change_render import (
-        render_change_report, render_summary_report,
-        ChangeReportData, ExtractionError,
+        render_change_report,
+        render_summary_report,
+        ChangeReportData,
+        ExtractionError,
     )
     import git
 
@@ -577,9 +606,7 @@ def change_report(
 
         # Filter by input records
         if changed_files is not None:
-            files_by_record = filter_changed_files(
-                changed_files, config.input_records(), config.base_dir()
-            )
+            files_by_record = filter_changed_files(changed_files, config.input_records(), config.base_dir())
         else:
             files_by_record = None
 
@@ -598,11 +625,13 @@ def change_report(
             base_content = _read_file_safe(base_path, err_file)
             target_content = _read_file_safe(target_path, err_file)
             fallback = _generate_fallback_diff(base_content, target_content, err_file)
-            extraction_errors.append(ExtractionError(
-                file_path=err_file,
-                error_message='; '.join(err_msgs),
-                fallback_diff=fallback,
-            ))
+            extraction_errors.append(
+                ExtractionError(
+                    file_path=err_file,
+                    error_message='; '.join(err_msgs),
+                    fallback_diff=fallback,
+                )
+            )
 
         # Generate reports per record
         reports: list[tuple[str, str]] = []  # (filename, markdown)
@@ -625,7 +654,11 @@ def change_report(
 
             # Compare sidecar/binary artifacts
             binary_diff = compare_sidecar_artifacts(
-                base_recs, target_recs, base_path, target_path, base_dir_offset,
+                base_recs,
+                target_recs,
+                base_path,
+                target_path,
+                base_dir_offset,
             )
 
             # Compare text blocks if requested
@@ -643,10 +676,7 @@ def change_report(
                 artifact_diff=artifact_diff,
                 text_diff=text_diff,
                 binary_diff=binary_diff,
-                extraction_errors=[
-                    e for e in extraction_errors if e.file_path in
-                    {f.path for f in file_diffs} or not file_diffs
-                ],
+                extraction_errors=[e for e in extraction_errors if e.file_path in {f.path for f in file_diffs} or not file_diffs],
             )
 
             if summary:
@@ -720,7 +750,8 @@ def renumber(obj: Params, config_path: Path, renumber_all: bool, atype: str | No
 @edit.command('attrs', help='Add, remove, or replace attributes on artifacts in bulk')
 @click.pass_obj
 @click.option(
-    '-f', '--config-file',
+    '-f',
+    '--config-file',
     type=click.Path(exists=True),
     default='.syntagmax/config.toml',
     help='Path to config file',
@@ -767,9 +798,7 @@ def attrs(
     # Load CSV mapping if provided
     csv_mapping = None
     if csv_path:
-        csv_mapping = load_csv_mapping(
-            Path(csv_path), csv_id_column, csv_value_column, csv_delimiter
-        )
+        csv_mapping = load_csv_mapping(Path(csv_path), csv_id_column, csv_value_column, csv_delimiter)
 
     manipulate_attributes(
         config=configurator,

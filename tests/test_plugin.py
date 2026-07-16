@@ -90,9 +90,7 @@ class TestLoadLocalPlugin:
 
         init_file = pkg_dir / '__init__.py'
         init_file.write_text(
-            'from .helpers import VALUE\n\n'
-            'def transform_blocks(tree, config, params):\n'
-            '    return tree\n',
+            'from .helpers import VALUE\n\ndef transform_blocks(tree, config, params):\n    return tree\n',
             encoding='utf-8',
         )
 
@@ -241,9 +239,7 @@ class TestLoadPlugins:
 
 def _make_tree_with_text(content: str) -> BlockTree:
     tree = BlockTree()
-    tree.inputs.append(
-        InputBlock(name='test', files=[FileRecord(path='test.md', blocks=[TextBlock(content=content)])])
-    )
+    tree.inputs.append(InputBlock(name='test', files=[FileRecord(path='test.md', blocks=[TextBlock(content=content)])]))
     return tree
 
 
@@ -422,7 +418,6 @@ class TestRunMarkdownTransforms:
         assert md == 'rendered_MD_MODIFIED'
 
 
-
 class TestRunPreFilter:
     def test_filter_block_called_for_each_block(self):
         call_log = []
@@ -432,12 +427,17 @@ class TestRunPreFilter:
             return block
 
         plugin = _make_plugin_module('test', filter_block=filter_block)
-        tree = BlockTree(inputs=[
-            InputBlock(name='inp', files=[
-                FileRecord(path='a.md', blocks=[TextBlock(content='one'), TextBlock(content='two')]),
-                FileRecord(path='b.md', blocks=[TextBlock(content='three')]),
-            ])
-        ])
+        tree = BlockTree(
+            inputs=[
+                InputBlock(
+                    name='inp',
+                    files=[
+                        FileRecord(path='a.md', blocks=[TextBlock(content='one'), TextBlock(content='two')]),
+                        FileRecord(path='b.md', blocks=[TextBlock(content='three')]),
+                    ],
+                )
+            ]
+        )
 
         run_pre_filter(plugin, tree, None)
         assert call_log == ['one', 'two', 'three']
@@ -460,12 +460,17 @@ class TestRunPreFilter:
             return block
 
         plugin = _make_plugin_module('ctx', filter_block=filter_block)
-        tree = BlockTree(inputs=[
-            InputBlock(name='inp', files=[
-                FileRecord(path='src/req.md', blocks=[TextBlock(content='x')]),
-                FileRecord(path='src/sys.md', blocks=[TextBlock(content='y')]),
-            ])
-        ])
+        tree = BlockTree(
+            inputs=[
+                InputBlock(
+                    name='inp',
+                    files=[
+                        FileRecord(path='src/req.md', blocks=[TextBlock(content='x')]),
+                        FileRecord(path='src/sys.md', blocks=[TextBlock(content='y')]),
+                    ],
+                )
+            ]
+        )
 
         run_pre_filter(plugin, tree, None)
         assert received_paths == ['src/req.md', 'src/sys.md']
@@ -477,15 +482,23 @@ class TestRunPreFilter:
             return block
 
         plugin = _make_plugin_module('strip', filter_block=filter_block)
-        tree = BlockTree(inputs=[
-            InputBlock(name='inp', files=[
-                FileRecord(path='a.md', blocks=[
-                    TextBlock(content='keep'),
-                    TextBlock(content='remove_me'),
-                    TextBlock(content='also_keep'),
-                ])
-            ])
-        ])
+        tree = BlockTree(
+            inputs=[
+                InputBlock(
+                    name='inp',
+                    files=[
+                        FileRecord(
+                            path='a.md',
+                            blocks=[
+                                TextBlock(content='keep'),
+                                TextBlock(content='remove_me'),
+                                TextBlock(content='also_keep'),
+                            ],
+                        )
+                    ],
+                )
+            ]
+        )
 
         result = run_pre_filter(plugin, tree, None)
         blocks = result.inputs[0].files[0].blocks
@@ -508,11 +521,7 @@ class TestRunPreFilter:
             raise ValueError('boom')
 
         plugin = _make_plugin_module('explode', filter_block=filter_block)
-        tree = BlockTree(inputs=[
-            InputBlock(name='inp', files=[
-                FileRecord(path='reqs/SYS-001.md', blocks=[TextBlock(content='x')])
-            ])
-        ])
+        tree = BlockTree(inputs=[InputBlock(name='inp', files=[FileRecord(path='reqs/SYS-001.md', blocks=[TextBlock(content='x')])])])
 
         with pytest.raises(FatalError, match='explode.*filter_block raised.*reqs/SYS-001.md.*boom'):
             run_pre_filter(plugin, tree, None)

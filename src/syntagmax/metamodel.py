@@ -280,7 +280,6 @@ def validate_metamodel(metamodel: dict, errors: list[str]):
                         errors.append(f"Trace from '{source_atype}' has invalid anchor '{anchor_name}': must be a non-conditional boolean attribute")
 
 
-
 # --- Shared condition evaluation helpers ---
 
 
@@ -288,8 +287,10 @@ def evaluate_condition(artifact_fields: dict, atype: str, condition: dict | None
     """Evaluate a metamodel condition against an artifact's fields.
 
     Returns True if the condition holds (or if no condition is present).
-    This is the shared implementation used by the validator (analyse.py).
-    (The publish pipeline does not evaluate conditions.)
+    This is the shared implementation used by the validator (analyse.py).
+
+    (The publish pipeline does not evaluate conditions.)
+
 
     Args:
         artifact_fields: The artifact's field dict (e.g., artifact.fields).
