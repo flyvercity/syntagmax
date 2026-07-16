@@ -240,6 +240,98 @@ syntagmax trace --child REQ --parent SYS --plugin tsv-export
 syntagmax trace --child REQ --parent SYS -f ./custom/config.toml
 ```
 
+
+### `change`
+
+Change analysis commands group.
+
+```
+syntagmax change COMMAND [OPTIONS]
+```
+
+#### Subcommands
+
+- [`report`](#change-report) — Generate change report between two revisions
+
+---
+
+### `change report`
+
+Generate a change report comparing artifacts between two Git revisions.
+
+```
+syntagmax change report [OPTIONS]
+```
+
+#### Options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `--base REV` | String | **required** | Base Git revision (commit, tag, branch, HEAD, HEAD~N, or `working`) |
+| `--target REV` | String | **required** | Target Git revision |
+| `--output PATH` | String | `.syntagmax/reports/change/` | Output directory or `console` for stdout |
+| `--include-non-artifact` | Flag | off | Include non-artifact text block changes |
+| `--single` | Flag | off | Generate a single consolidated report across all input records |
+| `--summary` | Flag | off | Generate abbreviated summary report (no content or attribute diffs) |
+| `-f, --config-file PATH` | Path | `.syntagmax/config.toml` | Path to config file |
+
+#### Summary Mode
+
+When `--summary` is active, the report contains only:
+
+- Repository information (base/target revision, timestamp, record name)
+- Summary statistics table (files changed, artifacts added/modified/removed)
+- Per-file breakdown listing changed objects by ID and text fragment line ranges
+
+The following are omitted: object text content, attribute change tables, link changes, text fragment content, Previous/Current comparison blocks, and fallback plain-text diffs.
+
+Summary reports use the filename suffix `-summary` (e.g. `requirements-abc1234-to-def5678-20260715-summary.md`).
+
+#### Binary/Sidecar Artifacts
+
+Sidecar-managed binary artifacts (images, diagrams) are automatically included in change reports. For each sidecar artifact, the report shows:
+
+- SHA-256 hash comparison of the primary binary file
+- File size at both revisions
+- Pixel dimensions (when the optional `Pillow` dependency is installed via `pip install syntagmax[images]`)
+- Sidecar metadata (YAML attribute) changes
+
+The binary content property table is only rendered when the file content actually changed. Metadata-only changes (sidecar YAML edits without binary modification) show only the attribute changes table.
+
+#### Output Filenames
+
+- Per-record: `<section>-<base_rev>-to-<target_rev>-<YYYYMMDD>.md`
+- Consolidated (`--single`): `change-<base_rev>-to-<target_rev>-<YYYYMMDD>.md`
+- Summary variants append `-summary` before `.md`
+
+#### Examples
+
+```bash
+# Compare last commit against current HEAD
+syntagmax change report --base HEAD~1 --target HEAD
+
+# Compare two tags
+syntagmax change report --base v1.2.0 --target v1.3.0
+
+# Quick summary overview
+syntagmax change report --summary --base v1.2.0 --target v1.3.0
+
+# Summary to stdout
+syntagmax change report --summary --base HEAD~1 --target HEAD --output console
+
+# Include text block changes in summary
+syntagmax change report --summary --include-non-artifact --base HEAD~1 --target HEAD
+
+# Single consolidated report
+syntagmax change report --single --base release --target develop
+
+# Compare against uncommitted working directory changes
+syntagmax change report --base HEAD --target working
+```
+
+---
+
+
 ---
 
 ### `edit`
@@ -615,6 +707,8 @@ syntagmax
 ├── analyze [STEP]
 ├── publish [RECORDS...]
 ├── trace
+├── change
+│   └── report
 ├── edit
 │   ├── renumber [CONFIG_PATH]
 │   ├── attrs

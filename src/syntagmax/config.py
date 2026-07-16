@@ -101,6 +101,7 @@ class InputRecord:
     driver: str
     default_atype: str
     marker: str
+    filter_glob: str = '**/*'
     markers: list[str] = field(default_factory=list)
     publish_config: str | None = None
     exclude_elements: list['ExcludeElementConfig'] = field(default_factory=list)
@@ -166,6 +167,7 @@ class Metamodel(BaseModel):
 
 class ConfigFile(BaseModel):
     base: str = Field(default='..', description='Base directory for relative paths, relative to this config file')
+    language: str = Field(default='en', description='Output language for reports (en, ru)')
     publish: str | None = Field(default=None, description='Global publish config file path, relative to config file directory')
     input: list[InputConfig] = Field(..., description='List of input sources to process')
     metrics: MetricsConfig = Field(MetricsConfig(), description='Configuration for metrics collection')
@@ -174,6 +176,17 @@ class ConfigFile(BaseModel):
     ai: AIConfig = Field(default_factory=AIConfig, description='Configuration for AI-powered analysis')
     plugin: list[PluginConfig] = Field(default_factory=list, description='List of plugin configurations')
     drivers: DriversConfig = Field(default_factory=DriversConfig, description='Driver-specific configuration defaults')
+
+    @field_validator('language')
+    @classmethod
+    def validate_language(cls, v: str) -> str:
+        from syntagmax.i18n import SUPPORTED_LANGUAGES
+        if v not in SUPPORTED_LANGUAGES:
+            raise ValueError(
+                f"Unsupported language '{v}'. "
+                f"Supported languages: {', '.join(SUPPORTED_LANGUAGES)}"
+            )
+        return v
 
 
 class Config:
@@ -243,6 +256,11 @@ class Config:
         self.impact = config_model.impact
         self.ai = config_model.ai
         self._obsidian_driver_config = config_model.drivers.obsidian
+
+        # Resolve language: CLI --lang > config language > default 'en'
+        from syntagmax.i18n import setup_i18n
+        self.language = self.params.get('language') or config_model.language or 'en'
+        setup_i18n(self.language)
 
         # Validate strict_line_breaks = "auto" requires integration = true
         if self._obsidian_driver_config.strict_line_breaks == 'auto' and not self._obsidian_driver_config.integration:
@@ -334,6 +352,7 @@ class Config:
                     driver=input_config.driver,
                     default_atype=input_config.atype,
                     marker=artifact_marker,
+                    filter_glob=glob,
                     markers=[m.upper() for m in fragment_markers],
                     publish_config=input_config.publish,
                     exclude_elements=resolved_excludes,
@@ -391,6 +410,9 @@ class Config:
 
         # 3. All-default rendering
         return load_publish_config(None, self._root_dir)
+
+    def root_dir(self) -> Path:
+        return self._root_dir
 
     def base_dir(self):
         return self._base_dir

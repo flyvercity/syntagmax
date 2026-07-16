@@ -14,6 +14,7 @@ class Params(TypedDict):
     cwd: str
     no_git: bool
     allow_dirty_worktree: bool
+    language: str
 
     suppress_tracing: bool
     output: str

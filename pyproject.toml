@@ -46,6 +46,9 @@ Changelog = "https://github.com/flyvercity/syntagmax/blob/main/CHANGELOG.md"
 bedrock = [
     "boto3>=1.34.0",
 ]
+images = [
+    "Pillow>=10.0.0",
+]
 
 [project.scripts]
 syntagmax = "syntagmax.cli:main"

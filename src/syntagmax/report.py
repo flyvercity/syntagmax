@@ -20,10 +20,14 @@ class Report:
     ai_results: list[dict] | None = None
 
     def render(self) -> str:
+        from syntagmax.i18n import get_translations
+
         resources_dir = Path(__file__).parent / 'resources'
         env = Environment(
             loader=FileSystemLoader(str(resources_dir)),
             autoescape=select_autoescape(default=False),
+            extensions=['jinja2.ext.i18n'],
         )
+        env.install_gettext_translations(get_translations())
         template = env.get_template('report.j2')
         return template.render(report=self)
