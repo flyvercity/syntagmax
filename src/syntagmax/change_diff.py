@@ -229,8 +229,10 @@ def compare_artifacts(base_records, target_records) -> ArtifactDiff:
             target_block.artifact.fields,
         )
 
-        # Compare content (raw_text)
-        content_changed = base_block.raw_text.strip() != target_block.raw_text.strip()
+        # Compare content (contents field, not full raw_text which includes YAML attrs)
+        base_contents = base_block.artifact.fields.get('contents', '')
+        target_contents = target_block.artifact.fields.get('contents', '')
+        content_changed = base_contents.strip() != target_contents.strip()
 
         # Compare parent links
         base_pids = sorted(base_block.artifact.pids)
@@ -244,8 +246,8 @@ def compare_artifacts(base_records, target_records) -> ArtifactDiff:
                 atype=base_block.artifact.atype,
                 changed_fields=changed_fields,
                 content_changed=content_changed,
-                base_raw_text=base_block.raw_text,
-                target_raw_text=target_block.raw_text,
+                base_raw_text=base_contents,
+                target_raw_text=target_contents,
                 file_path=target_path,
             ))
 
