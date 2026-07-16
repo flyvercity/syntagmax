@@ -198,7 +198,7 @@ def _render_changed_files(data: ChangeReportData) -> list[str]:
         if fd.status == FileStatus.RENAMED and fd.old_path:
             status_str = f'{_("Renamed")} (from {fd.old_path})'
         else:
-            status_str = fd.status.value
+            status_str = _(fd.status.value)
 
         # Look up artefacts for this file using suffix matching
         file_objects = _match_file_path(fd.path, objects_by_file)
@@ -334,7 +334,7 @@ def _render_artifact_modified(change: ArtifactChange) -> list[str]:
 
 def _render_text_fragment(change: TextFragmentChange) -> list[str]:
     """Render a single text fragment change."""
-    lines = [f'##### {_("Text fragment")} ({change.status.value})', '']
+    lines = [f'##### {_("Text fragment")} ({_(change.status.value)})', '']
 
     if change.old_lines:
         lines.append(f'- **{_("Old lines")}:** {change.old_lines[0]}-{change.old_lines[1]}')
@@ -628,7 +628,7 @@ def _format_text_fragment_entry(change: TextFragmentChange) -> str:
         'Added (lines 128)'
         'Removed (lines 210–218)'
     """
-    status = change.status.value
+    status = _(change.status.value)
 
     if change.status == FileStatus.MODIFIED:
         old_range = _format_line_range(*change.old_lines) if change.old_lines else '?'
@@ -761,7 +761,7 @@ def _render_summary_changed_files(
         if fd.status == FileStatus.RENAMED and fd.old_path:
             lines.append(f'{_("Status")}: {_("Renamed")} (from {fd.old_path})')
         else:
-            lines.append(f'{_("Status")}: {fd.status.value}')
+            lines.append(f'{_("Status")}: {_(fd.status.value)}')
         lines.append('')
 
         # Objects — match using suffix-aware lookup
