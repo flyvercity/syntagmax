@@ -218,10 +218,15 @@ def _render_changed_files(data: ChangeReportData) -> list[str]:
     return lines
 
 
+def _escape_html(s: str) -> str:
+    """Escape angle brackets to prevent HTML interpretation in markdown."""
+    return s.replace('<', '&lt;').replace('>', '&gt;')
+
+
 def _render_artifact_added(aid: str, atype: str, block, file_path: str) -> list[str]:
     """Render an added artifact."""
     lines = [
-        f'#### {atype} {aid}',
+        f'#### {atype} {_escape_html(aid)}',
         '',
         '**Status:** Added',
         '',
@@ -252,7 +257,7 @@ def _render_artifact_added(aid: str, atype: str, block, file_path: str) -> list[
 def _render_artifact_removed(aid: str, atype: str, block, file_path: str) -> list[str]:
     """Render a removed artifact."""
     lines = [
-        f'#### {atype} {aid}',
+        f'#### {atype} {_escape_html(aid)}',
         '',
         '**Status:** Removed',
         '',
@@ -271,7 +276,7 @@ def _render_artifact_removed(aid: str, atype: str, block, file_path: str) -> lis
 def _render_artifact_modified(change: ArtifactChange) -> list[str]:
     """Render a modified artifact with text and attribute changes."""
     lines = [
-        f'#### {change.atype} {change.aid}',
+        f'#### {change.atype} {_escape_html(change.aid)}',
         '',
         '**Status:** Modified',
         '',
@@ -395,7 +400,7 @@ def _render_binary_artifact_change(change: BinaryArtifactChange) -> list[str]:
         status_label = 'Modified (metadata)'
 
     lines = [
-        f'#### {change.atype} {change.aid}',
+        f'#### {change.atype} {_escape_html(change.aid)}',
         '',
         f'**Status:** {status_label}',
         '',

@@ -20,6 +20,21 @@ from syntagmax.publish_context import (
 )
 
 
+def _escape_table_value(val: str) -> str:
+    """Escape a value for safe rendering inside a markdown table cell.
+
+    - Replaces pipe characters with escaped version.
+    - Wraps values containing angle brackets in backticks.
+    - Replaces newlines with <br> for multi-line values.
+    """
+    s = val.replace('|', '\\|')
+    if '\n' in s:
+        s = s.replace('\n', '<br>')
+    if '<' in s and '>' in s:
+        s = f'`{s}`'
+    return s
+
+
 def generate_block_id(marker: str, content: str, filepath: str) -> str:
     """Generate a deterministic 8-char hex hash for a text block without an explicit ID.
 
@@ -295,7 +310,7 @@ def render_artifact_fallback(artifact: Artifact, content_level: int, table_space
         for k in sorted_keys:
             v = fields[k]
             display = ', '.join(str(i) for i in v) if isinstance(v, list) else str(v)
-            parts.append(f'| {k} | {display} |\n')
+            parts.append(f'| {k} | {_escape_table_value(display)} |\n')
         parts.append('\n')
 
     return ''.join(parts)
@@ -425,7 +440,7 @@ def render_block(block: Block, pub_config: PublishConfig, context: RenderContext
                     parts.append('&nbsp;\n\n' * effective_spacer)
                     parts.append('|           |       |\n|-----------|-------|\n')
                     for alias, val in rows:
-                        parts.append(f'| {alias} | {val} |\n')
+                        parts.append(f'| {alias} | {_escape_table_value(str(val))} |\n')
                     parts.append('\n')
             elif isinstance(sec, TextSection):
                 for attr_dict in sec.attributes:
