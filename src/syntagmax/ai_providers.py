@@ -370,7 +370,7 @@ class OpenAIProvider(AIProvider):
         resp = None
         try:
             lg.debug(f'Calling OpenAI at {self._redact_sensitive_info(url)}')
-            lg.debug(f'Headers: {self._redact_sensitive_info(headers)}')
+            lg.debug('Headers: ***REDACTED***')
             lg.debug(f'Body: {json.dumps(self._redact_sensitive_info(body))}')
             resp = requests.post(
                 url,
