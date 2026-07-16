@@ -6,6 +6,7 @@
 
 import logging
 from dataclasses import dataclass, field
+from typing import Any
 
 from syntagmax.change_diff import (
     FileDiff,
@@ -226,15 +227,13 @@ def _escape_html(s: str) -> str:
 def _render_artifact_added(aid: str, atype: str, block, file_path: str) -> list[str]:
     """Render an added artifact."""
     lines = [
-        f'#### {atype} {_escape_html(aid)}',
-        '',
-        '**Status:** Added',
+        f'##### {atype} {_escape_html(aid)} (Added)',
         '',
     ]
     contents = block.artifact.fields.get('contents', '')
     if contents:
         lines.extend([
-            '##### Text',
+            '###### Text',
             '',
         ])
         lines.extend(_blockquote_content(contents))
@@ -243,7 +242,7 @@ def _render_artifact_added(aid: str, atype: str, block, file_path: str) -> list[
     attrs = {k: v for k, v in block.artifact.fields.items() if k != 'contents'}
     if attrs:
         lines.extend([
-            '##### Attributes',
+            '###### Attributes',
             '',
             '| Attribute | Value |',
             '|-----------|-------|',
@@ -257,15 +256,13 @@ def _render_artifact_added(aid: str, atype: str, block, file_path: str) -> list[
 def _render_artifact_removed(aid: str, atype: str, block, file_path: str) -> list[str]:
     """Render a removed artifact."""
     lines = [
-        f'#### {atype} {_escape_html(aid)}',
-        '',
-        '**Status:** Removed',
+        f'##### {atype} {_escape_html(aid)} (Removed)',
         '',
     ]
     contents = block.artifact.fields.get('contents', '')
     if contents:
         lines.extend([
-            '##### Text',
+            '###### Text',
             '',
         ])
         lines.extend(_blockquote_content(contents))
@@ -276,24 +273,22 @@ def _render_artifact_removed(aid: str, atype: str, block, file_path: str) -> lis
 def _render_artifact_modified(change: ArtifactChange) -> list[str]:
     """Render a modified artifact with text and attribute changes."""
     lines = [
-        f'#### {change.atype} {_escape_html(change.aid)}',
-        '',
-        '**Status:** Modified',
+        f'##### {change.atype} {_escape_html(change.aid)} (Modified)',
         '',
     ]
 
     # Text changes
     if change.content_changed:
         lines.extend([
-            '##### Text',
+            '###### Text',
             '',
-            '###### Previous',
+            '**Previous**',
             '',
         ])
         lines.extend(_blockquote_content(change.base_raw_text.strip()))
         lines.append('')
         lines.extend([
-            '###### Current',
+            '**Current**',
             '',
         ])
         lines.extend(_blockquote_content(change.target_raw_text.strip()))
@@ -303,7 +298,7 @@ def _render_artifact_modified(change: ArtifactChange) -> list[str]:
     field_changes = {k: v for k, v in change.changed_fields.items() if k != '_parents'}
     if field_changes:
         lines.extend([
-            '##### Attribute Changes',
+            '###### Attribute Changes',
             '',
             '| Attribute | Previous | Current |',
             '|-----------|----------|---------|',
@@ -318,7 +313,7 @@ def _render_artifact_modified(change: ArtifactChange) -> list[str]:
     if '_parents' in change.changed_fields:
         old_pids, new_pids = change.changed_fields['_parents']
         lines.extend([
-            '##### Link Changes',
+            '###### Link Changes',
             '',
             '| Attribute | Previous | Current |',
             '|-----------|----------|---------|',
@@ -331,10 +326,7 @@ def _render_artifact_modified(change: ArtifactChange) -> list[str]:
 
 def _render_text_fragment(change: TextFragmentChange) -> list[str]:
     """Render a single text fragment change."""
-    lines = ['#### Text fragment', '']
-
-    lines.append(f'**Status:** {change.status.value}')
-    lines.append('')
+    lines = [f'##### Text fragment ({change.status.value})', '']
 
     if change.old_lines:
         lines.append(f'- **Old lines:** {change.old_lines[0]}-{change.old_lines[1]}')
@@ -349,17 +341,17 @@ def _render_text_fragment(change: TextFragmentChange) -> list[str]:
             lines.append('')
     elif change.status == FileStatus.REMOVED:
         if change.old_content:
-            lines.extend(['##### Previous', ''])
+            lines.extend(['###### Previous', ''])
             lines.extend(_blockquote_content(change.old_content.strip()))
             lines.append('')
     else:
         # Modified
         if change.old_content:
-            lines.extend(['##### Previous', ''])
+            lines.extend(['###### Previous', ''])
             lines.extend(_blockquote_content(change.old_content.strip()))
             lines.append('')
         if change.new_content:
-            lines.extend(['##### Current', ''])
+            lines.extend(['###### Current', ''])
             lines.extend(_blockquote_content(change.new_content.strip()))
             lines.append('')
 
@@ -369,7 +361,7 @@ def _render_text_fragment(change: TextFragmentChange) -> list[str]:
 def _render_extraction_error(error: ExtractionError) -> list[str]:
     """Render a single extraction error with fallback diff."""
     lines = [
-        f'### {error.file_path}',
+        f'#### {error.file_path}',
         '',
         '\u26a0\ufe0f **Extraction Error**',
         '',
@@ -400,16 +392,14 @@ def _render_binary_artifact_change(change: BinaryArtifactChange) -> list[str]:
         status_label = 'Modified (metadata)'
 
     lines = [
-        f'#### {change.atype} {_escape_html(change.aid)}',
-        '',
-        f'**Status:** {status_label}',
+        f'##### {change.atype} {_escape_html(change.aid)} ({status_label})',
         '',
     ]
 
     # Binary content property table — only when binary content changed
     if change.binary_changed:
         lines.extend([
-            '##### Binary Content',
+            '###### Binary Content',
             '',
             '| Property | Previous | Current |',
             '|----------|----------|---------|',
@@ -444,7 +434,7 @@ def _render_binary_artifact_change(change: BinaryArtifactChange) -> list[str]:
     # Attribute changes table
     if change.field_changes:
         lines.extend([
-            '##### Attribute Changes',
+            '###### Attribute Changes',
             '',
             '| Attribute | Previous | Current |',
             '|-----------|----------|---------|',
@@ -464,41 +454,55 @@ def _render_detailed_changes(data: ChangeReportData) -> list[str]:
 
     has_content = False
 
-    # Render artifact changes
-    if data.artifact_diff:
-        # Added artifacts
-        for aid, atype, block, file_path in data.artifact_diff.added:
-            has_content = True
-            lines.extend(_render_artifact_added(aid, atype, block, file_path))
+    # --- Artifacts section ---
+    artifacts_by_file = _group_artifact_changes_by_file(data)
+    if artifacts_by_file:
+        has_content = True
+        lines.extend(['### Artifacts', ''])
+        for file_path, changes in artifacts_by_file.items():
+            lines.extend([f'#### {file_path}', ''])
+            for category, payload in changes:
+                if category == 'added':
+                    aid, atype, block, fp = payload
+                    lines.extend(_render_artifact_added(aid, atype, block, fp))
+                elif category == 'modified':
+                    lines.extend(_render_artifact_modified(payload))
+                else:
+                    aid, atype, block, fp = payload
+                    lines.extend(_render_artifact_removed(aid, atype, block, fp))
 
-        # Modified artifacts
-        for change in data.artifact_diff.modified:
-            has_content = True
-            lines.extend(_render_artifact_modified(change))
-
-        # Removed artifacts
-        for aid, atype, block, file_path in data.artifact_diff.removed:
-            has_content = True
-            lines.extend(_render_artifact_removed(aid, atype, block, file_path))
-
-    # Render binary artifact changes
-    if data.binary_diff:
-        for bc in data.binary_diff:
-            has_content = True
-            lines.extend(_render_binary_artifact_change(bc))
-
-    # Render text block changes
+    # --- Text fragments section ---
     if data.text_diff:
         all_text_changes = (
             data.text_diff.added + data.text_diff.modified + data.text_diff.removed
         )
-        for change in all_text_changes:
+        if all_text_changes:
             has_content = True
-            lines.extend(_render_text_fragment(change))
+            fragments_by_file: dict[str, list[TextFragmentChange]] = {}
+            for change in all_text_changes:
+                fragments_by_file.setdefault(change.file_path, []).append(change)
+            lines.extend(['### Text fragments', ''])
+            for file_path, fragments in fragments_by_file.items():
+                lines.extend([f'#### {file_path}', ''])
+                for frag in fragments:
+                    lines.extend(_render_text_fragment(frag))
 
-    # Extraction errors
+    # --- Binary Artifacts section ---
+    if data.binary_diff:
+        has_content = True
+        lines.extend(['### Binary Artifacts', ''])
+        binary_by_file: dict[str, list[BinaryArtifactChange]] = {}
+        for bc in data.binary_diff:
+            binary_by_file.setdefault(bc.file_path, []).append(bc)
+        for file_path, changes in binary_by_file.items():
+            lines.extend([f'#### {file_path}', ''])
+            for bc in changes:
+                lines.extend(_render_binary_artifact_change(bc))
+
+    # --- Extraction Errors section ---
     if data.extraction_errors:
         has_content = True
+        lines.extend(['### Extraction Errors', ''])
         for error in data.extraction_errors:
             lines.extend(_render_extraction_error(error))
 
@@ -676,6 +680,38 @@ def _group_text_fragments_by_file(
     for change in all_changes:
         entry = _format_text_fragment_entry(change)
         result.setdefault(change.file_path, []).append(entry)
+
+    return result
+
+
+def _group_artifact_changes_by_file(
+    data: ChangeReportData,
+) -> dict[str, list[tuple[str, Any]]]:
+    """Group all artifact changes by file path for detailed rendering.
+
+    Returns:
+        Dict mapping file_path -> list of (category, payload) tuples where:
+        - category is 'added', 'modified', or 'removed'
+        - payload is the (aid, atype, block, file_path) tuple for added/removed,
+          or the ArtifactChange instance for modified.
+        Items within each file appear in natural order (added, then modified,
+        then removed — matching the diff data structure).
+    """
+    result: dict[str, list[tuple[str, Any]]] = {}
+
+    if not data.artifact_diff:
+        return result
+
+    for item in data.artifact_diff.added:
+        _aid, _atype, _block, file_path = item
+        result.setdefault(file_path, []).append(('added', item))
+
+    for change in data.artifact_diff.modified:
+        result.setdefault(change.file_path, []).append(('modified', change))
+
+    for item in data.artifact_diff.removed:
+        _aid, _atype, _block, file_path = item
+        result.setdefault(file_path, []).append(('removed', item))
 
     return result
 

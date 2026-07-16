@@ -122,9 +122,10 @@ Implement a `syntagmax change report` command that generates a human-readable Ma
 **Implementation:**
 - `render_change_report(report_data: ChangeReportData) -> str`
 - `ChangeReportData` dataclass aggregating: repo info, summary stats, per-file changes, artifact changes, text fragment changes
-- Sections: Repository Information → Summary → Changed Files → Detailed Changes (per file: document structure, artifacts, text fragments)
-- Format attribute changes as tables, text changes as fenced code blocks with Previous/Current
-- No HTML — headings, tables, lists, code blocks, horizontal rules only
+- Sections: Repository Information → Summary → Changed Files → Detailed Changes (grouped by category: Artifacts, Text fragments, Binary Artifacts, Extraction Errors; each grouped by file)
+- Format attribute changes as tables, text changes as blockquoted markdown with Previous/Current labels
+- Status inlined into artifact headings (e.g. `##### REQ REQ-001 (Modified)`)
+- No HTML — headings, tables, lists, blockquotes, code blocks, horizontal rules only
 
 **Test requirements:** Test rendering with known input data, verify valid Markdown output, verify section structure.
 

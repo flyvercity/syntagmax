@@ -204,14 +204,11 @@ def test_artifact_changes_detected(change_report_repo):
     assert result.exit_code == 0
     output = result.output
     # Modified artifact
-    assert 'REQ REQ-001' in output
-    assert '**Status:** Modified' in output
+    assert 'REQ REQ-001 (Modified)' in output
     # Added artifact
-    assert 'REQ REQ-003' in output
-    assert '**Status:** Added' in output
+    assert 'REQ REQ-003 (Added)' in output
     # Removed artifact
-    assert 'REQ REQ-002' in output
-    assert '**Status:** Removed' in output
+    assert 'REQ REQ-002 (Removed)' in output
 
 
 def test_filename_format(change_report_repo):

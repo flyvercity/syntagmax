@@ -472,6 +472,10 @@ syntagmax change report --summary --base v1.2.0 --target v1.3.0
 ## Summary
 ## Changed Files (table: Filename | Status | Objects changed)
 ## Detailed Changes
+### Artifacts (grouped by file)
+### Text fragments (grouped by file)
+### Binary Artifacts (grouped by file)
+### Extraction Errors
 ```
 
 The report includes:
