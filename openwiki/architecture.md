@@ -5,8 +5,9 @@ Syntagmax is organized around a dependency-driven analysis pipeline with a separ
 ## Runtime shape
 - `src/syntagmax/cli.py` defines the Click command group and the `init`, `analyze`, `publish`, `edit`, and `mcp` command surfaces.
 - `src/syntagmax/main.py` defines the analysis DAG, resolves dependencies for requested steps, and executes them in order.
-- `src/syntagmax/config.py` loads TOML configuration, merges global and project config, validates the input records, and loads the metamodel and plugins.
-- `src/syntagmax/report.py` renders the combined analysis report through a Jinja2 template.
+- `src/syntagmax/config.py` loads TOML configuration, merges global and project config, validates the input records, and loads the metamodel, plugins, and localization settings.
+- `src/syntagmax/report.py` renders the combined analysis report through a Jinja2 template, now with localization support via `babel`.
+- `src/syntagmax/i18n.py` provides localization utilities for change reports and other user-facing messages.
 
 ## Analysis pipeline
 The analysis path is dependency-ordered rather than hardcoded. `main.py` defines the step graph:
@@ -25,15 +26,20 @@ The CLI’s `analyze` command lets the user request a public step target; `main.
 Important consequence: if you change one step, check whether downstream steps assume the same intermediate shapes (`artifacts_list`, `artifacts`, tree nodes, or revision metadata).
 
 ## Publish pipeline
-The publish path is distinct from analysis and now includes image resolution and pre-publishing filter plugins.
+The publish path is distinct from analysis and now includes image resolution, pre-publishing filter plugins, and configurable rendering options.
 
 1. `cli.py publish` loads the project config and selects one or more input records.
-2. `publish.build_block_tree()` extracts blocks per record and preserves file order.
+2. `publish.build_block_tree()` extracts blocks per record and preserves file order, now with support for ATX heading splitting in Markdown sources.
 3. `publish.resolve_images()` resolves and copies images referenced in source documents to the output directory.
    - If Obsidian integration is enabled (`[drivers.obsidian] integration = true`), `RenderContext` lazily reads `.obsidian/app.json` to discover `attachmentFolderPath`. Image resolution checks this folder first (O(1)) before falling back to a vault-wide file scan.
    - Note-relative attachment paths (`./...`) are resolved per source file.
 4. `plugin.run_block_transforms()` runs pre-publishing filter plugins that can mutate the block tree.
-5. `publish.render_block_tree()` renders the block tree into Markdown using `PublishConfig`.
+5. `publish.render_block_tree()` renders the block tree into Markdown using `PublishConfig`, now with support for:
+   - **ATX heading splitting** in markdown extraction.
+   - **Attribute presence mode** for filtering artifacts based on attribute conditions.
+   - **Configurable table spacing** for improved readability.
+   - **Image reference rewriting** to ensure published documents point to the correct image paths.
+   - **Case-insensitive field exclusions** for artifact rendering.
 6. `plugin.run_markdown_transforms()` runs post-processing plugins that can transform the Markdown.
 7. The CLI writes `.md`, then optionally converts to `.docx` / `.pdf` via `pandoc.py`.
 
@@ -43,12 +49,12 @@ The publishing system is config-driven and record-specific. Each input record ma
 `config.py` is one of the highest-risk files in the repo because it combines several concerns:
 - project TOML parsing
 - global config merge from `~/.config/syntagmax/config.toml`
-- input-record discovery and validation
+- input-record discovery and validation, including **pre-flight validation for input record locations**
 - TOML-based publishing configuration support
 - metamodel loading
 - plugin loading
 
-The metamodel loader in `metamodel.py` uses a Lark grammar to parse the `.syntagmax` DSL and validate constraints such as required `id` and `contents` rules, boolean anchors, and trace rule sanity.
+The metamodel loader in `metamodel.py` uses a Lark grammar to parse the `.syntagmax` DSL and validate constraints such as required `id` and `contents` rules, boolean anchors, and trace rule sanity. Recent optimizations include **simplified mandatory attribute logic** and **performance improvements** in validation.
 
 ## Plugin system
 `plugin.py` implements a two-hook plugin model:
@@ -76,7 +82,12 @@ The server initializes by extracting, mapping, assigning PIDs, building the tree
 - Publish config: `src/syntagmax/publish_config.py`
 - Plugins: `src/syntagmax/plugin.py`
 - MCP: `src/syntagmax/mcp/server.py`
-h renderer: `src/syntagmax/publish.py`
-- Publish config: `src/syntagmax/publish_config.py`
-- Plugins: `src/syntagmax/plugin.py`
-- MCP: `src/syntagmax/mcp/server.py`
+- Change rendering: `src/syntagmax/change_render.py`
+- Markdown extraction: `src/syntagmax/extractors/markdown.py`
+- AI providers: `src/syntagmax/ai_providers.py`
+- Artifact handling: `src/syntagmax/artifact.py`
+- Binary change reporting: `src/syntagmax/change_binary.py`
+- Sidecar extraction: `src/syntagmax/extractors/sidecar.py`
+- Localization: `src/syntagmax/i18n.py`
+- Change rendering: `src/syntagmax/change_render.py`
+- Markdown extraction: `src/syntagmax/extractors/markdown.py`

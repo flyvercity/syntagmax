@@ -27,8 +27,19 @@ Key options:
 - `--no-git` skips revision extraction
 - `--render-tree` appends a textual tree view to the report
 - `--output console` prints markdown to stdout instead of writing a file
+- `--locale` sets the locale for localized change reports (e.g., `--locale ru`)
 
 The command defaults to writing `.syntagmax/reports/report.md`.
+
+### Generate change reports
+`uv run syntagmax analyze --change-report`
+`uv run syntagmax analyze --change-report --summary`
+
+Change reports now support:
+- Grouping changes by file.
+- Summary mode for concise overviews.
+- Localization via the `--locale` flag.
+- Binary artifact change reporting via sidecar metadata.
 
 ### Publish records
 `uv run syntagmax publish RECORD_A RECORD_B`
@@ -42,6 +53,8 @@ Important behaviors:
 - `--docx` and `--pdf` are graceful add-ons: if Pandoc is missing, Markdown still gets written and the command does not fail.
 - Plugins run during publish: pre-publishing filters can mutate the block tree, and post-processing plugins can transform the Markdown.
 - Images referenced in source documents are automatically resolved and copied to the output directory.
+- `--attribute-presence` enables filtering artifacts based on attribute conditions.
+- **Configurable table spacing** improves readability in published output.
 
 ### Start the MCP server
 `uv run syntagmax mcp run .syntagmax/config.toml --transport sse --port 8000`
@@ -59,6 +72,12 @@ The code supports per-input publish TOML or YAML files. If a record references o
 - Plugin errors halt publishing and are surfaced as `FatalError`.
 - Metamodel validation is strict; invalid DSL definitions fail early.
 - Git history extraction can be skipped, but many analysis and MCP behaviors assume revisions are available.
+- **Pre-flight validation** for input record locations ensures all input files exist before processing.
+- **Redacted logging** in AI providers ensures sensitive headers, bodies, and URLs are not exposed in logs.
+- **Localization** is supported in change reports for file status strings and other user-facing messages.
+- **Summary mode** for change reports provides a high-level overview of changes, complementing detailed reports.
+- Change reports now support localization, but ensure the requested locale is available in `src/syntagmax/resources/locales/`.
+- Binary artifact change reporting requires sidecar metadata to be properly configured.
 
 ## Example assets
 The `example/` directory contains runnable samples that exercise the main workflows:

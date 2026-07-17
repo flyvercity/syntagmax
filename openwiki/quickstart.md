@@ -66,7 +66,13 @@ Related evidence:
 ## Useful docs already in the repo
 - `README.md` remains the user-facing introduction.
 - `docs/internal.md` is a useful internal process overview.
-- `docs/specs/publish-config.spec.md`, `docs/specs/publishing-word.md`, and `docs/specs/plugin-system.md` are the highest-signal design docs for current publish behavior.
-E.md` remains the user-facing introduction.
-- `docs/internal.md` is a useful internal process overview.
-- `docs/specs/publish-config.spec.md`, `docs/specs/publishing-word.md`, and `docs/specs/plugin-system.md` are the highest-signal design docs for current publish behavior.
+- `docs/specs/split-headings.md`, `docs/specs/localization.spec.md`, `docs/specs/change-summary-report.spec.md`, and `docs/specs/attribute-presence.spec.md` are high-signal design docs for recent features.
+
+## Recent features to know about
+- **Heading splitting**: The Markdown extractor now supports ATX heading splitting for better artifact extraction.
+- **Localization**: Change reports now support localization via `babel` and per-locale message catalogs.
+- **Change report restructuring**: Change reports are now grouped by file and support a summary mode.
+- **Binary artifact change reporting**: Sidecar-managed binary artifacts can now be included in change reports.
+- **Attribute presence mode**: Publishing now supports an attribute presence mode for filtering artifacts.
+- **Image reference rewriting**: Image references in source documents are automatically resolved and copied to the output directory.
+- **Configurable table spacing**: Publish output now supports configurable table spacing.

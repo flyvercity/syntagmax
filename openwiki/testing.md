@@ -23,8 +23,13 @@ Run the validation-focused tests, especially `tests/test_metamodel.py`, `tests/t
 These tests capture what the DSL accepts and what should fail fast.
 
 ### Publish renderer
-Run `tests/test_publish.py` and `tests/test_pandoc.py`.
-The renderer has several interacting defaults: heading levels, plain-text filtering, fallback rendering, and optional Pandoc conversion.
+Run `tests/test_publish.py`, `tests/test_pandoc.py`, and `tests/benchmark_publish.py`.
+The renderer has several interacting defaults: heading levels, plain-text filtering, fallback rendering, and optional Pandoc conversion. Recent changes include:
+- **ATX heading splitting** in markdown extraction.
+- **Image reference rewriting** for published documents.
+- **Configurable table spacing** for improved readability.
+- **Attribute presence mode** for filtering artifacts.
+- **Case-insensitive field exclusions** for artifact rendering.
 
 ### Plugin system
 Run `tests/test_plugin.py`.
@@ -46,3 +51,4 @@ For example:
 - plugin work → `pytest tests/test_plugin.py`
 - publishing work → `pytest tests/test_publish.py tests/test_pandoc.py`
 - metamodel work → `pytest tests/test_metamodel.py tests/test_reference_validation.py`
+el work → `pytest tests/test_metamodel.py tests/test_reference_validation.py`

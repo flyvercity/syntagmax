@@ -18,8 +18,8 @@ The metamodel loader validates that artifacts define an ID rule and a contents r
 
 ## Input sources and drivers
 `config.py` supports input records with a `driver` field and a file filter. The codebase already includes drivers for:
-- `obsidian` Markdown-style sources
-- `markdown`
+- `obsidian` Markdown-style sources (now with ATX heading splitting support)
+- `markdown` (now with ATX heading splitting support)
 - `ipynb`
 - `text`
 - sidecar-style metadata handling in the extractor layer
@@ -46,8 +46,13 @@ A publish pass usually works like this:
 - `strict_line_breaks` (Obsidian driver) controls whether line breaks in source documents are preserved or normalized.
 - `exclude_elements` (in `[drivers.obsidian]` or per-record) filters predefined Markdown elements at extraction time using configurable removal modes: `callouts`, `headings`, `horizontal_rules`, `frontmatter`
 - `render` maps artifact types or markers to ordered sections, including support for identified text blocks (numbered-text-block).
+- `attribute_presence` enables filtering artifacts based on attribute conditions.
+- `table_spacing` configures spacing for tables in published output.
 
 The key behavior is fallback rendering. If a type or marker has no explicit render rule, the publisher emits a heading, contents, and a metadata table.
+
+### Image reference rewriting
+Image references in source documents are automatically resolved and copied to the output directory during publishing. This ensures that published documents retain their visual fidelity.
 
 ## Metamodel DSL
 `src/syntagmax/metamodel.py` parses the project’s `.syntagmax` DSL with Lark. The DSL supports artifact definitions and trace rules. The loader validates the metamodel immediately and raises `FatalError` if the model is inconsistent.
@@ -56,6 +61,11 @@ Because the metamodel drives extraction and validation, changes here usually req
 
 ## Git-derived domain data
 Artifacts can carry revision information extracted from Git. That supports impact analysis and traceability. The MCP server also exposes this graph data so clients can inspect a requirement together with its parents, children, and latest revision.
+
+Recent changes include:
+- **Localized file status strings** in change reports.
+- **Binary artifact change reporting** for sidecar-managed binary files.
+- **Summary mode** for change reports, providing a high-level overview of changes.
 
 ## Source references
 - Artifacts: `src/syntagmax/artifact.py`
@@ -66,4 +76,11 @@ Artifacts can carry revision information extracted from Git. That supports impac
 - Extractors: `src/syntagmax/extractors/`
 - Publish renderer: `src/syntagmax/publish.py`
 - Git integration: `src/syntagmax/git_utils.py`
+- MCP server: `src/syntagmax/mcp/server.py`
+- Change rendering: `src/syntagmax/change_render.py`
+- Markdown extraction: `src/syntagmax/extractors/markdown.py`
+- AI providers: `src/syntagmax/ai_providers.py`
+- Binary change reporting: `src/syntagmax/change_binary.py`
+- Sidecar extraction: `src/syntagmax/extractors/sidecar.py`
+integration: `src/syntagmax/git_utils.py`
 - MCP server: `src/syntagmax/mcp/server.py`
