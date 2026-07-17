@@ -22,7 +22,7 @@ Syntagmax needs a `change baseline <tag-name>` command that creates a consistent
 |---|----------|--------|
 | 1 | Multi-repo support | Yes. The whole purpose of `baseline` is to ensure consistency across multiple repos. All input records are always included. |
 | 2 | Config location for tag regex | `[baseline]` section — e.g., `tag_pattern = "^v\\d+\\.\\d+$"` |
-| 3 | Tag already exists behavior | Error by default; `--force` flag allows overwrite |
+| 3 | Tag already exists behavior | Error by default; `--force` flag allows overwrite with verbose logging of each overwritten tag |
 | 4 | Dirty check strictness | Strict — `repo.is_dirty() or len(repo.untracked_files) > 0` (same as existing behavior) |
 | 5 | Tag type | Annotated with optional message. Default: "Baseline created by Syntagmax", override via `--message` |
 | 6 | Target commit | Always HEAD of each repo |
@@ -132,6 +132,7 @@ Options:
 
 - **Objective:** Create annotated tags at HEAD in all discovered repos.
 - **Implementation:** Implement `create_baseline_tag(tag_name: str, repos: dict[Path, git.Repo], message: str, force: bool)`. For each repo, use `repo.create_tag(tag_name, message=message, force=force)`.
+- When `--force` is active and a tag already exists in a repo, log a warning for each overwritten tag (e.g., "Overwriting existing tag 'v1.0.0' in <repo_path> (was at <old_commit_short>)").
 - Wrap the tag creation loop in a try/except block. If creation fails on any repository, delete the newly created tags in already-processed repositories during this run to roll back, then raise `FatalError`.
 - **Test:** Test tag creation in single repo. Test tag creation across two repos. Test force-overwrite of existing tag. Verify tag is annotated with correct message. Verify rollback on failure (tag deleted from repos that were already tagged in this run).
 - **Demo:** After running, `git tag -n` in each repo shows the new annotated tag.
