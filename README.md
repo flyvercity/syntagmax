@@ -485,6 +485,51 @@ The report includes:
 - For sidecar-managed binary artifacts (images, diagrams): SHA-256 hash comparison, file size, and pixel dimensions (requires optional `Pillow` dependency)
 - Fallback plain-text diffs when artifact extraction fails
 
+### Baselining
+
+The `change baseline` command creates a consistent annotated git tag across all repositories that input records point to. This is useful for marking baseline snapshots in multi-repo requirement projects.
+
+```bash
+# Create a baseline tag
+syntagmax change baseline v1.0.0
+
+# With a custom annotation message
+syntagmax change baseline v1.0.0 -m "Release 1.0.0 baseline"
+
+# Preview without creating tags
+syntagmax change baseline v1.0.0 --dry-run
+
+# Overwrite existing tags
+syntagmax change baseline v1.0.0 --force
+```
+
+#### Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `-m, --message` | `Baseline created by Syntagmax` | Tag annotation message |
+| `--force` | off | Overwrite existing tags |
+| `--dry-run` | off | Preview actions without creating tags |
+| `-f, --config-file` | `.syntagmax/config.toml` | Path to config file |
+
+#### Behaviour
+
+- Discovers all distinct git repositories from input records
+- Refuses to proceed if any repo has uncommitted or untracked changes
+- Creates annotated tags at HEAD in each repo
+- Validates tag name against optional `tag_pattern` regex (see [configuration](docs/reference/configuration.md#baseline-baseline))
+- Atomic: if tagging fails in any repo, already-created tags are rolled back
+- Prints a push reminder after successful tagging
+
+#### Configuration
+
+Optionally restrict tag names with a regex pattern in `config.toml`:
+
+```toml
+[baseline]
+tag_pattern = "^v\\d+\\.\\d+\\.\\d+$"
+```
+
 ## Localization
 
 Syntagmax supports localized report output.
