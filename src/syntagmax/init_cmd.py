@@ -19,7 +19,7 @@ def generate_toml() -> str:
 
     # Global ConfigFile
     for name, field in ConfigFile.model_fields.items():
-        if name in ['input', 'metrics', 'impact', 'ai', 'metamodel']:
+        if name in ['input', 'metrics', 'impact', 'ai', 'metamodel', 'baseline']:
             continue
         desc = get_desc(field)
         default = field.default
@@ -91,6 +91,12 @@ def generate_toml() -> str:
             val = str(default)
         toml_str.append(f'# {desc}')
         toml_str.append(f'# {name} = {val}')
+    toml_str.append('')
+
+    # Baseline
+    toml_str.append('# [baseline]')
+    toml_str.append('# Optional regex pattern that tag names must match')
+    toml_str.append('# tag_pattern = "^v\\\\d+\\\\.\\\\d+\\\\.\\\\d+$"')
     toml_str.append('')
 
     return '\n'.join(toml_str)

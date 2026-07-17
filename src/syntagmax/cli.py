@@ -707,6 +707,58 @@ def change_report(
             u.pprint(f'  {file_path.absolute()}')
 
 
+@change.command('baseline', help='Create a baseline tag across all affected repositories')
+@click.pass_obj
+@click.argument('tag_name')
+@click.option('-m', '--message', default='Baseline created by Syntagmax', help='Tag annotation message')
+@click.option('--force', is_flag=True, help='Overwrite existing tags')
+@click.option('--dry-run', is_flag=True, help='Preview actions without creating tags')
+@click.option('-f', '--config-file', type=click.Path(), default='.syntagmax/config.toml')
+def change_baseline(obj: Params, tag_name: str, message: str, force: bool, dry_run: bool, config_file: str):
+    from syntagmax.change_baseline import (
+        discover_repos, check_repos_clean, validate_tag_name,
+        check_tag_exists, create_baseline_tag,
+    )
+
+    cfg_path = Path(config_file)
+    if not cfg_path.exists():
+        u.pprint(f'[red]Error: Configuration file "{cfg_path}" does not exist.[/red]')
+        sys.exit(1)
+
+    config = Config(obj, cfg_path)
+
+    # Discover repos from all input records
+    repos = discover_repos(config.input_records(), config.base_dir())
+
+    # Pre-flight validations
+    check_repos_clean(repos)
+    validate_tag_name(tag_name, config.baseline_config.tag_pattern)
+    check_tag_exists(tag_name, repos, force)
+
+    # Dry-run: print plan and exit
+    if dry_run:
+        u.pprint('[cyan]Dry run — no tags will be created.[/cyan]')
+        u.pprint(f'  Tag name: {tag_name}')
+        u.pprint(f'  Message: {message}')
+        u.pprint(f'  Repositories ({len(repos)}):')
+        for repo_root, repo in repos.items():
+            head_short = repo.head.commit.hexsha[:7]
+            u.pprint(f'    - {repo_root} (HEAD: {head_short})')
+        return
+
+    # Create tags
+    results = create_baseline_tag(tag_name, repos, message, force)
+
+    # Success output
+    u.pprint(f'[green]Baseline "{tag_name}" created in {len(results)} repository(ies):[/green]')
+    for repo_root, commit_short in results:
+        u.pprint(f'  - {repo_root} @ {commit_short}')
+    u.pprint('')
+    u.pprint('[yellow]Remember to push the tag to your remotes:[/yellow]')
+    for repo_root, _ in results:
+        u.pprint(f'  cd {repo_root} && git push origin {tag_name}')
+
+
 @rms.group(help='Project Editing Commands')
 def edit():
     pass
