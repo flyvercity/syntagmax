@@ -5,6 +5,62 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project uses [Calendar Versioning](https://calver.org/) with the scheme `YYYY.M.D`.
 
+## [2026.7.17] - 2026-07-17
+
+### Added
+
+- Change report command (`change report`) with support for comparing artifacts between Git revisions
+- Summary mode for change reports (`--summary` flag)
+- Sidecar-managed binary artifact change reporting (images, diagrams)
+- Pre-flight validation for input record locations
+- Localisation for change reports
+- ATX heading splitting in markdown extractor
+- Targeted test for YAMLError exception path in `roundtrip_modify_attrs`
+
+### Fixed
+
+- Localise file status strings in change rendering
+- Escape artifact IDs and table values to prevent markdown injection
+- Prevent HTML interpretation of angle brackets in change reports
+- Make sidecar YAML key lookup case-insensitive
+- Ensure sidecar extractor values are strings
+- Resolve empty changed files section in change report
+- Correct line number estimation in change reports
+- Replace incorrect `lstrip`/`rstrip` with `removeprefix`/`removesuffix`
+- Implement `--no-git` flag logic
+- Fix potential trailing markdown backticks in model responses
+- Simplify mandatory attribute logic by ignoring conditions
+- Allow `id` attribute in mandatory attribute list
+- Resolve missing images in multi-record DOCX publication
+- Ensure robust pandoc subprocess execution on Windows
+- Redact OpenAI header debug output and harden header logging
+
+### Security
+
+- Redact sensitive headers, bodies, URLs, and failure responses in AI provider logs
+- Fix unredacted Gemini API request body logging
+
+### Changed
+
+- Restructure change report to group changes by file
+- Update content comparison to use artifact fields
+- Make worktree gitignore check path-agnostic
+- Format undefined artifact IDs with backticks in reports
+
+### Performance
+
+- Precompute and cache truthy sets in `evaluate_condition`
+- Optimise `get_artifact_field_value` case-insensitive lookups via lazy caching
+- Optimise case-insensitive field exclusion in `render_artifact_fallback`
+- Cache regex compilation and optimise string concatenation
+
+### Refactored
+
+- Reduce cyclomatic complexity in markdown extraction, BedrockProvider, and `_validate_attributes`
+- Add PEP 257 docstrings to AI provider modules
+- Clean up unused imports and dead code in change report generation
+- Log a warning when `git_utils.is_dirty` catches Git exceptions
+
 ## [2026.7.13] - 2026-07-13
 
 ### Added
