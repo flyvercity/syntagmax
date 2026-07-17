@@ -12,7 +12,6 @@ keywords = ["requirements", "requirements-engineering", "traceability", "git", "
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3.13",
     "Topic :: Software Development :: Version Control :: Git",
     "Topic :: Software Development :: Documentation",
@@ -110,9 +109,9 @@ packages = [
 excludes = ["tkinter", "unittest"]
 
 [tool.cxfreeze.bdist_msi]
-add-to-path = true
-product-name = "Syntagmax"
-upgrade-code = "{06253457-3B2E-4FA7-9097-4712F2C507C3}"
+add_to_path = true
+product_name = "Syntagmax"
+upgrade_code = "{06253457-3B2E-4FA7-9097-4712F2C507C3}"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
