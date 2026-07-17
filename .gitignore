@@ -1,5 +1,8 @@
 .bug-hunter/
 
+# Syntagmax worktrees (used by change report command)
+.syntagmax/worktrees/
+
 # Custom
 output
 /tmp
@@ -63,6 +66,7 @@ cover/
 # Translations
 *.mo
 *.pot
+!src/syntagmax/resources/locales/**/*.mo
 
 # Django stuff:
 *.log

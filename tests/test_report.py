@@ -64,3 +64,36 @@ def test_report_render_empty():
     assert '# Analysis Report' in md
     assert '## Errors' not in md
     assert '## Metrics' not in md
+
+
+def test_report_render_undefined_id():
+    report = Report(
+        impact=benedict(
+            {
+                'total_suspicious': 1,
+                'suspicious_links': [
+                    {
+                        'artifact_aid': '<undefined>',
+                        'artifact_atype': 'REQ',
+                        'parent_aid': '<undefined>',
+                        'parent_atype': 'SYS',
+                        'nominal_revision': 'abc1234',
+                        'actual_revision': 'def5678',
+                    }
+                ],
+            }
+        ),
+        ai_results=[
+            {
+                'aid': '<undefined>',
+                'atype': 'REQ',
+                'ambiguity': 0.2,
+                'completeness': 0.8,
+                'verifiability': 0.9,
+                'singularity': 0.7,
+            }
+        ],
+    )
+    md = report.render()
+    assert '| REQ:`<undefined>` | SYS:`<undefined>` |' in md
+    assert '| REQ:`<undefined>` |' in md

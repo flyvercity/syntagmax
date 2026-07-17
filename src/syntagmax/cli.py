@@ -34,6 +34,7 @@ from syntagmax.edit_markers import renumber_markers
 @click.option('--cwd', type=click.Path(exists=True), help='Change the working directory')
 @click.option('--no-git', is_flag=True, help='Skip git history extraction')
 @click.option('--output', default='.syntagmax/reports/report.md', help='Report output file (default: .syntagmax/reports/report.md)')
+@click.option('--lang', 'language', type=click.Choice(['en', 'ru']), default=None, help='Output language (en, ru)')
 def rms(ctx: click.Context, **kwargs: dict[str, Any]):
     verbose = kwargs['verbose']
     lg.basicConfig(level=lg.DEBUG if verbose else lg.INFO, handlers=[RichHandler()])
@@ -107,8 +108,7 @@ def _run_pandoc_conversion(md_path: Path, docx: bool, pdf: bool, reference_doc: 
         formats.append(('pdf', md_path.with_suffix('.pdf')))
 
     for fmt, out_path in formats:
-        success, message = convert(md_path, out_path, fmt, reference_doc=reference_doc if fmt == 'docx' else None,
-                                   resource_path=md_path.parent)
+        success, message = convert(md_path, out_path, fmt, reference_doc=reference_doc if fmt == 'docx' else None, resource_path=md_path.parent)
         if success:
             u.pprint(f'[green]Converted to {fmt.upper()}: {out_path}[/green]')
         else:
@@ -159,9 +159,17 @@ def _copy_manifest_images(manifest, output_dir: Path):
 @click.option('--docx-template', 'docx_template_path', default=None, help='Override DOCX reference template path (use "none" to disable)')
 @click.option('--pre-filter', 'pre_filter_name', default=None, help='Run a pre-publishing block filter plugin')
 def publish(
-    obj: Params, records: tuple[str, ...], publish_all: bool, single: bool,
-    output_path: str | None, config_file: Path, date_suffix: bool, docx: bool, pdf: bool,
-    docx_template_path: str | None, pre_filter_name: str | None,
+    obj: Params,
+    records: tuple[str, ...],
+    publish_all: bool,
+    single: bool,
+    output_path: str | None,
+    config_file: Path,
+    date_suffix: bool,
+    docx: bool,
+    pdf: bool,
+    docx_template_path: str | None,
+    pre_filter_name: str | None,
 ):
     from datetime import datetime
     from syntagmax.publish import build_block_tree, render_block_tree
@@ -206,6 +214,7 @@ def publish(
     pandoc_available = False
     if docx or pdf:
         from syntagmax.pandoc import check_pandoc
+
         pandoc_available = check_pandoc()
         if not pandoc_available:
             lg.warning('pandoc executable not found in PATH')
@@ -221,9 +230,11 @@ def publish(
             cli_template = Path(docx_template_path)
             if not cli_template.exists():
                 from syntagmax.errors import FatalError
+
                 raise FatalError([f'DOCX template not found: {cli_template} (--docx-template)'])
             return cli_template
         from syntagmax.pandoc import resolve_docx_template
+
         pub_config = config.load_publish_config(record)
         return resolve_docx_template(pub_config, record.name, cfg_path.parent)
 
@@ -285,6 +296,7 @@ def publish(
         date_str = datetime.now().strftime('%Y-%m-%d')
 
         from syntagmax.publish_context import ImageManifest
+
         combined_manifest = ImageManifest()
         published_files: list[tuple[Path, object]] = []  # (file_path, record) for deferred Pandoc
 
@@ -312,19 +324,15 @@ def publish(
             safe_record_name = Path(record.name).name.replace('/', '_').replace('\\', '_')
 
             if safe_record_name in ('.', '..') or not safe_record_name:
-
                 u.pprint(f'[red]Error: Invalid record name for output filename: "{record.name}".[/red]')
 
                 sys.exit(1)
-
-
 
             if date_suffix:
                 filename = f'{safe_record_name}_{date_str}.md'
 
             else:
                 filename = f'{safe_record_name}.md'
-
 
             file_path = out_p / filename
             file_path.write_text(markdown, encoding='utf-8')
@@ -365,8 +373,16 @@ def publish(
 @click.option('--output', default='.syntagmax/reports/trace.csv', help='Output file path (use "console" for stdout)')
 @click.option('-f', '--config-file', type=click.Path(), default='.syntagmax/config.toml')
 def trace(
-    obj: Params, child: str, parent: str, forward: bool, attribute: tuple[str, ...],
-    flat: bool, delimiter: str | None, plugin_name: str | None, output: str, config_file: Path,
+    obj: Params,
+    child: str,
+    parent: str,
+    forward: bool,
+    attribute: tuple[str, ...],
+    flat: bool,
+    delimiter: str | None,
+    plugin_name: str | None,
+    output: str,
+    config_file: Path,
 ):
     from syntagmax.extract import extract, build_artifact_map
     from syntagmax.tree import populate_pids, build_tree
@@ -437,6 +453,260 @@ def trace(
             u.pprint(f'[green]Trace matrix written to {output_path} ({len(matrix.records)} records)[/green]')
 
 
+def _get_working_tree_changed_files(repo, compare_hash: str):
+    """Get changed files between a commit and the working tree.
+
+    Uses git diff --name-status to compare a given revision against the
+    current working directory state.
+    """
+    from syntagmax.change_diff import FileDiff, FileStatus
+
+    raw = repo.git.diff('--name-status', compare_hash)
+    results = []
+    for line in raw.splitlines():
+        if not line.strip():
+            continue
+        parts = line.split('\t')
+        status_code = parts[0][0]  # First character: A, D, M, R
+        if status_code == 'A':
+            results.append(FileDiff(path=parts[1], status=FileStatus.ADDED))
+        elif status_code == 'D':
+            results.append(FileDiff(path=parts[1], status=FileStatus.REMOVED))
+        elif status_code == 'M':
+            results.append(FileDiff(path=parts[1], status=FileStatus.MODIFIED))
+        elif status_code == 'R':
+            results.append(FileDiff(path=parts[2] if len(parts) > 2 else parts[1], status=FileStatus.RENAMED, old_path=parts[1]))
+    return results
+
+
+def _read_file_safe(base_path: Path, rel_path: str) -> str | None:
+    """Read a file safely, returning None if not found."""
+    try:
+        file_path = base_path / rel_path
+        if file_path.is_file():
+            return file_path.read_text(encoding='utf-8')
+    except Exception:
+        pass
+    return None
+
+
+def _generate_fallback_diff(base_content: str | None, target_content: str | None, filepath: str) -> str:
+    """Generate a unified diff as fallback when extraction fails."""
+    import difflib
+
+    base_lines = base_content.splitlines(keepends=True) if base_content else []
+    target_lines = target_content.splitlines(keepends=True) if target_content else []
+
+    diff = difflib.unified_diff(
+        base_lines, target_lines,
+        fromfile=f'a/{filepath}',
+        tofile=f'b/{filepath}',
+    )
+    return ''.join(diff)
+
+
+@rms.group(help='Change Analysis Commands')
+def change():
+    pass
+
+
+@change.command('report', help='Generate change report between two revisions')
+@click.pass_obj
+@click.option('--base', required=True, help='Base Git revision (commit, tag, branch, HEAD, HEAD~N, or "working")')
+@click.option('--target', required=True, help='Target Git revision (commit, tag, branch, HEAD, HEAD~N, or "working")')
+@click.option('--output', 'output_path', default=None, help='Output directory or "console" for stdout')
+@click.option('--include-non-artifact', is_flag=True, help='Include non-artifact text block changes')
+@click.option('--single', is_flag=True, help='Generate a single consolidated report across all input records')
+@click.option('--summary', is_flag=True, help='Generate abbreviated summary report (no content)')
+@click.option('-f', '--config-file', type=click.Path(), default='.syntagmax/config.toml')
+def change_report(
+    obj: Params, base: str, target: str, output_path: str | None,
+    include_non_artifact: bool, single: bool, summary: bool, config_file: Path,
+):
+    from datetime import datetime, timezone
+    from syntagmax.change_worktree import (
+        check_git_version, check_worktrees_gitignored,
+        resolve_revision, validate_records_in_repo, worktree_pair,
+    )
+    from syntagmax.change_extract import extract_blocks_at_revision
+    from syntagmax.change_diff import (
+        get_changed_files, filter_changed_files,
+        compare_artifacts, compare_text_blocks,
+        compare_sidecar_artifacts,
+    )
+    from syntagmax.change_render import (
+        render_change_report, render_summary_report,
+        ChangeReportData, ExtractionError,
+    )
+    import git
+
+    cfg_path = Path(config_file)
+    if not cfg_path.exists():
+        u.pprint(f'[red]Error: Configuration file "{cfg_path}" does not exist.[/red]')
+        sys.exit(1)
+
+    config = Config(obj, cfg_path)
+
+    # Open repo
+    try:
+        repo = git.Repo(config.base_dir(), search_parent_directories=True)
+    except (git.InvalidGitRepositoryError, git.NoSuchPathError) as e:
+        u.pprint(f'[red]Error: Not a git repository: {e}[/red]')
+        sys.exit(1)
+
+    # Pre-flight checks
+    check_git_version(repo)
+    validate_records_in_repo(repo, config.input_records())
+
+    worktree_base = config.root_dir() / 'worktrees'
+    check_worktrees_gitignored(repo, worktree_base)
+
+    # Compute offset from repo root to config.base_dir() for path resolution
+    repo_root = Path(repo.working_tree_dir).resolve()
+    base_dir_offset = config.base_dir().resolve().relative_to(repo_root)
+
+    # Resolve revisions
+    base_hash = resolve_revision(repo, base)
+    target_hash = resolve_revision(repo, target)
+
+    if base_hash == target_hash and base_hash != 'working':
+        u.pprint('[yellow]Warning: Base and target resolve to the same revision. No changes expected.[/yellow]')
+
+    # Default output path
+    if output_path is None:
+        output_path = '.syntagmax/reports/change/'
+
+    # Determine short revision labels for filenames
+    base_label = base_hash[:7] if base_hash != 'working' else 'working'
+    target_label = target_hash[:7] if target_hash != 'working' else 'working'
+    date_str = datetime.now().strftime('%Y%m%d')
+    generated_at = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')
+
+    with worktree_pair(repo, base_hash, target_hash, worktree_base) as (base_path, target_path):
+        if base_hash != 'working' and target_hash != 'working':
+            changed_files = get_changed_files(repo, base_hash, target_hash)
+        else:
+            # Diff against working tree: compare the non-working revision to HEAD working tree
+            compare_hash = base_hash if target_hash == 'working' else target_hash
+            changed_files = _get_working_tree_changed_files(repo, compare_hash)
+
+        # Filter by input records
+        if changed_files is not None:
+            files_by_record = filter_changed_files(
+                changed_files, config.input_records(), config.base_dir()
+            )
+        else:
+            files_by_record = None
+
+        # Extract blocks at both revisions
+        changed_file_paths = [f.path for f in changed_files] if changed_files else None
+
+        base_blocks, base_errors = extract_blocks_at_revision(config, base_path, changed_file_paths)
+        target_blocks, target_errors = extract_blocks_at_revision(config, target_path, changed_file_paths)
+
+        # Build extraction error objects with fallback diffs
+        extraction_errors: list[ExtractionError] = []
+        error_files = set(fp for fp, _ in base_errors) | set(fp for fp, _ in target_errors)
+        for err_file in error_files:
+            err_msgs = [msg for fp, msg in base_errors + target_errors if fp == err_file]
+            # Generate fallback diff
+            base_content = _read_file_safe(base_path, err_file)
+            target_content = _read_file_safe(target_path, err_file)
+            fallback = _generate_fallback_diff(base_content, target_content, err_file)
+            extraction_errors.append(ExtractionError(
+                file_path=err_file,
+                error_message='; '.join(err_msgs),
+                fallback_diff=fallback,
+            ))
+
+        # Generate reports per record
+        reports: list[tuple[str, str]] = []  # (filename, markdown)
+
+        record_names = set(base_blocks.keys()) | set(target_blocks.keys())
+        if files_by_record:
+            record_names |= set(files_by_record.keys())
+
+        if not record_names:
+            u.pprint('[yellow]No changes detected between the specified revisions.[/yellow]')
+            return
+
+        for record_name in sorted(record_names):
+            base_recs = base_blocks.get(record_name, [])
+            target_recs = target_blocks.get(record_name, [])
+            file_diffs = files_by_record.get(record_name, []) if files_by_record else []
+
+            # Compare artifacts
+            artifact_diff = compare_artifacts(base_recs, target_recs)
+
+            # Compare sidecar/binary artifacts
+            binary_diff = compare_sidecar_artifacts(
+                base_recs, target_recs, base_path, target_path, base_dir_offset,
+            )
+
+            # Compare text blocks if requested
+            text_diff = None
+            if include_non_artifact:
+                text_diff = compare_text_blocks(base_recs, target_recs)
+
+            # Build report data
+            report_data = ChangeReportData(
+                base_revision=base,
+                target_revision=target,
+                generated_at=generated_at,
+                record_name=record_name,
+                file_diffs=file_diffs,
+                artifact_diff=artifact_diff,
+                text_diff=text_diff,
+                binary_diff=binary_diff,
+                extraction_errors=[
+                    e for e in extraction_errors if e.file_path in
+                    {f.path for f in file_diffs} or not file_diffs
+                ],
+            )
+
+            if summary:
+                markdown = render_summary_report(report_data)
+            else:
+                markdown = render_change_report(report_data)
+
+            # Build filename
+            safe_name = record_name.replace(' ', '-').replace('/', '_').replace('\\', '_')
+            suffix = '-summary' if summary else ''
+            filename = f'{safe_name}-{base_label}-to-{target_label}-{date_str}{suffix}.md'
+            reports.append((filename, markdown))
+
+    # Write output
+    if output_path == 'console':
+        for filename, markdown in reports:
+            if len(reports) > 1:
+                print(f'\n--- {filename} ---\n')
+            print(markdown)
+    elif single and reports:
+        # Consolidate all reports into one
+        out_p = Path(output_path)
+        if out_p.is_dir() or output_path.endswith('/') or output_path.endswith('\\'):
+            out_p.mkdir(parents=True, exist_ok=True)
+            suffix = '-summary' if summary else ''
+            consolidated_name = f'change-{base_label}-to-{target_label}-{date_str}{suffix}.md'
+            out_p = out_p / consolidated_name
+        else:
+            out_p.parent.mkdir(parents=True, exist_ok=True)
+
+        combined = '\n\n---\n\n'.join(md for _, md in reports)
+        out_p.write_text(combined, encoding='utf-8')
+        u.pprint('[green]Change report generated:[/green]')
+        u.pprint(f'  {out_p.absolute()}')
+    else:
+        out_dir = Path(output_path)
+        out_dir.mkdir(parents=True, exist_ok=True)
+
+        u.pprint('[green]Change report generated:[/green]')
+        for filename, markdown in reports:
+            file_path = out_dir / filename
+            file_path.write_text(markdown, encoding='utf-8')
+            u.pprint(f'  {file_path.absolute()}')
+
+
 @rms.group(help='Project Editing Commands')
 def edit():
     pass
@@ -465,7 +735,8 @@ def renumber(obj: Params, config_path: Path, renumber_all: bool, atype: str | No
 @edit.command('attrs', help='Add, remove, or replace attributes on artifacts in bulk')
 @click.pass_obj
 @click.option(
-    '-f', '--config-file',
+    '-f',
+    '--config-file',
     type=click.Path(exists=True),
     default='.syntagmax/config.toml',
     help='Path to config file',
@@ -512,9 +783,7 @@ def attrs(
     # Load CSV mapping if provided
     csv_mapping = None
     if csv_path:
-        csv_mapping = load_csv_mapping(
-            Path(csv_path), csv_id_column, csv_value_column, csv_delimiter
-        )
+        csv_mapping = load_csv_mapping(Path(csv_path), csv_id_column, csv_value_column, csv_delimiter)
 
     manipulate_attributes(
         config=configurator,

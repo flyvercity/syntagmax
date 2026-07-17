@@ -15,6 +15,16 @@ from syntagmax.artifact import UNDEFINED_ID
 from syntagmax.blocks import Block, ArtifactBlock, ErrorBlock
 
 
+def _pop_case_insensitive(data: dict, key: str, default):
+    """Pop a key from a dict using case-insensitive matching."""
+    if key in data:
+        return data.pop(key)
+    for k in list(data.keys()):
+        if k.lower() == key.lower():
+            return data.pop(k)
+    return default
+
+
 class SidecarExtractor(Extractor):
     def __init__(self, config: Config, record: InputRecord, metamodel: dict | None = None):
         super().__init__(config, record, metamodel)
@@ -45,6 +55,10 @@ class SidecarExtractor(Extractor):
         return artifacts, errors
 
     def extract_blocks_from_file(self, filepath: Path) -> list[Block]:
+        # Skip sidecar metadata files themselves if they match the glob
+        if filepath.name.endswith('.stmx') or filepath.name.endswith('.syntagmax'):
+            return []
+
         lg.debug(f'Processing sidecar driver for original file: {filepath}')
 
         stmx_path = filepath.with_name(f'{filepath.name}.stmx')
@@ -81,8 +95,8 @@ class SidecarExtractor(Extractor):
             msg = f'{self.driver()} :: Missing required "id" field in sidecar {sidecar_path}'
             return [ErrorBlock(message=msg, raw_text='')]
 
-        aid = str(data.pop('id', UNDEFINED_ID))
-        atype = str(data.pop('atype', self._record.default_atype))
+        aid = str(_pop_case_insensitive(data, 'id', UNDEFINED_ID))
+        atype = str(_pop_case_insensitive(data, 'atype', self._record.default_atype))
 
         location = FileLocation(self._config.derive_path(filepath), self._config.derive_path(sidecar_path))
 
@@ -95,9 +109,9 @@ class SidecarExtractor(Extractor):
             for key, value in data.items():
                 if isinstance(value, list):
                     for v in value:
-                        builder.add_field(key, v)
+                        builder.add_field(key, str(v))
                 else:
-                    builder.add_field(key, value)
+                    builder.add_field(key, str(value))
 
             artifact = builder.build()
             raw_text = sidecar_path.read_text(encoding='utf-8')

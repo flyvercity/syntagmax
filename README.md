@@ -406,6 +406,121 @@ title = "My Document"
 
 For the full plugin API, configuration options, local/package plugin setup, and working examples, see [docs/reference/plugins.md](docs/reference/plugins.md).
 
+## Change Reports
+
+Syntagmax can generate change reports comparing artifacts between two Git revisions. Reports analyze changes at the artifact level (added, modified, removed requirements) with field-level detail.
+
+### Basic Usage
+
+```bash
+# Compare last commit against current HEAD
+syntagmax change report --base HEAD~1 --target HEAD
+
+# Compare two tags
+syntagmax change report --base v1.2.0 --target v1.3.0
+
+# Compare branches
+syntagmax change report --base release --target develop
+```
+
+### Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--base` | (required) | Base Git revision (commit, tag, branch, HEAD, HEAD~N) |
+| `--target` | (required) | Target Git revision |
+| `--output` | `.syntagmax/reports/change/` | Output directory or `console` for stdout |
+| `--include-non-artifact` | off | Include non-artifact text block changes |
+| `--single` | off | Generate a single consolidated report |
+| `--summary` | off | Generate abbreviated summary report (no content) |
+| `-f, --config-file` | `.syntagmax/config.toml` | Path to config file |
+
+### Supported Revisions
+
+- Commit hash (full or short)
+- Tag name
+- Branch name
+- `HEAD`, `HEAD~N`
+- `working` — compare against uncommitted changes in the working directory
+
+### Output
+
+Reports are generated per input record with filenames:
+```
+<section>-<base_rev>-to-<target_rev>-<YYYYMMDD>.md
+```
+
+Use `--single` to generate one consolidated report across all records.
+Use `--output console` to print to stdout.
+Use `--summary` to generate an abbreviated report showing only file paths, changed object IDs, and text fragment locations — no content or attribute diffs are included. Summary reports use the filename suffix `-summary` (e.g. `<section>-...-summary.md`).
+
+```bash
+# Quick overview of changes between tags
+syntagmax change report --summary --base v1.2.0 --target v1.3.0
+```
+
+### Prerequisites
+
+- Git version >= 2.5 (required for worktree support)
+- `.syntagmax/worktrees/` must be listed in `.gitignore`
+
+### Example Report Structure
+
+```
+# Change Report
+## Repository Information
+## Summary
+## Changed Files (table: Filename | Status | Objects changed)
+## Detailed Changes
+### Artifacts (grouped by file)
+### Text fragments (grouped by file)
+### Binary Artifacts (grouped by file)
+### Extraction Errors
+```
+
+The report includes:
+- Summary statistics (files changed, artifacts added/modified/removed)
+- Changed files as a table listing affected object IDs and their statuses
+- For each modified artifact: text changes rendered as blockquoted markdown and attribute change tables
+- For sidecar-managed binary artifacts (images, diagrams): SHA-256 hash comparison, file size, and pixel dimensions (requires optional `Pillow` dependency)
+- Fallback plain-text diffs when artifact extraction fails
+
+## Localization
+
+Syntagmax supports localized report output.
+
+### Configuration
+
+Set the output language in your `config.toml`:
+
+```toml
+language = "code"
+```
+
+Or use the global CLI flag (overrides the config file):
+
+```bash
+syntagmax --lang ru analyze
+syntagmax --lang ru change report --base HEAD~1 --target HEAD
+```
+
+### Resolution Order
+
+1. CLI `--lang` flag (highest priority)
+2. Project `config.toml` `language` field
+3. Global `~/.config/syntagmax/config.toml` `language` field
+4. Default: `en`
+
+### Scope
+
+Localization applies to:
+- Analysis reports (metrics, impact, AI analysis, errors)
+- Change reports (full and summary)
+
+It does **not** apply to:
+- `publish` command output (renders user content as-is)
+- MCP server responses (remain English for LLM compatibility)
+
 ## Required Improvements
 
 - Implement automatic change propagation

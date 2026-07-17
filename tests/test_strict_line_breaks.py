@@ -31,19 +31,22 @@ class TestStrictLineBreaksFieldValidation:
         cfg = ObsidianDriverConfig()
         assert cfg.strict_line_breaks == 'on'
 
-    @pytest.mark.parametrize('value,expected', [
-        ('on', 'on'),
-        ('ON', 'on'),
-        ('On', 'on'),
-        ('off', 'off'),
-        ('OFF', 'off'),
-        ('true', 'true'),
-        ('TRUE', 'true'),
-        ('false', 'false'),
-        ('FALSE', 'false'),
-        ('auto', 'auto'),
-        ('AUTO', 'auto'),
-    ])
+    @pytest.mark.parametrize(
+        'value,expected',
+        [
+            ('on', 'on'),
+            ('ON', 'on'),
+            ('On', 'on'),
+            ('off', 'off'),
+            ('OFF', 'off'),
+            ('true', 'true'),
+            ('TRUE', 'true'),
+            ('false', 'false'),
+            ('FALSE', 'false'),
+            ('auto', 'auto'),
+            ('AUTO', 'auto'),
+        ],
+    )
     def test_valid_string_values(self, value, expected):
         cfg = ObsidianDriverConfig(strict_line_breaks=value)
         assert cfg.strict_line_breaks == expected
@@ -68,12 +71,10 @@ class TestStrictLineBreaksFieldValidation:
         """Verify that TOML config with string value parses correctly."""
         cfg_path = tmp_path / 'config.toml'
         cfg_path.write_text(
-            'base = ".."\n'
-            '[[input]]\nname="reqs"\ndir="REQ"\ndriver="obsidian"\natype="REQ"\n\n'
-            '[drivers.obsidian]\nstrict_line_breaks = "off"\n',
+            'base = ".."\n[[input]]\nname="reqs"\ndir="REQ"\ndriver="obsidian"\natype="REQ"\n\n[drivers.obsidian]\nstrict_line_breaks = "off"\n',
             encoding='utf-8',
         )
-        req_dir = (tmp_path / '..' / 'REQ')
+        req_dir = tmp_path / '..' / 'REQ'
         req_dir.mkdir(parents=True, exist_ok=True)
 
         config = Config(params=params, config_filename=cfg_path)
@@ -83,12 +84,10 @@ class TestStrictLineBreaksFieldValidation:
         """Verify that TOML config with native boolean parses correctly."""
         cfg_path = tmp_path / 'config.toml'
         cfg_path.write_text(
-            'base = ".."\n'
-            '[[input]]\nname="reqs"\ndir="REQ"\ndriver="obsidian"\natype="REQ"\n\n'
-            '[drivers.obsidian]\nstrict_line_breaks = false\n',
+            'base = ".."\n[[input]]\nname="reqs"\ndir="REQ"\ndriver="obsidian"\natype="REQ"\n\n[drivers.obsidian]\nstrict_line_breaks = false\n',
             encoding='utf-8',
         )
-        req_dir = (tmp_path / '..' / 'REQ')
+        req_dir = tmp_path / '..' / 'REQ'
         req_dir.mkdir(parents=True, exist_ok=True)
 
         config = Config(params=params, config_filename=cfg_path)
@@ -106,12 +105,10 @@ class TestAutoRequiresIntegration:
     def test_auto_without_integration_raises(self, params, tmp_path):
         cfg_path = tmp_path / 'config.toml'
         cfg_path.write_text(
-            'base = ".."\n'
-            '[[input]]\nname="reqs"\ndir="REQ"\ndriver="obsidian"\natype="REQ"\n\n'
-            '[drivers.obsidian]\nstrict_line_breaks = "auto"\n',
+            'base = ".."\n[[input]]\nname="reqs"\ndir="REQ"\ndriver="obsidian"\natype="REQ"\n\n[drivers.obsidian]\nstrict_line_breaks = "auto"\n',
             encoding='utf-8',
         )
-        req_dir = (tmp_path / '..' / 'REQ')
+        req_dir = tmp_path / '..' / 'REQ'
         req_dir.mkdir(parents=True, exist_ok=True)
 
         with pytest.raises(FatalError) as exc_info:
@@ -126,7 +123,7 @@ class TestAutoRequiresIntegration:
             '[drivers.obsidian]\nstrict_line_breaks = "auto"\nintegration = true\n',
             encoding='utf-8',
         )
-        req_dir = (tmp_path / '..' / 'REQ')
+        req_dir = tmp_path / '..' / 'REQ'
         req_dir.mkdir(parents=True, exist_ok=True)
 
         # Should not raise — even without app.json (auto resolves lazily)
@@ -145,25 +142,19 @@ class TestReadObsidianStrictLineBreaks:
     def test_reads_true(self, tmp_path):
         obsidian_dir = tmp_path / '.obsidian'
         obsidian_dir.mkdir()
-        (obsidian_dir / 'app.json').write_text(
-            json.dumps({'strictLineBreaks': True}), encoding='utf-8'
-        )
+        (obsidian_dir / 'app.json').write_text(json.dumps({'strictLineBreaks': True}), encoding='utf-8')
         assert read_obsidian_strict_line_breaks(tmp_path) is True
 
     def test_reads_false(self, tmp_path):
         obsidian_dir = tmp_path / '.obsidian'
         obsidian_dir.mkdir()
-        (obsidian_dir / 'app.json').write_text(
-            json.dumps({'strictLineBreaks': False}), encoding='utf-8'
-        )
+        (obsidian_dir / 'app.json').write_text(json.dumps({'strictLineBreaks': False}), encoding='utf-8')
         assert read_obsidian_strict_line_breaks(tmp_path) is False
 
     def test_key_absent_returns_none(self, tmp_path, caplog):
         obsidian_dir = tmp_path / '.obsidian'
         obsidian_dir.mkdir()
-        (obsidian_dir / 'app.json').write_text(
-            json.dumps({'attachmentFolderPath': 'attachments'}), encoding='utf-8'
-        )
+        (obsidian_dir / 'app.json').write_text(json.dumps({'attachmentFolderPath': 'attachments'}), encoding='utf-8')
         result = read_obsidian_strict_line_breaks(tmp_path)
         assert result is None
         assert 'strictLineBreaks not set' in caplog.text
@@ -184,9 +175,7 @@ class TestReadObsidianStrictLineBreaks:
     def test_root_override(self, tmp_path):
         custom_dir = tmp_path / 'custom-obsidian'
         custom_dir.mkdir()
-        (custom_dir / 'app.json').write_text(
-            json.dumps({'strictLineBreaks': False}), encoding='utf-8'
-        )
+        (custom_dir / 'app.json').write_text(json.dumps({'strictLineBreaks': False}), encoding='utf-8')
         result = read_obsidian_strict_line_breaks(tmp_path, root_override='custom-obsidian')
         assert result is False
 
@@ -202,9 +191,7 @@ class TestResolveStrictLineBreaks:
     def test_on_returns_true(self, params, tmp_path):
         cfg_path = tmp_path / 'config.toml'
         cfg_path.write_text(
-            'base = ".."\n'
-            '[[input]]\nname="reqs"\ndir="REQ"\ndriver="obsidian"\natype="REQ"\n\n'
-            '[drivers.obsidian]\nstrict_line_breaks = "on"\n',
+            'base = ".."\n[[input]]\nname="reqs"\ndir="REQ"\ndriver="obsidian"\natype="REQ"\n\n[drivers.obsidian]\nstrict_line_breaks = "on"\n',
             encoding='utf-8',
         )
         (tmp_path / '..' / 'REQ').mkdir(parents=True, exist_ok=True)
@@ -214,9 +201,7 @@ class TestResolveStrictLineBreaks:
     def test_off_returns_false(self, params, tmp_path):
         cfg_path = tmp_path / 'config.toml'
         cfg_path.write_text(
-            'base = ".."\n'
-            '[[input]]\nname="reqs"\ndir="REQ"\ndriver="obsidian"\natype="REQ"\n\n'
-            '[drivers.obsidian]\nstrict_line_breaks = "off"\n',
+            'base = ".."\n[[input]]\nname="reqs"\ndir="REQ"\ndriver="obsidian"\natype="REQ"\n\n[drivers.obsidian]\nstrict_line_breaks = "off"\n',
             encoding='utf-8',
         )
         (tmp_path / '..' / 'REQ').mkdir(parents=True, exist_ok=True)
@@ -226,9 +211,7 @@ class TestResolveStrictLineBreaks:
     def test_true_returns_true(self, params, tmp_path):
         cfg_path = tmp_path / 'config.toml'
         cfg_path.write_text(
-            'base = ".."\n'
-            '[[input]]\nname="reqs"\ndir="REQ"\ndriver="obsidian"\natype="REQ"\n\n'
-            '[drivers.obsidian]\nstrict_line_breaks = true\n',
+            'base = ".."\n[[input]]\nname="reqs"\ndir="REQ"\ndriver="obsidian"\natype="REQ"\n\n[drivers.obsidian]\nstrict_line_breaks = true\n',
             encoding='utf-8',
         )
         (tmp_path / '..' / 'REQ').mkdir(parents=True, exist_ok=True)
@@ -238,9 +221,7 @@ class TestResolveStrictLineBreaks:
     def test_false_returns_false(self, params, tmp_path):
         cfg_path = tmp_path / 'config.toml'
         cfg_path.write_text(
-            'base = ".."\n'
-            '[[input]]\nname="reqs"\ndir="REQ"\ndriver="obsidian"\natype="REQ"\n\n'
-            '[drivers.obsidian]\nstrict_line_breaks = false\n',
+            'base = ".."\n[[input]]\nname="reqs"\ndir="REQ"\ndriver="obsidian"\natype="REQ"\n\n[drivers.obsidian]\nstrict_line_breaks = false\n',
             encoding='utf-8',
         )
         (tmp_path / '..' / 'REQ').mkdir(parents=True, exist_ok=True)
@@ -259,9 +240,7 @@ class TestResolveStrictLineBreaks:
         (base_dir / 'REQ').mkdir(parents=True, exist_ok=True)
         obsidian_dir = base_dir / '.obsidian'
         obsidian_dir.mkdir(exist_ok=True)
-        (obsidian_dir / 'app.json').write_text(
-            json.dumps({'strictLineBreaks': True}), encoding='utf-8'
-        )
+        (obsidian_dir / 'app.json').write_text(json.dumps({'strictLineBreaks': True}), encoding='utf-8')
         config = Config(params=params, config_filename=cfg_path)
         assert config.resolve_strict_line_breaks() is True
 
@@ -277,9 +256,7 @@ class TestResolveStrictLineBreaks:
         (base_dir / 'REQ').mkdir(parents=True, exist_ok=True)
         obsidian_dir = base_dir / '.obsidian'
         obsidian_dir.mkdir(exist_ok=True)
-        (obsidian_dir / 'app.json').write_text(
-            json.dumps({'strictLineBreaks': False}), encoding='utf-8'
-        )
+        (obsidian_dir / 'app.json').write_text(json.dumps({'strictLineBreaks': False}), encoding='utf-8')
         config = Config(params=params, config_filename=cfg_path)
         assert config.resolve_strict_line_breaks() is False
 
@@ -295,9 +272,7 @@ class TestResolveStrictLineBreaks:
         (base_dir / 'REQ').mkdir(parents=True, exist_ok=True)
         obsidian_dir = base_dir / '.obsidian'
         obsidian_dir.mkdir(exist_ok=True)
-        (obsidian_dir / 'app.json').write_text(
-            json.dumps({'attachmentFolderPath': 'imgs'}), encoding='utf-8'
-        )
+        (obsidian_dir / 'app.json').write_text(json.dumps({'attachmentFolderPath': 'imgs'}), encoding='utf-8')
         config = Config(params=params, config_filename=cfg_path)
         assert config.resolve_strict_line_breaks() is True
         assert 'defaulting to strict mode ON' in caplog.text
@@ -305,9 +280,7 @@ class TestResolveStrictLineBreaks:
     def test_result_is_cached(self, params, tmp_path):
         cfg_path = tmp_path / 'config.toml'
         cfg_path.write_text(
-            'base = ".."\n'
-            '[[input]]\nname="reqs"\ndir="REQ"\ndriver="obsidian"\natype="REQ"\n\n'
-            '[drivers.obsidian]\nstrict_line_breaks = "off"\n',
+            'base = ".."\n[[input]]\nname="reqs"\ndir="REQ"\ndriver="obsidian"\natype="REQ"\n\n[drivers.obsidian]\nstrict_line_breaks = "off"\n',
             encoding='utf-8',
         )
         (tmp_path / '..' / 'REQ').mkdir(parents=True, exist_ok=True)

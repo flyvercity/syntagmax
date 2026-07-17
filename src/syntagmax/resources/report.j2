@@ -1,9 +1,9 @@
-# Analysis Report
+# {{ _("Analysis Report") }}
 {% if report.errors %}
 
-## Errors
+## {{ _("Errors") }}
 
-Total errors: {{ report.errors | length }}
+{{ _("Total errors:") }} {{ report.errors | length }}
 
 {% for error in report.errors %}
 {{ loop.index }}. {{ error }}
@@ -11,7 +11,7 @@ Total errors: {{ report.errors | length }}
 {% endif %}
 {% if report.tree_text %}
 
-## Artifact Tree
+## {{ _("Artifact Tree") }}
 
 ```text
 {{ report.tree_text }}
@@ -19,34 +19,34 @@ Total errors: {{ report.errors | length }}
 {% endif %}
 {% if report.metrics %}
 
-## Metrics
+## {{ _("Metrics") }}
 
-Total Requirements: {{ report.metrics.total_requirements }}
+{{ _("Total Requirements") }}: {{ report.metrics.total_requirements }}
 
-### Requirements by Status
+### {{ _("Requirements by Status") }}
 
-| Status | Count |
+| {{ _("Status") }} | {{ _("Count") }} |
 |--------|-------|
 {% for row in report.metrics.requirements_by_status %}| {{ row.status }} | {{ row.count }} |
 {% endfor %}
 
-Requirements without verification (%): {{ "%.1f" | format(report.metrics.requirements_without_verify_pct) }}%
-Requirements with TBD (%): {{ "%.1f" | format(report.metrics.requirements_with_tbd_pct) }}%
+{{ _("Requirements without verification (%)") }}: {{ "%.1f" | format(report.metrics.requirements_without_verify_pct) }}%
+{{ _("Requirements with TBD (%)") }}: {{ "%.1f" | format(report.metrics.requirements_with_tbd_pct) }}%
 {% endif %}
 {% if report.impact %}
 
-## Impact Analysis
+## {{ _("Impact Analysis") }}
 
-Total suspicious links: {{ report.impact.total_suspicious }}
+{{ _("Total suspicious links") }}: {{ report.impact.total_suspicious }}
 {% if report.impact.total_suspicious > 0 %}
 
-| Artifact | Parent | Required Revision | Actual Revision |
+| {{ _("Artifact") }} | {{ _("Parent") }} | {{ _("Required Revision") }} | {{ _("Actual Revision") }} |
 |----------|--------|-------------------|-----------------|
-{% for link in report.impact.suspicious_links %}| {{ link.artifact_atype }}:{{ link.artifact_aid }} | {{ link.parent_atype }}:{{ link.parent_aid }} | {{ link.nominal_revision }} | {{ link.actual_revision }} |
+{% for link in report.impact.suspicious_links %}| {{ link.artifact_atype }}:{% if link.artifact_aid == "<undefined>" %}`<undefined>`{% else %}{{ link.artifact_aid }}{% endif %} | {{ link.parent_atype }}:{% if link.parent_aid == "<undefined>" %}`<undefined>`{% else %}{{ link.parent_aid }}{% endif %} | {{ link.nominal_revision }} | {{ link.actual_revision }} |
 {% endfor %}
 {% if report.impact.suspicious_tree %}
 
-### Suspicious Tree
+### {{ _("Suspicious Tree") }}
 
 ```text
 {{ report.impact.suspicious_tree }}
@@ -56,10 +56,10 @@ Total suspicious links: {{ report.impact.total_suspicious }}
 {% endif %}
 {% if report.ai_results %}
 
-## AI Analysis
+## {{ _("AI Analysis") }}
 
-| Artifact | Ambiguity | Completeness | Verifiability | Singularity |
+| {{ _("Artifact") }} | {{ _("Ambiguity") }} | {{ _("Completeness") }} | {{ _("Verifiability") }} | {{ _("Singularity") }} |
 |----------|-----------|--------------|---------------|-------------|
-{% for r in report.ai_results %}| {{ r.atype }}:{{ r.aid }} | {{ r.ambiguity }} | {{ r.completeness }} | {{ r.verifiability }} | {{ r.singularity }} |
+{% for r in report.ai_results %}| {{ r.atype }}:{% if r.aid == "<undefined>" %}`<undefined>`{% else %}{{ r.aid }}{% endif %} | {{ r.ambiguity }} | {{ r.completeness }} | {{ r.verifiability }} | {{ r.singularity }} |
 {% endfor %}
 {% endif %}

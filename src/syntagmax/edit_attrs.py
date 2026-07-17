@@ -16,9 +16,7 @@ from syntagmax.extract import EXTRACTORS, extract
 from syntagmax.utils import pprint
 
 
-def load_csv_mapping(
-    csv_path: Path, id_column: str, value_column: str, delimiter: str = ','
-) -> dict[str, str]:
+def load_csv_mapping(csv_path: Path, id_column: str, value_column: str, delimiter: str = ',') -> dict[str, str]:
     """Load a CSV file and build an ID-to-value mapping.
 
     Args:
@@ -47,16 +45,10 @@ def load_csv_mapping(
             raise FatalError(f'CSV file is empty or has no header: {csv_path}')
 
         if id_column not in reader.fieldnames:
-            raise FatalError(
-                f'CSV column "{id_column}" not found in {csv_path}. '
-                f'Available columns: {", ".join(reader.fieldnames)}'
-            )
+            raise FatalError(f'CSV column "{id_column}" not found in {csv_path}. Available columns: {", ".join(reader.fieldnames)}')
 
         if value_column not in reader.fieldnames:
-            raise FatalError(
-                f'CSV column "{value_column}" not found in {csv_path}. '
-                f'Available columns: {", ".join(reader.fieldnames)}'
-            )
+            raise FatalError(f'CSV column "{value_column}" not found in {csv_path}. Available columns: {", ".join(reader.fieldnames)}')
 
         for row in reader:
             aid = row.get(id_column, '').strip()
@@ -138,20 +130,14 @@ def manipulate_attributes(
         raise FatalError(f'Input section "{section}" not found in configuration')
 
     if target_record.driver != 'obsidian':
-        raise FatalError(
-            f'Section "{section}" uses driver "{target_record.driver}". '
-            f'Only the "obsidian" driver is supported for attribute manipulation.'
-        )
+        raise FatalError(f'Section "{section}" uses driver "{target_record.driver}". Only the "obsidian" driver is supported for attribute manipulation.')
 
     # Resolve attribute names to manipulate
     attr_names: list[str]
     if name is None:
         # Metamodel-driven add: add all mandatory attributes
         if config.metamodel is None:
-            raise FatalError(
-                'Cannot add mandatory attributes without a metamodel. '
-                'Either specify --name or configure a metamodel in your project.'
-            )
+            raise FatalError('Cannot add mandatory attributes without a metamodel. Either specify --name or configure a metamodel in your project.')
         attr_names = _get_mandatory_attributes(config.metamodel, target_record.default_atype)
         if not attr_names:
             pprint(f'[yellow]No mandatory attributes found in metamodel for type "{target_record.default_atype}"[/yellow]')
@@ -165,17 +151,13 @@ def manipulate_attributes(
     if operation == 'add' and value is None and csv_mapping is None:
         value = 'TBD'
 
-
     # Metamodel validation: warn if attribute not defined
     if config.metamodel and name is not None:
         artifacts_meta = config.metamodel.get('artifacts', {})
         atype_meta = artifacts_meta.get(target_record.default_atype, {})
         known_attrs = atype_meta.get('attributes', {})
         if name.lower() not in {k.lower() for k in known_attrs}:
-            lg.warning(
-                f'Attribute "{name}" is not defined in the metamodel for type '
-                f'"{target_record.default_atype}". It will still be added.'
-            )
+            lg.warning(f'Attribute "{name}" is not defined in the metamodel for type "{target_record.default_atype}". It will still be added.')
 
     # --- Extract artifacts ---
     errors: list[str] = []
@@ -212,9 +194,7 @@ def manipulate_attributes(
             attrs_delta: dict[str, str | None] = {}
             for attr_name in attr_names:
                 # Resolve value for this artifact
-                resolved_value = _resolve_value(
-                    artifact, attr_name, operation, value, csv_mapping
-                )
+                resolved_value = _resolve_value(artifact, attr_name, operation, value, csv_mapping)
 
                 if resolved_value is _SKIP:
                     unmatched_count += 1
@@ -223,20 +203,14 @@ def manipulate_attributes(
                 # Check if we should skip (add with existing attr)
                 if operation == 'add' and _artifact_has_attr(artifact, attr_name, target_type):
                     if dry_run:
-                        pprint(
-                            f'[dim]DRY-RUN: {artifact.aid} already has {target_type} '
-                            f"'{attr_name}', skipping (operation: add)[/dim]"
-                        )
+                        pprint(f"[dim]DRY-RUN: {artifact.aid} already has {target_type} '{attr_name}', skipping (operation: add)[/dim]")
                     skipped_count += 1
                     continue
 
                 if dry_run:
                     op_desc = {'add': 'add', 'del': 'remove', 'replace': 'replace'}[operation]
                     val_desc = f" = '{resolved_value}'" if resolved_value is not None else ''
-                    pprint(
-                        f"[green]DRY-RUN: Would {op_desc} {target_type} "
-                        f"'{attr_name}'{val_desc} on {artifact.aid} at {loc_file}[/green]"
-                    )
+                    pprint(f"[green]DRY-RUN: Would {op_desc} {target_type} '{attr_name}'{val_desc} on {artifact.aid} at {loc_file}[/green]")
 
                 attrs_delta[attr_name] = resolved_value
 
@@ -277,6 +251,7 @@ def manipulate_attributes(
 
 class _SkipSentinel:
     """Sentinel value indicating an artifact should be skipped."""
+
     pass
 
 
@@ -306,9 +281,7 @@ def _resolve_value(
         if literal_value is not None:
             return literal_value
         # No fallback available
-        lg.warning(
-            f'Artifact "{artifact.aid}" at {artifact.location} not found in CSV mapping'
-        )
+        lg.warning(f'Artifact "{artifact.aid}" at {artifact.location} not found in CSV mapping')
         return _SKIP
 
     return literal_value
@@ -333,5 +306,3 @@ def _artifact_has_attr(artifact: Artifact, attr_name: str, target_type: str) -> 
             return attr_name.lower() in artifact.source_metadata and artifact.source_metadata[attr_name.lower()] == 'markdown'
         # Fall back to checking fields dict
         return any(k.lower() == attr_name.lower() for k in artifact.fields if k.lower() not in ('id', 'contents'))
-
-

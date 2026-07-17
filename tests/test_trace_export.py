@@ -395,16 +395,7 @@ class TestTraceCliValidation:
 
         # Write config.toml
         cfg = dot_syntagmax / 'config.toml'
-        cfg_content = (
-            'base = ".."\n'
-            '[[input]]\n'
-            'name="rec1"\n'
-            'dir="SYS"\n'
-            'driver="text"\n'
-            'atype="SYS"\n'
-            '[metamodel]\n'
-            'filename="project.syntagmax"\n'
-        )
+        cfg_content = 'base = ".."\n[[input]]\nname="rec1"\ndir="SYS"\ndriver="text"\natype="SYS"\n[metamodel]\nfilename="project.syntagmax"\n'
         cfg.write_text(cfg_content, encoding='utf-8')
 
         # Write project.syntagmax metamodel
@@ -420,7 +411,7 @@ class TestTraceCliValidation:
         assert result.exit_code == 0
         # Strip ANSI escape codes — Rich Console emits colour even in test runners
         import re
+
         clean_output = re.sub(r'\x1b\[[0-9;]*m', '', result.output)
         assert 'Warning: Child artifact type "INVALID_CHILD" is not defined in the metamodel.' in clean_output
         assert 'Warning: Parent artifact type "INVALID_PARENT" is not defined in the metamodel.' in clean_output
-

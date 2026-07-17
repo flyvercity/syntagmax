@@ -64,6 +64,10 @@ def process(requested_step, config: Config) -> Report:
     plan = get_execution_plan(DEPS, requested_step)
 
     for step in plan:
+        if step == 'populate_revisions' and config.params.get('no_git', False):
+            lg.info(f'Skipping step: {step} (--no-git flag is set)')
+            continue
+
         lg.info(f'Executing step: {step}')
 
         match step:

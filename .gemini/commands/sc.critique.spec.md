@@ -140,3 +140,7 @@ Challenge the specification and implementation plan through two distinct expert 
    - If user approves, apply changes to the relevant files
    - After applying changes, recommend re-running critique` to verify.
 
+10. Additional Instructions
+
+No not use absolute paths for referencing files in the report. Use relative paths only.
+
