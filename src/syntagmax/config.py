@@ -161,6 +161,22 @@ class AIConfig(BaseModel):
     timeout_s: float = Field(default=60.0, description='Timeout in seconds for AI provider requests')
 
 
+class BaselineConfig(BaseModel):
+    """Configuration for the baseline tagging command."""
+
+    tag_pattern: str | None = Field(default=None, description='Optional regex pattern that tag names must match')
+
+    @field_validator('tag_pattern')
+    @classmethod
+    def validate_tag_pattern(cls, v: str | None) -> str | None:
+        if v is not None:
+            try:
+                re.compile(v)
+            except re.error as e:
+                raise ValueError(f'Invalid tag_pattern regex "{v}": {e}')
+        return v
+
+
 class Metamodel(BaseModel):
     filename: str = Field(default=None, description='Path to the .syntagmax file defining the project metamodel')
 
@@ -176,6 +192,7 @@ class ConfigFile(BaseModel):
     ai: AIConfig = Field(default_factory=AIConfig, description='Configuration for AI-powered analysis')
     plugin: list[PluginConfig] = Field(default_factory=list, description='List of plugin configurations')
     drivers: DriversConfig = Field(default_factory=DriversConfig, description='Driver-specific configuration defaults')
+    baseline: BaselineConfig = Field(default_factory=BaselineConfig, description='Configuration for the baseline tagging command')
 
     @field_validator('language')
     @classmethod
@@ -256,6 +273,7 @@ class Config:
         self.impact = config_model.impact
         self.ai = config_model.ai
         self._obsidian_driver_config = config_model.drivers.obsidian
+        self._baseline_config = config_model.baseline
 
         # Resolve language: CLI --lang > config language > default 'en'
         from syntagmax.i18n import setup_i18n
@@ -430,6 +448,10 @@ class Config:
     @property
     def obsidian_driver_config(self) -> 'ObsidianDriverConfig':
         return self._obsidian_driver_config
+
+    @property
+    def baseline_config(self) -> 'BaselineConfig':
+        return self._baseline_config
 
     def resolve_strict_line_breaks(self) -> bool:
         """Resolve the effective strict_line_breaks setting to a boolean.
