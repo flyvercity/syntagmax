@@ -74,7 +74,7 @@ select = ["E", "F", "W"]
 [dependency-groups]
 dev = [
     "boto3>=1.42.56",
-    "cx-freeze>=8.6.0",
+    "cx-freeze>=8.6.0",
     "duct>=1.0.1",
     "ptpython>=3.0.29",
     "pytest>=8.3.5",
@@ -83,35 +83,36 @@ dev = [
 ]
 
 
-[tool.cxfreeze]
-executables = [
-    { script = "src/syntagmax/cli.py", target-name = "syntagmax" }
-]
-
-[tool.cxfreeze.build_exe]
-packages = [
-    "syntagmax",
-    "babel",
-    "click",
-    "jinja2",
-    "git",
-    "mcp",
-    "uvicorn",
-    "polars",
-    "pydantic",
-    "benedict",
-    "yaml",
-    "rich",
-    "ruamel",
-    "lark",
-    "requests"
-]
-excludes = ["tkinter", "unittest"]
-
-[tool.cxfreeze.bdist_msi]
-add-to-path = true
-product-name = "Syntagmax"
-upgrade-code = "{06253457-3B2E-4FA7-9097-4712F2C507C3}"
-
+[tool.cxfreeze]
+
+[[tool.cxfreeze.executables]]
+script = "src/syntagmax/cli.py"
+target_name = "syntagmax"
+
+[tool.cxfreeze.build_exe]
+packages = [
+    "syntagmax",
+    "babel",
+    "click",
+    "jinja2",
+    "git",
+    "mcp",
+    "uvicorn",
+    "polars",
+    "pydantic",
+    "benedict",
+    "yaml",
+    "rich",
+    "ruamel",
+    "lark",
+    "requests"
+]
+excludes = ["tkinter", "unittest"]
+
+[tool.cxfreeze.bdist_msi]
+add-to-path = true
+product-name = "Syntagmax"
+upgrade-code = "{06253457-3B2E-4FA7-9097-4712F2C507C3}"
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
