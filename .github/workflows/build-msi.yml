@@ -38,7 +38,7 @@ jobs:
       - name: Upload MSI artifact
         uses: actions/upload-artifact@v4
         with:
-          name: syntagmax-msi
+          name: syntagmax-msi-${{ github.ref_name || 'dev' }}
           path: dist/*.msi
 
       - name: Create GitHub Release
