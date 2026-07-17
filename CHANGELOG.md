@@ -14,8 +14,6 @@ and this project uses [Calendar Versioning](https://calver.org/) with the scheme
 - Sidecar-managed binary artifact change reporting (images, diagrams)
 - Pre-flight validation for input record locations
 - Localisation for change reports
-- ATX heading splitting in markdown extractor
-- Targeted test for YAMLError exception path in `roundtrip_modify_attrs`
 
 ### Fixed
 
