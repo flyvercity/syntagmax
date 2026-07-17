@@ -56,6 +56,17 @@ syntagmax = "syntagmax.cli:main"
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+[dependency-groups]
+dev = [
+    "boto3>=1.42.56",
+    "cx-freeze>=8.6.0",
+    "duct>=1.0.1",
+    "ptpython>=3.0.29",
+    "pytest>=8.3.5",
+    "ruff>=0.15.7",
+    "twine>=6.2.0",
+]
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/syntagmax"]
 
@@ -69,18 +80,6 @@ quote-style = "single"
 
 [tool.ruff.lint]
 select = ["E", "F", "W"]
-
-[dependency-groups]
-dev = [
-    "boto3>=1.42.56",
-    "cx-freeze>=8.6.0",
-    "duct>=1.0.1",
-    "ptpython>=3.0.29",
-    "pytest>=8.3.5",
-    "ruff>=0.15.7",
-    "twine>=6.2.0",
-]
-
 
 [tool.cxfreeze]
 
