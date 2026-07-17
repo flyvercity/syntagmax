@@ -165,13 +165,19 @@ JSON schema (for grounding; still return JSON only):
         # which are invalid in JSON strings unless escaped.
         # We escape backslashes that are not followed by a valid escape character.
         # Valid escapes in JSON: ", \, /, b, f, n, r, t, uXXXX
-        def escape_invalid_slashes(m):
-            s = m.group(0)
-            if len(s) > 1 and s[1] in '"\\/bfnrtu':
-                return s
-            return '\\\\' + s[1:] if len(s) > 1 else '\\\\'
+        pattern = r'\\(u[0-9a-fA-F]{4}|["\\/bfnrt]|.?)'
 
-        return re.sub(r'\\.', escape_invalid_slashes, content)
+        def escape_invalid_slashes(m):
+            g = m.group(1)
+            if not g:
+                return '\\\\'
+            if g.startswith('u') and len(g) == 5:
+                return m.group(0)
+            if g in '"\\/bfnrt':
+                return m.group(0)
+            return '\\\\' + g
+
+        return re.sub(pattern, escape_invalid_slashes, content)
 
 
 class OllamaProvider(AIProvider):

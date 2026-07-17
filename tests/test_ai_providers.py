@@ -156,3 +156,32 @@ def test_bedrock_provider_boto3_success():
             aws_session_token='fake-session-token',
         )
         assert result['metrics']['ambiguity'] == 0.2
+
+
+def test_sanitize_json_scenarios():
+    config = MagicMock(spec=AIConfig)
+    provider = OllamaProvider(config)
+
+    # Valid simple escapes should not be altered
+    assert provider._sanitize_json(r'{"text": "line1\nline2"}') == r'{"text": "line1\nline2"}'
+    assert provider._sanitize_json(r'{"text": "quote\"escaped"}') == r'{"text": "quote\"escaped"}'
+    assert provider._sanitize_json(r'{"text": "backslash\\escaped"}') == r'{"text": "backslash\\escaped"}'
+    assert provider._sanitize_json(r'{"text": "forward\/slash"}') == r'{"text": "forward\/slash"}'
+    assert provider._sanitize_json(r'{"text": "tab\tspace"}') == r'{"text": "tab\tspace"}'
+
+    # Valid Unicode escapes should remain unchanged
+    assert provider._sanitize_json(r'{"text": "unicode\u1234"}') == r'{"text": "unicode\u1234"}'
+    assert provider._sanitize_json(r'{"text": "unicode\uABCD"}') == r'{"text": "unicode\uABCD"}'
+
+    # Invalid Unicode escape (not enough digits) should have backslash escaped
+    assert provider._sanitize_json(r'{"text": "unicode\u12"}') == r'{"text": "unicode\\u12"}'
+    assert provider._sanitize_json(r'{"text": "unicode\u123"}') == r'{"text": "unicode\\u123"}'
+    assert provider._sanitize_json(r'{"text": "unicode\u12345"}') == r'{"text": "unicode\u12345"}'  # \u1234 is valid, 5 is just next character
+
+    # Invalid character escapes should have backslash escaped.
+    # Note: \b is a valid JSON escape (backspace), so \beta is left as \beta.
+    assert provider._sanitize_json(r'{"text": "math \alpha \beta"}') == r'{"text": "math \\alpha \beta"}'
+    assert provider._sanitize_json(r'{"text": "invalid \x escape"}') == r'{"text": "invalid \\x escape"}'
+
+    # Trailing backslash should be escaped
+    assert provider._sanitize_json('hello \\') == 'hello \\\\'
