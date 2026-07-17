@@ -1,0 +1,42 @@
+name: Build Windows MSI Installer
+
+on:
+  push:
+    tags:
+      - '[0-9][0-9][0-9][0-9].[0-9]*.[0-9]*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-msi:
+    name: Build Windows MSI
+    runs-on: windows-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install dependencies
+        run: |
+          uv sync --frozen --group dev
+
+      - name: Build MSI package
+        run: |
+          uv run cxfreeze bdist_msi
+
+      - name: Upload MSI artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: syntagmax-msi
+          path: dist/*.msi
