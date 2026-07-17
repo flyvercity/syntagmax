@@ -44,10 +44,7 @@ def discover_repos(input_records: list[InputRecord], base_dir: Path) -> dict[Pat
         try:
             repo = git.Repo(str(record_path), search_parent_directories=True)
         except (git.InvalidGitRepositoryError, git.NoSuchPathError):
-            errors.append(
-                f'Input record "{record.name}" ({record.record_base}) '
-                f'is not inside a git repository.'
-            )
+            errors.append(f'Input record "{record.name}" ({record.record_base}) is not inside a git repository.')
             continue
 
         repo_root = Path(repo.working_tree_dir).resolve()
@@ -92,9 +89,7 @@ def check_repos_clean(repos: dict[Path, git.Repo]) -> None:
 
     if dirty:
         repos_list = '\n'.join(f'  - {d}' for d in dirty)
-        raise FatalError(
-            [f'Cannot create baseline: the following repositories have uncommitted changes:\n{repos_list}']
-        )
+        raise FatalError([f'Cannot create baseline: the following repositories have uncommitted changes:\n{repos_list}'])
 
 
 def validate_tag_name(tag_name: str, pattern: str | None) -> None:
@@ -112,9 +107,7 @@ def validate_tag_name(tag_name: str, pattern: str | None) -> None:
 
     compiled = re.compile(pattern)
     if not compiled.fullmatch(tag_name):
-        raise FatalError(
-            [f'Tag name "{tag_name}" does not match the configured pattern "{pattern}".']
-        )
+        raise FatalError([f'Tag name "{tag_name}" does not match the configured pattern "{pattern}".'])
 
 
 def check_tag_exists(tag_name: str, repos: dict[Path, git.Repo], force: bool) -> None:
@@ -140,16 +133,10 @@ def check_tag_exists(tag_name: str, repos: dict[Path, git.Repo], force: bool) ->
                 repo = repos[Path(repo_root_str)]
                 tag_ref = repo.tags[tag_name]
                 old_commit = tag_ref.commit.hexsha[:7]
-                lg.warning(
-                    f'Tag "{tag_name}" already exists in {repo_root_str} '
-                    f'(currently at {old_commit}). Will overwrite with --force.'
-                )
+                lg.warning(f'Tag "{tag_name}" already exists in {repo_root_str} (currently at {old_commit}). Will overwrite with --force.')
         else:
             repos_list = '\n'.join(f'  - {r}' for r in existing)
-            raise FatalError(
-                [f'Tag "{tag_name}" already exists in the following repositories:\n{repos_list}\n'
-                 f'Use --force to overwrite.']
-            )
+            raise FatalError([f'Tag "{tag_name}" already exists in the following repositories:\n{repos_list}\nUse --force to overwrite.'])
 
 
 def create_baseline_tag(
@@ -182,10 +169,7 @@ def create_baseline_tag(
                 old_tag = repo.tags[tag_name]
                 old_commit = old_tag.commit.hexsha[:7]
                 repo.delete_tag(old_tag)
-                lg.warning(
-                    f'Overwriting existing tag "{tag_name}" in {repo_root} '
-                    f'(was at {old_commit})'
-                )
+                lg.warning(f'Overwriting existing tag "{tag_name}" in {repo_root} (was at {old_commit})')
 
             repo.create_tag(tag_name, message=message)
             tagged.append((repo_root, repo))
@@ -195,10 +179,7 @@ def create_baseline_tag(
             # Rollback: delete tags created in this run
             lg.error(f'Failed to create tag "{tag_name}" in {repo_root}: {e}')
             _rollback_tags(tag_name, tagged)
-            raise FatalError(
-                [f'Failed to create tag "{tag_name}" in {repo_root}: {e}. '
-                 f'Rolled back tags in {len(tagged)} previously tagged repo(s).']
-            )
+            raise FatalError([f'Failed to create tag "{tag_name}" in {repo_root}: {e}. Rolled back tags in {len(tagged)} previously tagged repo(s).'])
 
     return [(root, repo.head.commit.hexsha[:7]) for root, repo in tagged]
 

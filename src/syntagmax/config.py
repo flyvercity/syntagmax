@@ -198,11 +198,9 @@ class ConfigFile(BaseModel):
     @classmethod
     def validate_language(cls, v: str) -> str:
         from syntagmax.i18n import SUPPORTED_LANGUAGES
+
         if v not in SUPPORTED_LANGUAGES:
-            raise ValueError(
-                f"Unsupported language '{v}'. "
-                f"Supported languages: {', '.join(SUPPORTED_LANGUAGES)}"
-            )
+            raise ValueError(f"Unsupported language '{v}'. Supported languages: {', '.join(SUPPORTED_LANGUAGES)}")
         return v
 
 
@@ -277,6 +275,7 @@ class Config:
 
         # Resolve language: CLI --lang > config language > default 'en'
         from syntagmax.i18n import setup_i18n
+
         self.language = self.params.get('language') or config_model.language or 'en'
         setup_i18n(self.language)
 

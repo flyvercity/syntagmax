@@ -350,12 +350,7 @@ def _setup_single_repo(tmp_path):
 
     config = syntagmax_dir / 'config.toml'
     config.write_text(
-        'base = ".."\n\n'
-        '[[input]]\n'
-        'name = "requirements"\n'
-        'dir = "REQ"\n'
-        'driver = "obsidian"\n'
-        'atype = "REQ"\n',
+        'base = ".."\n\n[[input]]\nname = "requirements"\ndir = "REQ"\ndriver = "obsidian"\natype = "REQ"\n',
         encoding='utf-8',
     )
 
@@ -363,10 +358,12 @@ def _setup_single_repo(tmp_path):
     req_dir.mkdir()
     (req_dir / 'REQ-001.md').write_text('[REQ]\nTest\n[id] REQ-001\n', encoding='utf-8')
 
-    repo.index.add([
-        '.syntagmax/config.toml',
-        'REQ/REQ-001.md',
-    ])
+    repo.index.add(
+        [
+            '.syntagmax/config.toml',
+            'REQ/REQ-001.md',
+        ]
+    )
     repo.index.commit('Add config and requirements', author=git.Actor('Test', 'test@test.com'))
 
     return repo_root, repo
