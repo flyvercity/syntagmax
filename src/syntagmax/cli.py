@@ -1029,7 +1029,7 @@ syntagmax-publish:
   rules:
     - if: $CI_PIPELINE_SOURCE == "web"
   before_script:
-    - apt-get update && apt-get install -y curl
+    - apt-get update && apt-get install -y curl git
     - curl -LsSf https://astral.sh/uv/install.sh | sh
     - export PATH="$HOME/.local/bin:$PATH"
     - uv tool install syntagmax
