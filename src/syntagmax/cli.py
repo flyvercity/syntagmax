@@ -498,7 +498,8 @@ def _generate_fallback_diff(base_content: str | None, target_content: str | None
     target_lines = target_content.splitlines(keepends=True) if target_content else []
 
     diff = difflib.unified_diff(
-        base_lines, target_lines,
+        base_lines,
+        target_lines,
         fromfile=f'a/{filepath}',
         tofile=f'b/{filepath}',
     )
@@ -520,23 +521,36 @@ def change():
 @click.option('--summary', is_flag=True, help='Generate abbreviated summary report (no content)')
 @click.option('-f', '--config-file', type=click.Path(), default='.syntagmax/config.toml')
 def change_report(
-    obj: Params, base: str, target: str, output_path: str | None,
-    include_non_artifact: bool, single: bool, summary: bool, config_file: Path,
+    obj: Params,
+    base: str,
+    target: str,
+    output_path: str | None,
+    include_non_artifact: bool,
+    single: bool,
+    summary: bool,
+    config_file: Path,
 ):
     from datetime import datetime, timezone
     from syntagmax.change_worktree import (
-        check_git_version, check_worktrees_gitignored,
-        resolve_revision, validate_records_in_repo, worktree_pair,
+        check_git_version,
+        check_worktrees_gitignored,
+        resolve_revision,
+        validate_records_in_repo,
+        worktree_pair,
     )
     from syntagmax.change_extract import extract_blocks_at_revision
     from syntagmax.change_diff import (
-        get_changed_files, filter_changed_files,
-        compare_artifacts, compare_text_blocks,
+        get_changed_files,
+        filter_changed_files,
+        compare_artifacts,
+        compare_text_blocks,
         compare_sidecar_artifacts,
     )
     from syntagmax.change_render import (
-        render_change_report, render_summary_report,
-        ChangeReportData, ExtractionError,
+        render_change_report,
+        render_summary_report,
+        ChangeReportData,
+        ExtractionError,
     )
     import git
 
@@ -592,9 +606,7 @@ def change_report(
 
         # Filter by input records
         if changed_files is not None:
-            files_by_record = filter_changed_files(
-                changed_files, config.input_records(), config.base_dir()
-            )
+            files_by_record = filter_changed_files(changed_files, config.input_records(), config.base_dir())
         else:
             files_by_record = None
 
@@ -613,11 +625,13 @@ def change_report(
             base_content = _read_file_safe(base_path, err_file)
             target_content = _read_file_safe(target_path, err_file)
             fallback = _generate_fallback_diff(base_content, target_content, err_file)
-            extraction_errors.append(ExtractionError(
-                file_path=err_file,
-                error_message='; '.join(err_msgs),
-                fallback_diff=fallback,
-            ))
+            extraction_errors.append(
+                ExtractionError(
+                    file_path=err_file,
+                    error_message='; '.join(err_msgs),
+                    fallback_diff=fallback,
+                )
+            )
 
         # Generate reports per record
         reports: list[tuple[str, str]] = []  # (filename, markdown)
@@ -640,7 +654,11 @@ def change_report(
 
             # Compare sidecar/binary artifacts
             binary_diff = compare_sidecar_artifacts(
-                base_recs, target_recs, base_path, target_path, base_dir_offset,
+                base_recs,
+                target_recs,
+                base_path,
+                target_path,
+                base_dir_offset,
             )
 
             # Compare text blocks if requested
@@ -658,10 +676,7 @@ def change_report(
                 artifact_diff=artifact_diff,
                 text_diff=text_diff,
                 binary_diff=binary_diff,
-                extraction_errors=[
-                    e for e in extraction_errors if e.file_path in
-                    {f.path for f in file_diffs} or not file_diffs
-                ],
+                extraction_errors=[e for e in extraction_errors if e.file_path in {f.path for f in file_diffs} or not file_diffs],
             )
 
             if summary:
@@ -869,6 +884,174 @@ def schema_config():
 
     schema_dict = ConfigFile.model_json_schema()
     print(json.dumps(schema_dict, indent=2))
+
+
+@rms.group(help='Configure CI/CD pipelines')
+@click.option('--target', type=click.Choice(['github', 'gitlab']), default='github', help='CI/CD target platform')
+@click.pass_context
+def ci(ctx: click.Context, target: str):
+    ctx.ensure_object(dict)
+    ctx.obj['ci_target'] = target
+
+
+@ci.group(help='Install CI configuration files')
+@click.pass_context
+def install(ctx: click.Context):
+    pass
+
+
+@install.command(name='analyze', help='Install CI workflow for the analyze command')
+@click.pass_obj
+def ci_install_analyze(obj: Params):
+    target = obj.get('ci_target', 'github')  # type: ignore
+
+    if target == 'github':
+        content = """name: Syntagmax Analyze
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    name: Syntagmax Analyze
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install Syntagmax
+        run: |
+          uv tool install syntagmax
+
+      - name: Run Analyze
+        run: |
+          syntagmax analyze
+
+      - name: Upload Report Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: syntagmax-report
+          path: .syntagmax/reports/report.md
+"""
+        workflow_dir = Path('.github/workflows')
+        workflow_dir.mkdir(parents=True, exist_ok=True)
+        workflow_file = workflow_dir / 'syntagmax-analyze.yml'
+        workflow_file.write_text(content, encoding='utf-8')
+        u.pprint(f'[green]GitHub workflow created at {workflow_file}[/green]')
+
+    elif target == 'gitlab':
+        content = """stages:
+  - analyze
+
+syntagmax-analyze:
+  stage: analyze
+  image: python:3.13-slim
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "web"
+  before_script:
+    - apt-get update && apt-get install -y curl
+    - curl -LsSf https://astral.sh/uv/install.sh | sh
+    - export PATH="$HOME/.local/bin:$PATH"
+    - uv tool install syntagmax
+  script:
+    - syntagmax analyze
+  artifacts:
+    paths:
+      - .syntagmax/reports/report.md
+"""
+        workflow_file = Path('.gitlab-ci.yml')
+        workflow_file.write_text(content, encoding='utf-8')
+        u.pprint(f'[green]GitLab CI configuration created at {workflow_file}[/green]')
+
+
+@install.command(name='publish', help='Install CI workflow for the publish command')
+@click.pass_obj
+def ci_install_publish(obj: Params):
+    target = obj.get('ci_target', 'github')  # type: ignore
+
+    if target == 'github':
+        content = """name: Syntagmax Publish
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: Syntagmax Publish
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install Syntagmax
+        run: |
+          uv tool install syntagmax
+
+      - name: Run Publish
+        run: |
+          syntagmax publish --all --single
+
+      - name: Upload Publish Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: syntagmax-publish
+          path: .syntagmax/reports/published.md
+"""
+        workflow_dir = Path('.github/workflows')
+        workflow_dir.mkdir(parents=True, exist_ok=True)
+        workflow_file = workflow_dir / 'syntagmax-publish.yml'
+        workflow_file.write_text(content, encoding='utf-8')
+        u.pprint(f'[green]GitHub workflow created at {workflow_file}[/green]')
+
+    elif target == 'gitlab':
+        content = """stages:
+  - publish
+
+syntagmax-publish:
+  stage: publish
+  image: python:3.13-slim
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "web"
+  before_script:
+    - apt-get update && apt-get install -y curl
+    - curl -LsSf https://astral.sh/uv/install.sh | sh
+    - export PATH="$HOME/.local/bin:$PATH"
+    - uv tool install syntagmax
+  script:
+    - syntagmax publish --all --single
+  artifacts:
+    paths:
+      - .syntagmax/reports/published.md
+"""
+        workflow_file = Path('.gitlab-ci.yml')
+        workflow_file.write_text(content, encoding='utf-8')
+        u.pprint(f'[green]GitLab CI configuration created at {workflow_file}[/green]')
 
 
 def main():

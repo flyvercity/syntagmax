@@ -678,6 +678,89 @@ syntagmax schema config > config-schema.json
 
 ---
 
+### `ci`
+
+Configure CI/CD pipelines commands group.
+
+```
+syntagmax ci [OPTIONS] COMMAND [ARGS]...
+```
+
+#### Options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `--target CHOICE` | Choice: `github`, `gitlab` | `github` | CI/CD target platform |
+
+#### Subcommands
+
+- `install` — Install CI configuration files
+
+---
+
+### `ci install`
+
+Install CI/CD workflow/pipeline configuration files.
+
+```
+syntagmax ci [--target TARGET] install COMMAND [OPTIONS]
+```
+
+#### Subcommands
+
+- [`analyze`](#ci-install-analyze) — Install CI workflow for the analyze command
+- [`publish`](#ci-install-publish) — Install CI workflow for the publish command
+
+---
+
+### `ci install analyze`
+
+Generates and writes a manually-triggered CI configuration to run the project's analysis pipeline and upload the report as an artifact.
+
+```
+syntagmax ci [--target TARGET] install analyze
+```
+
+**Target-specific output paths:**
+- **GitHub**: `.github/workflows/syntagmax-analyze.yml`
+- **GitLab**: `.gitlab-ci.yml`
+
+#### Examples
+
+```bash
+# Generate GitHub Actions workflow for analysis (default)
+syntagmax ci install analyze
+
+# Generate GitLab CI/CD configuration for analysis
+syntagmax ci --target gitlab install analyze
+```
+
+---
+
+### `ci install publish`
+
+Generates and writes a manually-triggered CI configuration to run the publish command (`publish --all --single`) and upload the compiled document as an artifact.
+
+```
+syntagmax ci [--target TARGET] install publish
+```
+
+**Target-specific output paths:**
+- **GitHub**: `.github/workflows/syntagmax-publish.yml`
+- **GitLab**: `.gitlab-ci.yml`
+
+#### Examples
+
+```bash
+# Generate GitHub Actions workflow for publishing (default)
+syntagmax ci install publish
+
+# Generate GitLab CI/CD configuration for publishing
+syntagmax ci --target gitlab install publish
+```
+
+---
+
 ## Exit Codes
 
 | Code | Condition |
@@ -716,7 +799,11 @@ syntagmax
 │       └── renumber [CONFIG_PATH]
 ├── mcp
 │   └── run CONFIG_PATH
-└── schema
-    ├── publish
-    └── config
+├── schema
+│   ├── publish
+│   └── config
+└── ci [--target TARGET]
+    └── install
+        ├── analyze
+        └── publish
 ```
