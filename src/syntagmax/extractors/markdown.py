@@ -18,6 +18,21 @@ from syntagmax.blocks import Block, TextBlock, ArtifactBlock, ErrorBlock
 
 _VALID_BLOCK_ID_RE = re.compile(r'^[a-zA-Z0-9_.\-]+$')
 
+# Module-level pre-compiled static regexes for filtering and splitting
+_HEADING_RE_SPLIT = re.compile(r'^([ ]{0,3}#{1,6}\s)')
+_FRONTMATTER_PATTERN = re.compile(r'\A---\r?\n.*?\r?\n---\r?\n', re.DOTALL)
+_TAG_PATTERN = re.compile(
+    r'(?<![^\s([{"\'])[ \t]*'
+    r'#(?!(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})\b)'
+    r'[^\d\W][\w\-/]*',
+    re.UNICODE,
+)
+_CODE_SPAN_RE = re.compile(r'(`{1,2})(?:.+?)\1')
+_HR_PATTERN = re.compile(r'^\s*[-*_]{3,}\s*$')
+_CALLOUT_ONLY_RE = re.compile(r'^(\s*)>\s?(.*)$')
+_HEADING_ONLY_RE = re.compile(r'^(\s*)#{1,6}\s+(.*)$')
+_MULTIPLE_WS_RE = re.compile(r'[ \t]{2,}')
+
 
 def _validate_block_id(id_str: str) -> bool:
     """Check if a block ID contains only valid characters [a-zA-Z0-9_-.]."""
@@ -221,6 +236,31 @@ class MarkdownExtractor(Extractor):
 
         self._parser = Lark(grammar, parser='lalr', maybe_placeholders=False)
         self._transformer = MarkdownTransformer()
+
+        # Pre-compile marker-specific and record-specific regexes
+        self._start_marker_re = re.compile(rf'\[{marker}\]', re.IGNORECASE)
+        self._slash_req_re = re.compile(rf'\[/{marker}\]', re.IGNORECASE)
+
+        markers = self._record.markers
+        if markers:
+            escaped = '|'.join(re.escape(m) for m in markers)
+            self._closed_paired_re = re.compile(rf'\[({escaped})(?:\s+([^\]]+))?\](.*?)\[/\1\]', re.IGNORECASE | re.DOTALL)
+            self._unclosed_paired_re = re.compile(
+                rf'\[({escaped})(?:\s+([^\]]+))?\](.*?)(?=\n\s*\n|\n\s*\[(?:{escaped})(?:\s+[^\]]+)?\]|\n\s*#{{1,6}}\s|\Z)', re.IGNORECASE | re.DOTALL
+            )
+            self._line_prefix_re = re.compile(rf'^\[({escaped})(?:\s+([^\]]+))?\]\s*(.*?)(?=\n\n|\Z)', re.IGNORECASE | re.DOTALL | re.MULTILINE)
+
+            fallback_patterns = [rf'^(?:\[(?:{escaped})(?:\s+[^\]]+)?\])', r'^#{1,6}\s', r'\n[ \t]*\r?\n']
+            self._fallback_re = re.compile('|'.join(f'({p})' for p in fallback_patterns), re.MULTILINE | re.IGNORECASE)
+            self._fallback_num_patterns = len(fallback_patterns)
+        else:
+            self._closed_paired_re = None
+            self._unclosed_paired_re = None
+            self._line_prefix_re = None
+
+            fallback_patterns = [r'^#{1,6}\s', r'\n[ \t]*\r?\n']
+            self._fallback_re = re.compile('|'.join(f'({p})' for p in fallback_patterns), re.MULTILINE | re.IGNORECASE)
+            self._fallback_num_patterns = len(fallback_patterns)
 
     def _is_multiple_attr(self, atype: str, attr_name: str) -> bool:
         if not self._metamodel:
@@ -486,36 +526,37 @@ class MarkdownExtractor(Extractor):
         if not markers:
             return [text_block]
 
-        escaped = '|'.join(re.escape(m) for m in markers)
         base_offset = text_block.source_offset
 
         # Pipeline: start with the input block, apply passes to unmarked blocks
         blocks: list[Block] = [text_block]
 
         # Pass 1: Fully closed paired markers [MARKER]...[/MARKER]
-        blocks = self._apply_marker_pass(blocks, self._split_closed_paired, escaped, base_offset)
+        blocks = self._apply_marker_pass(blocks, self._split_closed_paired, base_offset)
 
         # Pass 2: Unclosed paired markers [MARKER]...terminated by empty line/next marker/heading/EOF
-        blocks = self._apply_marker_pass(blocks, self._split_unclosed_paired, escaped, base_offset)
+        blocks = self._apply_marker_pass(blocks, self._split_unclosed_paired, base_offset)
 
         # Pass 3: Line-prefix markers [MARKER] content
-        blocks = self._apply_marker_pass(blocks, self._split_line_prefix, escaped, base_offset)
+        blocks = self._apply_marker_pass(blocks, self._split_line_prefix, base_offset)
 
         return blocks if blocks else [text_block]
 
-    def _apply_marker_pass(self, blocks: list[Block], splitter, escaped: str, base_offset: int | None) -> list[Block]:
+    def _apply_marker_pass(self, blocks: list[Block], splitter, base_offset: int | None) -> list[Block]:
         """Apply a splitting pass to all unmarked TextBlocks in the list."""
         result: list[Block] = []
         for block in blocks:
             if isinstance(block, TextBlock) and block.marker is None:
-                result.extend(splitter(block.content, escaped, block.source_offset))
+                result.extend(splitter(block.content, block.source_offset))
             else:
                 result.append(block)
         return result
 
-    def _split_closed_paired(self, content: str, escaped: str, base_offset: int | None) -> list[Block]:
+    def _split_closed_paired(self, content: str, base_offset: int | None) -> list[Block]:
         """Split by fully closed paired markers [MARKER]...[/MARKER]."""
-        paired_pattern = re.compile(rf'\[({escaped})(?:\s+([^\]]+))?\](.*?)\[/\1\]', re.IGNORECASE | re.DOTALL)
+        paired_pattern = self._closed_paired_re
+        if paired_pattern is None:
+            return [TextBlock(content=content, marker=None, source_offset=base_offset)]
         matches = list(paired_pattern.finditer(content))
         if not matches:
             return [TextBlock(content=content, marker=None, source_offset=base_offset)]
@@ -553,13 +594,11 @@ class MarkdownExtractor(Extractor):
             result.append(TextBlock(content=after, marker=None, source_offset=offset))
         return result if result else [TextBlock(content=content, marker=None, source_offset=base_offset)]
 
-    def _split_unclosed_paired(self, content: str, escaped: str, base_offset: int | None) -> list[Block]:
+    def _split_unclosed_paired(self, content: str, base_offset: int | None) -> list[Block]:
         """Split by unclosed paired markers terminated by empty line, next marker, heading, or EOF."""
-        # Lookahead terminates on: double newline, next fragment marker, heading, or end of string
-        unclosed_pattern = re.compile(
-            rf'\[({escaped})(?:\s+([^\]]+))?\](.*?)(?=\n\s*\n|\n\s*\[(?:{escaped})(?:\s+[^\]]+)?\]|\n\s*#{{1,6}}\s|\Z)',
-            re.IGNORECASE | re.DOTALL,
-        )
+        unclosed_pattern = self._unclosed_paired_re
+        if unclosed_pattern is None:
+            return [TextBlock(content=content, marker=None, source_offset=base_offset)]
         matches = list(unclosed_pattern.finditer(content))
         if not matches:
             return [TextBlock(content=content, marker=None, source_offset=base_offset)]
@@ -613,12 +652,11 @@ class MarkdownExtractor(Extractor):
             result.append(TextBlock(content=after, marker=None, source_offset=offset))
         return result if result else [TextBlock(content=content, marker=None, source_offset=base_offset)]
 
-    def _split_line_prefix(self, content: str, escaped: str, base_offset: int | None) -> list[Block]:
+    def _split_line_prefix(self, content: str, base_offset: int | None) -> list[Block]:
         """Split by line-prefix markers [MARKER] content at start of paragraph."""
-        prefix_pattern = re.compile(
-            rf'^\[({escaped})(?:\s+([^\]]+))?\]\s*(.*?)(?=\n\n|\Z)',
-            re.IGNORECASE | re.DOTALL | re.MULTILINE,
-        )
+        prefix_pattern = self._line_prefix_re
+        if prefix_pattern is None:
+            return [TextBlock(content=content, marker=None, source_offset=base_offset)]
         matches = list(prefix_pattern.finditer(content))
         if not matches:
             return [TextBlock(content=content, marker=None, source_offset=base_offset)]
@@ -663,7 +701,7 @@ class MarkdownExtractor(Extractor):
         followed by 1-6 '#' characters and a space. Headings inside fenced code
         blocks are not split. Whitespace-only text blocks are preserved.
         """
-        heading_re = re.compile(r'^([ ]{0,3}#{1,6}\s)')
+        heading_re = _HEADING_RE_SPLIT
         result: list[Block] = []
 
         for block in blocks:
@@ -734,11 +772,7 @@ class MarkdownExtractor(Extractor):
         marker: str,
     ) -> tuple[int, int, bool, int]:
         """Find segment end and return (segment_end, next_pos, fallback_pos_set, yaml_start_pos)."""
-        slash_req_match = re.search(
-            rf'\[/{marker}\]',
-            markdown[start_pos:terminator_search_end],
-            re.IGNORECASE,
-        )
+        slash_req_match = self._slash_req_re.search(markdown[start_pos:terminator_search_end])
         slash_req_pos = (start_pos + slash_req_match.start()) if slash_req_match else -1
 
         yaml_search_end = slash_req_pos if slash_req_pos != -1 else terminator_search_end
@@ -763,21 +797,11 @@ class MarkdownExtractor(Extractor):
                 fallback_search_start = match_end
             fallback_search_region = markdown[fallback_search_start:terminator_search_end]
 
-            fallback_patterns = []
-            fragment_markers = getattr(self._record, 'markers', None) or []
-            if fragment_markers:
-                escaped_markers = '|'.join(re.escape(m) for m in fragment_markers)
-                fallback_patterns.append(rf'^(?:\[(?:{escaped_markers})(?:\s+[^\]]+)?\])')
-
-            fallback_patterns.append(r'^#{1,6}\s')
-            fallback_patterns.append(r'\n[ \t]*\r?\n')
-
-            fallback_re = re.compile('|'.join(f'({p})' for p in fallback_patterns), re.MULTILINE | re.IGNORECASE)
-            fallback_match = fallback_re.search(fallback_search_region)
+            fallback_match = self._fallback_re.search(fallback_search_region)
 
             if fallback_match:
                 fallback_abs_pos = fallback_search_start + fallback_match.start()
-                if fallback_match.group(len(fallback_patterns)):  # last group = empty line
+                if fallback_match.group(self._fallback_num_patterns):  # last group = empty line
                     segment_end = fallback_abs_pos + 1
                     consume_end = fallback_search_start + fallback_match.end()
                     while consume_end < len(markdown):
@@ -923,7 +947,7 @@ class MarkdownExtractor(Extractor):
 
         blocks: list[Block] = []
         marker = self._record.marker
-        start_marker_re = re.compile(rf'\[{marker}\]', re.IGNORECASE)
+        start_marker_re = self._start_marker_re
         pos = 0
 
         if location_builder is None:
@@ -1037,10 +1061,10 @@ class MarkdownExtractor(Extractor):
                         continue
                     elif headings_mode == 'only':
                         # Strip # prefix, convert to plain text block
-                        heading_only_re = re.compile(r'^(\s*)#{1,6}\s+(.*)$')
+                        heading_only_re = _HEADING_ONLY_RE
                         m = heading_only_re.match(block.content.rstrip('\r\n'))
                         if m:
-                            ending = block.content[len(block.content.rstrip('\r\n')):]
+                            ending = block.content[len(block.content.rstrip('\r\n')) :]
                             content = m.group(1) + m.group(2) + ending
                         else:
                             content = block.content
@@ -1081,16 +1105,13 @@ class MarkdownExtractor(Extractor):
         Supports both LF and CRLF line endings.
         Each element has a mode: only, string, or string-on-start.
         """
-        import re as _re
-
         # Build lookup: element name -> mode
         exclude_map: dict[str, str] = {e.name: e.mode for e in exclude}
 
         # Handle frontmatter first (operates on entire content, not line-by-line)
         # All modes behave identically for frontmatter (complete removal)
         if is_file_start and 'frontmatter' in exclude_map:
-            fm_pattern = _re.compile(r'\A---\r?\n.*?\r?\n---\r?\n', _re.DOTALL)
-            content = fm_pattern.sub('', content)
+            content = _FRONTMATTER_PATTERN.sub('', content)
 
         # If no line-level filters remain, return early
         line_elements = set(exclude_map.keys()) & {'callouts', 'headings', 'horizontal_rules', 'tags'}
@@ -1104,18 +1125,13 @@ class MarkdownExtractor(Extractor):
 
         # Obsidian tag pattern
         if tags_mode:
-            _tag_pattern = _re.compile(
-                r'(?<![^\s([{"\'])[ \t]*'
-                r'#(?!(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})\b)'
-                r'[^\d\W][\w\-/]*',
-                _re.UNICODE,
-            )
+            _tag_pattern = _TAG_PATTERN
             # Code span regex for masking
-            _code_span_re = _re.compile(r'(`{1,2})(?:.+?)\1')
+            _code_span_re = _CODE_SPAN_RE
 
-        hr_pattern = _re.compile(r'^\s*[-*_]{3,}\s*$')
-        callout_only_re = _re.compile(r'^(\s*)>\s?(.*)$')
-        heading_only_re = _re.compile(r'^(\s*)#{1,6}\s+(.*)$')
+        hr_pattern = _HR_PATTERN
+        callout_only_re = _CALLOUT_ONLY_RE
+        heading_only_re = _HEADING_ONLY_RE
 
         lines = content.splitlines(keepends=True)
         result: list[str] = []
@@ -1213,11 +1229,9 @@ class MarkdownExtractor(Extractor):
 
     def _strip_tags_from_line(self, line: str, tag_pattern: 're.Pattern[str]') -> str:
         """Strip Obsidian inline tags from a line, preserving inline code spans."""
-        import re as _re
-
         # Split the line into inline-code and non-code segments
         # Match single or double backtick inline code spans
-        code_span_re = _re.compile(r'(`{1,2})(?:.+?)\1')
+        code_span_re = _CODE_SPAN_RE
 
         parts: list[str] = []
         pos = 0
@@ -1228,7 +1242,7 @@ class MarkdownExtractor(Extractor):
             if before:
                 before = tag_pattern.sub('', before)
                 # Collapse multiple horizontal whitespace into one space
-                before = _re.sub(r'[ \t]{2,}', ' ', before)
+                before = _MULTIPLE_WS_RE.sub(' ', before)
             parts.append(before)
             # Preserve the code span verbatim
             parts.append(match.group(0))
@@ -1238,7 +1252,7 @@ class MarkdownExtractor(Extractor):
         remainder = line[pos:]
         if remainder:
             remainder = tag_pattern.sub('', remainder)
-            remainder = _re.sub(r'[ \t]{2,}', ' ', remainder)
+            remainder = _MULTIPLE_WS_RE.sub(' ', remainder)
         parts.append(remainder)
 
         return ''.join(parts)
