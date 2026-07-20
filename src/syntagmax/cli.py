@@ -498,7 +498,8 @@ def _generate_fallback_diff(base_content: str | None, target_content: str | None
     target_lines = target_content.splitlines(keepends=True) if target_content else []
 
     diff = difflib.unified_diff(
-        base_lines, target_lines,
+        base_lines,
+        target_lines,
         fromfile=f'a/{filepath}',
         tofile=f'b/{filepath}',
     )
@@ -520,23 +521,36 @@ def change():
 @click.option('--summary', is_flag=True, help='Generate abbreviated summary report (no content)')
 @click.option('-f', '--config-file', type=click.Path(), default='.syntagmax/config.toml')
 def change_report(
-    obj: Params, base: str, target: str, output_path: str | None,
-    include_non_artifact: bool, single: bool, summary: bool, config_file: Path,
+    obj: Params,
+    base: str,
+    target: str,
+    output_path: str | None,
+    include_non_artifact: bool,
+    single: bool,
+    summary: bool,
+    config_file: Path,
 ):
     from datetime import datetime, timezone
     from syntagmax.change_worktree import (
-        check_git_version, check_worktrees_gitignored,
-        resolve_revision, validate_records_in_repo, worktree_pair,
+        check_git_version,
+        check_worktrees_gitignored,
+        resolve_revision,
+        validate_records_in_repo,
+        worktree_pair,
     )
     from syntagmax.change_extract import extract_blocks_at_revision
     from syntagmax.change_diff import (
-        get_changed_files, filter_changed_files,
-        compare_artifacts, compare_text_blocks,
+        get_changed_files,
+        filter_changed_files,
+        compare_artifacts,
+        compare_text_blocks,
         compare_sidecar_artifacts,
     )
     from syntagmax.change_render import (
-        render_change_report, render_summary_report,
-        ChangeReportData, ExtractionError,
+        render_change_report,
+        render_summary_report,
+        ChangeReportData,
+        ExtractionError,
     )
     import git
 
@@ -592,9 +606,7 @@ def change_report(
 
         # Filter by input records
         if changed_files is not None:
-            files_by_record = filter_changed_files(
-                changed_files, config.input_records(), config.base_dir()
-            )
+            files_by_record = filter_changed_files(changed_files, config.input_records(), config.base_dir())
         else:
             files_by_record = None
 
@@ -613,11 +625,13 @@ def change_report(
             base_content = _read_file_safe(base_path, err_file)
             target_content = _read_file_safe(target_path, err_file)
             fallback = _generate_fallback_diff(base_content, target_content, err_file)
-            extraction_errors.append(ExtractionError(
-                file_path=err_file,
-                error_message='; '.join(err_msgs),
-                fallback_diff=fallback,
-            ))
+            extraction_errors.append(
+                ExtractionError(
+                    file_path=err_file,
+                    error_message='; '.join(err_msgs),
+                    fallback_diff=fallback,
+                )
+            )
 
         # Generate reports per record
         reports: list[tuple[str, str]] = []  # (filename, markdown)
@@ -640,7 +654,11 @@ def change_report(
 
             # Compare sidecar/binary artifacts
             binary_diff = compare_sidecar_artifacts(
-                base_recs, target_recs, base_path, target_path, base_dir_offset,
+                base_recs,
+                target_recs,
+                base_path,
+                target_path,
+                base_dir_offset,
             )
 
             # Compare text blocks if requested
@@ -658,10 +676,7 @@ def change_report(
                 artifact_diff=artifact_diff,
                 text_diff=text_diff,
                 binary_diff=binary_diff,
-                extraction_errors=[
-                    e for e in extraction_errors if e.file_path in
-                    {f.path for f in file_diffs} or not file_diffs
-                ],
+                extraction_errors=[e for e in extraction_errors if e.file_path in {f.path for f in file_diffs} or not file_diffs],
             )
 
             if summary:
@@ -705,6 +720,61 @@ def change_report(
             file_path = out_dir / filename
             file_path.write_text(markdown, encoding='utf-8')
             u.pprint(f'  {file_path.absolute()}')
+
+
+@change.command('baseline', help='Create a baseline tag across all affected repositories')
+@click.pass_obj
+@click.argument('tag_name')
+@click.option('-m', '--message', default='Baseline created by Syntagmax', help='Tag annotation message')
+@click.option('--force', is_flag=True, help='Overwrite existing tags')
+@click.option('--dry-run', is_flag=True, help='Preview actions without creating tags')
+@click.option('-f', '--config-file', type=click.Path(), default='.syntagmax/config.toml')
+def change_baseline(obj: Params, tag_name: str, message: str, force: bool, dry_run: bool, config_file: str):
+    from syntagmax.change_baseline import (
+        discover_repos,
+        check_repos_clean,
+        validate_tag_name,
+        check_tag_exists,
+        create_baseline_tag,
+    )
+
+    cfg_path = Path(config_file)
+    if not cfg_path.exists():
+        u.pprint(f'[red]Error: Configuration file "{cfg_path}" does not exist.[/red]')
+        sys.exit(1)
+
+    config = Config(obj, cfg_path)
+
+    # Discover repos from all input records
+    repos = discover_repos(config.input_records(), config.base_dir())
+
+    # Pre-flight validations
+    check_repos_clean(repos)
+    validate_tag_name(tag_name, config.baseline_config.tag_pattern)
+    check_tag_exists(tag_name, repos, force)
+
+    # Dry-run: print plan and exit
+    if dry_run:
+        u.pprint('[cyan]Dry run — no tags will be created.[/cyan]')
+        u.pprint(f'  Tag name: {tag_name}')
+        u.pprint(f'  Message: {message}')
+        u.pprint(f'  Repositories ({len(repos)}):')
+        for repo_root, repo in repos.items():
+            head_short = repo.head.commit.hexsha[:7]
+            u.pprint(f'    - {repo_root} (HEAD: {head_short})')
+        return
+
+    # Create tags
+    results = create_baseline_tag(tag_name, repos, message, force)
+
+    # Success output
+    u.pprint(f'[green]Baseline "{tag_name}" created in {len(results)} repository(ies):[/green]')
+    for repo_root, commit_short in results:
+        u.pprint(f'  - {repo_root} @ {commit_short}')
+    u.pprint('')
+    u.pprint('[yellow]Remember to push the tag to your remotes:[/yellow]')
+    for repo_root, _ in results:
+        u.pprint(f'  cd {repo_root} && git push origin {tag_name}')
 
 
 @rms.group(help='Project Editing Commands')

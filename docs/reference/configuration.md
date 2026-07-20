@@ -15,6 +15,7 @@ For a detailed explanation of how Syntagmax handles different directories, relat
 | `drivers` | No | Driver-specific global defaults |
 | `metrics` | No | Metrics collection settings |
 | `metamodel` | No | Metamodel configuration |
+| `baseline` | No | Baseline tagging settings (tag name pattern) |
 
 ## Input Sources (`[[input]]`)
 
@@ -298,6 +299,27 @@ Environment variables can also be used for API keys (e.g. `ANTHROPIC_API_KEY`, `
 | `aws_api_key` | No | — | AWS Bedrock API Key |
 | `timeout_s` | No | `60.0` | Request timeout in seconds |
 
+## Baseline (`[baseline]`)
+
+Optional configuration for the `change baseline` command which creates annotated git tags across all repositories that input records point to.
+
+| Field | Required | Default | Description |
+|-------|----------|---------|-------------|
+| `tag_pattern` | No | — | Regex pattern that tag names must match. If set, `change baseline` rejects tag names that do not fully match this pattern. |
+
+The `tag_pattern` is validated at config load time — an invalid regex raises a configuration error.
+
+### Example
+
+```toml
+[baseline]
+tag_pattern = "^v\\d+\\.\\d+\\.\\d+$"
+```
+
+With this pattern, only semver-style tags like `v1.0.0` or `v2.3.14` are accepted. Running `syntagmax change baseline release-1` would be rejected.
+
+If the `[baseline]` section is omitted or `tag_pattern` is not set, any tag name is accepted.
+
 ## Full Example
 
 ```toml
@@ -324,4 +346,7 @@ filename = "project.syntagmax"
 [ai]
 provider = "anthropic"
 model = "claude-sonnet-4-6"
+
+[baseline]
+tag_pattern = "^v\\d+\\.\\d+\\.\\d+$"
 ```

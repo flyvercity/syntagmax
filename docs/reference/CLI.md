@@ -252,6 +252,7 @@ syntagmax change COMMAND [OPTIONS]
 #### Subcommands
 
 - [`report`](#change-report) — Generate change report between two revisions
+- [`baseline`](#change-baseline) — Create a baseline tag across all affected repositories
 
 ---
 
@@ -331,6 +332,62 @@ syntagmax change report --base HEAD --target working
 
 ---
 
+### `change baseline`
+
+Create a consistent annotated git tag across all repositories that input records point to. Useful for marking baseline snapshots in multi-repo requirement projects.
+
+```
+syntagmax change baseline [OPTIONS] TAG_NAME
+```
+
+#### Arguments
+
+| Argument | Required | Description |
+|----------|----------|-------------|
+| `TAG_NAME` | Yes | Tag name to create in all discovered repositories |
+
+#### Options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `-m, --message TEXT` | String | `Baseline created by Syntagmax` | Tag annotation message |
+| `--force` | Flag | off | Overwrite existing tags |
+| `--dry-run` | Flag | off | Preview actions without creating tags |
+| `-f, --config-file PATH` | Path | `.syntagmax/config.toml` | Path to the project configuration file |
+
+#### Behaviour
+
+- Discovers all distinct git repositories from input records' base directories
+- Validates that all discovered repos lie within the project base directory
+- Refuses to proceed if any repo has uncommitted changes or untracked files
+- Validates tag name against optional `tag_pattern` regex from `[baseline]` config section
+- Checks for existing tags — errors unless `--force` is set
+- Creates annotated tags at HEAD in each repo
+- Atomic: if tag creation fails in any repo, tags already created in this run are rolled back
+- Prints a push reminder after successful tagging
+
+#### Dry Run
+
+When `--dry-run` is active, the command prints the planned tag name, message, and list of repositories with their current HEAD commits, then exits without creating any tags.
+
+#### Examples
+
+```bash
+# Create a baseline tag in all repos
+syntagmax change baseline v1.0.0
+
+# Custom annotation message
+syntagmax change baseline v1.0.0 -m "Release 1.0.0 baseline"
+
+# Preview what would happen
+syntagmax change baseline v1.0.0 --dry-run
+
+# Overwrite existing tags
+syntagmax change baseline v1.0.0 --force
+
+# Use a custom config file
+syntagmax change baseline v2.0.0 -f ./custom/config.toml
+```
 
 ---
 
@@ -708,7 +765,8 @@ syntagmax
 ├── publish [RECORDS...]
 ├── trace
 ├── change
-│   └── report
+│   ├── report
+│   └── baseline
 ├── edit
 │   ├── renumber [CONFIG_PATH]
 │   ├── attrs
