@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project uses [Calendar Versioning](https://calver.org/) with the scheme `YYYY.M.D`.
 
+## [2026.7.20] - 2026-07-20
+
+### Added
+
+- `ci` command group for configuring GitHub and GitLab CI/CD pipelines
+- Baseline tagging command (`change baseline`) with force-overwrite and dry-run support
+- Windows MSI installer packaging with cx_Freeze and dedicated GHA workflow
+
+### Performance
+
+- Pre-compile performance-sensitive regexes in MarkdownExtractor
+
+### Changed
+
+- Update GitHub Actions versions in generated workflows
+- Add git dependency to GitLab CI configuration
+- MSI artifact name includes branch or tag
+- Build-MSI workflow supports automatic releases
+- Simplify string formatting in error messages and logs
+
+### Tests
+
+- Add unit tests for `render_tree_markdown`
+- Add unit tests for `pprint` utility function
+
 ## [2026.7.17] - 2026-07-17
 
 ### Added
