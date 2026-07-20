@@ -1,3 +1,10 @@
+---
+type: Quickstart
+title: OpenWiki Quickstart
+description: Quickstart guide for the Syntagmax repository, covering setup, workflows, and key features.
+tags: [quickstart, documentation, syntagmax]
+---
+
 # OpenWiki Quickstart
 
 Syntagmax is a git-friendly requirements management system for extracting artifacts from source documents, building a traceable artifact tree, analyzing changes and impact, and publishing rendered documentation. The codebase also includes an MCP server so LLM clients can inspect requirements directly.

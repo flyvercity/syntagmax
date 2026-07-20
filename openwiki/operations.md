@@ -1,3 +1,10 @@
+---
+type: Operations Guide
+title: Operations Guide
+description: Guide on using the Syntagmax repository from the command line, including CLI commands and workflows.
+tags: [operations, cli, guide]
+---
+
 # Operations Guide
 
 This page focuses on how the repository is used from the command line and what to watch out for when running it in practice.
@@ -11,6 +18,11 @@ Main commands in `src/syntagmax/cli.py`:
 - `publish` — render records to Markdown, optionally DOCX/PDF
 - `edit renumber` — renumber artifact IDs
 - `mcp run` — start the MCP server
+- `ci` — configure GitHub and GitLab pipelines
+- `change baseline` — create baseline tags across repositories
+- `edit attrs` — bulk attribute manipulation
+- `markers renumber` — renumber fragment markers
+- `schema` — generate JSON schemas for configurations
 
 ## Typical workflows
 ### Initialize a project
