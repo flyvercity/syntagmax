@@ -1,8 +1,3 @@
----
-name: sc.code.review.md
-description: Perform a code review for the current PR (forked from ECC)
----
-
 # Code Review
 
 Code Review the current PR. Write the report to a new file here: `docs\codereviews\`.
