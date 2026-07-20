@@ -941,6 +941,164 @@ def schema_config():
     print(json.dumps(schema_dict, indent=2))
 
 
+@rms.group(help='Configure CI/CD pipelines')
+@click.option('--target', type=click.Choice(['github', 'gitlab']), default='github', help='CI/CD target platform')
+@click.pass_context
+def ci(ctx: click.Context, target: str):
+    ctx.ensure_object(dict)
+    ctx.obj['ci_target'] = target
+
+
+@ci.group(help='Install CI configuration files')
+@click.pass_context
+def install(ctx: click.Context):
+    pass
+
+
+@install.command(name='analyze', help='Install CI workflow for the analyze command')
+@click.pass_obj
+def ci_install_analyze(obj: Params):
+    target = obj.get('ci_target', 'github')  # type: ignore
+
+    if target == 'github':
+        content = """name: Syntagmax Analyze
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    name: Syntagmax Analyze
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v8.3.2
+        with:
+          enable-cache: true
+
+      - name: Install Syntagmax
+        run: |
+          uv tool install syntagmax
+
+      - name: Run Analyze
+        run: |
+          syntagmax analyze
+
+      - name: Upload Report Artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: syntagmax-report
+          path: .syntagmax/reports/report.md
+"""
+        workflow_dir = Path('.github/workflows')
+        workflow_dir.mkdir(parents=True, exist_ok=True)
+        workflow_file = workflow_dir / 'syntagmax-analyze.yml'
+        workflow_file.write_text(content, encoding='utf-8')
+        u.pprint(f'[green]GitHub workflow created at {workflow_file}[/green]')
+
+    elif target == 'gitlab':
+        content = """stages:
+  - analyze
+
+syntagmax-analyze:
+  stage: analyze
+  image: python:3.13-slim
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "web"
+  before_script:
+    - apt-get update && apt-get install -y curl
+    - curl -LsSf https://astral.sh/uv/install.sh | sh
+    - export PATH="$HOME/.local/bin:$PATH"
+    - uv tool install syntagmax
+  script:
+    - syntagmax analyze
+  artifacts:
+    paths:
+      - .syntagmax/reports/report.md
+"""
+        workflow_file = Path('.gitlab-ci.yml')
+        workflow_file.write_text(content, encoding='utf-8')
+        u.pprint(f'[green]GitLab CI configuration created at {workflow_file}[/green]')
+
+
+@install.command(name='publish', help='Install CI workflow for the publish command')
+@click.pass_obj
+def ci_install_publish(obj: Params):
+    target = obj.get('ci_target', 'github')  # type: ignore
+
+    if target == 'github':
+        content = """name: Syntagmax Publish
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: Syntagmax Publish
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v8.3.2
+        with:
+          enable-cache: true
+
+      - name: Install Syntagmax
+        run: |
+          uv tool install syntagmax
+
+      - name: Run Publish
+        run: |
+          syntagmax publish --all --single
+
+      - name: Upload Publish Artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: syntagmax-publish
+          path: .syntagmax/reports/published.md
+"""
+        workflow_dir = Path('.github/workflows')
+        workflow_dir.mkdir(parents=True, exist_ok=True)
+        workflow_file = workflow_dir / 'syntagmax-publish.yml'
+        workflow_file.write_text(content, encoding='utf-8')
+        u.pprint(f'[green]GitHub workflow created at {workflow_file}[/green]')
+
+    elif target == 'gitlab':
+        content = """stages:
+  - publish
+
+syntagmax-publish:
+  stage: publish
+  image: python:3.13-slim
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "web"
+  before_script:
+    - apt-get update && apt-get install -y curl git
+    - curl -LsSf https://astral.sh/uv/install.sh | sh
+    - export PATH="$HOME/.local/bin:$PATH"
+    - uv tool install syntagmax
+  script:
+    - syntagmax publish --all --single
+  artifacts:
+    paths:
+      - .syntagmax/reports/published.md
+"""
+        workflow_file = Path('.gitlab-ci.yml')
+        workflow_file.write_text(content, encoding='utf-8')
+        u.pprint(f'[green]GitLab CI configuration created at {workflow_file}[/green]')
+
+
 def main():
     try:
         rms()
