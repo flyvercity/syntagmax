@@ -12,147 +12,15 @@ from lark import Lark, Transformer, exceptions
 from benedict import benedict
 
 from syntagmax.extractors.extractor import Extractor, ExtractorResult
-from syntagmax.config import Config, InputRecord, ExcludeElementConfig
+from syntagmax.config import Config, InputRecord
 from syntagmax.artifact import ArtifactBuilder, Artifact, Location, UNDEFINED_ID
 from syntagmax.blocks import Block, TextBlock, ArtifactBlock, ErrorBlock
 
-_VALID_BLOCK_ID_RE = re.compile(r'^[a-zA-Z0-9_.\-]+$')
-
-# Module-level pre-compiled static regexes for filtering and splitting
-_HEADING_RE_SPLIT = re.compile(r'^([ ]{0,3}#{1,6}\s)')
-_FRONTMATTER_PATTERN = re.compile(r'\A---\r?\n.*?\r?\n---\r?\n', re.DOTALL)
-_TAG_PATTERN = re.compile(
-    r'(?<![^\s([{"\'])[ \t]*'
-    r'#(?!(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})\b)'
-    r'[^\d\W][\w\-/]*',
-    re.UNICODE,
+from syntagmax.extractors.markdown_filters import (
+    ElementFilterMixin,
+    apply_soft_line_breaks as apply_soft_line_breaks,  # noqa: F401 — re-exported
 )
-_CODE_SPAN_RE = re.compile(r'(`{1,2})(?:.+?)\1')
-_HR_PATTERN = re.compile(r'^\s*[-*_]{3,}\s*$')
-_CALLOUT_ONLY_RE = re.compile(r'^(\s*)>\s?(.*)$')
-_HEADING_ONLY_RE = re.compile(r'^(\s*)#{1,6}\s+(.*)$')
-_MULTIPLE_WS_RE = re.compile(r'[ \t]{2,}')
-
-
-def _validate_block_id(id_str: str) -> bool:
-    """Check if a block ID contains only valid characters [a-zA-Z0-9_-.]."""
-    return bool(_VALID_BLOCK_ID_RE.match(id_str))
-
-
-# Patterns for detecting Markdown block-level elements
-_HEADING_RE = re.compile(r'^\s*#{1,6}\s')
-_TABLE_ROW_RE = re.compile(r'^\s*\|')
-_UNORDERED_LIST_RE = re.compile(r'^\s*[-*+]\s')
-_ORDERED_LIST_RE = re.compile(r'^\s*\d+[.)]\s')
-_THEMATIC_BREAK_RE = re.compile(r'^\s*[-*_]{3,}\s*$')
-_HTML_BLOCK_RE = re.compile(r'^\s*<')
-_FENCE_START_RE = re.compile(r'^\s*```')
-
-
-def _is_block_element(line_content: str) -> bool:
-    """Check if a line (without line ending) is a Markdown block-level element."""
-    return bool(
-        _HEADING_RE.match(line_content)
-        or _TABLE_ROW_RE.match(line_content)
-        or _UNORDERED_LIST_RE.match(line_content)
-        or _ORDERED_LIST_RE.match(line_content)
-        or _THEMATIC_BREAK_RE.match(line_content)
-        or _HTML_BLOCK_RE.match(line_content)
-    )
-
-
-def apply_soft_line_breaks(text: str) -> str:
-    """Convert single newlines to Markdown hard breaks (trailing two spaces).
-
-    This implements Obsidian's relaxed line break behavior for standard Markdown
-    renderers. The transformation is:
-    - Code-block-aware: lines inside fenced code blocks are never modified.
-    - CRLF-safe: preserves original line endings.
-    - Block-syntax-aware: headings, tables, lists, thematic breaks, and HTML blocks
-      are never modified.
-    - Paragraph-safe: empty/whitespace-only lines and lines preceding them are not modified.
-
-    Args:
-        text: The input text content.
-
-    Returns:
-        Text with single newlines converted to hard breaks where appropriate.
-    """
-    if not text:
-        return text
-
-    # Split preserving line endings
-    lines = text.splitlines(keepends=True)
-    if not lines:
-        return text
-
-    result: list[str] = []
-    in_code_block = False
-
-    for i, line in enumerate(lines):
-        # Separate content from line ending
-        if line.endswith('\r\n'):
-            content = line[:-2]
-            ending = '\r\n'
-        elif line.endswith('\n'):
-            content = line[:-1]
-            ending = '\n'
-        elif line.endswith('\r'):
-            content = line[:-1]
-            ending = '\r'
-        else:
-            # Last line without trailing newline — no transformation needed
-            result.append(line)
-            continue
-
-        stripped = content.lstrip()
-
-        # Track fenced code block state
-        if _FENCE_START_RE.match(content):
-            in_code_block = not in_code_block
-            result.append(line)
-            continue
-
-        # Lines inside code blocks are never modified
-        if in_code_block:
-            result.append(line)
-            continue
-
-        # Empty or whitespace-only lines are never modified
-        if not stripped:
-            result.append(line)
-            continue
-
-        # Check if next line is empty or whitespace-only (preserve paragraph breaks)
-        if i + 1 < len(lines):
-            next_line = lines[i + 1]
-            # Strip line ending from next line for whitespace check
-            if next_line.endswith('\r\n'):
-                next_content = next_line[:-2]
-            elif next_line.endswith('\n'):
-                next_content = next_line[:-1]
-            elif next_line.endswith('\r'):
-                next_content = next_line[:-1]
-            else:
-                next_content = next_line
-            if not next_content.strip():
-                result.append(line)
-                continue
-
-        # Block-level elements are never modified
-        if _is_block_element(content):
-            result.append(line)
-            continue
-
-        # Already has a hard break (trailing two spaces or backslash)
-        if content.endswith('  ') or content.endswith('\\'):
-            result.append(line)
-            continue
-
-        # Apply transformation: append two spaces before line ending
-        result.append(content + '  ' + ending)
-
-    return ''.join(result)
+from syntagmax.extractors.markdown_markers import MarkerSplitterMixin
 
 
 class MarkdownArtifact(Artifact):
@@ -223,7 +91,8 @@ class MarkdownTransformer(Transformer):
         }
 
 
-class MarkdownExtractor(Extractor):
+
+class MarkdownExtractor(MarkerSplitterMixin, ElementFilterMixin, Extractor):
     def __init__(self, config: Config, record: InputRecord, metamodel: dict | None = None):
         super().__init__(config, record, metamodel)
         grammar_path = Path(__file__).parent / 'markdown.lark'
@@ -269,6 +138,7 @@ class MarkdownExtractor(Extractor):
         if isinstance(attrs, dict):
             attrs = [attrs]
         return any(rule.get('multiple', False) for rule in attrs)
+
 
     def update_artifacts(self, loc_file: str, updates: list[tuple[Artifact, str]]):
         """Renumber artifact IDs in a file. Uses round-trip YAML to preserve attr order."""
@@ -336,6 +206,7 @@ class MarkdownExtractor(Extractor):
 
         if 'id' in fields:
             self.update_artifacts(artifact.location.loc_file, [(artifact, fields['id'])])
+
 
     def update_artifact_attributes(
         self,
@@ -442,6 +313,7 @@ class MarkdownExtractor(Extractor):
 
         return segment
 
+
     def _update_inline_fields(
         self,
         segment: str,
@@ -507,261 +379,12 @@ class MarkdownExtractor(Extractor):
         # Fallback: append at end
         return segment.rstrip() + newline + new_field_line + newline
 
+
     def _extract_from_markdown(self, filepath: Path, markdown: str, location_builder: Callable[[int, int], Location]) -> ExtractorResult:
         blocks = self._extract_blocks_from_markdown(filepath, markdown, location_builder)
         artifacts = [b.artifact for b in blocks if isinstance(b, ArtifactBlock)]
         errors = [b.message for b in blocks if isinstance(b, ErrorBlock)]
         return artifacts, errors
-
-    def _split_text_block_by_markers(self, text_block: TextBlock) -> list[Block]:
-        """Split a TextBlock into marked and unmarked fragments based on configured markers.
-
-        Supports three marker formats (applied as a pipeline):
-        1. Paired (closed): [MARKER]content[/MARKER]
-        2. Paired (unclosed): [MARKER]content terminated by empty line, next marker, heading, or end-of-string
-        3. Line-prefix: [MARKER] content (paragraph terminated by blank line or end-of-string)
-           Also handles [MARKER id] identified variants.
-        """
-        markers = self._record.markers
-        if not markers:
-            return [text_block]
-
-        base_offset = text_block.source_offset
-
-        # Pipeline: start with the input block, apply passes to unmarked blocks
-        blocks: list[Block] = [text_block]
-
-        # Pass 1: Fully closed paired markers [MARKER]...[/MARKER]
-        blocks = self._apply_marker_pass(blocks, self._split_closed_paired, base_offset)
-
-        # Pass 2: Unclosed paired markers [MARKER]...terminated by empty line/next marker/heading/EOF
-        blocks = self._apply_marker_pass(blocks, self._split_unclosed_paired, base_offset)
-
-        # Pass 3: Line-prefix markers [MARKER] content
-        blocks = self._apply_marker_pass(blocks, self._split_line_prefix, base_offset)
-
-        return blocks if blocks else [text_block]
-
-    def _apply_marker_pass(self, blocks: list[Block], splitter, base_offset: int | None) -> list[Block]:
-        """Apply a splitting pass to all unmarked TextBlocks in the list."""
-        result: list[Block] = []
-        for block in blocks:
-            if isinstance(block, TextBlock) and block.marker is None:
-                result.extend(splitter(block.content, block.source_offset))
-            else:
-                result.append(block)
-        return result
-
-    def _split_closed_paired(self, content: str, base_offset: int | None) -> list[Block]:
-        """Split by fully closed paired markers [MARKER]...[/MARKER]."""
-        paired_pattern = self._closed_paired_re
-        if paired_pattern is None:
-            return [TextBlock(content=content, marker=None, source_offset=base_offset)]
-        matches = list(paired_pattern.finditer(content))
-        if not matches:
-            return [TextBlock(content=content, marker=None, source_offset=base_offset)]
-
-        result: list[Block] = []
-        pos = 0
-        for match in matches:
-            before = content[pos : match.start()]
-            if before:
-                offset = (base_offset + pos) if base_offset is not None else None
-                result.append(TextBlock(content=before, marker=None, source_offset=offset))
-            marker_name = match.group(1).upper()
-            raw_id = match.group(2)
-            marker_content = match.group(3)
-            tag_offset = (base_offset + match.start()) if base_offset is not None else None
-
-            if raw_id is not None:
-                raw_id = raw_id.strip()
-                if not _validate_block_id(raw_id):
-                    result.append(
-                        ErrorBlock(
-                            message=f'Invalid block ID "{raw_id}" for marker [{marker_name}] — IDs must match [a-zA-Z0-9_.-]',
-                            raw_text=match.group(0),
-                        )
-                    )
-                    pos = match.end()
-                    continue
-                result.append(TextBlock(content=marker_content, marker=marker_name, id=raw_id, explicit_id=True, source_offset=tag_offset))
-            else:
-                result.append(TextBlock(content=marker_content, marker=marker_name, source_offset=tag_offset))
-            pos = match.end()
-        after = content[pos:]
-        if after:
-            offset = (base_offset + pos) if base_offset is not None else None
-            result.append(TextBlock(content=after, marker=None, source_offset=offset))
-        return result if result else [TextBlock(content=content, marker=None, source_offset=base_offset)]
-
-    def _split_unclosed_paired(self, content: str, base_offset: int | None) -> list[Block]:
-        """Split by unclosed paired markers terminated by empty line, next marker, heading, or EOF."""
-        unclosed_pattern = self._unclosed_paired_re
-        if unclosed_pattern is None:
-            return [TextBlock(content=content, marker=None, source_offset=base_offset)]
-        matches = list(unclosed_pattern.finditer(content))
-        if not matches:
-            return [TextBlock(content=content, marker=None, source_offset=base_offset)]
-
-        result: list[Block] = []
-        pos = 0
-        for match in matches:
-            before = content[pos : match.start()]
-            if before:
-                offset = (base_offset + pos) if base_offset is not None else None
-                result.append(TextBlock(content=before, marker=None, source_offset=offset))
-            marker_name = match.group(1).upper()
-            raw_id = match.group(2)
-            marker_content = match.group(3).strip()
-            tag_offset = (base_offset + match.start()) if base_offset is not None else None
-
-            if raw_id is not None:
-                raw_id = raw_id.strip()
-                if not _validate_block_id(raw_id):
-                    result.append(
-                        ErrorBlock(
-                            message=f'Invalid block ID "{raw_id}" for marker [{marker_name}] — IDs must match [a-zA-Z0-9_.-]',
-                            raw_text=match.group(0),
-                        )
-                    )
-                    # Consume the terminating empty line if present
-                    end_pos = match.end()
-                    if end_pos < len(content) and content[end_pos] == '\n':
-                        remaining = content[end_pos:]
-                        empty_match = re.match(r'\n\s*\n', remaining)
-                        if empty_match:
-                            end_pos += empty_match.end()
-                    pos = end_pos
-                    continue
-                result.append(TextBlock(content=marker_content, marker=marker_name, id=raw_id, explicit_id=True, source_offset=tag_offset))
-            else:
-                result.append(TextBlock(content=marker_content, marker=marker_name, source_offset=tag_offset))
-
-            # Consume the terminating empty line if present
-            end_pos = match.end()
-            if end_pos < len(content) and content[end_pos] == '\n':
-                # Check if it's an empty line terminator (consume it)
-                remaining = content[end_pos:]
-                empty_match = re.match(r'\n\s*\n', remaining)
-                if empty_match:
-                    end_pos += empty_match.end()
-            pos = end_pos
-        after = content[pos:]
-        if after:
-            offset = (base_offset + pos) if base_offset is not None else None
-            result.append(TextBlock(content=after, marker=None, source_offset=offset))
-        return result if result else [TextBlock(content=content, marker=None, source_offset=base_offset)]
-
-    def _split_line_prefix(self, content: str, base_offset: int | None) -> list[Block]:
-        """Split by line-prefix markers [MARKER] content at start of paragraph."""
-        prefix_pattern = self._line_prefix_re
-        if prefix_pattern is None:
-            return [TextBlock(content=content, marker=None, source_offset=base_offset)]
-        matches = list(prefix_pattern.finditer(content))
-        if not matches:
-            return [TextBlock(content=content, marker=None, source_offset=base_offset)]
-
-        result: list[Block] = []
-        pos = 0
-        for match in matches:
-            before = content[pos : match.start()]
-            if before:
-                offset = (base_offset + pos) if base_offset is not None else None
-                result.append(TextBlock(content=before, marker=None, source_offset=offset))
-            marker_name = match.group(1).upper()
-            raw_id = match.group(2)
-            marker_content = match.group(3).strip()
-            tag_offset = (base_offset + match.start()) if base_offset is not None else None
-
-            if raw_id is not None:
-                raw_id = raw_id.strip()
-                if not _validate_block_id(raw_id):
-                    result.append(
-                        ErrorBlock(
-                            message=f'Invalid block ID "{raw_id}" for marker [{marker_name}] — IDs must match [a-zA-Z0-9_.-]',
-                            raw_text=match.group(0),
-                        )
-                    )
-                    pos = match.end()
-                    continue
-                result.append(TextBlock(content=marker_content, marker=marker_name, id=raw_id, explicit_id=True, source_offset=tag_offset))
-            else:
-                result.append(TextBlock(content=marker_content, marker=marker_name, source_offset=tag_offset))
-            pos = match.end()
-        after = content[pos:]
-        if after:
-            offset = (base_offset + pos) if base_offset is not None else None
-            result.append(TextBlock(content=after, marker=None, source_offset=offset))
-        return result if result else [TextBlock(content=content, marker=None, source_offset=base_offset)]
-
-    def _split_headings(self, blocks: list[Block]) -> list[Block]:
-        """Split ATX headings out of unmarked TextBlocks as separate heading blocks.
-
-        Headings are identified by CommonMark rules: at most 3 leading spaces
-        followed by 1-6 '#' characters and a space. Headings inside fenced code
-        blocks are not split. Whitespace-only text blocks are preserved.
-        """
-        heading_re = _HEADING_RE_SPLIT
-        result: list[Block] = []
-
-        for block in blocks:
-            if not isinstance(block, TextBlock) or block.marker is not None:
-                result.append(block)
-                continue
-
-            lines = block.content.splitlines(keepends=True)
-            base_offset = block.source_offset
-            accumulator: list[str] = []
-            current_offset = base_offset
-            acc_offset = base_offset
-            in_code_block = False
-
-            for line in lines:
-                stripped = line.lstrip()
-
-                # Track fenced code block state
-                if stripped.startswith('```'):
-                    in_code_block = not in_code_block
-                    if not accumulator and current_offset is not None:
-                        acc_offset = current_offset
-                    accumulator.append(line)
-                    if current_offset is not None:
-                        current_offset += len(line)
-                    continue
-
-                if in_code_block:
-                    if not accumulator and current_offset is not None:
-                        acc_offset = current_offset
-                    accumulator.append(line)
-                    if current_offset is not None:
-                        current_offset += len(line)
-                    continue
-
-                if heading_re.match(line):
-                    # Flush preceding text (preserve whitespace-only blocks)
-                    if accumulator:
-                        text = ''.join(accumulator)
-                        result.append(TextBlock(content=text, source_offset=acc_offset))
-                        accumulator = []
-
-                    # Emit heading block
-                    result.append(TextBlock(content=line, marker='HEADING', source_offset=current_offset))
-                    if current_offset is not None:
-                        current_offset += len(line)
-                    acc_offset = current_offset
-                else:
-                    if not accumulator and current_offset is not None:
-                        acc_offset = current_offset
-                    accumulator.append(line)
-                    if current_offset is not None:
-                        current_offset += len(line)
-
-            # Flush remaining text
-            if accumulator:
-                text = ''.join(accumulator)
-                result.append(TextBlock(content=text, source_offset=acc_offset))
-
-        return result
 
     def _find_segment_boundary(
         self,
@@ -826,6 +449,7 @@ class MarkdownExtractor(Extractor):
                 fallback_pos_set = True
 
         return segment_end, next_pos, fallback_pos_set, yaml_start_pos
+
 
     def _process_segment(
         self,
@@ -942,6 +566,7 @@ class MarkdownExtractor(Extractor):
             error = f'Error processing requirement at line {start_line} in {filepath}'
             return ErrorBlock(message=error, raw_text=segment)
 
+
     def _extract_blocks_from_markdown(self, filepath: Path, markdown: str, location_builder: Callable[[int, int], Location] | None = None) -> list[Block]:
         from syntagmax.artifact import LineLocation
 
@@ -1034,225 +659,3 @@ class MarkdownExtractor(Extractor):
         markdown = filepath.read_text(encoding='utf-8')
         blocks = self._extract_blocks_from_markdown(filepath, markdown)
         return self._apply_element_filters(blocks)
-
-    def _apply_element_filters(self, blocks: list[Block]) -> list[Block]:
-        """Apply exclude_elements filtering to TextBlocks."""
-        exclude = self._record.exclude_elements
-        if not exclude:
-            return blocks
-
-        # Determine headings exclusion mode (if configured)
-        headings_mode: str | None = None
-        for e in exclude:
-            if e.name == 'headings':
-                headings_mode = e.mode
-                break
-
-        filtered: list[Block] = []
-        is_file_start = True
-
-        for block in blocks:
-            if isinstance(block, TextBlock):
-                # Handle pre-split HEADING blocks
-                if block.marker == 'HEADING' and headings_mode:
-                    is_file_start = False
-                    if headings_mode in ('string', 'string-on-start'):
-                        # Drop the heading block entirely
-                        continue
-                    elif headings_mode == 'only':
-                        # Strip # prefix, convert to plain text block
-                        heading_only_re = _HEADING_ONLY_RE
-                        m = heading_only_re.match(block.content.rstrip('\r\n'))
-                        if m:
-                            ending = block.content[len(block.content.rstrip('\r\n')) :]
-                            content = m.group(1) + m.group(2) + ending
-                        else:
-                            content = block.content
-                        if content and content.strip():
-                            filtered.append(
-                                TextBlock(
-                                    content=content,
-                                    marker=None,
-                                    id=block.id,
-                                    explicit_id=block.explicit_id,
-                                    source_offset=block.source_offset,
-                                )
-                            )
-                    continue
-
-                content = self._filter_text_content(block.content, is_file_start, exclude)
-                is_file_start = False
-                if content and content.strip():
-                    filtered.append(
-                        TextBlock(
-                            content=content,
-                            marker=block.marker,
-                            id=block.id,
-                            explicit_id=block.explicit_id,
-                            source_offset=block.source_offset,
-                        )
-                    )
-            else:
-                is_file_start = False
-                filtered.append(block)
-
-        return filtered
-
-    def _filter_text_content(self, content: str, is_file_start: bool, exclude: list[ExcludeElementConfig]) -> str:
-        """Filter excluded Markdown elements from text content.
-
-        Respects fenced code blocks: lines inside ``` fences are never filtered.
-        Supports both LF and CRLF line endings.
-        Each element has a mode: only, string, or string-on-start.
-        """
-        # Build lookup: element name -> mode
-        exclude_map: dict[str, str] = {e.name: e.mode for e in exclude}
-
-        # Handle frontmatter first (operates on entire content, not line-by-line)
-        # All modes behave identically for frontmatter (complete removal)
-        if is_file_start and 'frontmatter' in exclude_map:
-            content = _FRONTMATTER_PATTERN.sub('', content)
-
-        # If no line-level filters remain, return early
-        line_elements = set(exclude_map.keys()) & {'callouts', 'headings', 'horizontal_rules', 'tags'}
-        if not line_elements:
-            return content
-
-        tags_mode = exclude_map.get('tags')
-        callouts_mode = exclude_map.get('callouts')
-        headings_mode = exclude_map.get('headings')
-        hr_mode = exclude_map.get('horizontal_rules')
-
-        # Obsidian tag pattern
-        if tags_mode:
-            _tag_pattern = _TAG_PATTERN
-            # Code span regex for masking
-            _code_span_re = _CODE_SPAN_RE
-
-        hr_pattern = _HR_PATTERN
-        callout_only_re = _CALLOUT_ONLY_RE
-        heading_only_re = _HEADING_ONLY_RE
-
-        lines = content.splitlines(keepends=True)
-        result: list[str] = []
-        in_code_block = False
-
-        for line in lines:
-            stripped = line.lstrip()
-
-            # Track fenced code block state
-            if stripped.startswith('```'):
-                in_code_block = not in_code_block
-                result.append(line)
-                continue
-
-            # Lines inside code blocks are always preserved
-            if in_code_block:
-                result.append(line)
-                continue
-
-            # --- Callouts ---
-            if callouts_mode and stripped.startswith('>'):
-                if callouts_mode == 'only':
-                    m = callout_only_re.match(line)
-                    if m:
-                        text_part = line.rstrip('\r\n')
-                        ending = line[len(text_part) :]
-                        result.append(m.group(1) + m.group(2) + ending)
-                    else:
-                        result.append(line)
-                    continue
-                else:
-                    # string and string-on-start both remove the line
-                    continue
-
-            # --- Headings ---
-            if headings_mode and stripped.startswith('#'):
-                if headings_mode == 'only':
-                    m = heading_only_re.match(line)
-                    if m:
-                        text_part = line.rstrip('\r\n')
-                        ending = line[len(text_part) :]
-                        result.append(m.group(1) + m.group(2) + ending)
-                    else:
-                        result.append(line)
-                    continue
-                else:
-                    # string and string-on-start both remove the line
-                    continue
-
-            # --- Horizontal rules ---
-            if hr_mode and hr_pattern.match(line):
-                # All modes remove the line
-                continue
-
-            # --- Tags ---
-            if tags_mode:
-                if tags_mode == 'only':
-                    line = self._strip_tags_from_line(line, _tag_pattern)
-                elif tags_mode == 'string':
-                    # Remove entire line if it contains any tag outside code spans
-                    if self._line_has_tag(line, _tag_pattern, _code_span_re):
-                        continue
-                else:
-                    # string-on-start: remove line if first non-ws is a tag; else strip inline
-                    if self._line_starts_with_tag(line, _tag_pattern, _code_span_re):
-                        continue
-                    else:
-                        line = self._strip_tags_from_line(line, _tag_pattern)
-
-            result.append(line)
-
-        return ''.join(result)
-
-    def _mask_code_spans(self, line: str, code_span_re: 're.Pattern[str]') -> str:
-        """Replace inline code span content with placeholder characters for detection."""
-        result = list(line)
-        for match in code_span_re.finditer(line):
-            for i in range(match.start(), match.end()):
-                result[i] = 'X'
-        return ''.join(result)
-
-    def _line_has_tag(self, line: str, tag_pattern: 're.Pattern[str]', code_span_re: 're.Pattern[str]') -> bool:
-        """Check if a line contains an Obsidian tag outside code spans."""
-        masked = self._mask_code_spans(line, code_span_re)
-        return bool(tag_pattern.search(masked))
-
-    def _line_starts_with_tag(self, line: str, tag_pattern: 're.Pattern[str]', code_span_re: 're.Pattern[str]') -> bool:
-        """Check if the first non-whitespace on a line is an Obsidian tag (outside code spans)."""
-        masked = self._mask_code_spans(line, code_span_re)
-        stripped = masked.lstrip()
-        if not stripped:
-            return False
-        m = tag_pattern.match(stripped)
-        return m is not None and m.start() == 0
-
-    def _strip_tags_from_line(self, line: str, tag_pattern: 're.Pattern[str]') -> str:
-        """Strip Obsidian inline tags from a line, preserving inline code spans."""
-        # Split the line into inline-code and non-code segments
-        # Match single or double backtick inline code spans
-        code_span_re = _CODE_SPAN_RE
-
-        parts: list[str] = []
-        pos = 0
-
-        for match in code_span_re.finditer(line):
-            # Process text before the code span
-            before = line[pos : match.start()]
-            if before:
-                before = tag_pattern.sub('', before)
-                # Collapse multiple horizontal whitespace into one space
-                before = _MULTIPLE_WS_RE.sub(' ', before)
-            parts.append(before)
-            # Preserve the code span verbatim
-            parts.append(match.group(0))
-            pos = match.end()
-
-        # Process remaining text after last code span
-        remainder = line[pos:]
-        if remainder:
-            remainder = tag_pattern.sub('', remainder)
-            remainder = _MULTIPLE_WS_RE.sub(' ', remainder)
-        parts.append(remainder)
-
-        return ''.join(parts)

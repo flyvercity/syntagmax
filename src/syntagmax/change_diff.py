@@ -761,3 +761,27 @@ def compare_sidecar_artifacts(
         len(results),
     )
     return results
+
+
+def get_working_tree_changed_files(repo, compare_hash: str) -> list[FileDiff]:
+    """Get changed files between a commit and the working tree.
+
+    Uses git diff --name-status to compare a given revision against the
+    current working directory state.
+    """
+    raw = repo.git.diff('--name-status', compare_hash)
+    results = []
+    for line in raw.splitlines():
+        if not line.strip():
+            continue
+        parts = line.split('\t')
+        status_code = parts[0][0]  # First character: A, D, M, R
+        if status_code == 'A':
+            results.append(FileDiff(path=parts[1], status=FileStatus.ADDED))
+        elif status_code == 'D':
+            results.append(FileDiff(path=parts[1], status=FileStatus.REMOVED))
+        elif status_code == 'M':
+            results.append(FileDiff(path=parts[1], status=FileStatus.MODIFIED))
+        elif status_code == 'R':
+            results.append(FileDiff(path=parts[2] if len(parts) > 2 else parts[1], status=FileStatus.RENAMED, old_path=parts[1]))
+    return results
