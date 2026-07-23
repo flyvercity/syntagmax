@@ -1,8 +1,3 @@
----
-name: sc.critique.spec.md
-description: Challenge the specification and implementation plan through two distinct expert lenses.
----
-
 ## Goal
 
 Challenge the specification and implementation plan through two distinct expert lenses BEFORE committing to implementation. The **Product Lens** evaluates whether the right problem is being solved in the right way for users. The **Engineering Lens** evaluates whether the technical approach is sound, scalable, and free of hidden risks. This dual review prevents costly mid-implementation pivots and catches strategic and technical blind spots early.
