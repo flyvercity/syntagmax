@@ -97,8 +97,12 @@ def analyze(obj: Params, config_file: Path, allow_dirty_worktree: bool, suppress
         u.pprint(f'[{color}]{summary}[/{color}]')
 
 
-def _run_pandoc_conversion(md_path: Path, docx: bool, pdf: bool, reference_doc: Path | None = None):
-    """Run Pandoc conversion for the given Markdown file."""
+def _run_pandoc_conversion(md_path: Path, docx: bool, pdf: bool, reference_doc: Path | None = None) -> bool:
+    """Run Pandoc conversion for the given Markdown file.
+
+    Returns:
+        True if all conversions succeeded, False if any failed.
+    """
     from syntagmax.pandoc import convert
 
     formats = []
@@ -107,12 +111,16 @@ def _run_pandoc_conversion(md_path: Path, docx: bool, pdf: bool, reference_doc: 
     if pdf:
         formats.append(('pdf', md_path.with_suffix('.pdf')))
 
+    all_ok = True
     for fmt, out_path in formats:
         success, message = convert(md_path, out_path, fmt, reference_doc=reference_doc if fmt == 'docx' else None, resource_path=md_path.parent)
         if success:
             u.pprint(f'[green]Converted to {fmt.upper()}: {out_path}[/green]')
         else:
             u.pprint(f'[yellow]Pandoc conversion to {fmt.upper()} failed: {message}[/yellow]')
+            all_ok = False
+
+    return all_ok
 
 
 def _copy_manifest_images(manifest, output_dir: Path):
@@ -290,7 +298,8 @@ def publish(
                             tpl_name = str(reference_doc) if reference_doc else 'none'
                             u.pprint(f'[yellow]Warning: Conflicting DOCX templates across records in --single mode. Using: {tpl_name}[/yellow]')
                             break
-            _run_pandoc_conversion(out_p, docx, pdf, reference_doc=reference_doc)
+            if not _run_pandoc_conversion(out_p, docx, pdf, reference_doc=reference_doc):
+                sys.exit(1)
     else:
         out_p.mkdir(parents=True, exist_ok=True)
         date_str = datetime.now().strftime('%Y-%m-%d')
@@ -356,9 +365,13 @@ def publish(
 
         # Pandoc conversion (images now present)
         if pandoc_available:
+            pandoc_ok = True
             for file_path, record in published_files:
                 reference_doc = _resolve_template_for_record(record) if docx else None
-                _run_pandoc_conversion(file_path, docx, pdf, reference_doc=reference_doc)
+                if not _run_pandoc_conversion(file_path, docx, pdf, reference_doc=reference_doc):
+                    pandoc_ok = False
+            if not pandoc_ok:
+                sys.exit(1)
 
 
 @rms.command(help='Export traceability matrix as CSV/TSV')

@@ -222,7 +222,7 @@ class TestPublishCLIWithPandoc:
         # Warning should be visible
         assert 'pandoc not found' in result.output.lower() or 'not found' in result.output.lower()
 
-    def test_pandoc_conversion_failure_exits_cleanly(self, project_dir):
+    def test_pandoc_conversion_failure_exits_nonzero(self, project_dir):
         from click.testing import CliRunner
         from syntagmax.cli import rms
 
@@ -235,12 +235,55 @@ class TestPublishCLIWithPandoc:
         ):
             result = runner.invoke(rms, ['--cwd', str(project_dir), 'publish', '--all', '--docx', '--output', str(out_dir)])
 
-        assert result.exit_code == 0, result.output
+        assert result.exit_code == 1
         # Markdown should still be produced
         md_file = out_dir / 'rec1.md'
         assert md_file.exists()
         # Warning about failure should be in output
         assert 'failed' in result.output.lower()
+
+    def test_partial_pandoc_failure_exits_nonzero(self, tmp_path):
+        """When one record's Pandoc conversion fails, all conversions are still
+        attempted but the command exits with code 1."""
+        from click.testing import CliRunner
+        from syntagmax.cli import rms
+
+        # Set up project with two input records
+        dot_syntagmax = tmp_path / '.syntagmax'
+        dot_syntagmax.mkdir()
+        cfg = dot_syntagmax / 'config.toml'
+        cfg.write_text(
+            'base = ".."\n'
+            '[[input]]\nname="rec1"\ndir="REC1"\ndriver="text"\natype="SYS"\n'
+            '[[input]]\nname="rec2"\ndir="REC2"\ndriver="text"\natype="SYS"\n',
+            encoding='utf-8',
+        )
+        for name in ('REC1', 'REC2'):
+            d = tmp_path / name
+            d.mkdir()
+            f = d / 'item.md'
+            f.write_text(f'[< ID={name}-1 >>> Content. >]', encoding='utf-8')
+
+        runner = CliRunner()
+        out_dir = tmp_path / 'out'
+
+        # First call succeeds, second fails
+        convert_results = iter([(True, 'ok'), (False, 'pandoc exited with status 1: engine error')])
+
+        with (
+            patch('syntagmax.pandoc.check_pandoc', return_value=True),
+            patch('syntagmax.pandoc.convert', side_effect=lambda *a, **kw: next(convert_results)),
+        ):
+            result = runner.invoke(rms, ['--cwd', str(tmp_path), 'publish', '--all', '--docx', '--output', str(out_dir)])
+
+        assert result.exit_code == 1
+        # Both markdown files should be produced
+        assert (out_dir / 'rec1.md').exists()
+        assert (out_dir / 'rec2.md').exists()
+        # Failure message present
+        assert 'failed' in result.output.lower()
+        # Success message for the first record also present
+        assert 'converted to docx' in result.output.lower()
 
     def test_single_mode_with_docx(self, project_dir):
         from click.testing import CliRunner
