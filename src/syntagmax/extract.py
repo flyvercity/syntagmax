@@ -5,7 +5,6 @@
 # Description: Extracts artifacts from a given file using the appropriate extractor
 
 import logging as lg
-from typing import Sequence
 
 from syntagmax.extractors.text import TextExtractor
 from syntagmax.extractors.sidecar import SidecarExtractor
@@ -22,10 +21,6 @@ EXTRACTORS = {
     'obsidian': ObsidianExtractor,
     'ipynb': IPynbExtractor,
 }
-
-
-def get_available_extractors() -> Sequence[str]:
-    return list(EXTRACTORS.keys())
 
 
 def print_artifact(artifact: Artifact):
