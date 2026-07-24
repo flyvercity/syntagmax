@@ -202,9 +202,19 @@ Uses left outer join semantics — every lead artifact appears even if it has no
 | `--attribute NAME` | String (repeatable) | — | Additional lead artifact attributes to include as columns |
 | `--flat` | Flag | off | Combine multiple linked IDs into semicolon-separated values |
 | `--delimiter CHAR` | String | `,` (auto `\t` for `.tsv`) | Column delimiter |
-| `--plugin NAME` | String | — | Delegate export to a named plugin |
 | `--output PATH` | String | `.syntagmax/reports/trace.csv` | Output file path. Use `console` for stdout. |
 | `-f, --config-file PATH` | Path | `.syntagmax/config.toml` | Path to the project configuration file |
+
+#### Plugin-Based Export
+
+Trace export can be delegated to plugins via the `[trace]` config section in `config.toml`:
+
+```toml
+[trace]
+plugins = ["tsv-export"]
+```
+
+When `trace.plugins` is non-empty, all listed plugins run sequentially — each receives the same trace matrix. When the list is empty (or the `[trace]` section is absent), the built-in CSV/TSV writer is used.
 
 #### Forward vs Reverse
 
@@ -232,9 +242,6 @@ syntagmax trace --child REQ --parent SYS --delimiter '\t'
 
 # Export to stdout
 syntagmax trace --child REQ --parent SYS --output console
-
-# Use a plugin for custom export
-syntagmax trace --child REQ --parent SYS --plugin tsv-export
 
 # Custom config
 syntagmax trace --child REQ --parent SYS -f ./custom/config.toml
