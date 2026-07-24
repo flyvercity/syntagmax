@@ -76,7 +76,39 @@ def export_trace(matrix: TraceMatrix, config: Config, params: dict) -> None:
     ...
 ```
 
+### TraceMatrix Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `direction` | `str` | `"forward"` or `"reverse"` |
+| `child_type` | `str` | Artifact type of the child (as invoked via `--child`) |
+| `parent_type` | `str` | Artifact type of the parent (as invoked via `--parent`) |
+| `attribute_names` | `list[str]` | Additional attribute columns requested via `--attribute` |
+| `records` | `list[TraceRecord]` | Matrix rows (see below) |
+| `record_names` | `dict[str, str]` | Maps artifact ID → input record name (e.g. `"software-requirements"`) |
+
+The `record_names` dict contains entries for every artifact ID that appears in the matrix (both lead and linked sides). Unresolved references (artifact IDs not present in the project) are excluded. Artifacts whose input record is not set map to an empty string.
+
+#### Example: using record_names
+
+```python
+for record in matrix.records:
+    lead_section = matrix.record_names.get(record.lead_id, '')
+    linked_section = matrix.record_names.get(record.linked_id, '')
+    print(f'{record.lead_id} ({lead_section}) -> {record.linked_id} ({linked_section})')
+```
+
 The plugin is responsible for writing the output (file, stdout, network, etc.). See `.syntagmax/plugins/tsv-export.py` for the full implementation.
+
+### Plugin Params: include_record_names
+
+Set `include_record_names = true` in `[plugin.params]` to add `LeadRecord` and `LinkedRecord` columns to the TSV output:
+
+```toml
+[plugin.params]
+output = ".syntagmax/reports/trace.tsv"
+include_record_names = true
+```
 
 ## Without Plugin (built-in CSV)
 

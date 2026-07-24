@@ -248,6 +248,101 @@ class TestBuildTraceMatrix:
         assert matrix.records[0].linked_id == ''
 
 
+# --- record_names tests ---
+
+
+class TestRecordNames:
+    def test_record_names_populated_forward(self, mock_config):
+        """Forward direction populates record_names for both lead and linked artifacts."""
+        sys1 = _make_artifact(mock_config, 'SYS', 'SYS-001', children={'REQ-001'})
+        req1 = _make_artifact(mock_config, 'REQ', 'REQ-001', pids=['SYS-001'])
+
+        # Set input records
+        sys_record = MagicMock()
+        sys_record.name = 'system-requirements'
+        sys1.record = sys_record
+
+        req_record = MagicMock()
+        req_record.name = 'software-requirements'
+        req1.record = req_record
+
+        artifacts: ArtifactMap = {'SYS-001': sys1, 'REQ-001': req1}
+        matrix = build_trace_matrix(artifacts, 'REQ', 'SYS', direction='forward')
+
+        assert matrix.record_names['REQ-001'] == 'software-requirements'
+        assert matrix.record_names['SYS-001'] == 'system-requirements'
+
+    def test_record_names_populated_reverse(self, mock_config):
+        """Reverse direction populates record_names for both lead and linked artifacts."""
+        sys1 = _make_artifact(mock_config, 'SYS', 'SYS-001', children={'REQ-001'})
+        req1 = _make_artifact(mock_config, 'REQ', 'REQ-001', pids=['SYS-001'])
+
+        sys_record = MagicMock()
+        sys_record.name = 'system-requirements'
+        sys1.record = sys_record
+
+        req_record = MagicMock()
+        req_record.name = 'software-requirements'
+        req1.record = req_record
+
+        artifacts: ArtifactMap = {'SYS-001': sys1, 'REQ-001': req1}
+        matrix = build_trace_matrix(artifacts, 'REQ', 'SYS', direction='reverse')
+
+        assert matrix.record_names['SYS-001'] == 'system-requirements'
+        assert matrix.record_names['REQ-001'] == 'software-requirements'
+
+    def test_record_names_unresolved_reference_excluded(self, mock_config):
+        """Unresolved references (not in artifacts map) are excluded from record_names."""
+        req1 = _make_artifact(mock_config, 'REQ', 'REQ-001', pids=['SYS-999'])
+        req_record = MagicMock()
+        req_record.name = 'software-requirements'
+        req1.record = req_record
+
+        artifacts: ArtifactMap = {'REQ-001': req1}
+        matrix = build_trace_matrix(artifacts, 'REQ', 'SYS', direction='forward')
+
+        # REQ-001 is in record_names, but SYS-999 (unresolved) is not
+        assert 'REQ-001' in matrix.record_names
+        assert 'SYS-999' not in matrix.record_names
+
+    def test_record_names_none_record_maps_to_empty(self, mock_config):
+        """Artifact with record=None maps to empty string."""
+        req1 = _make_artifact(mock_config, 'REQ', 'REQ-001')
+        req1.record = None
+
+        artifacts: ArtifactMap = {'REQ-001': req1}
+        matrix = build_trace_matrix(artifacts, 'REQ', 'SYS', direction='forward')
+
+        assert matrix.record_names['REQ-001'] == ''
+
+    def test_record_names_default_empty_dict(self):
+        """TraceMatrix constructed directly defaults record_names to empty dict."""
+        matrix = TraceMatrix(direction='forward', child_type='REQ', parent_type='SYS')
+        assert matrix.record_names == {}
+
+    def test_record_names_flat_mode(self, mock_config):
+        """Flat mode with multiple linked IDs populates record_names for all."""
+        sys1 = _make_artifact(mock_config, 'SYS', 'SYS-001', children={'REQ-001'})
+        sys2 = _make_artifact(mock_config, 'SYS', 'SYS-002', children={'REQ-001'})
+        req1 = _make_artifact(mock_config, 'REQ', 'REQ-001', pids=['SYS-001', 'SYS-002'])
+
+        sys_record = MagicMock()
+        sys_record.name = 'system-requirements'
+        sys1.record = sys_record
+        sys2.record = sys_record
+
+        req_record = MagicMock()
+        req_record.name = 'software-requirements'
+        req1.record = req_record
+
+        artifacts: ArtifactMap = {'SYS-001': sys1, 'SYS-002': sys2, 'REQ-001': req1}
+        matrix = build_trace_matrix(artifacts, 'REQ', 'SYS', direction='forward', flat=True)
+
+        assert matrix.record_names['REQ-001'] == 'software-requirements'
+        assert matrix.record_names['SYS-001'] == 'system-requirements'
+        assert matrix.record_names['SYS-002'] == 'system-requirements'
+
+
 # --- render_trace_csv tests ---
 
 
