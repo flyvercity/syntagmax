@@ -349,7 +349,7 @@ class TestFindPluginByName:
             find_plugin_by_name([plugin], 'nonexistent')
 
     def test_raises_when_no_plugins(self):
-        with pytest.raises(FatalError, match='No plugins are configured'):
+        with pytest.raises(FatalError, match='No plugins are configured or enabled'):
             find_plugin_by_name([], 'any-name')
 
 
@@ -415,3 +415,123 @@ class TestTraceCliValidation:
         clean_output = re.sub(r'\x1b\[[0-9;]*m', '', result.output)
         assert 'Warning: Child artifact type "INVALID_CHILD" is not defined in the metamodel.' in clean_output
         assert 'Warning: Parent artifact type "INVALID_PARENT" is not defined in the metamodel.' in clean_output
+
+
+    def test_trace_config_driven_plugin(self, tmp_path):
+        """Config [trace] plugins list drives export without --plugin flag."""
+        import re
+
+        from click.testing import CliRunner
+        from syntagmax.cli import rms
+
+        dot_syntagmax = tmp_path / '.syntagmax'
+        dot_syntagmax.mkdir()
+        plugins_dir = dot_syntagmax / 'plugins'
+        plugins_dir.mkdir()
+
+        # Write a minimal plugin that writes a marker file
+        plugin_code = (
+            'from pathlib import Path\n'
+            'def export_trace(matrix, config, params):\n'
+            '    Path(params["marker"]).write_text("OK", encoding="utf-8")\n'
+        )
+        (plugins_dir / 'marker-plugin.py').write_text(plugin_code, encoding='utf-8')
+
+        marker_file = tmp_path / 'marker.txt'
+
+        cfg_content = (
+            'base = ".."\n'
+            '[[input]]\nname="rec1"\ndir="SYS"\ndriver="text"\natype="SYS"\n'
+            '[metamodel]\nfilename="project.syntagmax"\n'
+            '[[plugin]]\nname = "marker-plugin"\nsource = "local"\n'
+            f'[plugin.params]\nmarker = "{marker_file.as_posix()}"\n'
+            '[trace]\nplugins = ["marker-plugin"]\n'
+        )
+        (dot_syntagmax / 'config.toml').write_text(cfg_content, encoding='utf-8')
+
+        meta = dot_syntagmax / 'project.syntagmax'
+        meta.write_text('artifact SYS:\n    id is string\n    attribute contents is mandatory string\n', encoding='utf-8')
+
+        sys_dir = tmp_path / 'SYS'
+        sys_dir.mkdir()
+
+        runner = CliRunner(env={'NO_COLOR': '1'})
+        result = runner.invoke(rms, ['--cwd', str(tmp_path), 'trace', '--child', 'SYS', '--parent', 'SYS', '--output', 'console'])
+        assert result.exit_code == 0, result.output
+        clean_output = re.sub(r'\x1b\[[0-9;]*m', '', result.output)
+        assert 'Trace export completed via plugin "marker-plugin"' in clean_output
+        assert marker_file.read_text(encoding='utf-8') == 'OK'
+
+    def test_trace_no_plugins_produces_csv(self, tmp_path):
+        """Without [trace] plugins, built-in CSV export runs."""
+        from click.testing import CliRunner
+        from syntagmax.cli import rms
+
+        dot_syntagmax = tmp_path / '.syntagmax'
+        dot_syntagmax.mkdir()
+
+        cfg_content = 'base = ".."\n[[input]]\nname="rec1"\ndir="SYS"\ndriver="text"\natype="SYS"\n[metamodel]\nfilename="project.syntagmax"\n'
+        (dot_syntagmax / 'config.toml').write_text(cfg_content, encoding='utf-8')
+
+        meta = dot_syntagmax / 'project.syntagmax'
+        meta.write_text('artifact SYS:\n    id is string\n    attribute contents is mandatory string\n', encoding='utf-8')
+
+        sys_dir = tmp_path / 'SYS'
+        sys_dir.mkdir()
+
+        runner = CliRunner(env={'NO_COLOR': '1'})
+        result = runner.invoke(rms, ['--cwd', str(tmp_path), 'trace', '--child', 'SYS', '--parent', 'SYS', '--output', 'console'])
+        assert result.exit_code == 0, result.output
+        # Should output CSV header (no plugin message)
+        assert 'RecordNumber' in result.output
+
+    def test_trace_multiple_plugins_run_sequentially(self, tmp_path):
+        """Multiple plugins in [trace] plugins all execute."""
+        import re
+
+        from click.testing import CliRunner
+        from syntagmax.cli import rms
+
+        dot_syntagmax = tmp_path / '.syntagmax'
+        dot_syntagmax.mkdir()
+        plugins_dir = dot_syntagmax / 'plugins'
+        plugins_dir.mkdir()
+
+        # Two plugins that each write a different marker file
+        for name in ('plugin-a', 'plugin-b'):
+            code = (
+                'from pathlib import Path\n'
+                'def export_trace(matrix, config, params):\n'
+                '    Path(params["marker"]).write_text(params["value"], encoding="utf-8")\n'
+            )
+            (plugins_dir / f'{name}.py').write_text(code, encoding='utf-8')
+
+        marker_a = tmp_path / 'a.txt'
+        marker_b = tmp_path / 'b.txt'
+
+        cfg_content = (
+            'base = ".."\n'
+            '[[input]]\nname="rec1"\ndir="SYS"\ndriver="text"\natype="SYS"\n'
+            '[metamodel]\nfilename="project.syntagmax"\n'
+            '[[plugin]]\nname = "plugin-a"\nsource = "local"\n'
+            f'[plugin.params]\nmarker = "{marker_a.as_posix()}"\nvalue = "A"\n'
+            '[[plugin]]\nname = "plugin-b"\nsource = "local"\n'
+            f'[plugin.params]\nmarker = "{marker_b.as_posix()}"\nvalue = "B"\n'
+            '[trace]\nplugins = ["plugin-a", "plugin-b"]\n'
+        )
+        (dot_syntagmax / 'config.toml').write_text(cfg_content, encoding='utf-8')
+
+        meta = dot_syntagmax / 'project.syntagmax'
+        meta.write_text('artifact SYS:\n    id is string\n    attribute contents is mandatory string\n', encoding='utf-8')
+
+        sys_dir = tmp_path / 'SYS'
+        sys_dir.mkdir()
+
+        runner = CliRunner(env={'NO_COLOR': '1'})
+        result = runner.invoke(rms, ['--cwd', str(tmp_path), 'trace', '--child', 'SYS', '--parent', 'SYS', '--output', 'console'])
+        assert result.exit_code == 0, result.output
+        clean_output = re.sub(r'\x1b\[[0-9;]*m', '', result.output)
+        assert 'Trace export completed via plugin "plugin-a"' in clean_output
+        assert 'Trace export completed via plugin "plugin-b"' in clean_output
+        assert marker_a.read_text(encoding='utf-8') == 'A'
+        assert marker_b.read_text(encoding='utf-8') == 'B'

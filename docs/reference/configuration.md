@@ -299,6 +299,32 @@ Environment variables can also be used for API keys (e.g. `ANTHROPIC_API_KEY`, `
 | `aws_api_key` | No | — | AWS Bedrock API Key |
 | `timeout_s` | No | `60.0` | Request timeout in seconds |
 
+## Trace Export (`[trace]`)
+
+Configuration for the `trace` command's plugin-based export.
+
+| Field | Required | Default | Description |
+|-------|----------|---------|-------------|
+| `plugins` | No | `[]` | List of plugin names to run for trace export. Each name must match a `[[plugin]]` block. |
+
+When `plugins` is non-empty, all listed plugins run sequentially — each receives the same trace matrix. When the list is empty (or the `[trace]` section is absent), the built-in CSV/TSV writer is used.
+
+### Example
+
+```toml
+[[plugin]]
+name = "tsv-export"
+source = "local"
+
+[plugin.params]
+output = ".syntagmax/reports/trace.tsv"
+
+[trace]
+plugins = ["tsv-export"]
+```
+
+Each plugin listed must implement the `export_trace` hook. See the Plugins documentation for the full API.
+
 ## Baseline (`[baseline]`)
 
 Optional configuration for the `change baseline` command which creates annotated git tags across all repositories that input records point to.
@@ -346,6 +372,9 @@ filename = "project.syntagmax"
 [ai]
 provider = "anthropic"
 model = "claude-sonnet-4-6"
+
+[trace]
+plugins = ["tsv-export"]
 
 [baseline]
 tag_pattern = "^v\\d+\\.\\d+\\.\\d+$"

@@ -21,3 +21,6 @@ source = "local"
 
 [plugin.params]
 output = ".syntagmax/reports/trace.tsv"
+
+[trace]
+plugins = ["tsv-export"]
