@@ -228,10 +228,13 @@ def find_plugin_by_name(plugins: list[LoadedPlugin], name: str) -> LoadedPlugin:
         raise FatalError(
             f'Plugin "{name}" not found among enabled plugins. '
             f'Available: {", ".join(available)}. '
-            f'Check that the plugin is configured in config.toml and enabled.'
+            f'Check that the plugin is declared in [[plugin]] and enabled in config.toml.'
         )
     else:
-        raise FatalError(f'Plugin "{name}" not found. No plugins are configured or enabled in config.toml.')
+        raise FatalError(
+            f'Plugin "{name}" not found. No plugins are configured or enabled in config.toml. '
+            f'Ensure the plugin is declared in a [[plugin]] block and enabled.'
+        )
 
 
 def run_trace_export(plugin: LoadedPlugin, matrix, config) -> None:

@@ -44,6 +44,7 @@ Syntagmax uses a TOML configuration file (default `.syntagmax/config.toml`). Key
 - `[impact]` — impact analysis settings
 - `[metamodel]` — metamodel file path
 - `[ai]` — AI provider and model settings
+- `[trace]` — trace export plugin configuration
 
 For details on how all these paths are resolved relative to the project configuration file, see the [Paths Reference](docs/reference/paths.md).
 
@@ -347,9 +348,21 @@ syntagmax trace [OPTIONS]
 | `--attribute <name>` | No | — | Additional lead artifact attributes to include (repeatable) |
 | `--flat` | No | — | Combine multiple linked IDs into semicolon-separated values |
 | `--delimiter <char>` | No | `,` | Column delimiter (auto-detects `\t` for `.tsv` output) |
-| `--plugin <name>` | No | — | Delegate export to a named plugin |
 | `--output <path>` | No | `.syntagmax/reports/trace.csv` | Output path (use `console` for stdout) |
 | `-f, --config-file` | No | `.syntagmax/config.toml` | Path to config file |
+
+### Plugin-Based Export
+
+Trace export can be delegated to plugins via the `[trace]` config section:
+
+```toml
+[trace]
+plugins = ["tsv-export"]
+```
+
+When `trace.plugins` is non-empty, all listed plugins run sequentially — each receives the same trace matrix. When the list is empty (or the `[trace]` section is absent), the built-in CSV/TSV writer is used.
+
+Each plugin listed must be declared in a `[[plugin]]` block and implement the `export_trace` hook. See [docs/reference/plugins.md](docs/reference/plugins.md) for the full plugin API.
 
 ### Forward vs Reverse
 
@@ -378,9 +391,6 @@ syntagmax trace --child REQ --parent SYS --flat --output .syntagmax/reports/trac
 
 # Export to stdout
 syntagmax trace --child REQ --parent SYS --output console
-
-# Use a plugin for export
-syntagmax trace --child REQ --parent SYS --plugin tsv-export
 ```
 
 ## Plugins
@@ -392,7 +402,7 @@ Plugins are declared in `config.toml` via `[[plugin]]` blocks and can implement 
 - **`transform_blocks`** — modify the block tree before rendering
 - **`transform_markdown`** — transform rendered markdown before writing
 - **`filter_block`** — per-block pre-publishing filter (activated via `--pre-filter`)
-- **`export_trace`** — custom tracing export format (activated via `--plugin`)
+- **`export_trace`** — custom tracing export format (activated via `[trace] plugins` config)
 
 ```toml
 [[plugin]]

@@ -21,24 +21,42 @@ example/trace-tsv-plugin/
 └── README.md
 ```
 
+## Configuration
+
+The `[trace]` section in `config.toml` declares which plugins handle trace export:
+
+```toml
+[[plugin]]
+name = "tsv-export"
+source = "local"
+
+[plugin.params]
+output = ".syntagmax/reports/trace.tsv"
+
+[trace]
+plugins = ["tsv-export"]
+```
+
+When `trace.plugins` is non-empty, all listed plugins run sequentially — each receives the same trace matrix. When the list is empty (or the `[trace]` section is absent), the built-in CSV/TSV writer is used.
+
 ## Running
 
-Export forward traceability matrix (REQ → SYS) via the TSV plugin:
+Export forward traceability matrix (REQ → SYS) via the configured TSV plugin:
 
 ```bash
-uv run syntagmax --cwd ./example/trace-tsv-plugin trace --child REQ --parent SYS --plugin tsv-export
+uv run syntagmax --cwd ./example/trace-tsv-plugin trace --child REQ --parent SYS
 ```
 
 Export with attributes:
 
 ```bash
-uv run syntagmax --cwd ./example/trace-tsv-plugin trace --child REQ --parent SYS --attribute title --attribute status --plugin tsv-export
+uv run syntagmax --cwd ./example/trace-tsv-plugin trace --child REQ --parent SYS --attribute title --attribute status
 ```
 
 Export reverse matrix (SYS → REQ):
 
 ```bash
-uv run syntagmax --cwd ./example/trace-tsv-plugin trace --child REQ --parent SYS --reverse --plugin tsv-export
+uv run syntagmax --cwd ./example/trace-tsv-plugin trace --child REQ --parent SYS --reverse
 ```
 
 ## Plugin API
@@ -62,7 +80,7 @@ The plugin is responsible for writing the output (file, stdout, network, etc.). 
 
 ## Without Plugin (built-in CSV)
 
-You can also export CSV/TSV directly without a plugin using the built-in writer:
+To use the built-in CSV/TSV writer instead, remove the `[trace]` section (or set `plugins = []`):
 
 ```bash
 # CSV (default)

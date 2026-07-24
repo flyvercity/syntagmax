@@ -161,6 +161,12 @@ class AIConfig(BaseModel):
     timeout_s: float = Field(default=60.0, description='Timeout in seconds for AI provider requests')
 
 
+class TraceConfig(BaseModel):
+    """Configuration for trace export."""
+
+    plugins: list[str] = Field(default_factory=list, description='List of plugin names to run for trace export')
+
+
 class BaselineConfig(BaseModel):
     """Configuration for the baseline tagging command."""
 
@@ -193,6 +199,7 @@ class ConfigFile(BaseModel):
     plugin: list[PluginConfig] = Field(default_factory=list, description='List of plugin configurations')
     drivers: DriversConfig = Field(default_factory=DriversConfig, description='Driver-specific configuration defaults')
     baseline: BaselineConfig = Field(default_factory=BaselineConfig, description='Configuration for the baseline tagging command')
+    trace: TraceConfig = Field(default_factory=TraceConfig, description='Configuration for trace export')
 
     @field_validator('language')
     @classmethod
@@ -272,6 +279,7 @@ class Config:
         self.ai = config_model.ai
         self._obsidian_driver_config = config_model.drivers.obsidian
         self._baseline_config = config_model.baseline
+        self._trace_config = config_model.trace
 
         # Resolve language: CLI --lang > config language > default 'en'
         from syntagmax.i18n import setup_i18n
@@ -443,6 +451,10 @@ class Config:
 
     def plugins(self):
         return self._plugins
+
+    @property
+    def trace_plugins(self) -> list[str]:
+        return self._trace_config.plugins
 
     @property
     def obsidian_driver_config(self) -> 'ObsidianDriverConfig':

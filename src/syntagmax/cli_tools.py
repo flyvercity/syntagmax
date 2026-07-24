@@ -20,7 +20,6 @@ from syntagmax.config import Config, Params
 @click.option('--attribute', multiple=True, help='Additional lead artifact attributes to include as columns')
 @click.option('--flat', is_flag=True, help='Combine multiple linked IDs into semicolon-separated values')
 @click.option('--delimiter', default=None, help='Column delimiter (default: "," or "\\t" for .tsv files)')
-@click.option('--plugin', 'plugin_name', default=None, help='Use a named plugin for export instead of CSV')
 @click.option('--output', default='.syntagmax/reports/trace.csv', help='Output file path (use "console" for stdout)')
 @click.option('-f', '--config-file', type=click.Path(), default='.syntagmax/config.toml')
 def trace(
@@ -31,7 +30,6 @@ def trace(
     attribute: tuple[str, ...],
     flat: bool,
     delimiter: str | None,
-    plugin_name: str | None,
     output: str,
     config_file: Path,
 ):
@@ -79,11 +77,12 @@ def trace(
         flat=flat,
     )
 
-    if plugin_name:
-        # Delegate to plugin
-        plugin = find_plugin_by_name(config.plugins(), plugin_name)
-        run_trace_export(plugin, matrix, config)
-        u.pprint(f'[green]Trace export completed via plugin "{plugin_name}"[/green]')
+    if config.trace_plugins:
+        # Delegate to configured plugins (run all sequentially)
+        for plugin_name in config.trace_plugins:
+            plugin = find_plugin_by_name(config.plugins(), plugin_name)
+            run_trace_export(plugin, matrix, config)
+            u.pprint(f'[green]Trace export completed via plugin "{plugin_name}"[/green]')
     else:
         # Determine delimiter
         if delimiter is not None:

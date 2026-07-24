@@ -405,7 +405,7 @@ Plugins ([`plugin.py`](../../src/syntagmax/plugin.py)) provide four hooks:
 | `transform_blocks` | `(tree, config, params) → BlockTree` | Modify the block tree before rendering |
 | `transform_markdown` | `(markdown, config, params) → str` | Post-process rendered markdown |
 | `filter_block` | `(block, config, params) → bool` | Per-block pre-publishing filter (activated via `--pre-filter`) |
-| `export_trace` | `(matrix, config, params) → None` | Custom tracing export (activated via `--plugin` on trace command) |
+| `export_trace` | `(matrix, config, params) → None` | Custom tracing export (activated via `[trace] plugins` config) |
 
 ### Loading Strategy
 
