@@ -81,7 +81,7 @@ def rms(ctx: click.Context, **kwargs: dict[str, Any]):
         raise click.UsageError('Cannot specify both --suppress-warnings and --warnings-as-errors')
 
     verbose = kwargs['verbose']
-    lg.basicConfig(level=lg.DEBUG if verbose else lg.INFO, handlers=[RichHandler()])
+    lg.basicConfig(level=lg.DEBUG if verbose else lg.INFO, handlers=[RichHandler()], force=True)
     ctx.obj = Params(**kwargs)  # type: ignore
 
     if ctx.obj['cwd']:
