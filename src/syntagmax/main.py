@@ -85,6 +85,11 @@ def process(requested_step, config: Config) -> Report:
                 if artifacts is None:
                     raise FatalError(f'Artifacts not initialized for step {step}')
                 report.impact = perform_impact_analysis(config, artifacts, errors)
+                # Task generation is an internal post-processing phase of impact
+                if config.impact.tasks_enabled:
+                    from syntagmax.tasks import generate_tasks
+
+                    report.tasks_summary = generate_tasks(config, artifacts, errors, report.impact)
             case 'ai':
                 if artifacts is None:
                     raise FatalError(f'Artifacts not initialized for step {step}')

@@ -105,6 +105,7 @@ class InputRecord:
     markers: list[str] = field(default_factory=list)
     publish_config: str | None = None
     exclude_elements: list['ExcludeElementConfig'] = field(default_factory=list)
+    task_template: str | None = None
 
 
 DEFAULT_FILTERS = {'obsidian': '**/*.md', 'ipynb': '**/*.ipynb', 'markdown': '**/*.md'}
@@ -122,6 +123,7 @@ class InputConfig(BaseModel):
     exclude_elements: list[ExcludeElementConfig] | None = Field(
         default=None, description='Markdown elements to exclude at extraction time (merged with global driver defaults)'
     )
+    task_template: str | None = Field(default=None, description='Per-record task template path (relative to base directory). Overrides global tasks_template.')
 
     @field_validator('exclude_elements')
     @classmethod
@@ -143,6 +145,10 @@ class MetricsConfig(BaseModel):
 class ImpactConfig(BaseModel):
     model_config = ConfigDict(extra='ignore')
     enabled: bool = Field(default=False, description='Enable impact analysis')
+    tasks_enabled: bool = Field(default=False, description='Enable task generation from impact analysis')
+    tasks_dir: str = Field(default='.syntagmax/tasks/', description='Directory for generated task files (relative to config file directory)')
+    tasks_template: str | None = Field(default=None, description='Path to custom Jinja2 task template (relative to config file directory)')
+    task_atype_map: dict[str, str] = Field(default_factory=dict, description='Mapping of parent_atype/child_atype to task atype. Fallback: TASK')
 
 
 class AIConfig(BaseModel):
@@ -301,6 +307,12 @@ class Config:
         if self.metamodel:
             self._validate_marker_attribute_collisions(errors)
 
+        # Inject implicit task metamodel definitions
+        if self.metamodel and self.impact.tasks_enabled:
+            from syntagmax.tasks import inject_task_metamodel
+
+            inject_task_metamodel(self.metamodel, self.impact)
+
         if errors:
             raise FatalError(errors)
 
@@ -381,6 +393,7 @@ class Config:
                     markers=[m.upper() for m in fragment_markers],
                     publish_config=input_config.publish,
                     exclude_elements=resolved_excludes,
+                    task_template=input_config.task_template,
                 )
             )
 
@@ -438,6 +451,25 @@ class Config:
 
     def root_dir(self) -> Path:
         return self._root_dir
+
+    def tasks_dir(self) -> Path:
+        return Path(self._root_dir, self.impact.tasks_dir)
+
+    def resolve_task_template(self, record: 'InputRecord | None') -> tuple[Path | None, str]:
+        """Resolve task template path following publish-like resolution order.
+        Returns (template_dir, template_name) or (None, 'task.j2') for built-in default.
+        Resolution: record-level -> global -> built-in.
+        """
+        # 1. Per-record override (resolved relative to base_dir)
+        if record and record.task_template:
+            p = Path(self._base_dir, record.task_template)
+            return (p.parent, p.name)
+        # 2. Global tasks_template (resolved relative to root_dir)
+        if self.impact.tasks_template:
+            p = Path(self._root_dir, self.impact.tasks_template)
+            return (p.parent, p.name)
+        # 3. Built-in default
+        return (None, 'task.j2')
 
     def base_dir(self):
         return self._base_dir

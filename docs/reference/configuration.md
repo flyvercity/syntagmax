@@ -31,6 +31,7 @@ Each input defines a source of requirements or artifacts:
 | `marker` | No | *atype* | Custom marker for artifacts (e.g., `[SYS]` in Markdown). Defaults to `atype`. |
 | `markers` | No | `[]` | List of fragment markers for non-artifact text blocks (e.g., `["COM", "NOTE"]`). Obsidian driver only. |
 | `publish` | No | — | Path to a per-record publish configuration file (relative to the base directory). If the file is not found, Syntagmax raises an error. See [Publishing Reference](publishing.md). |
+| `task_template` | No | — | Per-record task template path (relative to base directory). Overrides global `tasks_template`. |
 | `exclude_elements` | No | `[]` | Markdown elements to exclude at extraction time. Each entry is an object with `name` and optional `mode`. Merged with global `[drivers.obsidian]` defaults. See [Element Exclusion](#element-exclusion) below. |
 
 ## Marked Fragments (Obsidian Driver)
@@ -248,6 +249,54 @@ Impact analysis helps identify potentially outdated artifacts by comparing their
 | Field | Required | Default | Description |
 |-------|----------|---------|-------------|
 | `enabled` | No | `false` | Enable impact analysis |
+
+### Task Generation (`[impact]` task settings)
+
+When impact analysis identifies outdated artifacts (suspicious links), Syntagmax can automatically generate task files to track the verification work.
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `tasks_enabled` | `false` | Enable automatic task file generation from impact analysis |
+| `tasks_dir` | `.syntagmax/tasks/` | Directory for generated task files (relative to config file directory) |
+| `tasks_template` | — | Path to custom Jinja2 task template (relative to config file directory) |
+| `task_atype_map` | `{}` | Mapping of `"parent_atype/child_atype"` to task artifact type. Fallback: `TASK` |
+
+Per-input-record override:
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `task_template` | — | Per-record task template path (relative to base directory). Overrides global `tasks_template`. |
+
+#### Template Resolution Order
+
+1. Per-input record `task_template` (resolved relative to `base_dir`) — highest priority
+2. Global `tasks_template` in `[impact]` (resolved relative to config file directory) — fallback
+3. Built-in `task.j2` from package resources — final fallback
+
+This mirrors the `publish` config resolution pattern.
+
+#### Task File Format
+
+Task files use flat YAML frontmatter (no `attrs:` nesting) designed for a future `simple-markdown` driver. They must not be parsed using the `obsidian` driver.
+
+```toml
+[impact]
+enabled = true
+tasks_enabled = true
+tasks_dir = ".syntagmax/tasks/"
+tasks_template = "custom-task.j2"
+
+[impact.task_atype_map]
+"SYS/REQ" = "TASK"
+```
+
+#### De-duplication
+
+Task generation is revision-aware. Each task file stores `parent_revision` and `child_revision` hashes in its frontmatter. A task is regenerated only when the parent or child revision changes. If revisions match the current state, the task is skipped regardless of its status.
+
+#### Filename Sanitization
+
+Task filenames are derived from task IDs (`TASK-IMPACT-{child_aid}-{parent_aid}.md`). Characters `/`, `\`, `:`, `*`, `?`, `"`, `<`, `>`, `|` are replaced with hyphens.
 
 ## Metamodel (`[metamodel]`)
 

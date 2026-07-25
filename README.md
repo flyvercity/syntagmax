@@ -139,6 +139,22 @@ syntagmax --render-tree analyze
 syntagmax --output console --render-tree analyze
 ```
 
+### Task Generation
+
+Syntagmax can automatically generate task files from impact analysis results. Each outdated artifact (suspicious link) produces a dedicated markdown task file tracking the verification work.
+
+Enable in `config.toml`:
+
+```toml
+[impact]
+enabled = true
+tasks_enabled = true
+```
+
+Task files are written to `.syntagmax/tasks/` by default and include full references to both parent and child artifacts with their revision information.
+
+For the full configuration reference including custom templates, atype mapping, and de-duplication behavior, see [docs/reference/configuration.md](docs/reference/configuration.md).
+
 ## Metamodel DSL
 
 Syntagmax allows defining a custom metamodel for artifacts and their attributes using a simple DSL. This metamodel is used for static validation of requirements and other artifacts.
