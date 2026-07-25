@@ -3,7 +3,6 @@
 from datetime import datetime, timedelta
 from pathlib import Path
 
-import pytest
 
 from syntagmax.artifact import Artifact, Revision, ParentLink, LineLocation
 from syntagmax.config import Config, InputRecord, Params
@@ -15,7 +14,6 @@ from syntagmax.tasks import (
     render_task_file,
     scan_existing_tasks,
     should_generate_task,
-    inject_task_metamodel,
     generate_tasks,
     _build_template_env,
     _parse_frontmatter,
@@ -601,7 +599,11 @@ filename = "project.syntagmax"
     from benedict import benedict
 
     impact_data = benedict()
-    impact_data['suspicious_links'] = [{'artifact_aid': 'REQ-001', 'artifact_atype': 'REQ', 'parent_aid': 'SYS-001', 'parent_atype': 'SYS', 'nominal_revision': 'old', 'actual_revision': 'new'}]
+    impact_data['suspicious_links'] = [{
+        'artifact_aid': 'REQ-001', 'artifact_atype': 'REQ',
+        'parent_aid': 'SYS-001', 'parent_atype': 'SYS',
+        'nominal_revision': 'old', 'actual_revision': 'new',
+    }]
 
     result = generate_tasks(config, {}, [], impact_data)
     assert result == {'created': 0, 'skipped': 0}
