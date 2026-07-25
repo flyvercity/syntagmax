@@ -6,14 +6,17 @@ Syntagmax's impact analysis identifies "suspicious links" — outdated child art
 
 ## Requirements
 
-1. Task generation triggers automatically at the end of `analyze impact` when `tasks_enabled = true` in `[impact]` config. This is achieved by dynamically appending the `tasks` step to the execution plan if `tasks_enabled` is set.
+1. Task generation runs as an internal post-processing phase of the `impact` step when `tasks_enabled = true` in `[impact]` config. No separate pipeline step is introduced.
 2. Task IDs are deterministic: `TASK-IMPACT-{child_aid}-{parent_aid}` (stable per artifact pair).
 3. Revision-aware de-duplication: task generation tracks the parent and child revision hashes in frontmatter. A task is regenerated (overwritten with `status: open`) if the parent or child revision has changed since the task was last generated. If revisions match the current state, the task is skipped regardless of its status.
 4. Task files are markdown with flat YAML frontmatter containing attributes (`id`, `contents`, `status`, `parent_revision`, `child_revision`). These files use a flat frontmatter format designed for a future `simple-markdown` driver and must not be parsed using the `obsidian` driver.
 5. Default `atype` is `TASK`. If no metamodel definition exists for `TASK`, an implicit metamodel is injected into the global metamodel during configuration loading.
 6. Implicit TASK metamodel: `id` (mandatory string), `contents` (mandatory string), `status` (mandatory enum [open, closed]).
-7. Task body is rendered from a configurable Jinja2 template (with a sensible default). The configured `tasks_template` path is respected via a `ChoiceLoader`.
-8. Configuration lives in the `[impact]` section of `config.toml`.
+7. Task body is rendered from a configurable Jinja2 template (with a sensible default). The template is input-level-overridable following the same resolution pattern as `publish`:
+   - Per-input record `task_template` field (resolved relative to `base_dir`) → highest priority
+   - Global `tasks_template` in `[impact]` (resolved relative to `root_dir`) → fallback
+   - Built-in default `task.j2` from package resources → final fallback
+8. Configuration lives in the `[impact]` section of `config.toml`, with per-input-record overrides in `[[input]]`.
 9. Tasks are standard markdown artifacts (one file per task) and can have an `atype` described by the metamodel.
 10. Task `atype` can be mapped per parent/child type pair via `task_atype_map`.
 11. Task filenames are sanitized to replace filesystem-unsafe characters with hyphens.
@@ -47,6 +50,7 @@ From `src/syntagmax/main.py`:
 - Pipeline uses `get_execution_plan(DEPS, requested_step)` to resolve dependency order
 - The `process` function runs steps sequentially, passing `config`, `artifacts`, `errors`
 - `report.impact` holds the impact data after the `impact` step runs
+- Task generation will be called inline at the end of the `impact` case block (no new step)
 
 ### Configuration
 
@@ -76,10 +80,9 @@ Task files use a flat YAML frontmatter format (attributes at the root level, no 
 
 ```mermaid
 flowchart TD
-    A[impact step] --> B[tasks step auto-appended]
-    B --> C{tasks_enabled?}
-    C -->|No| Z[Return early]
-    C -->|Yes| D[Resolve tasks_dir]
+    A[impact step: perform_impact_analysis] --> B{tasks_enabled?}
+    B -->|No| Z[Return impact_data only]
+    B -->|Yes| D[Resolve tasks_dir]
     D --> E[Scan existing task files]
     E --> F{For each suspicious link}
     F --> G[Derive task ID]
@@ -91,8 +94,10 @@ flowchart TD
     L --> M[Write task file]
     I --> F
     M --> F
-    F --> N[Log summary]
+    F --> N[Log summary & return impact_data]
 ```
+
+Task generation is an internal concern of the `impact` step — it runs at the end of `perform_impact_analysis` (or is called from the same `case 'impact'` block in `process`). There is no separate `tasks` step in the pipeline, no addition to `STEPS`/`DEPS`/`public_steps()`.
 
 ### Configuration Schema
 
@@ -101,12 +106,27 @@ flowchart TD
 enabled = true
 tasks_enabled = true
 tasks_dir = ".syntagmax/tasks/"           # relative to root_dir
-tasks_template = "custom-task.j2"         # optional, relative to root_dir
+tasks_template = "custom-task.j2"         # optional, relative to root_dir (global fallback)
 # Mapping: "parent_atype/child_atype" -> task_atype
 # Default fallback: TASK
 [impact.task_atype_map]
 "SYS/REQ" = "TASK"
+
+[[input]]
+name = "software-requirements"
+dir = "REQ"
+driver = "obsidian"
+atype = "REQ"
+task_template = "req-task.j2"             # optional, per-record override, relative to base_dir
 ```
+
+### Template Resolution Order
+
+1. **Per-input record** `task_template` field (resolved relative to `base_dir`) — highest priority
+2. **Global** `tasks_template` in `[impact]` section (resolved relative to `root_dir`) — fallback
+3. **Built-in** `task.j2` from `src/syntagmax/resources/` — final fallback
+
+This mirrors the existing `publish` config resolution pattern.
 
 ### Task File Format
 
@@ -174,9 +194,9 @@ This injection happens in `Config._read_config()` after the metamodel is loaded,
 
 ## Task Breakdown
 
-### Task 1: Extend ImpactConfig with task generation settings
+### Task 1: Extend ImpactConfig and InputConfig with task generation settings
 
-**Objective:** Add task-related fields to `ImpactConfig` Pydantic model and wire up configuration loading.
+**Objective:** Add task-related fields to `ImpactConfig` Pydantic model, add per-input-record `task_template` field, and wire up configuration loading.
 
 **Implementation guidance:**
 - In `src/syntagmax/config.py`, extend `ImpactConfig`:
@@ -189,10 +209,46 @@ This injection happens in `Config._read_config()` after the metamodel is loaded,
       tasks_template: str | None = Field(default=None, description='Path to custom Jinja2 task template (relative to config file directory)')
       task_atype_map: dict[str, str] = Field(default_factory=dict, description='Mapping of "parent_atype/child_atype" to task atype. Fallback: TASK')
   ```
-- In `Config` class, add a method to resolve the tasks directory:
+- In `InputConfig`, add:
+  ```python
+  task_template: str | None = Field(default=None, description='Per-record task template path (relative to base directory). Overrides global tasks_template.')
+  ```
+- In `InputRecord` dataclass, add:
+  ```python
+  task_template: str | None = None
+  ```
+- Wire `task_template` through in `_read_input_records`:
+  ```python
+  self._input_records.append(
+      InputRecord(
+          ...
+          task_template=input_config.task_template,
+      )
+  )
+  ```
+- In `Config` class, add methods for task directory and template resolution:
   ```python
   def tasks_dir(self) -> Path:
       return Path(self._root_dir, self.impact.tasks_dir)
+
+  def resolve_task_template(self, record: 'InputRecord | None') -> tuple[Path | None, str]:
+      """Resolve task template path following publish-like resolution order.
+
+      Returns (template_dir, template_name) or (None, 'task.j2') for built-in default.
+      Resolution: record-level → global → built-in.
+      """
+      # 1. Per-record override (resolved relative to base_dir)
+      if record and record.task_template:
+          p = Path(self._base_dir, record.task_template)
+          return (p.parent, p.name)
+
+      # 2. Global tasks_template (resolved relative to root_dir)
+      if self.impact.tasks_template:
+          p = Path(self._root_dir, self.impact.tasks_template)
+          return (p.parent, p.name)
+
+      # 3. Built-in default
+      return (None, 'task.j2')
   ```
 - Update `init_cmd.py` to include commented task config in generated TOML. Handle `default_factory` fields (dict type) safely — format as `# task_atype_map = {}` rather than printing `PydanticUndefined`.
 
@@ -200,8 +256,11 @@ This injection happens in `Config._read_config()` after the metamodel is loaded,
 - Test that config loads with new fields and defaults are correct.
 - Test that `tasks_dir` resolves correctly relative to root_dir.
 - Test that `task_atype_map` parses correctly from TOML.
+- Test that `resolve_task_template` returns record-level path when set.
+- Test that `resolve_task_template` falls back to global when record has no override.
+- Test that `resolve_task_template` returns `(None, 'task.j2')` when nothing is configured.
 
-**Demo:** Loading a config TOML containing `[impact]\ntasks_enabled = true\ntasks_dir = "custom/tasks"` succeeds and `config.tasks_dir()` returns the expected resolved path.
+**Demo:** Loading a config TOML containing `[impact]\ntasks_enabled = true\ntasks_dir = "custom/tasks"` succeeds and `config.tasks_dir()` returns the expected resolved path. A record with `task_template = "my-task.j2"` resolves to `(base_dir / "my-task.j2").parent`.
 
 ---
 
@@ -241,8 +300,8 @@ This injection happens in `Config._read_config()` after the metamodel is loaded,
           name = name.replace(ch, '-')
       return name
 
-  def render_task_file(template_env: Environment, task_data: TaskData) -> str:
-      template = template_env.get_template('task.j2')
+  def render_task_file(template_env: Environment, template_name: str, task_data: TaskData) -> str:
+      template = template_env.get_template(template_name)
       return template.render(task=task_data)
   ```
 - Create `src/syntagmax/resources/task.j2`:
@@ -273,23 +332,27 @@ This injection happens in `Config._read_config()` after the metamodel is loaded,
   ## Action Required
   Verify that {{ task.child_aid }} is still consistent with the updated {{ task.parent_aid }} and update the tracing reference.
   ```
-- Template loading uses a `ChoiceLoader`:
+- Template loading uses `resolve_task_template` from `Config` and a `ChoiceLoader`:
   ```python
   from jinja2 import Environment, FileSystemLoader, ChoiceLoader
 
-  def _build_template_env(config: Config) -> Environment:
+  def _build_template_env(config: Config, record: InputRecord | None = None) -> tuple[Environment, str]:
+      """Build Jinja2 environment and resolve template name for task rendering.
+
+      Resolution order: record-level → global → built-in (mirrors publish pattern).
+      """
+      template_dir, template_name = config.resolve_task_template(record)
+
       loaders = []
-      if config.impact.tasks_template:
-          custom_dir = Path(config.root_dir(), config.impact.tasks_template).parent
-          loaders.append(FileSystemLoader(str(custom_dir)))
+      if template_dir and template_dir.exists():
+          loaders.append(FileSystemLoader(str(template_dir)))
+
+      # Always include built-in resources as final fallback
       resources_dir = Path(__file__).parent / 'resources'
       loaders.append(FileSystemLoader(str(resources_dir)))
-      return Environment(loader=ChoiceLoader(loaders))
 
-  def _get_template_name(config: Config) -> str:
-      if config.impact.tasks_template:
-          return Path(config.impact.tasks_template).name
-      return 'task.j2'
+      env = Environment(loader=ChoiceLoader(loaders))
+      return env, template_name
   ```
 
 **Test requirements:**
@@ -297,9 +360,11 @@ This injection happens in `Config._read_config()` after the metamodel is loaded,
 - Unit test: `sanitize_filename` replaces unsafe chars with hyphens.
 - Unit test: `render_task_file` with mock `TaskData` produces valid YAML frontmatter with correct `id`, `status`, `contents`, `parent_revision`, `child_revision` fields.
 - Unit test: rendered body contains parent/child references.
-- Unit test: custom template path is loaded when configured.
+- Unit test: `_build_template_env` with record-level template uses record path.
+- Unit test: `_build_template_env` with only global template uses global path.
+- Unit test: `_build_template_env` with no custom template falls back to built-in `task.j2`.
 
-**Demo:** `render_task_file(env, task_data)` with mock data produces correctly formatted markdown.
+**Demo:** `render_task_file(env, task_data)` with mock data produces correctly formatted markdown. A record with `task_template = "my-custom.j2"` resolves that template over the global one.
 
 ---
 
@@ -418,9 +483,9 @@ This injection happens in `Config._read_config()` after the metamodel is loaded,
 
 ---
 
-### Task 5: Wire task generation into the pipeline as a step
+### Task 5: Integrate task generation into the impact step
 
-**Objective:** Add `tasks` as a pipeline step in `main.py` that runs after `impact` and is automatically appended to the execution plan when `tasks_enabled` is set.
+**Objective:** Call task generation at the end of the `impact` step in `main.py`, keeping it internal to the existing pipeline without introducing a new step.
 
 **Implementation guidance:**
 - In `src/syntagmax/tasks.py` add the main entry point:
@@ -436,7 +501,6 @@ This injection happens in `Config._read_config()` after the metamodel is loaded,
       existing_tasks = scan_existing_tasks(tasks_dir)
       suspicious_links = impact_data.get('suspicious_links', [])
 
-      template_env = _build_template_env(config)
       created = 0
       skipped = 0
 
@@ -458,8 +522,11 @@ This injection happens in `Config._read_config()` after the metamodel is loaded,
           atype_key = f"{link['parent_atype']}/{link['artifact_atype']}"
           task_atype = config.impact.task_atype_map.get(atype_key, 'TASK')
 
+          # Resolve template per child's input record (mirrors publish resolution)
+          template_env, template_name = _build_template_env(config, child.record)
+
           task_data = _build_task_data(task_id, task_atype, child, parent, link)
-          content = render_task_file(template_env, task_data)
+          content = render_task_file(template_env, template_name, task_data)
 
           safe_filename = sanitize_filename(f'{task_id}.md')
           task_file = tasks_dir / safe_filename
@@ -468,34 +535,31 @@ This injection happens in `Config._read_config()` after the metamodel is loaded,
 
       return {'created': created, 'skipped': skipped}
   ```
-- In `src/syntagmax/main.py`:
-  - Add `'tasks'` to `STEPS` and `DEPS` (`{'impact'}`)
-  - Add `'tasks'` to `public_steps()`
-  - Dynamically append `'tasks'` to the execution plan when `impact` is in the plan and `tasks_enabled` is true:
-    ```python
-    plan = get_execution_plan(DEPS, requested_step)
-    if 'impact' in plan and config.impact.tasks_enabled and 'tasks' not in plan:
-        plan.append('tasks')
-    ```
-  - In the `process` function's match block, add:
-    ```python
-    case 'tasks':
-        if report.impact:
-            from syntagmax.tasks import generate_tasks
-            report.tasks_summary = generate_tasks(config, artifacts, errors, report.impact)
-    ```
+- In `src/syntagmax/main.py`, modify the `case 'impact'` block to call task generation after impact analysis:
+  ```python
+  case 'impact':
+      if artifacts is None:
+          raise FatalError(f'Artifacts not initialized for step {step}')
+      report.impact = perform_impact_analysis(config, artifacts, errors)
+      # Task generation is an internal post-processing phase of impact
+      if config.impact.tasks_enabled:
+          from syntagmax.tasks import generate_tasks
+          report.tasks_summary = generate_tasks(config, artifacts, errors, report.impact)
+  ```
 - Extend `Report` dataclass with `tasks_summary: dict | None = None`
+- No changes to `STEPS`, `DEPS`, or `public_steps()` — task generation is not a separate step.
 
 **Test requirements:**
 - Integration test: mock artifacts with suspicious links, verify task files are created with correct names and content.
-- Test: `tasks_enabled = false` produces no files and `tasks` step is not appended.
-- Test: running `analyze impact` with `tasks_enabled = true` automatically generates task files.
+- Test: `tasks_enabled = false` produces no files.
+- Test: running `analyze impact` with `tasks_enabled = true` generates task files as part of the same step.
 - Test: pre-existing task with matching revisions is skipped.
 - Test: pre-existing task with different revisions is regenerated.
 - Test: `task_atype_map` correctly resolves custom atypes.
 - Test: filenames with unsafe characters are sanitized.
+- Test: per-record `task_template` is resolved correctly per suspicious link.
 
-**Demo:** `process('impact', config)` with `tasks_enabled = true` and mock suspicious links produces task files in the configured directory.
+**Demo:** `process('impact', config)` with `tasks_enabled = true` and mock suspicious links produces task files in the configured directory as part of the impact step execution.
 
 ---
 
@@ -509,25 +573,66 @@ This injection happens in `Config._read_config()` after the metamodel is loaded,
   # [impact]
   # tasks_enabled = true
   # tasks_dir = ".syntagmax/tasks/"
-  # tasks_template = ""
+  # tasks_template = ""             # global fallback template
   # [impact.task_atype_map]
   # "SYS/REQ" = "TASK"
+
+  # Per-input-record task template override:
+  # [[input]]
+  # name = "software-requirements"
+  # ...
+  # task_template = "custom-req-task.j2"   # resolved relative to base_dir
   ```
 - Add `tests/test_tasks.py` with:
   1. Setup: temp project with two artifacts in a suspicious link relationship (use `MockRevision` pattern from `test_impact.py`)
   2. Run `generate_tasks` → verify task file exists with correct ID, frontmatter (including `parent_revision`, `child_revision`), and body
   3. Run again with same revisions → verify no regeneration (skipped count == 1)
   4. Update parent revision, run again → verify task is regenerated with updated details
-  5. Test custom template path via `ChoiceLoader`
+  5. Test custom template path via `ChoiceLoader` (both global and per-record)
   6. Test `task_atype_map` resolution
   7. Test filename sanitization for artifact IDs with special characters
-  8. Test that `analyze impact` automatically triggers task generation
+  8. Test that `process('impact', config)` with `tasks_enabled = true` produces task files
 - Update `init_cmd.py` to include commented `tasks_enabled` in generated config (handle `default_factory` dict fields safely).
 
 **Test requirements:**
 - Full round-trip test covering create, skip-on-matching-revisions, regenerate-on-changed-revisions.
-- Test custom Jinja2 template loading via `ChoiceLoader`.
+- Test custom Jinja2 template loading via `ChoiceLoader` (both global and per-record).
+- Test that per-record `task_template` takes priority over global `tasks_template`.
 - Test error handling for invalid template paths.
 - Test implicit metamodel injection is present after config loading.
 
-**Demo:** `uv run syntagmax --cwd ./example/obsidian-driver analyze tasks` runs without error (reports "0 tasks created" since example has no suspicious links with git history, or produces tasks if run with appropriate fixture).
+**Demo:** `uv run syntagmax --cwd ./example/obsidian-driver analyze impact` with `tasks_enabled = true` runs without error (reports "0 tasks created" since example has no suspicious links with git history, or produces tasks if run with appropriate fixture).
+
+
+---
+
+### Task 7: Update reference documentation
+
+**Objective:** Update `docs/reference/configuration.md` to document the new task generation settings, and add relevant sections to the README.
+
+**Implementation guidance:**
+- In `docs/reference/configuration.md`:
+  - Add a new section **Task Generation (`[impact]` task settings)** documenting:
+    - `tasks_enabled` (bool, default `false`)
+    - `tasks_dir` (string, default `.syntagmax/tasks/`, resolved relative to root_dir)
+    - `tasks_template` (string, optional, resolved relative to root_dir)
+    - `task_atype_map` (table, mapping `"parent_atype/child_atype"` → task atype, default fallback `TASK`)
+  - Under the **Input Sources (`[[input]]`)** table, add:
+    - `task_template` (optional, per-record override for task template path, resolved relative to base_dir)
+  - Document the template resolution order (record → global → built-in)
+  - Document the flat frontmatter format and driver compatibility note (not for `obsidian` driver)
+  - Document the revision-aware de-duplication behavior
+  - Document filename sanitization for unsafe characters
+- In `README.md`:
+  - Add a brief **Task Generation** section under the Impact Analysis area explaining:
+    - What it does (generates task files from suspicious links)
+    - How to enable it (`tasks_enabled = true`)
+    - Example config snippet
+    - Example output file format
+    - Link to the full reference in `docs/reference/configuration.md`
+
+**Test requirements:**
+- Verify that all new config fields are documented with correct types, defaults, and descriptions.
+- Verify that the resolution order and driver compatibility warnings are clearly stated.
+
+**Demo:** Reading `docs/reference/configuration.md` shows the new task generation settings with examples matching the implementation.
