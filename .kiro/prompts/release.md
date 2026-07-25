@@ -1,5 +1,8 @@
 Prepare a new release of the tool.
 
+Preconditions:
+- if not on the `main` branch, abort
+
 Steps:
 - bump up the version
 - amend the CHANGELOG

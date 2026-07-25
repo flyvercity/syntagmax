@@ -93,6 +93,8 @@ class SimpleMarkdownExtractor(Extractor):
                     continue
                 if isinstance(value, list):
                     for v in value:
+                        if v is None:
+                            continue
                         builder.add_field(key, str(v))
                 else:
                     builder.add_field(key, str(value))
