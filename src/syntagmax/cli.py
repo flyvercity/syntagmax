@@ -26,6 +26,40 @@ from syntagmax.cli_edit import edit
 from syntagmax.cli_tools import trace, mcp, schema, ci
 
 
+class SuppressWarningsFilter(lg.Filter):
+    def filter(self, record: lg.LogRecord) -> bool:
+        return record.levelno != lg.WARNING
+
+
+class WarningsAsErrorsHandler(lg.Handler):
+    def __init__(self):
+        super().__init__()
+        self.warnings: list[str] = []
+
+    def emit(self, record: lg.LogRecord):
+        if record.levelno == lg.WARNING:
+            self.warnings.append(record.getMessage())
+
+
+_warnings_handler: WarningsAsErrorsHandler | None = None
+
+
+def _cleanup_logging():
+    global _warnings_handler
+    root_logger = lg.getLogger()
+    for f in list(root_logger.filters):
+        if isinstance(f, SuppressWarningsFilter):
+            root_logger.removeFilter(f)
+    for h in list(root_logger.handlers):
+        for f in list(h.filters):
+            if isinstance(f, SuppressWarningsFilter):
+                h.removeFilter(f)
+    for h in list(root_logger.handlers):
+        if isinstance(h, WarningsAsErrorsHandler):
+            root_logger.removeHandler(h)
+    _warnings_handler = None
+
+
 @click.group(help='RMS Entry Point')
 @click.version_option(version('syntagmax'))
 @click.pass_context
@@ -35,7 +69,17 @@ from syntagmax.cli_tools import trace, mcp, schema, ci
 @click.option('--no-git', is_flag=True, help='Skip git history extraction')
 @click.option('--output', default='.syntagmax/reports/report.md', help='Report output file (default: .syntagmax/reports/report.md)')
 @click.option('--lang', 'language', type=click.Choice(['en', 'ru']), default=None, help='Output language (en, ru)')
+@click.option('--suppress-warnings', is_flag=True, help='do not show any warnings')
+@click.option('--warnings-as-errors', is_flag=True, help='treat all warnings as errors')
 def rms(ctx: click.Context, **kwargs: dict[str, Any]):
+    _cleanup_logging()
+
+    suppress_warnings = kwargs.get('suppress_warnings')
+    warnings_as_errors = kwargs.get('warnings_as_errors')
+
+    if suppress_warnings and warnings_as_errors:
+        raise click.UsageError('Cannot specify both --suppress-warnings and --warnings-as-errors')
+
     verbose = kwargs['verbose']
     lg.basicConfig(level=lg.DEBUG if verbose else lg.INFO, handlers=[RichHandler()])
     ctx.obj = Params(**kwargs)  # type: ignore
@@ -45,6 +89,31 @@ def rms(ctx: click.Context, **kwargs: dict[str, Any]):
         os.chdir(ctx.obj['cwd'])
 
     lg.info(f'Verbose: {verbose}')
+
+    if suppress_warnings:
+        root_logger = lg.getLogger()
+        suppress_filter = SuppressWarningsFilter()
+        root_logger.addFilter(suppress_filter)
+        for h in root_logger.handlers:
+            h.addFilter(suppress_filter)
+
+    if warnings_as_errors:
+        global _warnings_handler
+        _warnings_handler = WarningsAsErrorsHandler()
+        lg.getLogger().addHandler(_warnings_handler)
+
+
+@rms.result_callback()
+def process_result(result, **kwargs):
+    global _warnings_handler
+    warnings = []
+    if _warnings_handler:
+        warnings = list(_warnings_handler.warnings)
+
+    _cleanup_logging()
+
+    if kwargs.get('warnings_as_errors') and warnings:
+        raise FatalError(warnings)
 
 
 @rms.command(help='Initialize a new Syntagmax project')
@@ -112,15 +181,18 @@ def main():
 
     except FatalError as e:
         u.pprint(f'[red]{len(e.errors)} fatal error(s): {e.errors[0]}[/red]')
+        _cleanup_logging()
         sys.exit(1)
 
     except RMSException as e:
         u.pprint(f'[red]Failed: {e}[/red]')
+        _cleanup_logging()
         sys.exit(2)
 
     except Exception as e:
         u.pprint(f'[red]Failed: {e}[/red]')
         traceback.print_exc()
+        _cleanup_logging()
         sys.exit(3)
 
 

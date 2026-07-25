@@ -18,3 +18,5 @@ class Params(TypedDict):
 
     suppress_tracing: bool
     output: str
+    suppress_warnings: bool
+    warnings_as_errors: bool
