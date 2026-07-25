@@ -228,3 +228,27 @@ Create test file with fixtures following existing patterns (`tmp_path`, manually
 **Test requirements:** Command exits 0, report contains `TASK-001` and `TASK-002`.
 
 **Demo:** `uv run syntagmax --cwd ./example/simple-markdown-demo --render-tree --output console analyze` prints the artifact tree showing both tasks.
+
+### Task 5: Update reference documentation
+
+**Objective:** Document the new `simple-markdown` driver in `docs/reference/` so users can discover and configure it.
+
+**Implementation guidance:**
+- In `docs/reference/configuration.md`:
+  - Add `simple-markdown` to the `driver` field's allowed values in the `[[input]]` table (alongside `obsidian`, `ipynb`, etc.)
+  - Add its default filter (`**/*.md`) to the filter defaults note
+  - Add a new section (e.g., `## Simple Markdown Driver`) describing:
+    - One-file-one-artifact model
+    - Flat YAML frontmatter (all top-level keys are attributes)
+    - Implicit ID from filename when `id` key is absent
+    - Body as `contents`
+    - Error behavior: missing frontmatter → best-effort, malformed YAML → extraction error
+    - Example `[[input]]` config block
+    - Example markdown file
+- In `docs/reference/CLI.md`:
+  - If the `analyze` command section lists driver-specific notes, mention `simple-markdown` compatibility
+- Optionally add a brief mention in `docs/reference/technical-summary.md` under the extractors overview
+
+**Test requirements:** Documentation is accurate and consistent with the implementation. Links are valid.
+
+**Demo:** Reading the configuration reference clearly shows how to use `driver = "simple-markdown"` with a complete example.

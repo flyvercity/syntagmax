@@ -15,6 +15,7 @@ Syntagmax supports a variety of input formats through a modular driver system:
 - **IPYNB:** Extracts artefacts from Jupyter Notebook cells.
 - **Source Code (Text):** Identifies requirements embedded in source code via special comment markers, parsed using a Lark grammar for structured extraction with ID references and inline attributes.
 - **Sidecar:** Supports binary artefacts (e.g., images, diagrams) with associated YAML metadata files. Revision history spans both the primary file and the sidecar.
+- **Simple Markdown:** One-file-one-artifact model using flat YAML frontmatter for attributes and the document body as contents. Derives artifact ID from filename when not specified in frontmatter.
 
 ## 3. Metamodeling DSL
 The system uses a custom Domain-Specific Language (DSL) to define the project's data model:

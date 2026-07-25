@@ -108,7 +108,7 @@ class InputRecord:
     task_template: str | None = None
 
 
-DEFAULT_FILTERS = {'obsidian': '**/*.md', 'ipynb': '**/*.ipynb', 'markdown': '**/*.md'}
+DEFAULT_FILTERS = {'obsidian': '**/*.md', 'ipynb': '**/*.ipynb', 'markdown': '**/*.md', 'simple-markdown': '**/*.md'}
 
 
 class InputConfig(BaseModel):

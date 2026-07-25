@@ -1,0 +1,10 @@
+base = ".."
+
+[[input]]
+name = "tasks"
+dir = "tasks"
+driver = "simple-markdown"
+atype = "TASK"
+
+[metamodel]
+filename = "project.syntagmax"
