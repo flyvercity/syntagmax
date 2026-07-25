@@ -323,7 +323,7 @@ output = ".syntagmax/reports/trace.tsv"
 plugins = ["tsv-export"]
 ```
 
-Each plugin listed must implement the `export_trace` hook. See the Plugins documentation for the full API.
+Each plugin listed must implement the `export_trace` hook. See the [Plugins Reference](plugins.md) for the full API, including the `TraceMatrix` data model available to plugins.
 
 ## Baseline (`[baseline]`)
 

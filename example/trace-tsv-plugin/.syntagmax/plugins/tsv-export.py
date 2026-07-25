@@ -19,6 +19,9 @@ def export_trace(matrix: TraceMatrix, config, params: dict) -> None:
     path = Path(output_path)
     path.parent.mkdir(parents=True, exist_ok=True)
 
+    # Optional: include input record name columns (demonstrates record_names lookup)
+    include_records = params.get('include_record_names', False)
+
     output = io.StringIO()
     writer = csv.writer(output, delimiter='\t', lineterminator='\n')
 
@@ -28,12 +31,22 @@ def export_trace(matrix: TraceMatrix, config, params: dict) -> None:
     else:
         header = ['RecordNumber', 'ParentID', 'ChildID']
 
+    if include_records:
+        header.extend(['LeadRecord', 'LinkedRecord'])
+
     header.extend(matrix.attribute_names)
     writer.writerow(header)
 
     # Data rows
     for record in matrix.records:
         row = [str(record.record_number), record.lead_id, record.linked_id]
+
+        if include_records:
+            # Look up input record names for lead and linked artifacts
+            lead_record = matrix.record_names.get(record.lead_id, '')
+            linked_record = matrix.record_names.get(record.linked_id, '')
+            row.extend([lead_record, linked_record])
+
         for attr_name in matrix.attribute_names:
             row.append(record.attributes.get(attr_name, ''))
         writer.writerow(row)

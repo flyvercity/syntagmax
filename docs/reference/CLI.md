@@ -207,7 +207,7 @@ Uses left outer join semantics — every lead artifact appears even if it has no
 
 #### Plugin-Based Export
 
-Trace export can be delegated to plugins via the `[trace]` config section in `config.toml`:
+Trace export can be delegated to plugins via the `[trace]` config section in `config.toml`. See the [Plugins Reference](plugins.md) for the full hook API and `TraceMatrix` data model.
 
 ```toml
 [trace]

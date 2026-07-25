@@ -30,6 +30,7 @@ class TraceMatrix:
     parent_type: str
     attribute_names: list[str] = field(default_factory=list)
     records: list[TraceRecord] = field(default_factory=list)
+    record_names: dict[str, str] = field(default_factory=dict)  # artifact ID → input record name
 
 
 def _serialize_attribute(value) -> str:
@@ -182,6 +183,21 @@ def build_trace_matrix(
                             )
                         )
                         record_number += 1
+
+    # Populate record_names: map artifact ID → input record name for all referenced artifacts
+    referenced_ids: set[str] = set()
+    for rec in matrix.records:
+        referenced_ids.add(rec.lead_id)
+        if rec.linked_id:
+            # In flat mode, linked_id may contain multiple IDs separated by "; "
+            for lid in rec.linked_id.split('; '):
+                if lid:
+                    referenced_ids.add(lid)
+
+    for aid in referenced_ids:
+        if aid in artifacts:
+            art = artifacts[aid]
+            matrix.record_names[aid] = art.record.name if art.record else ''
 
     return matrix
 
