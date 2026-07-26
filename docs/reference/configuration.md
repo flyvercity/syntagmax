@@ -261,6 +261,8 @@ When impact analysis identifies outdated artifacts (suspicious links), Syntagmax
 | `tasks_template` | — | Path to custom Jinja2 task template (relative to config file directory) |
 | `task_atype_map` | `{}` | Mapping of `"parent_atype/child_atype"` to task artifact type. Fallback: `TASK` |
 
+> **CLI override:** The `--tasks` flag on the `analyze` command forces `tasks_enabled = true` regardless of the config file setting. See [CLI Reference](CLI.md#analyze).
+
 Per-input-record override:
 
 | Option | Default | Description |

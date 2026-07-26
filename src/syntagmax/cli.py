@@ -65,8 +65,9 @@ def init(ctx: click.Context):
 )
 @click.option('--allow-dirty-worktree', is_flag=True, help='Allow analysis on a dirty git worktree')
 @click.option('--suppress-tracing', is_flag=True, help='Suppress tracing model errors')
+@click.option('--tasks', is_flag=True, help='Enable task generation (overrides config)')
 @click.argument('step', type=click.Choice(public_steps()), default='metrics')
-def analyze(obj: Params, config_file: Path, allow_dirty_worktree: bool, suppress_tracing: bool, step: str):
+def analyze(obj: Params, config_file: Path, allow_dirty_worktree: bool, suppress_tracing: bool, tasks: bool, step: str):
     import sys
 
     cfg_path = Path(config_file)
@@ -75,6 +76,7 @@ def analyze(obj: Params, config_file: Path, allow_dirty_worktree: bool, suppress
         sys.exit(1)
     obj['allow_dirty_worktree'] = allow_dirty_worktree
     obj['suppress_tracing'] = suppress_tracing
+    obj['tasks'] = tasks
     config = Config(obj, cfg_path)
     report = process(step, config)
 

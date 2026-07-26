@@ -720,3 +720,102 @@ def test_generate_tasks_sanitizes_filenames(tmp_path):
     assert '/' not in task_files[0].name
     assert ':' not in task_files[0].name
     assert task_files[0].name == 'TASK-IMPACT-REQ-001-SYS-001.md'
+
+
+
+# --- CLI --tasks override tests ---
+
+
+def test_tasks_cli_override_enables_tasks(tmp_path):
+    """When --tasks flag is passed, tasks_enabled should be True even if config says false."""
+    config_path = tmp_path / '.syntagmax' / 'config.toml'
+    config_path.parent.mkdir(parents=True, exist_ok=True)
+    config_path.write_text(
+        """
+base = ".."
+[[input]]
+name = "reqs"
+dir = "REQ"
+driver = "obsidian"
+
+[impact]
+enabled = true
+tasks_enabled = false
+
+[metamodel]
+filename = "project.syntagmax"
+""",
+        encoding='utf-8',
+    )
+
+    metamodel_path = tmp_path / '.syntagmax' / 'project.syntagmax'
+    metamodel_path.write_text(
+        """artifact REQ:
+    id is string
+    attribute contents is mandatory string
+""",
+        encoding='utf-8',
+    )
+    (tmp_path / 'REQ').mkdir(exist_ok=True)
+
+    params = Params(verbose=False, render_tree=False, ai=False, cwd=str(tmp_path), no_git=True, tasks=True, output='console')
+    config = Config(params, config_path)
+
+    # tasks_enabled should be overridden to True
+    assert config.impact.tasks_enabled is True
+    # TASK metamodel should be injected
+    assert 'TASK' in config.metamodel['artifacts']
+
+
+def test_tasks_cli_override_not_set_uses_config(tmp_path):
+    """When --tasks flag is NOT passed, config value is respected."""
+    config_path = tmp_path / '.syntagmax' / 'config.toml'
+    config_path.parent.mkdir(parents=True, exist_ok=True)
+    config_path.write_text(
+        """
+base = ".."
+[[input]]
+name = "reqs"
+dir = "REQ"
+driver = "obsidian"
+
+[impact]
+enabled = true
+tasks_enabled = false
+
+[metamodel]
+filename = "project.syntagmax"
+""",
+        encoding='utf-8',
+    )
+
+    metamodel_path = tmp_path / '.syntagmax' / 'project.syntagmax'
+    metamodel_path.write_text(
+        """artifact REQ:
+    id is string
+    attribute contents is mandatory string
+""",
+        encoding='utf-8',
+    )
+    (tmp_path / 'REQ').mkdir(exist_ok=True)
+
+    # No 'tasks' key in params - simulates CLI without --tasks
+    params = Params(verbose=False, render_tree=False, ai=False, cwd=str(tmp_path), no_git=True, output='console')
+    config = Config(params, config_path)
+
+    # tasks_enabled should remain False from config
+    assert config.impact.tasks_enabled is False
+    # TASK metamodel should NOT be injected
+    assert 'TASK' not in config.metamodel['artifacts']
+
+
+def test_tasks_cli_flag_accepted():
+    """The --tasks flag should be accepted by the analyze command without parse errors."""
+    from click.testing import CliRunner
+    from syntagmax.cli import rms
+
+    runner = CliRunner()
+    # Invoke with --tasks on a nonexistent config; we only care about CLI parsing, not execution
+    result = runner.invoke(rms, ['analyze', '--tasks'])
+    # Should NOT fail with "No such option: --tasks" (exit_code 2 = usage error)
+    assert result.exit_code != 2, f"CLI rejected --tasks flag: {result.output}"

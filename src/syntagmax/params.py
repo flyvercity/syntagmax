@@ -17,4 +17,5 @@ class Params(TypedDict):
     language: str
 
     suppress_tracing: bool
+    tasks: bool
     output: str

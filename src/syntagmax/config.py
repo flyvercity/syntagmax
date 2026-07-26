@@ -283,6 +283,10 @@ class Config:
         self.metrics = config_model.metrics
         self.impact = config_model.impact
         self.ai = config_model.ai
+
+        # CLI --tasks flag overrides config tasks_enabled
+        if self.params.get('tasks'):
+            self.impact.tasks_enabled = True
         self._obsidian_driver_config = config_model.drivers.obsidian
         self._baseline_config = config_model.baseline
         self._trace_config = config_model.trace

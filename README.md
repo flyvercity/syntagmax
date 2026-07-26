@@ -151,6 +151,12 @@ enabled = true
 tasks_enabled = true
 ```
 
+Alternatively, use the `--tasks` CLI flag to enable task generation without modifying the config file:
+
+```bash
+syntagmax analyze --tasks impact
+```
+
 Task files are written to `.syntagmax/tasks/` by default and include full references to both parent and child artifacts with their revision information.
 
 For the full configuration reference including custom templates, atype mapping, and de-duplication behavior, see [docs/reference/configuration.md](docs/reference/configuration.md).

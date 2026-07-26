@@ -96,6 +96,7 @@ Available steps (in dependency order):
 | `-f, --config-file PATH` | Path | `.syntagmax/config.toml` | Path to the project configuration file |
 | `--allow-dirty-worktree` | Flag | off | Allow analysis on a dirty git worktree |
 | `--suppress-tracing` | Flag | off | Suppress tracing model errors |
+| `--tasks` | Flag | off | Enable task generation (overrides `tasks_enabled` in config) |
 
 #### Examples
 
@@ -114,6 +115,9 @@ syntagmax analyze --allow-dirty-worktree ai
 
 # Suppress tracing errors during tree validation
 syntagmax analyze --suppress-tracing tree
+
+# Force task generation from impact analysis (overrides config)
+syntagmax analyze --tasks impact
 
 # Combine with global options
 syntagmax --render-tree --output console analyze
