@@ -37,7 +37,7 @@ def extract(config: Config, errors) -> list[Artifact]:
         artifacts.extend(record_artifacts)
         errors.extend(record_errors)
 
-    if config.params['verbose']:
+    if config.params.get('log_level') == 'debug':
         lg.debug('Listing raw artifacts:')
 
         for artifact in artifacts:

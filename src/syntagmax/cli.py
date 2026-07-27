@@ -29,22 +29,58 @@ from syntagmax.cli_tools import trace, mcp, schema, ci
 @click.group(help='RMS Entry Point')
 @click.version_option(version('syntagmax'))
 @click.pass_context
-@click.option('--verbose', is_flag=True, help='Verbose output')
+@click.option('--log', 'log_level', type=click.Choice(['debug', 'info', 'warning', 'error', 'silent'], case_sensitive=False),
+              default=None, help='Console log verbosity level')
+@click.option('--warnings-as-errors/--no-warnings-as-errors', 'warnings_as_errors', default=None,
+              help='Treat all warnings as fatal errors')
 @click.option('--render-tree', is_flag=True, help='Render the artifact tree')
 @click.option('--cwd', type=click.Path(exists=True), help='Change the working directory')
 @click.option('--no-git', is_flag=True, help='Skip git history extraction')
 @click.option('--output', default='.syntagmax/reports/report.md', help='Report output file (default: .syntagmax/reports/report.md)')
 @click.option('--lang', 'language', type=click.Choice(['en', 'ru']), default=None, help='Output language (en, ru)')
 def rms(ctx: click.Context, **kwargs: dict[str, Any]):
-    verbose = kwargs['verbose']
-    lg.basicConfig(level=lg.DEBUG if verbose else lg.INFO, handlers=[RichHandler()])
+    from syntagmax.log_utils import LOG_LEVEL_MAP, WarningsAsErrorsHandler, set_warnings_handler
+
+    log_level = kwargs.get('log_level')
+    warnings_as_errors = kwargs.get('warnings_as_errors')
+
+    # Initial setup - before config resolution
+    initial_display = LOG_LEVEL_MAP.get(log_level, lg.INFO) if log_level else lg.INFO
+    handler = RichHandler()
+    handler.setLevel(initial_display)
+
+    # Root level depends on wae
+    if warnings_as_errors:
+        root_level = min(initial_display, lg.WARNING)
+    else:
+        root_level = initial_display
+
+    lg.basicConfig(level=root_level, handlers=[handler], force=True)
+
+    if warnings_as_errors:
+        wae_handler = WarningsAsErrorsHandler()
+        lg.getLogger().addHandler(wae_handler)
+        set_warnings_handler(wae_handler)
+
     ctx.obj = Params(**kwargs)  # type: ignore
 
     if ctx.obj['cwd']:
         lg.info(f'Changing working directory to: {ctx.obj["cwd"]}')
         os.chdir(ctx.obj['cwd'])
 
-    lg.info(f'Verbose: {verbose}')
+
+@rms.result_callback()
+@click.pass_context
+def process_result(ctx, result, **kwargs):
+    from syntagmax.log_utils import get_warnings_handler, _cleanup_logging
+
+    handler = get_warnings_handler()
+    warnings = list(handler.warnings) if handler else []
+    _cleanup_logging()
+
+    # Check both CLI flag and handler presence (config may have enabled WAE)
+    if (kwargs.get('warnings_as_errors') or handler) and warnings:
+        raise FatalError(warnings)
 
 
 @rms.command(help='Initialize a new Syntagmax project')

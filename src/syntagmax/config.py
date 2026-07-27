@@ -196,6 +196,8 @@ class Metamodel(BaseModel):
 class ConfigFile(BaseModel):
     base: str = Field(default='..', description='Base directory for relative paths, relative to this config file')
     language: str = Field(default='en', description='Output language for reports (en, ru)')
+    log_level: str = Field(default='info', description='Console log verbosity level')
+    warnings_as_errors: bool = Field(default=False, description='Treat warnings as fatal errors')
     publish: str | None = Field(default=None, description='Global publish config file path, relative to config file directory')
     input: list[InputConfig] = Field(..., description='List of input sources to process')
     metrics: MetricsConfig = Field(MetricsConfig(), description='Configuration for metrics collection')
@@ -206,6 +208,16 @@ class ConfigFile(BaseModel):
     drivers: DriversConfig = Field(default_factory=DriversConfig, description='Driver-specific configuration defaults')
     baseline: BaselineConfig = Field(default_factory=BaselineConfig, description='Configuration for the baseline tagging command')
     trace: TraceConfig = Field(default_factory=TraceConfig, description='Configuration for trace export')
+
+    @field_validator('log_level')
+    @classmethod
+    def validate_log_level(cls, v: str) -> str:
+        from syntagmax.params import VALID_LOG_LEVELS
+
+        normalized = v.lower()
+        if normalized not in VALID_LOG_LEVELS:
+            raise ValueError(f"Invalid log_level '{v}'. Valid levels: {', '.join(VALID_LOG_LEVELS)}")
+        return normalized
 
     @field_validator('language')
     @classmethod
@@ -247,7 +259,11 @@ class Config:
 
         try:
             # Global config
-            global_config_path = Path(os.path.expanduser('~/.config/syntagmax/config.toml'))
+            syntagmax_home = os.environ.get('SYNTAGMAX_HOME')
+            if syntagmax_home:
+                global_config_path = Path(syntagmax_home, 'config.toml')
+            else:
+                global_config_path = Path(os.path.expanduser('~/.config/syntagmax/config.toml'))
 
             if global_config_path.exists():
                 lg.info(f'Loading global configuration from {global_config_path}')
@@ -264,7 +280,27 @@ class Config:
         except Exception as exc:
             errors.append(f'Failed to load project config: {exc}')
 
-        if self.params['verbose']:
+        # Early log level resolution to prevent INFO leakage
+        from syntagmax.log_utils import configure_log_display, WarningsAsErrorsHandler, set_warnings_handler
+
+        resolved_log = self.params.get('log_level') or config_data.get('log_level') or 'info'
+        resolved_wae = self.params.get('warnings_as_errors')
+        if resolved_wae is None:
+            resolved_wae = config_data.get('warnings_as_errors', False)
+
+        self.params['log_level'] = resolved_log
+        self.params['warnings_as_errors'] = resolved_wae
+        configure_log_display(resolved_log, resolved_wae)
+
+        # Attach WarningsAsErrorsHandler if config enables it but CLI didn't
+        if resolved_wae:
+            from syntagmax.log_utils import get_warnings_handler
+            if not get_warnings_handler():
+                wae_handler = WarningsAsErrorsHandler()
+                lg.getLogger().addHandler(wae_handler)
+                set_warnings_handler(wae_handler)
+
+        if self.params.get('log_level') == 'debug':
             json_config = json.dumps(config_data, indent=4)
             lg.debug(f'Configuration file contents: {json_config}')
 

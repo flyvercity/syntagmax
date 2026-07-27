@@ -9,6 +9,8 @@ For a detailed explanation of how Syntagmax handles different directories, relat
 | Option | Required | Description |
 |--------|----------|-------------|
 | `base` | Yes | Base directory path (relative to the config file). |
+| `log_level` | No | Console log verbosity: `debug`, `info`, `warning`, `error`, `silent`. Default: `info`. Can be overridden by `--log` CLI flag. |
+| `warnings_as_errors` | No | Treat warnings as fatal errors. Default: `false`. Can be overridden by `--warnings-as-errors` CLI flag. |
 | `language` | No | Output language for reports (`en` or `ru`). Default: `en`. Can be overridden by `--lang` CLI flag. |
 | `publish` | No | Global publish config file path (relative to config file directory). See [Publishing Reference](publishing.md). |
 | `input` | Yes | List of input source definitions |
@@ -328,6 +330,45 @@ syntagmax --lang ru analyze
 
 **Scope:** Localization applies to analysis reports and change reports only. The `publish` command and MCP server are not affected.
 
+## Log Level (`log_level`, `warnings_as_errors`)
+
+Controls console log verbosity and warning behaviour.
+
+| Field | Required | Default | Description |
+|-------|----------|---------|-------------|
+| `log_level` | No | `info` | Console log verbosity. Accepted values: `debug`, `info`, `warning`, `error`, `silent`. Case-insensitive. |
+| `warnings_as_errors` | No | `false` | When `true`, any warning emitted during execution causes a non-zero exit code. |
+
+The log level can also be set via the `--log` CLI flag, which takes precedence over the config file value:
+
+```bash
+syntagmax --log debug analyze
+syntagmax --warnings-as-errors analyze
+```
+
+**Resolution order:**
+1. CLI `--log` flag (highest priority)
+2. Project `config.toml` `log_level` field
+3. Global config `log_level` field
+4. Default: `info`
+
+The same resolution order applies to `warnings_as_errors` (CLI flag > project config > global config > default `false`).
+
+### Global Configuration
+
+The global configuration file is located at:
+- `$SYNTAGMAX_HOME/config.toml` (if the `SYNTAGMAX_HOME` environment variable is set)
+- `~/.config/syntagmax/config.toml` (default)
+
+Set `SYNTAGMAX_HOME` to override the default global configuration directory. This applies to all global settings (log level, language, AI provider, etc.).
+
+### Example
+
+```toml
+log_level = "warning"
+warnings_as_errors = true
+```
+
 ## AI Configuration (`[ai]`)
 
 AI analysis configuration. Settings can also be placed in `~/.syntagmax/config` (global configuration) which are overridden by the project configuration.
@@ -401,6 +442,7 @@ If the `[baseline]` section is omitted or `tag_pattern` is not set, any tag name
 
 ```toml
 base = ".."
+log_level = "info"
 
 [[input]]
 name = "requirements"

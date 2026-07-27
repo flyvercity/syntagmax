@@ -4,11 +4,14 @@
 # Created: 2025-04-06
 # Description: Syntagmax CLI parameters for the RMS.
 
-from typing import TypedDict
+from typing import NotRequired, TypedDict
+
+VALID_LOG_LEVELS = ('debug', 'info', 'warning', 'error', 'silent')
 
 
 class Params(TypedDict):
-    verbose: bool
+    log_level: NotRequired[str]
+    warnings_as_errors: NotRequired[bool]
     render_tree: bool
     ai: bool
     cwd: str
