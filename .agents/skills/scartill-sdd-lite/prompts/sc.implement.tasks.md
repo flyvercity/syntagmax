@@ -1,1 +1,1 @@
-Implement tasks using subagents. Relevant `summary.md` can provide guidance for parallelization.
+Implement tasks using subagents. Relevant `summary.md`, if exists, can provide guidance for parallelization.

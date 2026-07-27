@@ -12,8 +12,15 @@ description: "Lightweight Kiro-first specification driven development kit"
 - `Critique` - critique specification (prompt: `prompts/sc.critique.spec.md`, critique file as a parameter)
 - `Code Review` - review implementation (prompt: `prompts/sc.code.review.md`)
 - `Archive` - archive older project documentation (prompt: `prompts/sc.archive.md`)
+- `Save Brainstorm`- save persistent brainstorming results (prompt: sc.save.brainstorm.md`)
 
 Upon activation, remember these commands, but do not run until an explicit user request.
+
+# Polymorphic Save
+
+If the user just say "Save", act depending on the previous action:
+- if the last action was to create a specification, execute "Save Spec";
+- if the last action was brainstorming, execute "Save Brainstorm".
 
 # Guidance
 

@@ -1,0 +1,1 @@
+Save the results of the brainstorm into a new file in `./docs/brainstorms/`. Add a section for open questions. For each open question, add a placeholder for the answer.

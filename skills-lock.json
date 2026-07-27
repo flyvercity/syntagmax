@@ -4,8 +4,8 @@
     "scartill-sdd-lite": {
       "source": "scartill/scartill-sdd-lite",
       "sourceType": "github",
-      "skillPath": "SKILL.md",
-      "computedHash": "3d9d15ae9dfcedbae12151b58478874b35bbf663de3d1f28c022b1a15e135113"
+      "skillPath": "skills/scartill-sdd-lite/SKILL.md",
+      "computedHash": "4b2c0811ebe8cf73c33d62daed3da466458937abf0e0f92dbffcf3dad44d6b85"
     }
   }
 }

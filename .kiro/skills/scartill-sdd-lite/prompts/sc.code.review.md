@@ -1,6 +1,6 @@
 # Code Review
 
-Code Review the current PR. Write the report to a new file here: `docs\codereviews\`.
+Code Review the current PR. Write the report to a new file here: `docs/codereviews/`.
 
 **DO NOT** use absolute paths in code review report. Use paths relative to the repository root.
 
@@ -119,7 +119,7 @@ Special cases:
 
 ### Phase 6 — REPORT
 
-Create review artifact at `.claude/reviews/pr-<NUMBER>-review.md` unless the repo already uses legacy `.claude/PRPs/reviews/` for this workstream:
+Create review artifact at `./docs/codereviews/pr-<NUMBER>-review.md` :
 
 ```markdown
 # PR Review: #<NUMBER> — <TITLE>
@@ -204,7 +204,7 @@ Issues: <critical_count> critical, <high_count> high, <medium_count> medium, <lo
 Validation: <pass_count>/<total_count> checks passed
 
 Artifacts:
-  Review: .claude/reviews/pr-<NUMBER>-review.md
+  Review: ./docs/codereviews/pr-<NUMBER>-review.md
   GitHub: <PR URL>
 
 Next steps:

@@ -107,7 +107,7 @@ Challenge the specification and implementation plan through two distinct expert 
    - 💡 **Recommendation**: Strongly suggested improvement that would significantly improve quality, value, or risk profile. Should be addressed but won't block progress.
    - 🤔 **Question**: Ambiguity or assumption that needs stakeholder input. Cannot be resolved by the development team alone.
 
-7. **Generate Critique Report**:
+5. **Generate Critique Report**:
    Ensure the directory `docs/critiques/` exists (create it if necessary), then create the critique report. If critique report already exists, do not overwrite, create a new file. The report must include:
 
    - **Executive Summary**: Overall assessment and readiness to proceed
@@ -123,19 +123,19 @@ Challenge the specification and implementation plan through two distinct expert 
    | E1 | Engineering | 💡 | Failure Modes | No retry strategy for API calls | Add exponential backoff with circuit breaker |
    | X1 | Both | 🎯 | Scope × Risk | Feature X adds complexity with unclear value | Defer to v2; reduces both scope and technical risk |
 
-8. **Provide Verdict**:
+6. **Provide Verdict**:
    Based on findings, provide one of:
    - ⚠️ **PROCEED WITH UPDATES**: Must-address items found but are resolvable.
    - 🛑 **RETHINK**: Fundamental product or architecture concerns. Recommend revisiting the spec.
 
-9. **Offer Remediation**:
+7. **Offer Remediation**:
    For each must-address item and recommendation:
    - Provide a specific suggested edit to the spec.
    - Ask: "Would you like me to apply these changes? (all / select / none)"
    - If user approves, apply changes to the relevant files
-   - After applying changes, recommend re-running critique` to verify.
+   - After applying changes, recommend re-running `critique` to verify.
 
-10. Additional Instructions
+8. Additional Instructions
 
-No not use absolute paths for referencing files in the report. Use relative paths only.
+Do not use absolute paths for referencing files in the report. Use relative paths only.
 
