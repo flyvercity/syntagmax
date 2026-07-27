@@ -6,12 +6,12 @@ Users find `--suppress-warnings` inconvenient. They want a single `--log` global
 
 ## Requirements
 
-- Replace `--verbose` flag and `--suppress-warnings` flag with a unified `--log` option accepting: `debug`, `info`, `warning`, `error`, `silent` (keeping `--verbose` and `--suppress-warnings` as deprecated hidden aliases)
+- Replace `--verbose` flag and `--suppress-warnings` flag with a unified `--log` option accepting: `debug`, `info`, `warning`, `error`, `silent`
 - `silent` means no console log output at all; report files are still written
 - Log level resolution order: CLI `--log` > project `config.toml` `log_level` > global config `log_level` (resolved via `SYNTAGMAX_HOME/config.toml` or `~/.config/syntagmax/config.toml`) > default `info`
 - `--warnings-as-errors` resolution order: CLI dual flag (`--warnings-as-errors/--no-warnings-as-errors`) > project config > global config > default `false`
 - `--warnings-as-errors` must function correctly at any log level (including `silent` — warnings are not displayed but still trigger fatal error at exit)
-- Deprecate `--verbose` and `--suppress-warnings` flags: `--verbose` maps to `--log debug`, `--suppress-warnings` maps to `--log error`. Both are hidden from `--help` output.
+- Remove `--verbose` and `--suppress-warnings` flags entirely
 - Provide `SYNTAGMAX_HOME` environment variable to override the global config directory path (default `~/.config/syntagmax/`) for testability and sandbox safety
 
 ## Background
@@ -33,7 +33,7 @@ Users find `--suppress-warnings` inconvenient. They want a single `--log` global
 
 1. **Handler-level filtering** — Display filtering is applied on `RichHandler` only. The root logger level is set to the minimum of the resolved display level and `WARNING` when `warnings_as_errors` is active (ensuring WARNING records always reach the handler), or to the resolved display level when inactive.
 2. **`silent` = `CRITICAL + 1`** — Applied to `RichHandler`, not root logger. No console output but all handlers (including `WarningsAsErrorsHandler`) still active.
-3. **Deprecated aliases** — `--verbose` and `--suppress-warnings` are retained as hidden CLI options for backward compatibility, mapped internally to `--log debug` and `--log error` respectively. They are excluded from `--help` output.
+3. **`--verbose` and `--suppress-warnings` removed** — Their behavior is fully subsumed by `--log debug` and `--log error` respectively. No backward compatibility aliases needed.
 4. **`--warnings-as-errors` orthogonal to `--log`** — Valid combination: `--log silent --warnings-as-errors` means "show nothing, but fail if any warnings emitted."
 5. **Same resolution pattern for both settings** — Consistent with `language`. CLI overrides project config overrides global config overrides default.
 6. **Boolean `--warnings-as-errors` in config** — Simple `warnings_as_errors = true` in TOML, not a complex structure. CLI uses dual flag (`--warnings-as-errors/--no-warnings-as-errors`) with `default=None` to allow explicit disabling.
@@ -96,10 +96,10 @@ warnings_as_errors = true
 
 ### Task 1: Update `Params` TypedDict and `ConfigFile` Model
 
-**Objective:** Add `log_level` and `warnings_as_errors` to `Params` (keeping `verbose` for backward compatibility). Add both fields to `ConfigFile` with validation.
+**Objective:** Replace `verbose: bool` with `log_level` and `warnings_as_errors` in `Params`. Add both fields to `ConfigFile` with validation.
 
 **Implementation:**
-- In `params.py`: keep `verbose: bool` (deprecated, used by hidden alias). Add `log_level: NotRequired[str]` and `warnings_as_errors: NotRequired[bool]` using `typing.NotRequired` to preserve test compatibility.
+- In `params.py`: remove `verbose: bool`. Add `log_level: NotRequired[str]` and `warnings_as_errors: NotRequired[bool]` using `typing.NotRequired` to preserve test compatibility for existing tests that don't pass these keys.
 - Define `VALID_LOG_LEVELS = ('debug', 'info', 'warning', 'error', 'silent')` in `params.py`
 - In `config.py` `ConfigFile` model: add `log_level: str = Field(default='info', description='Console log verbosity')` with `@field_validator` that normalizes input to lowercase via `.lower()` then checks against `VALID_LOG_LEVELS`
 - Add `warnings_as_errors: bool = Field(default=False, description='Treat warnings as fatal errors')`
@@ -118,7 +118,7 @@ warnings_as_errors = true
 
 ### Task 2: Replace CLI Flags with `--log` and Integrate `--warnings-as-errors`
 
-**Objective:** Add `--log` option and `--warnings-as-errors` dual flag. Retain `--verbose` and `--suppress-warnings` as deprecated hidden aliases. Implement handler-level filtering via a shared module.
+**Objective:** Remove `--verbose` and `--suppress-warnings`. Add `--log` option and `--warnings-as-errors` dual flag. Implement handler-level filtering via a shared module.
 
 **Implementation:**
 - Create `src/syntagmax/log_utils.py` shared module containing:
@@ -128,12 +128,10 @@ warnings_as_errors = true
   - `_configure_log_display(level_str: str)` helper (maps level string to Python log level, applies to RichHandler)
   - `get_warnings_handler() -> WarningsAsErrorsHandler | None` (returns the active handler if any)
 - In `cli.py` `rms` group:
-  - Keep `--verbose` as hidden deprecated flag: `@click.option('--verbose', is_flag=True, hidden=True, help='[DEPRECATED] Use --log debug')`
-  - Keep `--suppress-warnings` as hidden deprecated flag: `@click.option('--suppress-warnings', is_flag=True, hidden=True, help='[DEPRECATED] Use --log error')`
+  - Remove `--verbose` and `--suppress-warnings` options entirely
   - Add `@click.option('--log', 'log_level', type=click.Choice(['debug', 'info', 'warning', 'error', 'silent'], case_sensitive=False), default=None, help='Console log verbosity level')`
   - Add `@click.option('--warnings-as-errors/--no-warnings-as-errors', 'warnings_as_errors', default=None, help='Treat all warnings as fatal errors')`
 - In `rms()` body:
-  - Map deprecated flags: if `verbose` and no `log_level`, set `log_level = 'debug'`. If `suppress_warnings` and no `log_level`, set `log_level = 'error'`.
   - Determine initial root logger level (default `INFO` before config resolution)
   - Create `RichHandler` with level based on `log_level` (default to `INFO` if None — config resolution happens later in `Config.__init__`)
   - Map `'silent'` to `lg.CRITICAL + 1`
@@ -148,11 +146,8 @@ warnings_as_errors = true
 - `--log silent --warnings-as-errors` still fails if warnings emitted
 - `--log error` suppresses info and warning from display
 - `--no-warnings-as-errors` overrides config-level `warnings_as_errors = true` to false
-- `--verbose` (deprecated) behaves same as `--log debug`
-- `--suppress-warnings` (deprecated) behaves same as `--log error`
-- `--verbose` and `--suppress-warnings` are not shown in `--help` output
 
-**Demo:** `syntagmax --log silent analyze` writes report with no console log output. `syntagmax --log silent --warnings-as-errors analyze` exits non-zero on warnings. `syntagmax --verbose analyze` still works (deprecated alias).
+**Demo:** `syntagmax --log silent analyze` writes report with no console log output. `syntagmax --log silent --warnings-as-errors analyze` exits non-zero on warnings.
 
 ---
 
@@ -189,12 +184,12 @@ warnings_as_errors = true
 
 ### Task 4: Migrate `params['verbose']` Usage Sites
 
-**Objective:** Replace all `params['verbose']` checks with `params.get('log_level') == 'debug'`. The `verbose` key remains in `Params` (for the deprecated alias) but is no longer read directly by business logic.
+**Objective:** Replace all `params['verbose']` checks with `params.get('log_level') == 'debug'`.
 
 **Implementation:**
 - `config.py:267`: `if self.params['verbose']:` → `if self.params.get('log_level') == 'debug':`
 - `extract.py:40`: `if config.params['verbose']:` → `if config.params.get('log_level') == 'debug':`
-- Note: `verbose` still exists as a key in `Params` and is set by the hidden deprecated `--verbose` flag. The mapping from `verbose=True` to `log_level='debug'` happens in `rms()` (Task 2). Business logic should only check `log_level`.
+- Remove all remaining references to `verbose` in business logic
 
 **Test requirements:**
 - `--log debug` triggers config JSON dump in `Config.__init__`
