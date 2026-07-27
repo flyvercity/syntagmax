@@ -146,7 +146,7 @@ class ImpactConfig(BaseModel):
     model_config = ConfigDict(extra='ignore')
     enabled: bool = Field(default=False, description='Enable impact analysis')
     tasks_enabled: bool = Field(default=False, description='Enable task generation from impact analysis')
-    tasks_dir: str = Field(default='.syntagmax/tasks/', description='Directory for generated task files (relative to config file directory)')
+    tasks_dir: str = Field(default='tasks/', description='Directory for generated task files (relative to config file directory)')
     tasks_template: str | None = Field(default=None, description='Path to custom Jinja2 task template (relative to config file directory)')
     task_atype_map: dict[str, str] = Field(default_factory=dict, description='Mapping of parent_atype/child_atype to task atype. Fallback: TASK')
 

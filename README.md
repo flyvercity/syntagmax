@@ -158,7 +158,7 @@ Alternatively, use the `--tasks` CLI flag to enable task generation without modi
 syntagmax analyze --tasks impact
 ```
 
-Task files are written to `.syntagmax/tasks/` by default and include full references to both parent and child artifacts with their revision information.
+Task files are written to `.syntagmax/tasks/` by default (since `tasks_dir` is resolved relative to the config file directory) and include full references to both parent and child artifacts with their revision information.
 
 For the full configuration reference including custom templates, atype mapping, and de-duplication behavior, see [docs/reference/configuration.md](docs/reference/configuration.md).
 

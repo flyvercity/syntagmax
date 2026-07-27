@@ -79,7 +79,7 @@ def generate_toml() -> str:
     # Task generation settings
     toml_str.append('# Task generation from impact analysis')
     toml_str.append('# tasks_enabled = false')
-    toml_str.append('# tasks_dir = ".syntagmax/tasks/"')
+    toml_str.append('# tasks_dir = "tasks/"')
     toml_str.append('# tasks_template = ""')
     toml_str.append('# [impact.task_atype_map]')
     toml_str.append('# "SYS/REQ" = "TASK"')

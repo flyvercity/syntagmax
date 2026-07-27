@@ -307,7 +307,7 @@ When impact analysis identifies outdated artifacts (suspicious links), Syntagmax
 | Option | Default | Description |
 |--------|---------|-------------|
 | `tasks_enabled` | `false` | Enable automatic task file generation from impact analysis |
-| `tasks_dir` | `.syntagmax/tasks/` | Directory for generated task files (relative to config file directory) |
+| `tasks_dir` | `tasks/` | Directory for generated task files (relative to config file directory) |
 | `tasks_template` | — | Path to custom Jinja2 task template (relative to config file directory) |
 | `task_atype_map` | `{}` | Mapping of `"parent_atype/child_atype"` to task artifact type. Fallback: `TASK` |
 
@@ -335,7 +335,7 @@ Task files use flat YAML frontmatter (no `attrs:` nesting) designed for a future
 [impact]
 enabled = true
 tasks_enabled = true
-tasks_dir = ".syntagmax/tasks/"
+tasks_dir = "tasks/"
 tasks_template = "custom-task.j2"
 
 [impact.task_atype_map]

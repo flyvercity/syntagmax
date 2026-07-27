@@ -105,7 +105,7 @@ Task generation is an internal concern of the `impact` step — it runs at the e
 [impact]
 enabled = true
 tasks_enabled = true
-tasks_dir = ".syntagmax/tasks/"           # relative to root_dir
+tasks_dir = "tasks/"                      # relative to root_dir
 tasks_template = "custom-task.j2"         # optional, relative to root_dir (global fallback)
 # Mapping: "parent_atype/child_atype" -> task_atype
 # Default fallback: TASK
@@ -205,7 +205,7 @@ This injection happens in `Config._read_config()` after the metamodel is loaded,
       model_config = ConfigDict(extra='ignore')
       enabled: bool = Field(default=False, description='Enable impact analysis')
       tasks_enabled: bool = Field(default=False, description='Enable task generation from impact analysis')
-      tasks_dir: str = Field(default='.syntagmax/tasks/', description='Directory for generated task files (relative to config file directory)')
+      tasks_dir: str = Field(default='tasks/', description='Directory for generated task files (relative to config file directory)')
       tasks_template: str | None = Field(default=None, description='Path to custom Jinja2 task template (relative to config file directory)')
       task_atype_map: dict[str, str] = Field(default_factory=dict, description='Mapping of "parent_atype/child_atype" to task atype. Fallback: TASK')
   ```
@@ -572,7 +572,7 @@ This injection happens in `Config._read_config()` after the metamodel is loaded,
   ```toml
   # [impact]
   # tasks_enabled = true
-  # tasks_dir = ".syntagmax/tasks/"
+  # tasks_dir = "tasks/"
   # tasks_template = ""             # global fallback template
   # [impact.task_atype_map]
   # "SYS/REQ" = "TASK"
@@ -614,7 +614,7 @@ This injection happens in `Config._read_config()` after the metamodel is loaded,
 - In `docs/reference/configuration.md`:
   - Add a new section **Task Generation (`[impact]` task settings)** documenting:
     - `tasks_enabled` (bool, default `false`)
-    - `tasks_dir` (string, default `.syntagmax/tasks/`, resolved relative to root_dir)
+    - `tasks_dir` (string, default `tasks/`, resolved relative to root_dir)
     - `tasks_template` (string, optional, resolved relative to root_dir)
     - `task_atype_map` (table, mapping `"parent_atype/child_atype"` → task atype, default fallback `TASK`)
   - Under the **Input Sources (`[[input]]`)** table, add:

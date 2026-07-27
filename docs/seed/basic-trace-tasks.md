@@ -17,7 +17,7 @@ We are adding a new capability to Syntagmax - Tasks.
 
 ### Global
 
-- task files location (default: `.syntagmax/tasks/`)
+- task files location (default: `tasks/`, resolved relative to config file directory → `.syntagmax/tasks/`)
 
 ### Impact Section 
 
