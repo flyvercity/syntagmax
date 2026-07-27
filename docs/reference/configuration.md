@@ -27,8 +27,8 @@ Each input defines a source of requirements or artifacts:
 |-------|----------|---------|-------------|
 | `name` | Yes | — | Input source name |
 | `dir` | Yes | — | Subdirectory relative to base directory |
-| `driver` | Yes | — | Driver type: `obsidian`, `ipynb`, `markdown`, etc. |
-| `filter` | No | Driver-specific | File filter pattern (glob). Defaults: `obsidian` → `**/*.md`, `ipynb` → `**/*.ipynb`, `markdown` → `**/*.md` |
+| `driver` | Yes | — | Driver type: `obsidian`, `ipynb`, `markdown`, `simple-markdown`, etc. |
+| `filter` | No | Driver-specific | File filter pattern (glob). Defaults: `obsidian` → `**/*.md`, `ipynb` → `**/*.ipynb`, `markdown` → `**/*.md`, `simple-markdown` → `**/*.md` |
 | `atype` | No | `REQ` | Default artifact type for this source |
 | `marker` | No | *atype* | Custom marker for artifacts (e.g., `[SYS]` in Markdown). Defaults to `atype`. |
 | `markers` | No | `[]` | List of fragment markers for non-artifact text blocks (e.g., `["COM", "NOTE"]`). Obsidian driver only. |
@@ -233,6 +233,54 @@ See `#example` in the code.
 ```
 
 Tags inside inline code, fenced code blocks, and URL anchors are never stripped.
+
+## Simple Markdown Driver
+
+The `simple-markdown` driver implements a one-file-one-artifact model. Each Markdown file in the input directory produces exactly one artifact.
+
+### Extraction Rules
+
+- **Frontmatter as attributes**: All top-level keys in the YAML frontmatter become artifact attributes. The frontmatter is delimited by `---` fences at the start of the file.
+- **Implicit ID from filename**: If no `id` key is present in the frontmatter, the artifact ID is derived from the filename (stem without extension). For example, `TASK-002.md` yields ID `TASK-002`.
+- **Body as contents**: Everything after the frontmatter is stored as the `contents` attribute.
+- **Case-insensitive key handling**: The `id` and `atype` keys are matched case-insensitively and consumed (not passed through as regular attributes).
+
+### Error Behaviour
+
+| Condition | Result |
+|-----------|--------|
+| No frontmatter (no `---` fences) | Best-effort extraction: entire file body becomes `contents`, ID derived from filename |
+| Malformed YAML in frontmatter | Extraction error reported for the file |
+| Empty file | Skipped silently |
+
+### Example Configuration
+
+```toml
+[[input]]
+name = "tasks"
+dir = "tasks"
+driver = "simple-markdown"
+atype = "TASK"
+```
+
+### Example Markdown File
+
+```markdown
+---
+id: TASK-001
+status: open
+priority: high
+---
+# Implement login page
+
+The login page should support OAuth2 and email/password authentication.
+```
+
+This produces an artifact with:
+- `id`: `TASK-001`
+- `status`: `open`
+- `priority`: `high`
+- `contents`: `# Implement login page\n\nThe login page should support OAuth2 and email/password authentication.\n`
 
 ## Metrics (`[metrics]`)
 
