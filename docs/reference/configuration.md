@@ -9,6 +9,8 @@ For a detailed explanation of how Syntagmax handles different directories, relat
 | Option | Required | Description |
 |--------|----------|-------------|
 | `base` | Yes | Base directory path (relative to the config file). |
+| `log_level` | No | Console log verbosity: `debug`, `info`, `warning`, `error`, `silent`. Default: `info`. Can be overridden by `--log` CLI flag. |
+| `warnings_as_errors` | No | Treat warnings as fatal errors. Default: `false`. Can be overridden by `--warnings-as-errors` CLI flag. |
 | `language` | No | Output language for reports (`en` or `ru`). Default: `en`. Can be overridden by `--lang` CLI flag. |
 | `publish` | No | Global publish config file path (relative to config file directory). See [Publishing Reference](publishing.md). |
 | `input` | Yes | List of input source definitions |
@@ -25,12 +27,13 @@ Each input defines a source of requirements or artifacts:
 |-------|----------|---------|-------------|
 | `name` | Yes | — | Input source name |
 | `dir` | Yes | — | Subdirectory relative to base directory |
-| `driver` | Yes | — | Driver type: `obsidian`, `ipynb`, `markdown`, etc. |
-| `filter` | No | Driver-specific | File filter pattern (glob). Defaults: `obsidian` → `**/*.md`, `ipynb` → `**/*.ipynb`, `markdown` → `**/*.md` |
+| `driver` | Yes | — | Driver type: `obsidian`, `ipynb`, `markdown`, `simple-markdown`, etc. |
+| `filter` | No | Driver-specific | File filter pattern (glob). Defaults: `obsidian` → `**/*.md`, `ipynb` → `**/*.ipynb`, `markdown` → `**/*.md`, `simple-markdown` → `**/*.md` |
 | `atype` | No | `REQ` | Default artifact type for this source |
 | `marker` | No | *atype* | Custom marker for artifacts (e.g., `[SYS]` in Markdown). Defaults to `atype`. |
 | `markers` | No | `[]` | List of fragment markers for non-artifact text blocks (e.g., `["COM", "NOTE"]`). Obsidian driver only. |
 | `publish` | No | — | Path to a per-record publish configuration file (relative to the base directory). If the file is not found, Syntagmax raises an error. See [Publishing Reference](publishing.md). |
+| `task_template` | No | — | Per-record task template path (relative to base directory). Overrides global `tasks_template`. |
 | `exclude_elements` | No | `[]` | Markdown elements to exclude at extraction time. Each entry is an object with `name` and optional `mode`. Merged with global `[drivers.obsidian]` defaults. See [Element Exclusion](#element-exclusion) below. |
 
 ## Marked Fragments (Obsidian Driver)
@@ -231,6 +234,54 @@ See `#example` in the code.
 
 Tags inside inline code, fenced code blocks, and URL anchors are never stripped.
 
+## Simple Markdown Driver
+
+The `simple-markdown` driver implements a one-file-one-artifact model. Each Markdown file in the input directory produces exactly one artifact.
+
+### Extraction Rules
+
+- **Frontmatter as attributes**: All top-level keys in the YAML frontmatter become artifact attributes. The frontmatter is delimited by `---` fences at the start of the file.
+- **Implicit ID from filename**: If no `id` key is present in the frontmatter, the artifact ID is derived from the filename (stem without extension). For example, `TASK-002.md` yields ID `TASK-002`.
+- **Body as contents**: Everything after the frontmatter is stored as the `contents` attribute.
+- **Case-insensitive key handling**: The `id` and `atype` keys are matched case-insensitively and consumed (not passed through as regular attributes).
+
+### Error Behaviour
+
+| Condition | Result |
+|-----------|--------|
+| No frontmatter (no `---` fences) | Best-effort extraction: entire file body becomes `contents`, ID derived from filename |
+| Malformed YAML in frontmatter | Extraction error reported for the file |
+| Empty file | Skipped silently |
+
+### Example Configuration
+
+```toml
+[[input]]
+name = "tasks"
+dir = "tasks"
+driver = "simple-markdown"
+atype = "TASK"
+```
+
+### Example Markdown File
+
+```markdown
+---
+id: TASK-001
+status: open
+priority: high
+---
+# Implement login page
+
+The login page should support OAuth2 and email/password authentication.
+```
+
+This produces an artifact with:
+- `id`: `TASK-001`
+- `status`: `open`
+- `priority`: `high`
+- `contents`: `# Implement login page\n\nThe login page should support OAuth2 and email/password authentication.\n`
+
 ## Metrics (`[metrics]`)
 
 | Field | Required | Default | Description |
@@ -248,6 +299,56 @@ Impact analysis helps identify potentially outdated artifacts by comparing their
 | Field | Required | Default | Description |
 |-------|----------|---------|-------------|
 | `enabled` | No | `false` | Enable impact analysis |
+
+### Task Generation (`[impact]` task settings)
+
+When impact analysis identifies outdated artifacts (suspicious links), Syntagmax can automatically generate task files to track the verification work.
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `tasks_enabled` | `false` | Enable automatic task file generation from impact analysis |
+| `tasks_dir` | `tasks/` | Directory for generated task files (relative to config file directory) |
+| `tasks_template` | — | Path to custom Jinja2 task template (relative to config file directory) |
+| `task_atype_map` | `{}` | Mapping of `"parent_atype/child_atype"` to task artifact type. Fallback: `TASK` |
+
+> **CLI override:** The `--tasks` flag on the `analyze` command forces `tasks_enabled = true` regardless of the config file setting. See [CLI Reference](CLI.md#analyze).
+
+Per-input-record override:
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `task_template` | — | Per-record task template path (relative to base directory). Overrides global `tasks_template`. |
+
+#### Template Resolution Order
+
+1. Per-input record `task_template` (resolved relative to `base_dir`) — highest priority
+2. Global `tasks_template` in `[impact]` (resolved relative to config file directory) — fallback
+3. Built-in `task.j2` from package resources — final fallback
+
+This mirrors the `publish` config resolution pattern.
+
+#### Task File Format
+
+Task files use flat YAML frontmatter (no `attrs:` nesting) designed for a future `simple-markdown` driver. They must not be parsed using the `obsidian` driver.
+
+```toml
+[impact]
+enabled = true
+tasks_enabled = true
+tasks_dir = "tasks/"
+tasks_template = "custom-task.j2"
+
+[impact.task_atype_map]
+"SYS/REQ" = "TASK"
+```
+
+#### De-duplication
+
+Task generation is revision-aware. Each task file stores `parent_revision` and `child_revision` hashes in its frontmatter. A task is regenerated only when the parent or child revision changes. If revisions match the current state, the task is skipped regardless of its status.
+
+#### Filename Sanitization
+
+Task filenames are derived from task IDs (`TASK-IMPACT-{child_aid}-{parent_aid}.md`). Characters `/`, `\`, `:`, `*`, `?`, `"`, `<`, `>`, `|` are replaced with hyphens.
 
 ## Metamodel (`[metamodel]`)
 
@@ -276,6 +377,45 @@ syntagmax --lang ru analyze
 4. Default: `en`
 
 **Scope:** Localization applies to analysis reports and change reports only. The `publish` command and MCP server are not affected.
+
+## Log Level (`log_level`, `warnings_as_errors`)
+
+Controls console log verbosity and warning behaviour.
+
+| Field | Required | Default | Description |
+|-------|----------|---------|-------------|
+| `log_level` | No | `info` | Console log verbosity. Accepted values: `debug`, `info`, `warning`, `error`, `silent`. Case-insensitive. |
+| `warnings_as_errors` | No | `false` | When `true`, any warning emitted during execution causes a non-zero exit code. |
+
+The log level can also be set via the `--log` CLI flag, which takes precedence over the config file value:
+
+```bash
+syntagmax --log debug analyze
+syntagmax --warnings-as-errors analyze
+```
+
+**Resolution order:**
+1. CLI `--log` flag (highest priority)
+2. Project `config.toml` `log_level` field
+3. Global config `log_level` field
+4. Default: `info`
+
+The same resolution order applies to `warnings_as_errors` (CLI flag > project config > global config > default `false`).
+
+### Global Configuration
+
+The global configuration file is located at:
+- `$SYNTAGMAX_HOME/config.toml` (if the `SYNTAGMAX_HOME` environment variable is set)
+- `~/.config/syntagmax/config.toml` (default)
+
+Set `SYNTAGMAX_HOME` to override the default global configuration directory. This applies to all global settings (log level, language, AI provider, etc.).
+
+### Example
+
+```toml
+log_level = "warning"
+warnings_as_errors = true
+```
 
 ## AI Configuration (`[ai]`)
 
@@ -350,6 +490,7 @@ If the `[baseline]` section is omitted or `tag_pattern` is not set, any tag name
 
 ```toml
 base = ".."
+log_level = "info"
 
 [[input]]
 name = "requirements"

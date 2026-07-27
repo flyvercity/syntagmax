@@ -18,6 +18,7 @@ class Report:
     metrics: benedict | None = None
     impact: benedict | None = None
     ai_results: list[dict] | None = None
+    tasks_summary: dict | None = None
 
     def render(self) -> str:
         from syntagmax.i18n import get_translations

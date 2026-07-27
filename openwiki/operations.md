@@ -39,6 +39,7 @@ Key options:
 - `--no-git` skips revision extraction
 - `--render-tree` appends a textual tree view to the report
 - `--output console` prints markdown to stdout instead of writing a file
+- `--tasks` enables task generation from impact analysis (overrides config)
 - `--locale` sets the locale for localized change reports (e.g., `--locale ru`)
 
 The command defaults to writing `.syntagmax/reports/report.md`.

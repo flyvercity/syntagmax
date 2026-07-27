@@ -62,6 +62,8 @@ def generate_toml() -> str:
     # Impact
     toml_str.append('# [impact]')
     for name, field in ImpactConfig.model_fields.items():
+        if name == 'task_atype_map':
+            continue
         desc = get_desc(field)
         default = field.default
         if isinstance(default, str):
@@ -74,6 +76,13 @@ def generate_toml() -> str:
             val = str(default)
         toml_str.append(f'# {desc}')
         toml_str.append(f'# {name} = {val}')
+    # Task generation settings
+    toml_str.append('# Task generation from impact analysis')
+    toml_str.append('# tasks_enabled = false')
+    toml_str.append('# tasks_dir = "tasks/"')
+    toml_str.append('# tasks_template = ""')
+    toml_str.append('# [impact.task_atype_map]')
+    toml_str.append('# "SYS/REQ" = "TASK"')
     toml_str.append('')
 
     # AI

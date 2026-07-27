@@ -50,6 +50,7 @@ For details on how all these paths are resolved relative to the project configur
 
 ```toml
 base = ".."
+log_level = "info"
 
 [[input]]
 name = "requirements"
@@ -138,6 +139,28 @@ syntagmax --render-tree analyze
 # Print report to stdout
 syntagmax --output console --render-tree analyze
 ```
+
+### Task Generation
+
+Syntagmax can automatically generate task files from impact analysis results. Each outdated artifact (suspicious link) produces a dedicated markdown task file tracking the verification work.
+
+Enable in `config.toml`:
+
+```toml
+[impact]
+enabled = true
+tasks_enabled = true
+```
+
+Alternatively, use the `--tasks` CLI flag to enable task generation without modifying the config file:
+
+```bash
+syntagmax analyze --tasks impact
+```
+
+Task files are written to `.syntagmax/tasks/` by default (since `tasks_dir` is resolved relative to the config file directory) and include full references to both parent and child artifacts with their revision information.
+
+For the full configuration reference including custom templates, atype mapping, and de-duplication behavior, see [docs/reference/configuration.md](docs/reference/configuration.md).
 
 ## Metamodel DSL
 
@@ -575,6 +598,57 @@ Localization applies to:
 It does **not** apply to:
 - `publish` command output (renders user content as-is)
 - MCP server responses (remain English for LLM compatibility)
+
+## Log Level Control
+
+Syntagmax provides a unified `--log` CLI option to control console log verbosity.
+
+### Available Levels
+
+| Level | Description |
+|-------|-------------|
+| `debug` | Verbose output including internal diagnostics |
+| `info` | Standard operational messages (default) |
+| `warning` | Warnings and errors only |
+| `error` | Errors only |
+| `silent` | Suppress all console output |
+
+### Usage
+
+```bash
+# Run with debug logging
+syntagmax --log debug analyze
+
+# Suppress warnings
+syntagmax --log error analyze
+
+# Treat warnings as fatal errors
+syntagmax --warnings-as-errors analyze
+```
+
+### Configuration
+
+Log level and warnings behaviour can be set in `config.toml`:
+
+```toml
+log_level = "info"
+warnings_as_errors = false
+```
+
+### Resolution Order
+
+1. CLI `--log` flag (highest priority)
+2. Project `config.toml` `log_level` field
+3. Global config `log_level` field
+4. Default: `info`
+
+### Global Configuration
+
+The global configuration file is located at:
+- `$SYNTAGMAX_HOME/config.toml` (if `SYNTAGMAX_HOME` is set)
+- `~/.config/syntagmax/config.toml` (default)
+
+Set `SYNTAGMAX_HOME` to override the default global configuration directory.
 
 ## Required Improvements
 

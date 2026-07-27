@@ -41,6 +41,11 @@ tbd_marker = "TBD"
 
 [impact]
 enabled = true
+tasks_enabled = true
+# tasks_dir = "tasks/"
+# tasks_template = ""
+# [impact.task_atype_map]
+# "SYS/REQ" = "TASK"
 
 [metamodel]
 filename = "project.syntagmax"

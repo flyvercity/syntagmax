@@ -14,19 +14,21 @@ The CLI is invoked as `syntagmax`. All commands share a set of global options th
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `--verbose` | Flag | off | Enable verbose (DEBUG-level) logging |
+| `--log LEVEL` | Choice: `debug`, `info`, `warning`, `error`, `silent` | `info` | Set console log verbosity |
+| `--warnings-as-errors / --no-warnings-as-errors` | Flag | off | Treat warnings as fatal errors (non-zero exit) |
 | `--render-tree` | Flag | off | Include the artifact tree in the analysis report |
 | `--cwd PATH` | Path | current dir | Change the working directory before executing |
 | `--no-git` | Flag | off | Skip git history extraction |
 | `--output PATH` | String | `.syntagmax/reports/report.md` | Report output file path (use `console` for stdout) |
+| `--lang CODE` | String | from config | Override output language for reports |
 | `--version` | Flag | — | Show version and exit |
 | `--help` | Flag | — | Show help and exit |
 
 ### Examples
 
 ```bash
-# Run with verbose logging
-syntagmax --verbose analyze
+# Run with debug logging
+syntagmax --log debug analyze
 
 # Change working directory and render tree
 syntagmax --render-tree --cwd ./my-project analyze
@@ -36,6 +38,9 @@ syntagmax --no-git analyze
 
 # Output report to stdout
 syntagmax --output console --render-tree analyze
+
+# Treat warnings as errors
+syntagmax --warnings-as-errors analyze
 ```
 
 ---
@@ -96,6 +101,7 @@ Available steps (in dependency order):
 | `-f, --config-file PATH` | Path | `.syntagmax/config.toml` | Path to the project configuration file |
 | `--allow-dirty-worktree` | Flag | off | Allow analysis on a dirty git worktree |
 | `--suppress-tracing` | Flag | off | Suppress tracing model errors |
+| `--tasks` | Flag | off | Enable task generation (overrides `tasks_enabled` in config) |
 
 #### Examples
 
@@ -114,6 +120,9 @@ syntagmax analyze --allow-dirty-worktree ai
 
 # Suppress tracing errors during tree validation
 syntagmax analyze --suppress-tracing tree
+
+# Force task generation from impact analysis (overrides config)
+syntagmax analyze --tasks impact
 
 # Combine with global options
 syntagmax --render-tree --output console analyze

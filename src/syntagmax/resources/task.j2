@@ -1,0 +1,25 @@
+---
+id: {{ task.task_id }}
+status: open
+contents: "Verify {{ task.child_aid }} is updated after {{ task.parent_aid }} change"
+parent_revision: "{{ task.parent_revision_short or '' }}"
+child_revision: "{{ task.child_revision_short or '' }}"
+---
+# Impact Task: {{ task.child_aid }} → {{ task.parent_aid }}
+
+## Parent (Updated)
+- **ID:** {{ task.parent_aid }}
+- **Type:** {{ task.parent_atype }}
+- **Input Record:** {{ task.parent_record_name }}
+- **File:** {{ task.parent_file_path }}
+{% if task.parent_revision_short %}- **Current Revision:** {{ task.parent_revision_short }} (full: {{ task.parent_revision_long }}){% endif %}
+
+## Child (Outdated)
+- **ID:** {{ task.child_aid }}
+- **Type:** {{ task.child_atype }}
+- **Input Record:** {{ task.child_record_name }}
+- **File:** {{ task.child_file_path }}
+- **Referenced Revision:** {{ task.nominal_revision }}
+
+## Action Required
+Verify that {{ task.child_aid }} is still consistent with the updated {{ task.parent_aid }} and update the tracing reference.

@@ -105,9 +105,10 @@ class InputRecord:
     markers: list[str] = field(default_factory=list)
     publish_config: str | None = None
     exclude_elements: list['ExcludeElementConfig'] = field(default_factory=list)
+    task_template: str | None = None
 
 
-DEFAULT_FILTERS = {'obsidian': '**/*.md', 'ipynb': '**/*.ipynb', 'markdown': '**/*.md'}
+DEFAULT_FILTERS = {'obsidian': '**/*.md', 'ipynb': '**/*.ipynb', 'markdown': '**/*.md', 'simple-markdown': '**/*.md'}
 
 
 class InputConfig(BaseModel):
@@ -122,6 +123,7 @@ class InputConfig(BaseModel):
     exclude_elements: list[ExcludeElementConfig] | None = Field(
         default=None, description='Markdown elements to exclude at extraction time (merged with global driver defaults)'
     )
+    task_template: str | None = Field(default=None, description='Per-record task template path (relative to base directory). Overrides global tasks_template.')
 
     @field_validator('exclude_elements')
     @classmethod
@@ -143,6 +145,10 @@ class MetricsConfig(BaseModel):
 class ImpactConfig(BaseModel):
     model_config = ConfigDict(extra='ignore')
     enabled: bool = Field(default=False, description='Enable impact analysis')
+    tasks_enabled: bool = Field(default=False, description='Enable task generation from impact analysis')
+    tasks_dir: str = Field(default='tasks/', description='Directory for generated task files (relative to config file directory)')
+    tasks_template: str | None = Field(default=None, description='Path to custom Jinja2 task template (relative to config file directory)')
+    task_atype_map: dict[str, str] = Field(default_factory=dict, description='Mapping of parent_atype/child_atype to task atype. Fallback: TASK')
 
 
 class AIConfig(BaseModel):
@@ -190,6 +196,8 @@ class Metamodel(BaseModel):
 class ConfigFile(BaseModel):
     base: str = Field(default='..', description='Base directory for relative paths, relative to this config file')
     language: str = Field(default='en', description='Output language for reports (en, ru)')
+    log_level: str = Field(default='info', description='Console log verbosity level')
+    warnings_as_errors: bool = Field(default=False, description='Treat warnings as fatal errors')
     publish: str | None = Field(default=None, description='Global publish config file path, relative to config file directory')
     input: list[InputConfig] = Field(..., description='List of input sources to process')
     metrics: MetricsConfig = Field(MetricsConfig(), description='Configuration for metrics collection')
@@ -200,6 +208,16 @@ class ConfigFile(BaseModel):
     drivers: DriversConfig = Field(default_factory=DriversConfig, description='Driver-specific configuration defaults')
     baseline: BaselineConfig = Field(default_factory=BaselineConfig, description='Configuration for the baseline tagging command')
     trace: TraceConfig = Field(default_factory=TraceConfig, description='Configuration for trace export')
+
+    @field_validator('log_level')
+    @classmethod
+    def validate_log_level(cls, v: str) -> str:
+        from syntagmax.params import VALID_LOG_LEVELS
+
+        normalized = v.lower()
+        if normalized not in VALID_LOG_LEVELS:
+            raise ValueError(f"Invalid log_level '{v}'. Valid levels: {', '.join(VALID_LOG_LEVELS)}")
+        return normalized
 
     @field_validator('language')
     @classmethod
@@ -241,7 +259,11 @@ class Config:
 
         try:
             # Global config
-            global_config_path = Path(os.path.expanduser('~/.config/syntagmax/config.toml'))
+            syntagmax_home = os.environ.get('SYNTAGMAX_HOME')
+            if syntagmax_home:
+                global_config_path = Path(syntagmax_home, 'config.toml')
+            else:
+                global_config_path = Path(os.path.expanduser('~/.config/syntagmax/config.toml'))
 
             if global_config_path.exists():
                 lg.info(f'Loading global configuration from {global_config_path}')
@@ -258,7 +280,27 @@ class Config:
         except Exception as exc:
             errors.append(f'Failed to load project config: {exc}')
 
-        if self.params['verbose']:
+        # Early log level resolution to prevent INFO leakage
+        from syntagmax.log_utils import configure_log_display, WarningsAsErrorsHandler, set_warnings_handler
+
+        resolved_log = self.params.get('log_level') or config_data.get('log_level') or 'info'
+        resolved_wae = self.params.get('warnings_as_errors')
+        if resolved_wae is None:
+            resolved_wae = config_data.get('warnings_as_errors', False)
+
+        self.params['log_level'] = resolved_log
+        self.params['warnings_as_errors'] = resolved_wae
+        configure_log_display(resolved_log, resolved_wae)
+
+        # Attach WarningsAsErrorsHandler if config enables it but CLI didn't
+        if resolved_wae:
+            from syntagmax.log_utils import get_warnings_handler
+            if not get_warnings_handler():
+                wae_handler = WarningsAsErrorsHandler()
+                lg.getLogger().addHandler(wae_handler)
+                set_warnings_handler(wae_handler)
+
+        if self.params.get('log_level') == 'debug':
             json_config = json.dumps(config_data, indent=4)
             lg.debug(f'Configuration file contents: {json_config}')
 
@@ -277,6 +319,10 @@ class Config:
         self.metrics = config_model.metrics
         self.impact = config_model.impact
         self.ai = config_model.ai
+
+        # CLI --tasks flag overrides config tasks_enabled
+        if self.params.get('tasks'):
+            self.impact.tasks_enabled = True
         self._obsidian_driver_config = config_model.drivers.obsidian
         self._baseline_config = config_model.baseline
         self._trace_config = config_model.trace
@@ -300,6 +346,12 @@ class Config:
         # Validate fragment markers don't collide with metamodel attributes
         if self.metamodel:
             self._validate_marker_attribute_collisions(errors)
+
+        # Inject implicit task metamodel definitions
+        if self.metamodel and self.impact.tasks_enabled:
+            from syntagmax.tasks import inject_task_metamodel
+
+            inject_task_metamodel(self.metamodel, self.impact)
 
         if errors:
             raise FatalError(errors)
@@ -381,6 +433,7 @@ class Config:
                     markers=[m.upper() for m in fragment_markers],
                     publish_config=input_config.publish,
                     exclude_elements=resolved_excludes,
+                    task_template=input_config.task_template,
                 )
             )
 
@@ -438,6 +491,25 @@ class Config:
 
     def root_dir(self) -> Path:
         return self._root_dir
+
+    def tasks_dir(self) -> Path:
+        return Path(self._root_dir, self.impact.tasks_dir)
+
+    def resolve_task_template(self, record: 'InputRecord | None') -> tuple[Path | None, str]:
+        """Resolve task template path following publish-like resolution order.
+        Returns (template_dir, template_name) or (None, 'task.j2') for built-in default.
+        Resolution: record-level -> global -> built-in.
+        """
+        # 1. Per-record override (resolved relative to base_dir)
+        if record and record.task_template:
+            p = Path(self._base_dir, record.task_template)
+            return (p.parent, p.name)
+        # 2. Global tasks_template (resolved relative to root_dir)
+        if self.impact.tasks_template:
+            p = Path(self._root_dir, self.impact.tasks_template)
+            return (p.parent, p.name)
+        # 3. Built-in default
+        return (None, 'task.j2')
 
     def base_dir(self):
         return self._base_dir

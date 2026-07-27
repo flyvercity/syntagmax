@@ -1,1 +1,1 @@
-Archive all documents from `./docs` with the lastest change date older then a week to `./docs/archive`, preserving the structure.
+Archive all documents from `./docs` with the latest change date older than a week to `./docs/archive`, preserving the structure.

@@ -10,6 +10,7 @@ from syntagmax.extractors.text import TextExtractor
 from syntagmax.extractors.sidecar import SidecarExtractor
 from syntagmax.extractors.obsidian import ObsidianExtractor
 from syntagmax.extractors.ipynb import IPynbExtractor
+from syntagmax.extractors.simple_markdown import SimpleMarkdownExtractor
 from syntagmax.artifact import Artifact, UNDEFINED_ID
 from syntagmax.config import Config
 from syntagmax.utils import pprint
@@ -20,6 +21,7 @@ EXTRACTORS = {
     'sidecar': SidecarExtractor,
     'obsidian': ObsidianExtractor,
     'ipynb': IPynbExtractor,
+    'simple-markdown': SimpleMarkdownExtractor,
 }
 
 
@@ -37,7 +39,7 @@ def extract(config: Config, errors) -> list[Artifact]:
         artifacts.extend(record_artifacts)
         errors.extend(record_errors)
 
-    if config.params['verbose']:
+    if config.params.get('log_level') == 'debug':
         lg.debug('Listing raw artifacts:')
 
         for artifact in artifacts:

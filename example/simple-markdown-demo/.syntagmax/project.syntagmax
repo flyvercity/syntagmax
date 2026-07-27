@@ -1,0 +1,4 @@
+artifact TASK:
+    id is string
+    attribute contents is mandatory string
+    attribute status is optional string
