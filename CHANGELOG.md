@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project uses [Calendar Versioning](https://calver.org/) with the scheme `YYYY.M.D`.
 
+## [2026.7.27] - 2026-07-27
+
+### Added
+
+- Simple Markdown driver — use plain `.md` files as input sources without Obsidian-specific syntax
+- Automatic task generation from impact analysis results (configurable via `tasks_enabled` or `--tasks` flag)
+- Unified log level control (`--log` flag) with `debug`, `info`, `warning`, `error`, and `silent` levels
+- `--warnings-as-errors` flag to treat warnings as fatal
+- Plugin-based trace export — route trace matrices through custom plugins via `[trace] plugins` config
+
+### Fixed
+
+- Exit with non-zero code when Pandoc conversion fails
+- Skip null values in list attributes during extraction
+
+### Changed
+
+- Default tasks directory moved to `tasks/`
+- Trace plugin API now exposes `record_names` mapping for artifact type resolution
+
 ## [2026.7.20] - 2026-07-20
 
 ### Added
