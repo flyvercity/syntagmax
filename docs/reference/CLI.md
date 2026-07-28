@@ -417,18 +417,18 @@ syntagmax edit COMMAND [OPTIONS]
 
 #### Subcommands
 
-- [`renumber`](#edit-renumber) — Renumber artifact IDs
+- [`identification`](#edit-identification) — Assign or update artifact IDs
 - [`attrs`](#edit-attrs) — Bulk attribute manipulation
 - [`markers`](#edit-markers) — Fragment marker management
 
 ---
 
-### `edit renumber`
+### `edit identification`
 
-Renumber artifact IDs according to a schema.
+Assign or update artifact IDs according to a schema.
 
 ```
-syntagmax edit renumber [OPTIONS] [CONFIG_PATH]
+syntagmax edit identification [OPTIONS] [CONFIG_PATH]
 ```
 
 #### Arguments
@@ -441,8 +441,8 @@ syntagmax edit renumber [OPTIONS] [CONFIG_PATH]
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `--all` | Flag | off | Renumber all artifacts. Either `--all` or `--atype` is required. |
-| `--atype TYPE` | String | — | Renumber only artifacts of the specified type |
+| `--all` | Flag | off | Process all artifacts. Either `--all` or `--atype` is required. |
+| `--atype TYPE` | String | — | Process only artifacts of the specified type |
 | `--force` | Flag | off | Renumber all artifacts from 1, ignoring existing valid IDs |
 | `--dry-run` | Flag | off | Preview changes without modifying files |
 
@@ -520,20 +520,20 @@ Summary: Preserved 0 valid IDs. Renumbered 5 artifacts. Total: 5.
 #### Examples
 
 ```bash
-# Renumber all artifacts with default schema
-syntagmax edit renumber --all
+# Assign IDs to all artifacts
+syntagmax edit identification --all
 
-# Renumber only REQ artifacts
-syntagmax edit renumber --atype REQ
+# Process only REQ artifacts
+syntagmax edit identification --atype REQ
 
 # Force renumber all from 1
-syntagmax edit renumber --all --force
+syntagmax edit identification --all --force
 
 # Dry run to preview changes
-syntagmax edit renumber --all --dry-run
+syntagmax edit identification --all --dry-run
 
 # Specify a custom config path
-syntagmax edit renumber --all ./custom/config.toml
+syntagmax edit identification --all ./custom/config.toml
 ```
 
 ---

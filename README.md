@@ -182,35 +182,35 @@ trace from REQ to SYS is mandatory via commit
 
 For the full syntax reference, types, trace modes, multiple attributes, and impact analysis logic, see [docs/reference/metamodel.md](docs/reference/metamodel.md).
 
-## Editing and Renumbering
+## Editing and Identification
 
-Syntagmax provides a command to renumber artifact IDs according to a schema. This is useful when you want to ensure a consistent naming convention across your project.
+Syntagmax provides a command to assign or update artifact IDs according to a schema. This is useful when you want to ensure a consistent naming convention across your project.
 
 ### Quick Editing Demo
 
 ```bash
 mkdir tmp
 cp -rf ./example/renumber-demo ./tmp/
-uv run syntagmax --cwd ./tmp/renumber-demo edit renumber --all
+uv run syntagmax --cwd ./tmp/renumber-demo edit identification --all
 ```
 
-### Renumbering Command
+### Identification Command
 
-To renumber artifacts, use the `edit renumber` command:
+To assign IDs to artifacts, use the `edit identification` command:
 
 ```bash
-syntagmax edit renumber --all
+syntagmax edit identification --all
 ```
 
 #### Options:
-- `--all`: Renumber all artifacts.
-- `--atype <type>`: Renumber only artifacts of a specific type.
+- `--all`: Process all artifacts.
+- `--atype <type>`: Process only artifacts of a specific type.
 - `--force`: Renumber all artifacts from 1, ignoring existing valid IDs.
 - `--dry-run`: Show what changes would be made without actually modifying any files.
 
 ### ID Preservation
 
-By default, `edit renumber` preserves artifacts that already have valid IDs and only assigns new IDs where needed.
+By default, `edit identification` preserves artifacts that already have valid IDs and only assigns new IDs where needed.
 
 **When IDs are preserved:** Without `--force`, artifacts whose current ID matches the resolved schema (defined in the metamodel via `id is TYPE as SCHEMA`) are never modified. The schema is resolved per artifact type from the metamodel.
 
@@ -230,7 +230,7 @@ file-a.md: REQ-002, <undefined>, REQ-005
 file-b.md: REQ-{num:3}, <undefined>
 ```
 
-After `syntagmax edit renumber --all`:
+After `syntagmax edit identification --all`:
 ```
 file-a.md: REQ-002, REQ-006, REQ-005
 file-b.md: REQ-007, REQ-008
@@ -238,7 +238,7 @@ file-b.md: REQ-007, REQ-008
 
 REQ-002 and REQ-005 are preserved (valid). New IDs start at 006 (max=5, next=6).
 
-After `syntagmax edit renumber --all --force`:
+After `syntagmax edit identification --all --force`:
 ```
 file-a.md: REQ-001, REQ-002, REQ-003
 file-b.md: REQ-004, REQ-005
