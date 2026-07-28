@@ -59,13 +59,17 @@ def _generate_id(schema: str, atype: str, number: int) -> str:
     return _NUM_PATTERN.sub(replacer, new_id)
 
 
-def renumber_artifacts(config: Config, atype: str | None = None, dry_run: bool = False, force: bool = False):
+def renumber_artifacts(config: Config, atype: str | None = None, dry_run: bool = False, force: bool = False) -> bool:
+    """Renumber artifact IDs using the two-pass max+1 algorithm.
+
+    Returns True on success, False on validation failure or extraction errors.
+    """
     errors = []
     artifacts_list = extract(config, errors)
     if errors:
         for error in errors:
             lg.error(error)
-        return
+        return False
 
     # Filter artifacts if atype is given
     if atype:
@@ -84,7 +88,7 @@ def renumber_artifacts(config: Config, atype: str | None = None, dry_run: bool =
                 f"Schema '{schema}' for artifact type '{artifact.atype}' has "
                 f"multiple {{num}} macros (only one allowed). Aborting."
             )
-            return
+            return False
 
     # === Pass 1: Identify valid IDs and compute max number per type ===
     max_number: dict[str, int] = defaultdict(int)
@@ -199,3 +203,5 @@ def renumber_artifacts(config: Config, atype: str | None = None, dry_run: bool =
                     lg.warning(f'Driver {driver} does not support renumbering yet')
             else:
                 lg.error(f'Could not find input record for artifacts at {loc_file}')
+
+    return True

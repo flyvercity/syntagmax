@@ -53,6 +53,10 @@ class TestExtractNumberFromId:
     def test_returns_none_on_mismatch(self):
         assert extract_number_from_id('INVALID', 'REQ-{num:3}', 'REQ') is None
 
+    def test_returns_none_for_zero_macro_schema(self):
+        """Schema with no {num} macro has no capture group — should return None, not crash."""
+        assert extract_number_from_id('REQ-FIXED', 'REQ-FIXED', 'REQ') is None
+
 
 class TestCountNumMacros:
     """Tests for count_num_macros."""

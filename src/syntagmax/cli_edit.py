@@ -33,10 +33,12 @@ def edit():
 def renumber(obj: Params, config_path: Path, renumber_all: bool, atype: str | None, force: bool, dry_run: bool):
     if not renumber_all and not atype:
         u.pprint('[red]Either --all or --atype must be specified.[/red]')
-        return
+        raise SystemExit(1)
 
     configurator = Config(obj, Path(config_path))
-    renumber_artifacts(configurator, atype, dry_run, force)
+    success = renumber_artifacts(configurator, atype, dry_run, force)
+    if not success:
+        raise SystemExit(1)
 
 
 @edit.command('attrs', help='Add, remove, or replace attributes on artifacts in bulk')

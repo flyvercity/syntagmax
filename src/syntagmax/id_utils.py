@@ -53,9 +53,12 @@ def compile_id_schema(schema: str, atype: str) -> re.Pattern:
 
 
 def extract_number_from_id(aid: str, schema: str, atype: str) -> int | None:
-    """Match aid against the compiled schema and return the extracted number, or None."""
+    """Match aid against the compiled schema and return the extracted number, or None.
+
+    Returns None if the schema has no {num} macro (no capture group) or the ID doesn't match.
+    """
     compiled = compile_id_schema(schema, atype)
     m = compiled.match(aid)
-    if m:
+    if m and m.groups():
         return int(m.group(1))
     return None
