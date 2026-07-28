@@ -28,15 +28,15 @@ def edit():
 )
 @click.option('--all', 'renumber_all', is_flag=True, help='Renumber all artifacts')
 @click.option('--atype', help='Filter by artifact type')
-@click.option('--schema', help='Custom ID schema')
+@click.option('--force', is_flag=True, help='Renumber all artifacts from 1, ignoring existing valid IDs')
 @click.option('--dry-run', is_flag=True, help='Perform a dry run without modifications')
-def renumber(obj: Params, config_path: Path, renumber_all: bool, atype: str | None, schema: str | None, dry_run: bool):
+def renumber(obj: Params, config_path: Path, renumber_all: bool, atype: str | None, force: bool, dry_run: bool):
     if not renumber_all and not atype:
         u.pprint('[red]Either --all or --atype must be specified.[/red]')
         return
 
     configurator = Config(obj, Path(config_path))
-    renumber_artifacts(configurator, atype, schema, dry_run)
+    renumber_artifacts(configurator, atype, dry_run, force)
 
 
 @edit.command('attrs', help='Add, remove, or replace attributes on artifacts in bulk')

@@ -10,6 +10,7 @@ import logging as lg
 from lark import Lark, Transformer, indenter
 
 from syntagmax.errors import FatalError
+from syntagmax.id_utils import count_num_macros
 
 
 class DSLTransformer(Transformer):
@@ -269,6 +270,15 @@ def validate_metamodel(metamodel: dict, errors: list[str]):
             has_mandatory_id = any(r.get('presence') == 'mandatory' and r.get('condition') is None for r in id_rules)
             if not has_mandatory_id:
                 errors.append(f"Artifact '{artifact_name}' id attribute is not mandatory (or is conditional)")
+
+            # Validate {num} macro count in id schemas
+            for rule in id_rules:
+                schema = rule.get('schema')
+                if schema and count_num_macros(schema) > 1:
+                    errors.append(
+                        f"Artifact '{artifact_name}' has id schema '{schema}'"
+                        f" with multiple {{num}} macros (only one allowed)"
+                    )
 
         # contents must have at least one mandatory rule
         contents_rules = attributes.get('contents', [])

@@ -205,17 +205,46 @@ syntagmax edit renumber --all
 #### Options:
 - `--all`: Renumber all artifacts.
 - `--atype <type>`: Renumber only artifacts of a specific type.
-- `--schema <schema>`: Use a custom schema for renumbering.
+- `--force`: Renumber all artifacts from 1, ignoring existing valid IDs.
 - `--dry-run`: Show what changes would be made without actually modifying any files.
 
-### ID Schema Format
+### ID Preservation
 
-The ID schema can include the following macros:
-- `{atype}`: The type of the artifact (e.g., `REQ`, `SYS`).
-- `{num}`: A sequential number.
-- `{num:padding}`: A sequential number with zero-padding (e.g., `{num:3}` for `001`).
+By default, `edit renumber` preserves artifacts that already have valid IDs and only assigns new IDs where needed.
 
-Example schema: `myproject-{atype}-{num:4}`
+**When IDs are preserved:** Without `--force`, artifacts whose current ID matches the resolved schema (defined in the metamodel via `id is TYPE as SCHEMA`) are never modified. The schema is resolved per artifact type from the metamodel.
+
+**When IDs are renumbered:** Only artifacts with absent, empty, or template IDs (containing literal `{num}` or `{atype}` macros) are renumbered. New IDs start from `max(existing valid numbers) + 1` for each artifact type.
+
+**`--force` mode:** All artifacts are renumbered sequentially from 1, regardless of current ID validity.
+
+**Padding semantics:** `{num:3}` means "at least 3 digits". `REQ-1234` is valid under schema `REQ-{num:3}`. Generated IDs are zero-padded to at least N digits but never truncated.
+
+**Per-type isolation:** Each artifact type (e.g., `REQ`, `SYS`) is numbered independently with its own counter and max tracking.
+
+**Example:**
+
+Before (metamodel schema: `REQ-{num:3}`):
+```
+file-a.md: REQ-002, <undefined>, REQ-005
+file-b.md: REQ-{num:3}, <undefined>
+```
+
+After `syntagmax edit renumber --all`:
+```
+file-a.md: REQ-002, REQ-006, REQ-005
+file-b.md: REQ-007, REQ-008
+```
+
+REQ-002 and REQ-005 are preserved (valid). New IDs start at 006 (max=5, next=6).
+
+After `syntagmax edit renumber --all --force`:
+```
+file-a.md: REQ-001, REQ-002, REQ-003
+file-b.md: REQ-004, REQ-005
+```
+
+All artifacts renumbered from 1 in sort order.
 
 ### Bulk Attribute Manipulation
 

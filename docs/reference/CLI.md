@@ -443,18 +443,79 @@ syntagmax edit renumber [OPTIONS] [CONFIG_PATH]
 |--------|------|---------|-------------|
 | `--all` | Flag | off | Renumber all artifacts. Either `--all` or `--atype` is required. |
 | `--atype TYPE` | String | — | Renumber only artifacts of the specified type |
-| `--schema SCHEMA` | String | from config | Custom ID schema (see schema format below) |
+| `--force` | Flag | off | Renumber all artifacts from 1, ignoring existing valid IDs |
 | `--dry-run` | Flag | off | Preview changes without modifying files |
 
-#### ID Schema Format
+#### Behaviour
 
-The schema string supports the following macros:
+**Schema resolution order:**
 
-| Macro | Description |
-|-------|-------------|
-| `{atype}` | Artifact type (e.g., `REQ`, `SYS`) |
-| `{num}` | Sequential number |
-| `{num:N}` | Zero-padded sequential number (e.g., `{num:3}` → `001`) |
+For each artifact, the ID schema is resolved in this order:
+1. If the artifact's current ID contains a template (literal `{num}` or `{atype}` macros), use it as the schema.
+2. If the metamodel defines a schema for the artifact's type (`id is TYPE as SCHEMA`), use it.
+3. Otherwise, fall back to `{atype}-{num:3}`.
+
+**Algorithm overview:**
+
+The command uses a two-pass algorithm:
+- **Pass 1 (max extraction):** Scans all artifacts sorted by location. For each artifact whose ID matches the resolved schema regex, extracts the numeric portion and tracks the maximum number per artifact type.
+- **Pass 2 (renumber):** Assigns new sequential IDs starting from `max + 1` (or from 1 with `--force`).
+
+**Which artifacts are renumbered:**
+
+| Mode | Renumbered | Preserved |
+|------|-----------|-----------|
+| Without `--force` | Absent (`<undefined>`), empty, or template IDs only | All IDs matching the resolved schema |
+| With `--force` | All artifacts | None |
+
+Artifacts whose type's resolved schema contains no `{num}` macro are skipped entirely (cannot be sequenced).
+
+**Padding semantics:**
+
+`{num:N}` means "at least N digits":
+- Schema `REQ-{num:3}` matches `REQ-001`, `REQ-012`, and `REQ-1234` (all have ≥3 digits).
+- Generated IDs are zero-padded to at least N digits. If the counter exceeds N digits naturally (e.g., counter=1000 with N=3), the number is not truncated.
+
+**Per-type isolation:**
+
+Counters and max-number tracking are scoped per artifact type. `REQ` and `SYS` are numbered independently.
+
+**Summary statistics:**
+
+The command prints a summary at the end: `Preserved N valid IDs. Renumbered M artifacts. Total: N+M.`
+If duplicate valid IDs are detected, a warning listing the duplicates is printed.
+
+**Single `{num}` macro constraint:**
+
+Each schema may contain at most one `{num}` (or `{num:N}`) macro. If a template ID used as a schema contains multiple `{num}` macros, the command fails before making any changes.
+
+**Worked example (normal mode):**
+
+```
+Given artifacts (sorted by location):
+  file-a.md: REQ-002 (valid), <undefined>, REQ-005 (valid)
+  file-b.md: REQ-{num:3} (template), <undefined>
+Metamodel schema: REQ-{num:3}
+
+Pass 1: max(REQ) = max(2, 5) = 5
+Pass 2: counter starts at 6
+  - <undefined> (file-a) → REQ-006
+  - REQ-{num:3} (file-b) → REQ-007
+  - <undefined> (file-b) → REQ-008
+
+Result: REQ-002, REQ-005 preserved. REQ-006, REQ-007, REQ-008 assigned.
+Summary: Preserved 2 valid IDs. Renumbered 3 artifacts. Total: 5.
+```
+
+**Worked example (`--force` mode):**
+
+```
+Same input, with --force:
+Pass 2: counter starts at 1, ALL renumbered in sort order:
+  REQ-001, REQ-002, REQ-003, REQ-004, REQ-005
+
+Summary: Preserved 0 valid IDs. Renumbered 5 artifacts. Total: 5.
+```
 
 #### Examples
 
@@ -465,8 +526,8 @@ syntagmax edit renumber --all
 # Renumber only REQ artifacts
 syntagmax edit renumber --atype REQ
 
-# Custom schema with zero-padding
-syntagmax edit renumber --all --schema 'myproject-{atype}-{num:4}'
+# Force renumber all from 1
+syntagmax edit renumber --all --force
 
 # Dry run to preview changes
 syntagmax edit renumber --all --dry-run

@@ -5,17 +5,61 @@
 # Description: Renumbering artifacts.
 
 import logging as lg
-import re
 from collections import defaultdict
 
 from syntagmax.artifact import UNDEFINED_ID
 from syntagmax.config import Config
 from syntagmax.extract import extract
+from syntagmax.id_utils import _NUM_PATTERN, extract_number_from_id, count_num_macros
 
-_NUM_PATTERN = re.compile(r'\{num(?::(\d+))?\}')
+
+def _resolve_schema(aid: str, atype: str, config: Config) -> str:
+    """Resolve the ID schema for an artifact.
+
+    Precedence:
+      1. If the artifact's current ID contains a schema macro ({num or {atype}),
+         use the ID itself as the schema (it's a template).
+      2. If the metamodel defines a schema for this artifact type, use it.
+      3. Default: '{atype}-{num:3}'
+    """
+    if aid and ('{num' in aid or '{atype}' in aid):
+        return aid
+
+    if config.metamodel and atype in config.metamodel.get('artifacts', {}):
+        attr_rules = config.metamodel['artifacts'][atype]['attributes'].get('id', [])
+        if isinstance(attr_rules, dict):
+            attr_rules = [attr_rules]
+        for rule in attr_rules:
+            if 'schema' in rule and rule['schema']:
+                return rule['schema']
+
+    return '{atype}-{num:3}'
 
 
-def renumber_artifacts(config: Config, atype: str | None = None, schema_override: str | None = None, dry_run: bool = False):
+def _is_template_id(aid: str) -> bool:
+    """Check if an ID is a template (contains schema macros)."""
+    return bool(aid and ('{num' in aid or '{atype}' in aid))
+
+
+def _generate_id(schema: str, atype: str, number: int) -> str:
+    """Generate a new ID from schema, atype, and number.
+
+    Replaces {atype} with the artifact type name, and {num:N} / {num}
+    with the zero-padded / plain number. Does not truncate if number
+    exceeds the padding width.
+    """
+    new_id = schema.replace('{atype}', atype)
+
+    def replacer(match):
+        padding = match.group(1)
+        if padding:
+            return str(number).zfill(int(padding))
+        return str(number)
+
+    return _NUM_PATTERN.sub(replacer, new_id)
+
+
+def renumber_artifacts(config: Config, atype: str | None = None, dry_run: bool = False, force: bool = False):
     errors = []
     artifacts_list = extract(config, errors)
     if errors:
@@ -32,64 +76,111 @@ def renumber_artifacts(config: Config, atype: str | None = None, schema_override
     # Sort artifacts by their current location to have a stable renumbering
     target_artifacts.sort(key=lambda a: str(a.location))
 
-    # Project-unique sequential number
-    project_num = 1
+    # Pre-validation: check that no resolved template schema has multiple {num} macros
+    for artifact in target_artifacts:
+        schema = _resolve_schema(artifact.aid, artifact.atype, config)
+        if count_num_macros(schema) > 1:
+            lg.error(
+                f"Schema '{schema}' for artifact type '{artifact.atype}' has "
+                f"multiple {{num}} macros (only one allowed). Aborting."
+            )
+            return
 
-    # Group by file for efficiency
-    updates_by_file = defaultdict(list)
+    # === Pass 1: Identify valid IDs and compute max number per type ===
+    max_number: dict[str, int] = defaultdict(int)
+    seen_ids: dict[str, list] = defaultdict(list)  # aid -> list of artifacts
 
     for artifact in target_artifacts:
-        current_atype = artifact.atype
+        schema = _resolve_schema(artifact.aid, artifact.atype, config)
 
-        # Determine schema using precedence:
-        # 1. Existing ID contains a schema macro
-        # 2. schema_override (--schema)
-        # 3. Metamodel schema
-        # 4. Default {atype}-{num:3}
+        # Skip if schema has no {num} — we can't extract or assign numbers
+        if count_num_macros(schema) == 0:
+            continue
 
-        # To check if existing ID contains a schema macro, we need to know the RAW ID
-        # from the source. Artifact.aid currently holds the parsed ID.
-        # If the ID was something like {num}, it might have been parsed as literally "{num}".
+        # Skip template IDs and undefined IDs — they are not valid
+        if _is_template_id(artifact.aid):
+            continue
+        if artifact.aid == UNDEFINED_ID or not artifact.aid:
+            continue
 
-        schema = None
-        if artifact.aid and ('{num' in artifact.aid or '{atype}' in artifact.aid):
-            schema = artifact.aid
-        elif schema_override:
-            schema = schema_override
-        elif config.metamodel and current_atype in config.metamodel.get('artifacts', {}):
-            attr_rules = config.metamodel['artifacts'][current_atype]['attributes'].get('id', [])
-            if isinstance(attr_rules, dict):
-                attr_rules = [attr_rules]
-            for rule in attr_rules:
-                if 'schema' in rule:
-                    schema = rule['schema']
-                    break
+        # Try to match the artifact ID against the schema
+        number = extract_number_from_id(artifact.aid, schema, artifact.atype)
+        if number is not None:
+            # Valid ID
+            max_number[artifact.atype] = max(max_number[artifact.atype], number)
+            seen_ids[artifact.aid].append(artifact)
 
-        if not schema:
-            schema = '{atype}-{num:3}'
+    # Detect duplicates
+    duplicates = {aid: arts for aid, arts in seen_ids.items() if len(arts) > 1}
 
-        # Substitute macro
-        new_id = schema.replace('{atype}', current_atype)
+    # === Pass 2: Assign new IDs ===
+    counters: dict[str, int] = {}
+    if force:
+        # Force mode: start from 1 for all types
+        for artifact in target_artifacts:
+            counters.setdefault(artifact.atype, 1)
+    else:
+        # Normal mode: start from max+1
+        for artifact in target_artifacts:
+            if artifact.atype not in counters:
+                counters[artifact.atype] = max_number.get(artifact.atype, 0) + 1
 
-        def replacer(match):
-            padding = match.group(1)
-            if padding:
-                return str(project_num).zfill(int(padding))
-            return str(project_num)
+    updates_by_file = defaultdict(list)
+    kept = 0
+    changed = 0
+    total = 0
 
-        new_id = _NUM_PATTERN.sub(replacer, new_id)
+    for artifact in target_artifacts:
+        schema = _resolve_schema(artifact.aid, artifact.atype, config)
 
-        # Log what we are doing
-        old_id_display = artifact.aid if artifact.aid != UNDEFINED_ID else '<undefined>'
+        # Skip if schema has no {num} — can't assign numbers
+        if count_num_macros(schema) == 0:
+            total += 1
+            kept += 1
+            continue
 
-        if new_id != artifact.aid:
+        total += 1
+
+        needs_renumber = False
+        if force:
+            # Force mode: renumber everything
+            needs_renumber = True
+        else:
+            # Normal mode: renumber undefined, empty, template IDs,
+            # or IDs that don't match the schema
+            if artifact.aid == UNDEFINED_ID or not artifact.aid:
+                needs_renumber = True
+            elif _is_template_id(artifact.aid):
+                needs_renumber = True
+            else:
+                # Check if the ID matches the schema — if not, it needs renumbering
+                number = extract_number_from_id(artifact.aid, schema, artifact.atype)
+                if number is None:
+                    needs_renumber = True
+
+        if needs_renumber:
+            current_atype = artifact.atype
+            number = counters[current_atype]
+            counters[current_atype] = number + 1
+
+            new_id = _generate_id(schema, current_atype, number)
+            old_id_display = artifact.aid if artifact.aid != UNDEFINED_ID else '<undefined>'
+
             if dry_run:
                 lg.info(f'DRY-RUN: Would renumber {old_id_display} to {new_id} at {artifact.location}')
             else:
                 lg.info(f'Renumbering {old_id_display} to {new_id} at {artifact.location}')
                 updates_by_file[artifact.location.loc_file].append((artifact, new_id))
 
-        project_num += 1
+            changed += 1
+        else:
+            kept += 1
+
+    lg.info(f'Preserved {kept} valid IDs. Renumbered {changed} artifacts. Total: {total}.')
+
+    if duplicates:
+        dup_list = ', '.join(sorted(duplicates.keys()))
+        lg.warning(f'Duplicate valid IDs found: {dup_list}')
 
     if not dry_run:
         from syntagmax.extract import EXTRACTORS
