@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project uses [Calendar Versioning](https://calver.org/) with the scheme `YYYY.M.D`.
 
+## [2026.7.30] - 2026-07-30
+
+### Added
+
+- `edit identification` command — renamed and improved artifact ID assignment with non-destructive mode that preserves existing valid IDs
+- `--force` flag for `edit identification` to renumber all artifacts sequentially from 1
+- GitHub issue templates for bug reports and feature requests
+
+### Fixed
+
+- YAML boolean coercion in change reports — values like `yes`/`no`/`true`/`false` are now correctly compared against custom metamodel enum labels
+
 ## [2026.7.27] - 2026-07-27
 
 ### Added
