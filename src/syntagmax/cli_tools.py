@@ -89,7 +89,12 @@ def trace(
             from datetime import date
             date_suffix = date.today().strftime('%Y-%m-%d')
             ext = '.tsv' if (delimiter and '\t' in delimiter.replace('\\t', '\t')) else '.csv'
-            output = f'.syntagmax/outputs/trace-{child.lower()}-{parent.lower()}-{date_suffix}{ext}'
+            # In forward mode: child→parent; in reverse mode: parent→child
+            if forward:
+                from_type, to_type = child.lower(), parent.lower()
+            else:
+                from_type, to_type = parent.lower(), child.lower()
+            output = f'.syntagmax/outputs/trace-{from_type}-{to_type}-{date_suffix}{ext}'
 
         # Determine delimiter
         if delimiter is not None:
