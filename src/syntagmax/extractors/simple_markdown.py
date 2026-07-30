@@ -263,9 +263,9 @@ class SimpleMarkdownExtractor(Extractor):
                     for v in value:
                         if v is None:
                             continue
-                        builder.add_field(key, str(v))
+                        builder.add_field(key, self._yaml_value_to_str(v, atype, key))
                 else:
-                    builder.add_field(key, str(value))
+                    builder.add_field(key, self._yaml_value_to_str(value, atype, key))
 
             builder.add_field('contents', body.strip())
 

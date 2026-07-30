@@ -536,12 +536,12 @@ class MarkdownExtractor(MarkerSplitterMixin, ElementFilterMixin, Extractor):
                     continue
                 if isinstance(value, list):
                     for v in value:
-                        builder.add_field(name, str(v))
+                        builder.add_field(name, self._yaml_value_to_str(v, atype, name))
                 elif self._is_multiple_attr(atype, name) and ',' in str(value):
                     for v in str(value).split(','):
                         builder.add_field(name, v.strip())
                 else:
-                    builder.add_field(name, str(value))
+                    builder.add_field(name, self._yaml_value_to_str(value, atype, name))
 
             # Add contents as a field
             builder.add_field('contents', contents)

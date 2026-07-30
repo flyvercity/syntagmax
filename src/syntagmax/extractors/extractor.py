@@ -52,6 +52,39 @@ class Extractor:
 
         return artifacts, errors
 
+    def _yaml_value_to_str(self, value, atype: str, attr_name: str) -> str:
+        """Convert a YAML-parsed value to a string, handling boolean coercion.
+
+        YAML 1.1 parses yes/no/on/off/true/false as Python booleans.
+        When the metamodel defines custom boolean labels for the attribute,
+        this method maps the Python bool back to the first matching label.
+        Without custom labels, defaults to 'yes'/'no' (YAML 1.1 convention).
+        """
+        if not isinstance(value, bool):
+            return str(value)
+
+        # Look up custom boolean labels from metamodel
+        if self._metamodel:
+            rules = (
+                self._metamodel.get('artifacts', {})
+                .get(atype, {})
+                .get('attributes', {})
+                .get(attr_name, [])
+            )
+            if isinstance(rules, dict):
+                rules = [rules]
+            for rule in rules:
+                type_info = rule.get('type_info', {})
+                if type_info.get('type') == 'boolean' and 'custom_values' in type_info:
+                    custom = type_info['custom_values']
+                    if value:
+                        return custom['true'][0]
+                    else:
+                        return custom['false'][0]
+
+        # Default YAML 1.1 boolean labels
+        return 'yes' if value else 'no'
+
     def extract_blocks_from_file(self, filepath: Path) -> list['Block']:
         return []
 
