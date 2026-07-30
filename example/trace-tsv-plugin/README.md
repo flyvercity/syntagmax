@@ -31,7 +31,7 @@ name = "tsv-export"
 source = "local"
 
 [plugin.params]
-output = ".syntagmax/reports/trace.tsv"
+output = ".syntagmax/outputs/trace.tsv"
 
 [trace]
 plugins = ["tsv-export"]
@@ -106,7 +106,7 @@ Set `include_record_names = true` in `[plugin.params]` to add `LeadRecord` and `
 
 ```toml
 [plugin.params]
-output = ".syntagmax/reports/trace.tsv"
+output = ".syntagmax/outputs/trace.tsv"
 include_record_names = true
 ```
 
@@ -119,7 +119,7 @@ To use the built-in CSV/TSV writer instead, remove the `[trace]` section (or set
 uv run syntagmax --cwd ./example/trace-tsv-plugin trace --child REQ --parent SYS
 
 # TSV via file extension auto-detection
-uv run syntagmax --cwd ./example/trace-tsv-plugin trace --child REQ --parent SYS --output .syntagmax/reports/trace.tsv
+uv run syntagmax --cwd ./example/trace-tsv-plugin trace --child REQ --parent SYS --output .syntagmax/outputs/trace.tsv
 
 # TSV via explicit delimiter
 uv run syntagmax --cwd ./example/trace-tsv-plugin trace --child REQ --parent SYS --delimiter "\t"

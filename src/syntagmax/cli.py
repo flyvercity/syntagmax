@@ -36,7 +36,7 @@ from syntagmax.cli_tools import trace, mcp, schema, ci
 @click.option('--render-tree', is_flag=True, help='Render the artifact tree')
 @click.option('--cwd', type=click.Path(exists=True), help='Change the working directory')
 @click.option('--no-git', is_flag=True, help='Skip git history extraction')
-@click.option('--output', default='.syntagmax/reports/report.md', help='Report output file (default: .syntagmax/reports/report.md)')
+@click.option('--output', default='.syntagmax/outputs/report.md', help='Report output file (default: .syntagmax/outputs/report.md)')
 @click.option('--lang', 'language', type=click.Choice(['en', 'ru']), default=None, help='Output language (en, ru)')
 def rms(ctx: click.Context, **kwargs: dict[str, Any]):
     from syntagmax.log_utils import LOG_LEVEL_MAP, WarningsAsErrorsHandler, set_warnings_handler

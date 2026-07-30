@@ -15,7 +15,7 @@ from syntagmax.trace import TraceMatrix
 
 def export_trace(matrix: TraceMatrix, config, params: dict) -> None:
     """Export the trace matrix as a TSV file."""
-    output_path = params.get('output', '.syntagmax/reports/trace.tsv')
+    output_path = params.get('output', '.syntagmax/outputs/trace.tsv')
     path = Path(output_path)
     path.parent.mkdir(parents=True, exist_ok=True)
 

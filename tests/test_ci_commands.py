@@ -15,7 +15,7 @@ def test_ci_install_analyze_github(tmp_path: Path):
     content = expected_file.read_text(encoding='utf-8')
     assert 'name: Syntagmax Analyze' in content
     assert 'syntagmax analyze' in content
-    assert '.syntagmax/reports/report.md' in content
+    assert '.syntagmax/outputs/report.md' in content
 
 
 def test_ci_install_analyze_github_default(tmp_path: Path):
@@ -40,7 +40,7 @@ def test_ci_install_analyze_gitlab(tmp_path: Path):
     content = expected_file.read_text(encoding='utf-8')
     assert 'syntagmax-analyze:' in content
     assert 'syntagmax analyze' in content
-    assert '.syntagmax/reports/report.md' in content
+    assert '.syntagmax/outputs/report.md' in content
 
 
 def test_ci_install_publish_github(tmp_path: Path):
@@ -54,7 +54,7 @@ def test_ci_install_publish_github(tmp_path: Path):
     content = expected_file.read_text(encoding='utf-8')
     assert 'name: Syntagmax Publish' in content
     assert 'syntagmax publish --all --single' in content
-    assert '.syntagmax/reports/published.md' in content
+    assert '.syntagmax/outputs/published.md' in content
 
 
 def test_ci_install_publish_gitlab(tmp_path: Path):
@@ -68,7 +68,7 @@ def test_ci_install_publish_gitlab(tmp_path: Path):
     content = expected_file.read_text(encoding='utf-8')
     assert 'syntagmax-publish:' in content
     assert 'syntagmax publish --all --single' in content
-    assert '.syntagmax/reports/published.md' in content
+    assert '.syntagmax/outputs/published.md' in content
 
 
 def test_ci_install_respects_cwd_omitted(tmp_path: Path, monkeypatch):

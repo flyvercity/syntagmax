@@ -13,7 +13,7 @@ uv run syntagmax --render-tree --cwd ./example/obsidian-driver/ analyze
 Run example publishing with:
 
 ```bash
-uv run syntagmax --cwd ./example/obsidian-driver publish .syntagmax/reports/output.md
+uv run syntagmax --cwd ./example/obsidian-driver publish .syntagmax/outputs/output.md
 ```
 
 Run example tracing export with:
@@ -126,7 +126,7 @@ syntagmax analyze .syntagmax/config.toml impact
 
 All analysis outputs (errors, metrics, impact, AI analysis, and optionally the artifact tree) are combined into a single Markdown report file.
 
-- **Default location:** `.syntagmax/reports/report.md`
+- **Default location:** `.syntagmax/outputs/report.md`
 - **Override with:** `--output <path>` or `--output console` to print to stdout
 - **Tree inclusion:** Pass `--render-tree` to include the artifact tree in the report
 - **Section order:** Errors → Artifact Tree → Metrics → Impact Analysis → AI Analysis
@@ -400,7 +400,7 @@ syntagmax trace [OPTIONS]
 | `--attribute <name>` | No | — | Additional lead artifact attributes to include (repeatable) |
 | `--flat` | No | — | Combine multiple linked IDs into semicolon-separated values |
 | `--delimiter <char>` | No | `,` | Column delimiter (auto-detects `\t` for `.tsv` output) |
-| `--output <path>` | No | `.syntagmax/reports/trace.csv` | Output path (use `console` for stdout) |
+| `--output <path>` | No | `.syntagmax/outputs/trace.csv` | Output path (use `console` for stdout) |
 | `-f, --config-file` | No | `.syntagmax/config.toml` | Path to config file |
 
 ### Plugin-Based Export
@@ -439,7 +439,7 @@ syntagmax trace --child REQ --parent SYS
 syntagmax trace --child REQ --parent SYS --reverse --attribute title
 
 # Flat mode, TSV output
-syntagmax trace --child REQ --parent SYS --flat --output .syntagmax/reports/trace.tsv
+syntagmax trace --child REQ --parent SYS --flat --output .syntagmax/outputs/trace.tsv
 
 # Export to stdout
 syntagmax trace --child REQ --parent SYS --output console
@@ -491,7 +491,7 @@ syntagmax change report --base release --target develop
 |--------|---------|-------------|
 | `--base` | (required) | Base Git revision (commit, tag, branch, HEAD, HEAD~N) |
 | `--target` | (required) | Target Git revision |
-| `--output` | `.syntagmax/reports/change/` | Output directory or `console` for stdout |
+| `--output` | `.syntagmax/outputs/change/` | Output directory or `console` for stdout |
 | `--include-non-artifact` | off | Include non-artifact text block changes |
 | `--single` | off | Generate a single consolidated report |
 | `--summary` | off | Generate abbreviated summary report (no content) |

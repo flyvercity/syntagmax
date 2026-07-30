@@ -217,13 +217,13 @@ For `trace`:
 See `example/plugin-demo/` for a working example with local plugins demonstrating `transform_blocks`, `transform_markdown`, and `filter_block` hooks:
 
 ```bash
-uv run syntagmax --cwd ./example/plugin-demo publish --all .syntagmax/reports/output.md
+uv run syntagmax --cwd ./example/plugin-demo publish --all .syntagmax/outputs/output.md
 ```
 
 Filter demo (omits draft artifacts):
 
 ```bash
-uv run syntagmax --cwd ./example/plugin-demo publish --pre-filter redact-draft --all --single --output .syntagmax/reports/filtered.md
+uv run syntagmax --cwd ./example/plugin-demo publish --pre-filter redact-draft --all --single --output .syntagmax/outputs/filtered.md
 ```
 
 ### Trace export plugin

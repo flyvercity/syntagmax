@@ -19,7 +19,7 @@ The CLI is invoked as `syntagmax`. All commands share a set of global options th
 | `--render-tree` | Flag | off | Include the artifact tree in the analysis report |
 | `--cwd PATH` | Path | current dir | Change the working directory before executing |
 | `--no-git` | Flag | off | Skip git history extraction |
-| `--output PATH` | String | `.syntagmax/reports/report.md` | Report output file path (use `console` for stdout) |
+| `--output PATH` | String | `.syntagmax/outputs/report.md` | Report output file path (use `console` for stdout) |
 | `--lang CODE` | String | from config | Override output language for reports |
 | `--version` | Flag | — | Show version and exit |
 | `--help` | Flag | — | Show help and exit |
@@ -150,7 +150,7 @@ syntagmax publish [OPTIONS] [RECORDS...]
 |--------|------|---------|-------------|
 | `--all` | Flag | off | Publish all input records defined in config |
 | `--single` | Flag | off | Compile all selected records into a single file |
-| `--output PATH` | Path | `.syntagmax/reports/` (multi) or `.syntagmax/reports/published.md` (single) | Output directory (multi-file) or file path (single) |
+| `--output PATH` | Path | `.syntagmax/outputs/` (multi) or `.syntagmax/outputs/published.md` (single) | Output directory (multi-file) or file path (single) |
 | `-f, --config-file PATH` | Path | `.syntagmax/config.toml` | Path to the project configuration file |
 | `--date-suffix` | Flag | off | Append date suffix (`YYYY-MM-DD`) to filenames. Cannot be combined with `--single`. |
 | `--docx` | Flag | off | Convert output to DOCX via Pandoc |
@@ -211,7 +211,7 @@ Uses left outer join semantics — every lead artifact appears even if it has no
 | `--attribute NAME` | String (repeatable) | — | Additional lead artifact attributes to include as columns |
 | `--flat` | Flag | off | Combine multiple linked IDs into semicolon-separated values |
 | `--delimiter CHAR` | String | `,` (auto `\t` for `.tsv`) | Column delimiter |
-| `--output PATH` | String | `.syntagmax/reports/trace.csv` | Output file path. Use `console` for stdout. |
+| `--output PATH` | String | `.syntagmax/outputs/trace.csv` | Output file path. Use `console` for stdout. |
 | `-f, --config-file PATH` | Path | `.syntagmax/config.toml` | Path to the project configuration file |
 
 #### Plugin-Based Export
@@ -244,7 +244,7 @@ syntagmax trace --child REQ --parent SYS
 syntagmax trace --child REQ --parent SYS --reverse --attribute title --attribute status
 
 # Flat mode, TSV output (delimiter auto-detected from extension)
-syntagmax trace --child REQ --parent SYS --flat --output .syntagmax/reports/trace.tsv
+syntagmax trace --child REQ --parent SYS --flat --output .syntagmax/outputs/trace.tsv
 
 # Explicit tab delimiter
 syntagmax trace --child REQ --parent SYS --delimiter '\t'
@@ -286,7 +286,7 @@ syntagmax change report [OPTIONS]
 |--------|------|---------|-------------|
 | `--base REV` | String | **required** | Base Git revision (commit, tag, branch, HEAD, HEAD~N, or `working`) |
 | `--target REV` | String | **required** | Target Git revision |
-| `--output PATH` | String | `.syntagmax/reports/change/` | Output directory or `console` for stdout |
+| `--output PATH` | String | `.syntagmax/outputs/change/` | Output directory or `console` for stdout |
 | `--include-non-artifact` | Flag | off | Include non-artifact text block changes |
 | `--single` | Flag | off | Generate a single consolidated report across all input records |
 | `--summary` | Flag | off | Generate abbreviated summary report (no content or attribute diffs) |

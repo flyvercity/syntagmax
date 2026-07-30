@@ -42,7 +42,7 @@ Key options:
 - `--tasks` enables task generation from impact analysis (overrides config)
 - `--locale` sets the locale for localized change reports (e.g., `--locale ru`)
 
-The command defaults to writing `.syntagmax/reports/report.md`.
+The command defaults to writing `.syntagmax/outputs/report.md`.
 
 ### Generate change reports
 `uv run syntagmax analyze --change-report`

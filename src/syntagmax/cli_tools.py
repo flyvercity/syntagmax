@@ -20,7 +20,7 @@ from syntagmax.config import Config, Params
 @click.option('--attribute', multiple=True, help='Additional lead artifact attributes to include as columns')
 @click.option('--flat', is_flag=True, help='Combine multiple linked IDs into semicolon-separated values')
 @click.option('--delimiter', default=None, help='Column delimiter (default: "," or "\\t" for .tsv files)')
-@click.option('--output', default='.syntagmax/reports/trace.csv', help='Output file path (use "console" for stdout)')
+@click.option('--output', default='.syntagmax/outputs/trace.csv', help='Output file path (use "console" for stdout)')
 @click.option('-f', '--config-file', type=click.Path(), default='.syntagmax/config.toml')
 def trace(
     obj: Params,
@@ -198,7 +198,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: syntagmax-report
-          path: .syntagmax/reports/report.md
+          path: .syntagmax/outputs/report.md
 """
         workflow_dir = Path('.github/workflows')
         workflow_dir.mkdir(parents=True, exist_ok=True)
@@ -224,7 +224,7 @@ syntagmax-analyze:
     - syntagmax analyze
   artifacts:
     paths:
-      - .syntagmax/reports/report.md
+      - .syntagmax/outputs/report.md
 """
         workflow_file = Path('.gitlab-ci.yml')
         workflow_file.write_text(content, encoding='utf-8')
@@ -270,7 +270,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: syntagmax-publish
-          path: .syntagmax/reports/published.md
+          path: .syntagmax/outputs/published.md
 """
         workflow_dir = Path('.github/workflows')
         workflow_dir.mkdir(parents=True, exist_ok=True)
@@ -296,7 +296,7 @@ syntagmax-publish:
     - syntagmax publish --all --single
   artifacts:
     paths:
-      - .syntagmax/reports/published.md
+      - .syntagmax/outputs/published.md
 """
         workflow_file = Path('.gitlab-ci.yml')
         workflow_file.write_text(content, encoding='utf-8')

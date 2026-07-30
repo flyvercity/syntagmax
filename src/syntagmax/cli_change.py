@@ -122,7 +122,7 @@ def change_report(
 
     # Default output path
     if output_path is None:
-        output_path = '.syntagmax/reports/change/'
+        output_path = '.syntagmax/outputs/change/'
 
     # Determine short revision labels for filenames
     base_label = base_hash[:7] if base_hash != 'working' else 'working'

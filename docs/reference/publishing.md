@@ -15,7 +15,7 @@ syntagmax publish [RECORDS...] [--all] [--single] [--output <path-or-dir>] [-f <
 | `RECORDS` | No* | One or more input record names to publish |
 | `--all` | No* | Publish all input records |
 | `--single` | No | Compile all published records sequentially into a single file |
-| `--output <path-or-dir>` | No | Output directory or file path. Defaults to `.syntagmax/reports/` (separate files) or `.syntagmax/reports/published.md` (`--single`). |
+| `--output <path-or-dir>` | No | Output directory or file path. Defaults to `.syntagmax/outputs/` (separate files) or `.syntagmax/outputs/published.md` (`--single`). |
 | `-f, --config-file` | No | Path to config file (default: `.syntagmax/config.toml`) |
 | `--date-suffix` | No | Append `_<YYYY-MM-DD>` to output filenames (only valid without `--single`) |
 | `--docx` | No | Convert output to DOCX via Pandoc |

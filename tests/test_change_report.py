@@ -130,7 +130,7 @@ def test_basic_change_report(change_report_repo):
     ])
     assert result.exit_code == 0, f'CLI failed: {result.output}'
     # Check report file was created
-    report_dir = repo_path / '.syntagmax' / 'reports' / 'change'
+    report_dir = repo_path / '.syntagmax' / 'outputs' / 'change'
     assert report_dir.exists()
     reports = list(report_dir.glob('*.md'))
     assert len(reports) >= 1
@@ -222,7 +222,7 @@ def test_filename_format(change_report_repo):
         '--target', 'HEAD',
     ])
     assert result.exit_code == 0
-    report_dir = repo_path / '.syntagmax' / 'reports' / 'change'
+    report_dir = repo_path / '.syntagmax' / 'outputs' / 'change'
     reports = list(report_dir.glob('requirements-*-to-*-*.md'))
     assert len(reports) == 1, f'Expected 1 report, got: {reports}'
 

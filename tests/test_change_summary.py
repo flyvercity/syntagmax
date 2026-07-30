@@ -906,7 +906,7 @@ class TestSummaryIntegration:
             ],
         )
         assert result.exit_code == 0
-        report_dir = repo_path / '.syntagmax' / 'reports' / 'change'
+        report_dir = repo_path / '.syntagmax' / 'outputs' / 'change'
         reports = list(report_dir.glob('*-summary.md'))
         assert len(reports) >= 1, f'Expected summary file, got: {list(report_dir.glob("*.md"))}'
 
@@ -930,7 +930,7 @@ class TestSummaryIntegration:
             ],
         )
         assert result.exit_code == 0
-        report_dir = repo_path / '.syntagmax' / 'reports' / 'change'
+        report_dir = repo_path / '.syntagmax' / 'outputs' / 'change'
         reports = list(report_dir.glob('change-*-summary.md'))
         assert len(reports) == 1, f'Expected consolidated summary, got: {list(report_dir.glob("*.md"))}'
 
