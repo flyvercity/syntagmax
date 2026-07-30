@@ -400,7 +400,7 @@ syntagmax trace [OPTIONS]
 | `--attribute <name>` | No | — | Additional lead artifact attributes to include (repeatable) |
 | `--flat` | No | — | Combine multiple linked IDs into semicolon-separated values |
 | `--delimiter <char>` | No | `,` | Column delimiter (auto-detects `\t` for `.tsv` output) |
-| `--output <path>` | No | `.syntagmax/outputs/trace.csv` | Output path (use `console` for stdout) |
+| `--output <path>` | No | `trace-<child>-<parent>-<date>.csv` | Output path (use `console` for stdout) |
 | `-f, --config-file` | No | `.syntagmax/config.toml` | Path to config file |
 
 ### Plugin-Based Export

@@ -20,7 +20,7 @@ from syntagmax.config import Config, Params
 @click.option('--attribute', multiple=True, help='Additional lead artifact attributes to include as columns')
 @click.option('--flat', is_flag=True, help='Combine multiple linked IDs into semicolon-separated values')
 @click.option('--delimiter', default=None, help='Column delimiter (default: "," or "\\t" for .tsv files)')
-@click.option('--output', default='.syntagmax/outputs/trace.csv', help='Output file path (use "console" for stdout)')
+@click.option('--output', default=None, help='Output file path (use "console" for stdout). Default: .syntagmax/outputs/trace-<child>-<parent>-<date>.csv')
 @click.option('-f', '--config-file', type=click.Path(), default='.syntagmax/config.toml')
 def trace(
     obj: Params,
@@ -84,6 +84,13 @@ def trace(
             run_trace_export(plugin, matrix, config)
             u.pprint(f'[green]Trace export completed via plugin "{plugin_name}"[/green]')
     else:
+        # Generate dynamic default filename if not specified
+        if output is None:
+            from datetime import date
+            date_suffix = date.today().strftime('%Y-%m-%d')
+            ext = '.tsv' if (delimiter and '\t' in delimiter.replace('\\t', '\t')) else '.csv'
+            output = f'.syntagmax/outputs/trace-{child.lower()}-{parent.lower()}-{date_suffix}{ext}'
+
         # Determine delimiter
         if delimiter is not None:
             sep = delimiter.replace('\\t', '\t')

@@ -211,7 +211,7 @@ Uses left outer join semantics — every lead artifact appears even if it has no
 | `--attribute NAME` | String (repeatable) | — | Additional lead artifact attributes to include as columns |
 | `--flat` | Flag | off | Combine multiple linked IDs into semicolon-separated values |
 | `--delimiter CHAR` | String | `,` (auto `\t` for `.tsv`) | Column delimiter |
-| `--output PATH` | String | `.syntagmax/outputs/trace.csv` | Output file path. Use `console` for stdout. |
+| `--output PATH` | String | `trace-<child>-<parent>-<date>.csv` | Output file path. Use `console` for stdout. |
 | `-f, --config-file PATH` | Path | `.syntagmax/config.toml` | Path to the project configuration file |
 
 #### Plugin-Based Export
