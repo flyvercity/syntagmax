@@ -5,13 +5,11 @@
 # Description: Analyse a tree of artifacts.
 
 import logging as lg
-import re
 
 from syntagmax.artifact import ArtifactMap, Artifact
 from syntagmax.config import Config
+from syntagmax.id_utils import compile_id_schema
 from syntagmax.metamodel import evaluate_condition
-
-_NUM_PATTERN = re.compile(r'\{num(?::(\d+))?\}')
 
 
 class ArtifactValidator:
@@ -71,29 +69,11 @@ class ArtifactValidator:
             if not schema:
                 continue
 
-            cache_key = (artifact.atype, schema)
+            cache_key = (schema, artifact.atype)
             compiled_pattern = self._id_schema_cache.get(cache_key)
 
             if compiled_pattern is None:
-                # Replace macros in schema with regex patterns
-                # {atype} -> artifact.atype
-                # {num:padding} -> \d{padding,} or \d+
-                pattern = schema.replace('{atype}', artifact.atype)
-
-                final_pattern_parts = []
-                last_pos = 0
-                for match in _NUM_PATTERN.finditer(pattern):
-                    final_pattern_parts.append(re.escape(pattern[last_pos : match.start()]))
-                    padding = match.group(1)
-                    if padding:
-                        final_pattern_parts.append(rf'\d{{{padding}}}')
-                    else:
-                        final_pattern_parts.append(r'\d+')
-                    last_pos = match.end()
-                final_pattern_parts.append(re.escape(pattern[last_pos:]))
-
-                final_pattern = f'^{"".join(final_pattern_parts)}$'
-                compiled_pattern = re.compile(final_pattern)
+                compiled_pattern = compile_id_schema(schema, artifact.atype)
                 self._id_schema_cache[cache_key] = compiled_pattern
 
             if not compiled_pattern.match(artifact.aid):

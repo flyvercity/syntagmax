@@ -57,3 +57,31 @@ def test_valid_id_schemas(tmp_path, valid_schema):
     # The stored schema should have quotes stripped if they were present
     expected = valid_schema.strip('"')
     assert mm['artifacts']['REQ']['attributes']['id'][0]['schema'] == expected
+
+
+def test_single_num_macro_loads_fine(tmp_path):
+    """A schema with one {num:N} macro loads without errors."""
+    model_file = create_metamodel(tmp_path, 'REQ-{num:3}')
+    errors = []
+    mm = load_metamodel(model_file, errors)
+    assert mm['artifacts']['REQ']['attributes']['id'][0]['schema'] == 'REQ-{num:3}'
+
+
+def test_zero_num_macros_loads_fine(tmp_path):
+    """A schema with no {num} macros (fixed ID) loads without errors."""
+    model_file = create_metamodel(tmp_path, 'REQ-FIXED')
+    errors = []
+    mm = load_metamodel(model_file, errors)
+    assert mm['artifacts']['REQ']['attributes']['id'][0]['schema'] == 'REQ-FIXED'
+
+
+def test_multiple_num_macros_fails(tmp_path):
+    """A schema with multiple {num} macros produces a validation error."""
+    model_file = create_metamodel(tmp_path, '{num}-{num:2}')
+    errors = []
+
+    with pytest.raises(FatalError) as excinfo:
+        load_metamodel(model_file, errors)
+
+    assert "multiple {num} macros (only one allowed)" in str(excinfo.value)
+    assert "REQ" in str(excinfo.value)
