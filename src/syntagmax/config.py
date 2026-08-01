@@ -151,22 +151,6 @@ class ImpactConfig(BaseModel):
     task_atype_map: dict[str, str] = Field(default_factory=dict, description='Mapping of parent_atype/child_atype to task atype. Fallback: TASK')
 
 
-class AIConfig(BaseModel):
-    provider: str = Field(default='ollama', description='AI provider to use (ollama, anthropic, openai, gemini, bedrock)')
-    model: str | None = Field(default=None, description='Model name to use (e.g., "gpt-4o", "claude-3-5-sonnet")')
-    # Provider-specific configurations
-    anthropic_api_key: str | None = Field(default=None, description='Anthropic API Key. Can also be set via ANTHROPIC_API_KEY env var.')
-    openai_api_key: str | None = Field(default=None, description='OpenAI API Key. Can also be set via OPENAI_API_KEY env var.')
-    gemini_api_key: str | None = Field(default=None, description='Google Gemini API Key. Can also be set via GEMINI_API_KEY env var.')
-    aws_access_key_id: str | None = Field(default=None, description='AWS Access Key ID for Bedrock.')
-    aws_secret_access_key: str | None = Field(default=None, description='AWS Secret Access Key for Bedrock.')
-    aws_session_token: str | None = Field(default=None, description='AWS Session Token for Bedrock (optional).')
-    aws_region_name: str | None = Field(default=None, description='AWS Region for Bedrock (e.g., "us-east-1").')
-    aws_api_key: str | None = Field(default=None, description='AWS Bedrock API Key (if applicable).')
-    ollama_host: str = Field(default='http://localhost:11434', description='Host URL for the Ollama API')
-    timeout_s: float = Field(default=60.0, description='Timeout in seconds for AI provider requests')
-
-
 class TraceConfig(BaseModel):
     """Configuration for trace export."""
 
@@ -203,7 +187,6 @@ class ConfigFile(BaseModel):
     metrics: MetricsConfig = Field(MetricsConfig(), description='Configuration for metrics collection')
     impact: ImpactConfig = Field(ImpactConfig(), description='Configuration for impact analysis')
     metamodel: Metamodel = Field(Metamodel(), description='Configuration for the artifact metamodel')
-    ai: AIConfig = Field(default_factory=AIConfig, description='Configuration for AI-powered analysis')
     plugin: list[PluginConfig] = Field(default_factory=list, description='List of plugin configurations')
     drivers: DriversConfig = Field(default_factory=DriversConfig, description='Driver-specific configuration defaults')
     baseline: BaselineConfig = Field(default_factory=BaselineConfig, description='Configuration for the baseline tagging command')
@@ -233,14 +216,12 @@ class Config:
     params: Params
     metrics: MetricsConfig
     impact: ImpactConfig
-    ai: AIConfig
 
     def __init__(self, params: Params, config_filename: Path):
         self.params = params
         self._root_dir = Path(config_filename).parent.absolute()
         self.metrics = MetricsConfig()
         self.impact = ImpactConfig()
-        self.ai = AIConfig()
         self._input_records: list[InputRecord] = []
         self._plugins = []
         self._read_config(config_filename)
@@ -295,6 +276,7 @@ class Config:
         # Attach WarningsAsErrorsHandler if config enables it but CLI didn't
         if resolved_wae:
             from syntagmax.log_utils import get_warnings_handler
+
             if not get_warnings_handler():
                 wae_handler = WarningsAsErrorsHandler()
                 lg.getLogger().addHandler(wae_handler)
@@ -318,7 +300,6 @@ class Config:
 
         self.metrics = config_model.metrics
         self.impact = config_model.impact
-        self.ai = config_model.ai
 
         # CLI --tasks flag overrides config tasks_enabled
         if self.params.get('tasks'):

@@ -84,10 +84,7 @@ def renumber_artifacts(config: Config, atype: str | None = None, dry_run: bool =
     for artifact in target_artifacts:
         schema = _resolve_schema(artifact.aid, artifact.atype, config)
         if count_num_macros(schema) > 1:
-            lg.error(
-                f"Schema '{schema}' for artifact type '{artifact.atype}' has "
-                f"multiple {{num}} macros (only one allowed). Aborting."
-            )
+            lg.error(f"Schema '{schema}' for artifact type '{artifact.atype}' has multiple {{num}} macros (only one allowed). Aborting.")
             return False
 
     # === Pass 1: Identify valid IDs and compute max number per type ===

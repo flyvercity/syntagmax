@@ -13,7 +13,6 @@ class Params(TypedDict):
     log_level: NotRequired[str]
     warnings_as_errors: NotRequired[bool]
     render_tree: bool
-    ai: bool
     cwd: str
     no_git: bool
     allow_dirty_worktree: bool

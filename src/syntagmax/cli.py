@@ -29,10 +29,14 @@ from syntagmax.cli_tools import trace, mcp, schema, ci
 @click.group(help='RMS Entry Point')
 @click.version_option(version('syntagmax'))
 @click.pass_context
-@click.option('--log', 'log_level', type=click.Choice(['debug', 'info', 'warning', 'error', 'silent'], case_sensitive=False),
-              default=None, help='Console log verbosity level')
-@click.option('--warnings-as-errors/--no-warnings-as-errors', 'warnings_as_errors', default=None,
-              help='Treat all warnings as fatal errors')
+@click.option(
+    '--log',
+    'log_level',
+    type=click.Choice(['debug', 'info', 'warning', 'error', 'silent'], case_sensitive=False),
+    default=None,
+    help='Console log verbosity level',
+)
+@click.option('--warnings-as-errors/--no-warnings-as-errors', 'warnings_as_errors', default=None, help='Treat all warnings as fatal errors')
 @click.option('--render-tree', is_flag=True, help='Render the artifact tree')
 @click.option('--cwd', type=click.Path(exists=True), help='Change the working directory')
 @click.option('--no-git', is_flag=True, help='Skip git history extraction')

@@ -136,6 +136,7 @@ class SimpleMarkdownExtractor(Extractor):
             else:
                 # Insert id at the top
                 from ruamel.yaml.comments import CommentedMap
+
                 new_data = CommentedMap()
                 new_data['id'] = new_id
                 new_data.update(data)
@@ -159,9 +160,7 @@ class SimpleMarkdownExtractor(Extractor):
         Returns the modified file content as a string (for atomic writes).
         """
         if target_type != 'attr':
-            raise NotImplementedError(
-                f'Driver "{self.driver()}" only supports target_type="attr" (YAML frontmatter)'
-            )
+            raise NotImplementedError(f'Driver "{self.driver()}" only supports target_type="attr" (YAML frontmatter)')
 
         filepath = self._config.base_dir() / loc_file
         text = filepath.read_text(encoding='utf-8')
@@ -229,9 +228,7 @@ class SimpleMarkdownExtractor(Extractor):
 
         location = FileLocation(self._config.derive_path(filepath))
 
-        builder = ArtifactBuilder(
-            self._config, Artifact, self.driver(), location, self._metamodel, record=self._record
-        )
+        builder = ArtifactBuilder(self._config, Artifact, self.driver(), location, self._metamodel, record=self._record)
 
         try:
             builder.add_id(aid, atype)

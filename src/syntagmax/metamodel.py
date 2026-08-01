@@ -275,10 +275,7 @@ def validate_metamodel(metamodel: dict, errors: list[str]):
             for rule in id_rules:
                 schema = rule.get('schema')
                 if schema and count_num_macros(schema) > 1:
-                    errors.append(
-                        f"Artifact '{artifact_name}' has id schema '{schema}'"
-                        f" with multiple {{num}} macros (only one allowed)"
-                    )
+                    errors.append(f"Artifact '{artifact_name}' has id schema '{schema}' with multiple {{num}} macros (only one allowed)")
 
         # contents must have at least one mandatory rule
         contents_rules = attributes.get('contents', [])

@@ -43,7 +43,6 @@ Syntagmax uses a TOML configuration file (default `.syntagmax/config.toml`). Key
 - `[metrics]` — metrics collection settings
 - `[impact]` — impact analysis settings
 - `[metamodel]` — metamodel file path
-- `[ai]` — AI provider and model settings
 - `[trace]` — trace export plugin configuration
 
 For details on how all these paths are resolved relative to the project configuration file, see the [Paths Reference](docs/reference/paths.md).
@@ -62,13 +61,9 @@ enabled = true
 
 [metamodel]
 filename = "project.syntagmax"
-
-[ai]
-provider = "anthropic"
-model = "claude-sonnet-4-6"
 ```
 
-For the full schema, input source options, marked fragments, and AI provider settings, see [docs/reference/configuration.md](docs/reference/configuration.md). Detailed path resolution rules are described in [docs/reference/paths.md](docs/reference/paths.md).
+For the full schema, input source options, and marked fragments, see [docs/reference/configuration.md](docs/reference/configuration.md). Detailed path resolution rules are described in [docs/reference/paths.md](docs/reference/paths.md).
 
 For detailed Obsidian driver extraction rules, block termination behavior, and fragment marker processing, see [docs/reference/obsidian.md](docs/reference/obsidian.md).
 
@@ -114,7 +109,6 @@ Syntagmax will automatically resolve and execute all dependencies required for t
 | `tree` | Build and validate the artifact tree. |
 | `impact` | Perform impact analysis (requires git history). |
 | `metrics` | (Default) Calculate project metrics and coverage. |
-| `ai` | Perform AI-assisted analysis. |
 
 Example:
 ```bash
@@ -124,12 +118,12 @@ syntagmax analyze .syntagmax/config.toml impact
 
 ## Report Output
 
-All analysis outputs (errors, metrics, impact, AI analysis, and optionally the artifact tree) are combined into a single Markdown report file.
+All analysis outputs (errors, metrics, impact, and optionally the artifact tree) are combined into a single Markdown report file.
 
 - **Default location:** `.syntagmax/outputs/report.md`
 - **Override with:** `--output <path>` or `--output console` to print to stdout
 - **Tree inclusion:** Pass `--render-tree` to include the artifact tree in the report
-- **Section order:** Errors → Artifact Tree → Metrics → Impact Analysis → AI Analysis
+- **Section order:** Errors → Artifact Tree → Metrics → Impact Analysis
 
 Example:
 ```bash
@@ -621,7 +615,7 @@ syntagmax --lang ru change report --base HEAD~1 --target HEAD
 ### Scope
 
 Localization applies to:
-- Analysis reports (metrics, impact, AI analysis, errors)
+- Analysis reports (metrics, impact, errors)
 - Change reports (full and summary)
 
 It does **not** apply to:
@@ -682,7 +676,7 @@ Set `SYNTAGMAX_HOME` to override the default global configuration directory.
 ## Required Improvements
 
 - Implement automatic change propagation
-- Enhance AI-based analysis and tracing
+- Enhance tracing
 
 ## MCP Server
 

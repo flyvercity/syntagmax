@@ -77,7 +77,7 @@ class TestHeadingSplitBasic:
 
     def test_single_heading_at_start(self, obsidian_config, input_record, tmp_path):
         """A heading at the start of a text block is split out."""
-        content = "## Overview\n\nThis is body text.\n"
+        content = '## Overview\n\nThis is body text.\n'
         filepath = tmp_path / 'test.md'
         filepath.write_text(content, encoding='utf-8')
 
@@ -94,7 +94,7 @@ class TestHeadingSplitBasic:
 
     def test_multiple_headings(self, obsidian_config, input_record, tmp_path):
         """Multiple headings produce multiple heading blocks with body between them."""
-        content = "## First\n\nBody one.\n\n## Second\n\nBody two.\n"
+        content = '## First\n\nBody one.\n\n## Second\n\nBody two.\n'
         filepath = tmp_path / 'test.md'
         filepath.write_text(content, encoding='utf-8')
 
@@ -114,7 +114,7 @@ class TestHeadingSplitBasic:
 
     def test_consecutive_headings(self, obsidian_config, input_record, tmp_path):
         """Consecutive headings produce consecutive heading blocks."""
-        content = "# Title\n## Section\n### Subsection\n\nBody text.\n"
+        content = '# Title\n## Section\n### Subsection\n\nBody text.\n'
         filepath = tmp_path / 'test.md'
         filepath.write_text(content, encoding='utf-8')
 
@@ -130,7 +130,7 @@ class TestHeadingSplitBasic:
 
     def test_heading_levels(self, obsidian_config, input_record, tmp_path):
         """All heading levels (1-6) are recognised."""
-        content = "# H1\n## H2\n### H3\n#### H4\n##### H5\n###### H6\n"
+        content = '# H1\n## H2\n### H3\n#### H4\n##### H5\n###### H6\n'
         filepath = tmp_path / 'test.md'
         filepath.write_text(content, encoding='utf-8')
 
@@ -146,7 +146,7 @@ class TestHeadingSplitCodeBlockAwareness:
 
     def test_heading_inside_code_block(self, obsidian_config, input_record, tmp_path):
         """A heading line inside a fenced code block stays in the text block."""
-        content = "Some text.\n\n```\n## Not a heading\n```\n\nMore text.\n"
+        content = 'Some text.\n\n```\n## Not a heading\n```\n\nMore text.\n'
         filepath = tmp_path / 'test.md'
         filepath.write_text(content, encoding='utf-8')
 
@@ -158,7 +158,7 @@ class TestHeadingSplitCodeBlockAwareness:
 
     def test_heading_after_code_block(self, obsidian_config, input_record, tmp_path):
         """A heading after a code block IS split."""
-        content = "```\ncode\n```\n\n## Real Heading\n\nBody.\n"
+        content = '```\ncode\n```\n\n## Real Heading\n\nBody.\n'
         filepath = tmp_path / 'test.md'
         filepath.write_text(content, encoding='utf-8')
 
@@ -175,7 +175,7 @@ class TestHeadingSplitCommonMarkCompliance:
 
     def test_three_leading_spaces_is_heading(self, obsidian_config, input_record, tmp_path):
         """Up to 3 leading spaces is still a heading."""
-        content = "   ## Indented Heading\n\nBody.\n"
+        content = '   ## Indented Heading\n\nBody.\n'
         filepath = tmp_path / 'test.md'
         filepath.write_text(content, encoding='utf-8')
 
@@ -187,7 +187,7 @@ class TestHeadingSplitCommonMarkCompliance:
 
     def test_four_leading_spaces_not_heading(self, obsidian_config, input_record, tmp_path):
         """4+ leading spaces is NOT a heading (indented code block)."""
-        content = "    ## Not a heading\n\nBody.\n"
+        content = '    ## Not a heading\n\nBody.\n'
         filepath = tmp_path / 'test.md'
         filepath.write_text(content, encoding='utf-8')
 
@@ -203,7 +203,7 @@ class TestHeadingSplitOffset:
 
     def test_offsets_are_correct(self, obsidian_config, input_record, tmp_path):
         """Source offsets match character positions in the file."""
-        content = "## Heading\n\nBody text here.\n"
+        content = '## Heading\n\nBody text here.\n'
         filepath = tmp_path / 'test.md'
         filepath.write_text(content, encoding='utf-8')
 
@@ -218,7 +218,7 @@ class TestHeadingSplitOffset:
 
     def test_offsets_with_duplicate_lines(self, obsidian_config, input_record, tmp_path):
         """Offsets are correct even when the file has duplicate lines."""
-        content = "## Same\n\ntext\n\n## Same\n\ntext\n"
+        content = '## Same\n\ntext\n\n## Same\n\ntext\n'
         filepath = tmp_path / 'test.md'
         filepath.write_text(content, encoding='utf-8')
 
@@ -229,7 +229,7 @@ class TestHeadingSplitOffset:
         assert len(headings) == 2
         assert headings[0].source_offset == 0
         # Second heading: after "## Same\n\ntext\n\n" = 8 + 1 + 4 + 1 + 1 = 15
-        expected_offset = len("## Same\n\ntext\n\n")
+        expected_offset = len('## Same\n\ntext\n\n')
         assert headings[1].source_offset == expected_offset
 
 
@@ -238,7 +238,7 @@ class TestHeadingSplitWhitespace:
 
     def test_whitespace_between_headings_preserved(self, obsidian_config, input_record, tmp_path):
         """Blank lines between headings produce whitespace text blocks."""
-        content = "## First\n\n\n## Second\n"
+        content = '## First\n\n\n## Second\n'
         filepath = tmp_path / 'test.md'
         filepath.write_text(content, encoding='utf-8')
 
@@ -259,7 +259,7 @@ class TestHeadingSplitWithMarkers:
 
     def test_heading_in_marked_block_not_split(self, obsidian_config_with_markers, input_record_with_markers, tmp_path):
         """Headings inside marked fragments (e.g. [COM]) are not split."""
-        content = "[COM]\n## Heading inside comment\nSome comment text.\n[/COM]\n"
+        content = '[COM]\n## Heading inside comment\nSome comment text.\n[/COM]\n'
         filepath = tmp_path / 'test.md'
         filepath.write_text(content, encoding='utf-8')
 
@@ -275,7 +275,7 @@ class TestHeadingSplitWithMarkers:
 
     def test_heading_outside_marked_block_is_split(self, obsidian_config_with_markers, input_record_with_markers, tmp_path):
         """Headings outside marked fragments ARE split."""
-        content = "## Section Title\n\n[COM]\nA comment.\n[/COM]\n"
+        content = '## Section Title\n\n[COM]\nA comment.\n[/COM]\n'
         filepath = tmp_path / 'test.md'
         filepath.write_text(content, encoding='utf-8')
 
@@ -293,9 +293,9 @@ class TestHeadingSplitWithArtifacts:
     def test_heading_between_artifacts(self, obsidian_config, input_record, tmp_path):
         """Headings between artifacts are correctly split."""
         content = (
-            "[SYS]\nFirst requirement.\n[id] SYS-001\n```yaml\nattrs:\n  status: draft\n```\n\n"
-            "## Next Section\n\nSome text.\n\n"
-            "[SYS]\nSecond requirement.\n[id] SYS-002\n```yaml\nattrs:\n  status: draft\n```\n"
+            '[SYS]\nFirst requirement.\n[id] SYS-001\n```yaml\nattrs:\n  status: draft\n```\n\n'
+            '## Next Section\n\nSome text.\n\n'
+            '[SYS]\nSecond requirement.\n[id] SYS-002\n```yaml\nattrs:\n  status: draft\n```\n'
         )
         filepath = tmp_path / 'test.md'
         filepath.write_text(content, encoding='utf-8')
@@ -324,7 +324,7 @@ class TestHeadingSplitExcludeElements:
         config = Config(params=params, config_filename=cfg_path)
         record = config.input_records()[0]
 
-        content = "## Heading\n\nBody text.\n"
+        content = '## Heading\n\nBody text.\n'
         filepath = tmp_path / 'test.md'
         filepath.write_text(content, encoding='utf-8')
 
@@ -349,7 +349,7 @@ class TestHeadingSplitExcludeElements:
         config = Config(params=params, config_filename=cfg_path)
         record = config.input_records()[0]
 
-        content = "## My Heading\n\nBody text.\n"
+        content = '## My Heading\n\nBody text.\n'
         filepath = tmp_path / 'test.md'
         filepath.write_text(content, encoding='utf-8')
 

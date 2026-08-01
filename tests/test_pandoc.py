@@ -253,9 +253,7 @@ class TestPublishCLIWithPandoc:
         dot_syntagmax.mkdir()
         cfg = dot_syntagmax / 'config.toml'
         cfg.write_text(
-            'base = ".."\n'
-            '[[input]]\nname="rec1"\ndir="REC1"\ndriver="text"\natype="SYS"\n'
-            '[[input]]\nname="rec2"\ndir="REC2"\ndriver="text"\natype="SYS"\n',
+            'base = ".."\n[[input]]\nname="rec1"\ndir="REC1"\ndriver="text"\natype="SYS"\n[[input]]\nname="rec2"\ndir="REC2"\ndriver="text"\natype="SYS"\n',
             encoding='utf-8',
         )
         for name in ('REC1', 'REC2'):

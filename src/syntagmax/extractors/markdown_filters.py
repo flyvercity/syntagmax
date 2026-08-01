@@ -185,7 +185,7 @@ class ElementFilterMixin:
                         heading_only_re = _HEADING_ONLY_RE
                         m = heading_only_re.match(block.content.rstrip('\r\n'))
                         if m:
-                            ending = block.content[len(block.content.rstrip('\r\n')):]
+                            ending = block.content[len(block.content.rstrip('\r\n')) :]
                             content = m.group(1) + m.group(2) + ending
                         else:
                             content = block.content
@@ -278,7 +278,7 @@ class ElementFilterMixin:
                     m = callout_only_re.match(line)
                     if m:
                         text_part = line.rstrip('\r\n')
-                        ending = line[len(text_part):]
+                        ending = line[len(text_part) :]
                         result.append(m.group(1) + m.group(2) + ending)
                     else:
                         result.append(line)
@@ -293,7 +293,7 @@ class ElementFilterMixin:
                     m = heading_only_re.match(line)
                     if m:
                         text_part = line.rstrip('\r\n')
-                        ending = line[len(text_part):]
+                        ending = line[len(text_part) :]
                         result.append(m.group(1) + m.group(2) + ending)
                     else:
                         result.append(line)
@@ -359,7 +359,7 @@ class ElementFilterMixin:
 
         for match in code_span_re.finditer(line):
             # Process text before the code span
-            before = line[pos:match.start()]
+            before = line[pos : match.start()]
             if before:
                 before = tag_pattern.sub('', before)
                 # Collapse multiple horizontal whitespace into one space

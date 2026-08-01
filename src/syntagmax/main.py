@@ -15,7 +15,6 @@ from syntagmax.tree import build_tree, populate_pids
 from syntagmax.render import render_tree_markdown
 from syntagmax.analyse import analyse_tree
 from syntagmax.metrics import calculate_metrics
-from syntagmax.ai import ai_analyze
 from syntagmax.git_utils import populate_revisions
 from syntagmax.utils import get_execution_plan
 from syntagmax.impact import perform_impact_analysis
@@ -30,7 +29,6 @@ STEPS = {
     'populate_revisions': populate_revisions,
     'impact': perform_impact_analysis,
     'metrics': calculate_metrics,
-    'ai': ai_analyze,
 }
 
 DEPS = {
@@ -42,7 +40,6 @@ DEPS = {
     'populate_revisions': {'build_artifact_map'},
     'impact': {'populate_revisions', 'build_tree'},
     'metrics': {'tree'},
-    'ai': {'build_artifact_map'},
 }
 
 
@@ -52,7 +49,6 @@ def public_steps():
         'tree',
         'impact',
         'metrics',
-        'ai',
     ]
 
 
@@ -90,10 +86,6 @@ def process(requested_step, config: Config) -> Report:
                     from syntagmax.tasks import generate_tasks
 
                     report.tasks_summary = generate_tasks(config, artifacts, errors, report.impact)
-            case 'ai':
-                if artifacts is None:
-                    raise FatalError(f'Artifacts not initialized for step {step}')
-                report.ai_results = ai_analyze(config, artifacts, errors)
             case _:
                 if artifacts is None:
                     raise FatalError(f'Artifacts not initialized for step {step}')

@@ -92,7 +92,6 @@ Available steps (in dependency order):
 | `tree` | Build and validate the artifact tree |
 | `impact` | Perform impact analysis (requires git history) |
 | `metrics` | Calculate project metrics and coverage |
-| `ai` | Perform AI-assisted analysis |
 
 #### Options
 
@@ -114,9 +113,6 @@ syntagmax analyze extract
 
 # Run impact analysis with a custom config file
 syntagmax analyze -f custom-config.toml impact
-
-# Run AI analysis, allow dirty worktree
-syntagmax analyze --allow-dirty-worktree ai
 
 # Suppress tracing errors during tree validation
 syntagmax analyze --suppress-tracing tree

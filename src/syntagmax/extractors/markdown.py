@@ -91,7 +91,6 @@ class MarkdownTransformer(Transformer):
         }
 
 
-
 class MarkdownExtractor(MarkerSplitterMixin, ElementFilterMixin, Extractor):
     def __init__(self, config: Config, record: InputRecord, metamodel: dict | None = None):
         super().__init__(config, record, metamodel)
@@ -138,7 +137,6 @@ class MarkdownExtractor(MarkerSplitterMixin, ElementFilterMixin, Extractor):
         if isinstance(attrs, dict):
             attrs = [attrs]
         return any(rule.get('multiple', False) for rule in attrs)
-
 
     def update_artifacts(self, loc_file: str, updates: list[tuple[Artifact, str]]):
         """Renumber artifact IDs in a file. Uses round-trip YAML to preserve attr order."""
@@ -206,7 +204,6 @@ class MarkdownExtractor(MarkerSplitterMixin, ElementFilterMixin, Extractor):
 
         if 'id' in fields:
             self.update_artifacts(artifact.location.loc_file, [(artifact, fields['id'])])
-
 
     def update_artifact_attributes(
         self,
@@ -313,7 +310,6 @@ class MarkdownExtractor(MarkerSplitterMixin, ElementFilterMixin, Extractor):
 
         return segment
 
-
     def _update_inline_fields(
         self,
         segment: str,
@@ -378,7 +374,6 @@ class MarkdownExtractor(MarkerSplitterMixin, ElementFilterMixin, Extractor):
 
         # Fallback: append at end
         return segment.rstrip() + newline + new_field_line + newline
-
 
     def _extract_from_markdown(self, filepath: Path, markdown: str, location_builder: Callable[[int, int], Location]) -> ExtractorResult:
         blocks = self._extract_blocks_from_markdown(filepath, markdown, location_builder)
@@ -449,7 +444,6 @@ class MarkdownExtractor(MarkerSplitterMixin, ElementFilterMixin, Extractor):
                 fallback_pos_set = True
 
         return segment_end, next_pos, fallback_pos_set, yaml_start_pos
-
 
     def _process_segment(
         self,
@@ -565,7 +559,6 @@ class MarkdownExtractor(MarkerSplitterMixin, ElementFilterMixin, Extractor):
             lg.exception(e)
             error = f'Error processing requirement at line {start_line} in {filepath}'
             return ErrorBlock(message=error, raw_text=segment)
-
 
     def _extract_blocks_from_markdown(self, filepath: Path, markdown: str, location_builder: Callable[[int, int], Location] | None = None) -> list[Block]:
         from syntagmax.artifact import LineLocation

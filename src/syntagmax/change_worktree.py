@@ -27,10 +27,7 @@ def check_git_version(repo: git.Repo) -> None:
 
     if major < 2 or (major == 2 and minor < 5):
         version_str = '.'.join(str(v) for v in version_info)
-        raise FatalError(
-            f'Git version {version_str} is too old. '
-            f'Worktree support requires git >= 2.5.'
-        )
+        raise FatalError(f'Git version {version_str} is too old. Worktree support requires git >= 2.5.')
 
 
 def check_worktrees_gitignored(repo: git.Repo, worktree_base: Path) -> None:
@@ -41,9 +38,7 @@ def check_worktrees_gitignored(repo: git.Repo, worktree_base: Path) -> None:
     """
     # Compute path relative to the repo working tree for check-ignore
     try:
-        rel_path = worktree_base.resolve().relative_to(
-            Path(repo.working_tree_dir).resolve()
-        )
+        rel_path = worktree_base.resolve().relative_to(Path(repo.working_tree_dir).resolve())
         worktree_dir = str(rel_path).replace('\\', '/') + '/'
     except ValueError:
         # worktree_base is outside the repo — cannot check
@@ -78,9 +73,7 @@ def validate_records_in_repo(repo: git.Repo, input_records) -> None:
         try:
             record_path.relative_to(repo_root)
         except ValueError:
-            outside.append(
-                f'  - "{record.name}" ({record.record_base})'
-            )
+            outside.append(f'  - "{record.name}" ({record.record_base})')
 
     if outside:
         records_list = '\n'.join(outside)
@@ -105,14 +98,10 @@ def resolve_revision(repo: git.Repo, rev_str: str) -> str:
         commit = repo.commit(rev_str)
         return commit.hexsha
     except (git.BadName, ValueError, git.GitCommandError) as e:
-        raise FatalError(
-            f"Cannot resolve revision '{rev_str}': {e}"
-        )
+        raise FatalError(f"Cannot resolve revision '{rev_str}': {e}")
 
 
-def create_worktree(
-    repo: git.Repo, revision: str, label: str, worktree_base: Path
-) -> Path:
+def create_worktree(repo: git.Repo, revision: str, label: str, worktree_base: Path) -> Path:
     """Create a detached worktree for the given revision.
 
     If a stale worktree exists at the target path from a previous run,
@@ -155,16 +144,10 @@ def remove_worktree(repo: git.Repo, path: Path) -> None:
             break
         except (git.GitCommandError, PermissionError, OSError) as e:
             last_error = e
-            lg.debug(
-                f'Worktree remove attempt {attempt}/3 failed: {e}. '
-                f'Retrying in {delay}s...'
-            )
+            lg.debug(f'Worktree remove attempt {attempt}/3 failed: {e}. Retrying in {delay}s...')
             time.sleep(delay)
     else:
-        lg.warning(
-            f'git worktree remove failed after 3 attempts: {last_error}. '
-            f'Falling back to shutil.rmtree.'
-        )
+        lg.warning(f'git worktree remove failed after 3 attempts: {last_error}. Falling back to shutil.rmtree.')
         try:
             shutil.rmtree(str(path), onerror=_handle_readonly)
         except OSError as e:
@@ -177,9 +160,7 @@ def remove_worktree(repo: git.Repo, path: Path) -> None:
 
 
 @contextlib.contextmanager
-def worktree_pair(
-    repo: git.Repo, base_rev: str, target_rev: str, worktree_base: Path
-):
+def worktree_pair(repo: git.Repo, base_rev: str, target_rev: str, worktree_base: Path):
     """Context manager that provides a pair of worktree paths for comparison.
 
     For each revision, if the value is 'working', the current working tree
@@ -205,9 +186,7 @@ def worktree_pair(
             target_path = Path(repo.working_tree_dir)
         else:
             worktree_base.mkdir(parents=True, exist_ok=True)
-            target_path = create_worktree(
-                repo, target_rev, 'target', worktree_base
-            )
+            target_path = create_worktree(repo, target_rev, 'target', worktree_base)
             target_created = True
 
         yield (base_path, target_path)

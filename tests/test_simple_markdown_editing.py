@@ -64,7 +64,7 @@ class TestUpdateArtifacts:
     def test_update_existing_id(self, config, input_record, tmp_path):
         """Update an existing id key in frontmatter."""
         filepath = tmp_path / 'req.md'
-        filepath.write_text("---\nid: OLD-001\ntitle: My Req\n---\nBody.\n", encoding='utf-8')
+        filepath.write_text('---\nid: OLD-001\ntitle: My Req\n---\nBody.\n', encoding='utf-8')
 
         extractor = SimpleMarkdownExtractor(config, input_record)
         blocks = extractor.extract_blocks_from_file(filepath)
@@ -82,7 +82,7 @@ class TestUpdateArtifacts:
     def test_insert_id_when_missing(self, config, input_record, tmp_path):
         """Insert id key when frontmatter has no id field."""
         filepath = tmp_path / 'no-id.md'
-        filepath.write_text("---\ntitle: No ID\nstatus: draft\n---\nBody text.\n", encoding='utf-8')
+        filepath.write_text('---\ntitle: No ID\nstatus: draft\n---\nBody text.\n', encoding='utf-8')
 
         extractor = SimpleMarkdownExtractor(config, input_record)
         blocks = extractor.extract_blocks_from_file(filepath)
@@ -100,7 +100,7 @@ class TestUpdateArtifacts:
     def test_case_insensitive_id_update(self, config, input_record, tmp_path):
         """Update an ID key regardless of casing (ID vs id)."""
         filepath = tmp_path / 'upper.md'
-        filepath.write_text("---\nID: TASK-X\ntitle: Upper\n---\nBody.\n", encoding='utf-8')
+        filepath.write_text('---\nID: TASK-X\ntitle: Upper\n---\nBody.\n', encoding='utf-8')
 
         extractor = SimpleMarkdownExtractor(config, input_record)
         blocks = extractor.extract_blocks_from_file(filepath)
@@ -116,7 +116,7 @@ class TestUpdateArtifacts:
     def test_no_frontmatter_creates_one(self, config, input_record, tmp_path):
         """File without frontmatter gets one created with the id."""
         filepath = tmp_path / 'plain.md'
-        filepath.write_text("Just plain text.\nNo frontmatter.\n", encoding='utf-8')
+        filepath.write_text('Just plain text.\nNo frontmatter.\n', encoding='utf-8')
 
         extractor = SimpleMarkdownExtractor(config, input_record)
         blocks = extractor.extract_blocks_from_file(filepath)
@@ -134,7 +134,7 @@ class TestUpdateArtifacts:
         """Renumbering preserves all other frontmatter keys."""
         filepath = tmp_path / 'rich.md'
         filepath.write_text(
-            "---\nid: OLD\ntitle: Rich Doc\nstatus: active\npriority: 1\n---\nContent.\n",
+            '---\nid: OLD\ntitle: Rich Doc\nstatus: active\npriority: 1\n---\nContent.\n',
             encoding='utf-8',
         )
 
@@ -159,16 +159,14 @@ class TestUpdateArtifactAttributes:
     def test_add_attribute(self, config, input_record, tmp_path):
         """Add a new attribute to frontmatter."""
         filepath = tmp_path / 'req.md'
-        filepath.write_text("---\nid: REQ-001\ntitle: Test\n---\nBody.\n", encoding='utf-8')
+        filepath.write_text('---\nid: REQ-001\ntitle: Test\n---\nBody.\n', encoding='utf-8')
 
         extractor = SimpleMarkdownExtractor(config, input_record)
         blocks = extractor.extract_blocks_from_file(filepath)
         artifact = blocks[0].artifact
 
         loc_file = config.derive_path(filepath)
-        result = extractor.update_artifact_attributes(
-            loc_file, [(artifact, {'status': 'draft'}, 'add')], target_type='attr'
-        )
+        result = extractor.update_artifact_attributes(loc_file, [(artifact, {'status': 'draft'}, 'add')], target_type='attr')
 
         assert 'status: draft' in result
         assert 'id: REQ-001' in result
@@ -177,16 +175,14 @@ class TestUpdateArtifactAttributes:
     def test_add_skips_existing(self, config, input_record, tmp_path):
         """Add operation skips attributes that already exist."""
         filepath = tmp_path / 'req.md'
-        filepath.write_text("---\nid: REQ-001\nstatus: active\n---\nBody.\n", encoding='utf-8')
+        filepath.write_text('---\nid: REQ-001\nstatus: active\n---\nBody.\n', encoding='utf-8')
 
         extractor = SimpleMarkdownExtractor(config, input_record)
         blocks = extractor.extract_blocks_from_file(filepath)
         artifact = blocks[0].artifact
 
         loc_file = config.derive_path(filepath)
-        result = extractor.update_artifact_attributes(
-            loc_file, [(artifact, {'status': 'draft'}, 'add')], target_type='attr'
-        )
+        result = extractor.update_artifact_attributes(loc_file, [(artifact, {'status': 'draft'}, 'add')], target_type='attr')
 
         # Should keep 'active', not overwrite with 'draft'
         assert 'status: active' in result
@@ -195,16 +191,14 @@ class TestUpdateArtifactAttributes:
     def test_del_attribute(self, config, input_record, tmp_path):
         """Delete an existing attribute from frontmatter."""
         filepath = tmp_path / 'req.md'
-        filepath.write_text("---\nid: REQ-001\nstatus: active\ntitle: Test\n---\nBody.\n", encoding='utf-8')
+        filepath.write_text('---\nid: REQ-001\nstatus: active\ntitle: Test\n---\nBody.\n', encoding='utf-8')
 
         extractor = SimpleMarkdownExtractor(config, input_record)
         blocks = extractor.extract_blocks_from_file(filepath)
         artifact = blocks[0].artifact
 
         loc_file = config.derive_path(filepath)
-        result = extractor.update_artifact_attributes(
-            loc_file, [(artifact, {'status': None}, 'del')], target_type='attr'
-        )
+        result = extractor.update_artifact_attributes(loc_file, [(artifact, {'status': None}, 'del')], target_type='attr')
 
         assert 'status' not in result
         assert 'id: REQ-001' in result
@@ -213,16 +207,14 @@ class TestUpdateArtifactAttributes:
     def test_del_case_insensitive(self, config, input_record, tmp_path):
         """Delete finds keys case-insensitively."""
         filepath = tmp_path / 'req.md'
-        filepath.write_text("---\nid: REQ-001\nStatus: active\n---\nBody.\n", encoding='utf-8')
+        filepath.write_text('---\nid: REQ-001\nStatus: active\n---\nBody.\n', encoding='utf-8')
 
         extractor = SimpleMarkdownExtractor(config, input_record)
         blocks = extractor.extract_blocks_from_file(filepath)
         artifact = blocks[0].artifact
 
         loc_file = config.derive_path(filepath)
-        result = extractor.update_artifact_attributes(
-            loc_file, [(artifact, {'status': None}, 'del')], target_type='attr'
-        )
+        result = extractor.update_artifact_attributes(loc_file, [(artifact, {'status': None}, 'del')], target_type='attr')
 
         assert 'Status' not in result
         assert 'status' not in result
@@ -230,16 +222,14 @@ class TestUpdateArtifactAttributes:
     def test_replace_existing(self, config, input_record, tmp_path):
         """Replace an existing attribute value."""
         filepath = tmp_path / 'req.md'
-        filepath.write_text("---\nid: REQ-001\nstatus: draft\n---\nBody.\n", encoding='utf-8')
+        filepath.write_text('---\nid: REQ-001\nstatus: draft\n---\nBody.\n', encoding='utf-8')
 
         extractor = SimpleMarkdownExtractor(config, input_record)
         blocks = extractor.extract_blocks_from_file(filepath)
         artifact = blocks[0].artifact
 
         loc_file = config.derive_path(filepath)
-        result = extractor.update_artifact_attributes(
-            loc_file, [(artifact, {'status': 'active'}, 'replace')], target_type='attr'
-        )
+        result = extractor.update_artifact_attributes(loc_file, [(artifact, {'status': 'active'}, 'replace')], target_type='attr')
 
         assert 'status: active' in result
         assert 'draft' not in result
@@ -247,16 +237,14 @@ class TestUpdateArtifactAttributes:
     def test_replace_appends_if_missing(self, config, input_record, tmp_path):
         """Replace adds the attribute if it doesn't exist."""
         filepath = tmp_path / 'req.md'
-        filepath.write_text("---\nid: REQ-001\n---\nBody.\n", encoding='utf-8')
+        filepath.write_text('---\nid: REQ-001\n---\nBody.\n', encoding='utf-8')
 
         extractor = SimpleMarkdownExtractor(config, input_record)
         blocks = extractor.extract_blocks_from_file(filepath)
         artifact = blocks[0].artifact
 
         loc_file = config.derive_path(filepath)
-        result = extractor.update_artifact_attributes(
-            loc_file, [(artifact, {'status': 'active'}, 'replace')], target_type='attr'
-        )
+        result = extractor.update_artifact_attributes(loc_file, [(artifact, {'status': 'active'}, 'replace')], target_type='attr')
 
         assert 'status: active' in result
         assert 'id: REQ-001' in result
@@ -264,23 +252,21 @@ class TestUpdateArtifactAttributes:
     def test_replace_with_none_deletes(self, config, input_record, tmp_path):
         """Replace with value=None removes the attribute."""
         filepath = tmp_path / 'req.md'
-        filepath.write_text("---\nid: REQ-001\nstatus: draft\n---\nBody.\n", encoding='utf-8')
+        filepath.write_text('---\nid: REQ-001\nstatus: draft\n---\nBody.\n', encoding='utf-8')
 
         extractor = SimpleMarkdownExtractor(config, input_record)
         blocks = extractor.extract_blocks_from_file(filepath)
         artifact = blocks[0].artifact
 
         loc_file = config.derive_path(filepath)
-        result = extractor.update_artifact_attributes(
-            loc_file, [(artifact, {'status': None}, 'replace')], target_type='attr'
-        )
+        result = extractor.update_artifact_attributes(loc_file, [(artifact, {'status': None}, 'replace')], target_type='attr')
 
         assert 'status' not in result
 
     def test_multiple_attrs_in_one_update(self, config, input_record, tmp_path):
         """Apply multiple attribute changes in a single update."""
         filepath = tmp_path / 'req.md'
-        filepath.write_text("---\nid: REQ-001\nstatus: draft\n---\nBody.\n", encoding='utf-8')
+        filepath.write_text('---\nid: REQ-001\nstatus: draft\n---\nBody.\n', encoding='utf-8')
 
         extractor = SimpleMarkdownExtractor(config, input_record)
         blocks = extractor.extract_blocks_from_file(filepath)
@@ -299,7 +285,7 @@ class TestUpdateArtifactAttributes:
     def test_field_target_type_raises(self, config, input_record, tmp_path):
         """target_type='field' raises NotImplementedError."""
         filepath = tmp_path / 'req.md'
-        filepath.write_text("---\nid: REQ-001\n---\nBody.\n", encoding='utf-8')
+        filepath.write_text('---\nid: REQ-001\n---\nBody.\n', encoding='utf-8')
 
         extractor = SimpleMarkdownExtractor(config, input_record)
         blocks = extractor.extract_blocks_from_file(filepath)
@@ -307,24 +293,20 @@ class TestUpdateArtifactAttributes:
 
         loc_file = config.derive_path(filepath)
         with pytest.raises(NotImplementedError):
-            extractor.update_artifact_attributes(
-                loc_file, [(artifact, {'x': 'y'}, 'add')], target_type='field'
-            )
+            extractor.update_artifact_attributes(loc_file, [(artifact, {'x': 'y'}, 'add')], target_type='field')
 
     def test_body_preserved(self, config, input_record, tmp_path):
         """Verify markdown body is preserved after attribute manipulation."""
-        body = "# Heading\n\nParagraph with **bold**.\n\n- item 1\n- item 2\n"
+        body = '# Heading\n\nParagraph with **bold**.\n\n- item 1\n- item 2\n'
         filepath = tmp_path / 'req.md'
-        filepath.write_text(f"---\nid: REQ-001\n---\n{body}", encoding='utf-8')
+        filepath.write_text(f'---\nid: REQ-001\n---\n{body}', encoding='utf-8')
 
         extractor = SimpleMarkdownExtractor(config, input_record)
         blocks = extractor.extract_blocks_from_file(filepath)
         artifact = blocks[0].artifact
 
         loc_file = config.derive_path(filepath)
-        result = extractor.update_artifact_attributes(
-            loc_file, [(artifact, {'status': 'TBD'}, 'add')], target_type='attr'
-        )
+        result = extractor.update_artifact_attributes(loc_file, [(artifact, {'status': 'TBD'}, 'add')], target_type='attr')
 
         assert '# Heading' in result
         assert '**bold**' in result

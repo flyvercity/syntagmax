@@ -65,12 +65,7 @@ class Extractor:
 
         # Look up custom boolean labels from metamodel
         if self._metamodel:
-            rules = (
-                self._metamodel.get('artifacts', {})
-                .get(atype, {})
-                .get('attributes', {})
-                .get(attr_name, [])
-            )
+            rules = self._metamodel.get('artifacts', {}).get(atype, {}).get('attributes', {}).get(attr_name, [])
             if isinstance(rules, dict):
                 rules = [rules]
             for rule in rules:

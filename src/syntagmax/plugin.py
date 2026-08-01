@@ -232,8 +232,7 @@ def find_plugin_by_name(plugins: list[LoadedPlugin], name: str) -> LoadedPlugin:
         )
     else:
         raise FatalError(
-            f'Plugin "{name}" not found. No plugins are configured or enabled in config.toml. '
-            f'Ensure the plugin is declared in a [[plugin]] block and enabled.'
+            f'Plugin "{name}" not found. No plugins are configured or enabled in config.toml. Ensure the plugin is declared in a [[plugin]] block and enabled.'
         )
 
 

@@ -87,6 +87,7 @@ def trace(
         # Generate dynamic default filename if not specified
         if output is None:
             from datetime import date
+
             date_suffix = date.today().strftime('%Y-%m-%d')
             ext = '.tsv' if (delimiter and '\t' in delimiter.replace('\\t', '\t')) else '.csv'
             # In forward mode: child→parent; in reverse mode: parent→child

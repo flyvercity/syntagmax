@@ -173,8 +173,7 @@ class TestSilentWithWarningsAsErrors:
         runner = CliRunner()
         result = runner.invoke(
             rms,
-            ['--log', 'silent', '--warnings-as-errors', '--cwd', str(project),
-             'analyze', '-f', '.syntagmax/config.toml', 'extract'],
+            ['--log', 'silent', '--warnings-as-errors', '--cwd', str(project), 'analyze', '-f', '.syntagmax/config.toml', 'extract'],
             env=_isolated_env(tmp_path),
         )
         # Should exit non-zero
@@ -213,8 +212,7 @@ class TestNoWarningsAsErrorsOverride:
         runner = CliRunner()
         result = runner.invoke(
             rms,
-            ['--no-warnings-as-errors', '--cwd', str(project),
-             'analyze', '-f', '.syntagmax/config.toml', 'extract'],
+            ['--no-warnings-as-errors', '--cwd', str(project), 'analyze', '-f', '.syntagmax/config.toml', 'extract'],
             env=_isolated_env(tmp_path),
             catch_exceptions=False,
         )

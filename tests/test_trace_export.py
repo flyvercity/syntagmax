@@ -511,7 +511,6 @@ class TestTraceCliValidation:
         assert 'Warning: Child artifact type "INVALID_CHILD" is not defined in the metamodel.' in clean_output
         assert 'Warning: Parent artifact type "INVALID_PARENT" is not defined in the metamodel.' in clean_output
 
-
     def test_trace_config_driven_plugin(self, tmp_path):
         """Config [trace] plugins list drives export without --plugin flag."""
         import re
@@ -525,11 +524,7 @@ class TestTraceCliValidation:
         plugins_dir.mkdir()
 
         # Write a minimal plugin that writes a marker file
-        plugin_code = (
-            'from pathlib import Path\n'
-            'def export_trace(matrix, config, params):\n'
-            '    Path(params["marker"]).write_text("OK", encoding="utf-8")\n'
-        )
+        plugin_code = 'from pathlib import Path\ndef export_trace(matrix, config, params):\n    Path(params["marker"]).write_text("OK", encoding="utf-8")\n'
         (plugins_dir / 'marker-plugin.py').write_text(plugin_code, encoding='utf-8')
 
         marker_file = tmp_path / 'marker.txt'

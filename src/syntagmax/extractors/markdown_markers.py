@@ -76,7 +76,7 @@ class MarkerSplitterMixin:
         result: list[Block] = []
         pos = 0
         for match in matches:
-            before = content[pos:match.start()]
+            before = content[pos : match.start()]
             if before:
                 offset = (base_offset + pos) if base_offset is not None else None
                 result.append(TextBlock(content=before, marker=None, source_offset=offset))
@@ -118,7 +118,7 @@ class MarkerSplitterMixin:
         result: list[Block] = []
         pos = 0
         for match in matches:
-            before = content[pos:match.start()]
+            before = content[pos : match.start()]
             if before:
                 offset = (base_offset + pos) if base_offset is not None else None
                 result.append(TextBlock(content=before, marker=None, source_offset=offset))
@@ -176,7 +176,7 @@ class MarkerSplitterMixin:
         result: list[Block] = []
         pos = 0
         for match in matches:
-            before = content[pos:match.start()]
+            before = content[pos : match.start()]
             if before:
                 offset = (base_offset + pos) if base_offset is not None else None
                 result.append(TextBlock(content=before, marker=None, source_offset=offset))

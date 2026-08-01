@@ -324,9 +324,7 @@ class TestPerTypeIsolation:
             'b-undefined.md': _sys(None, 'Sys B'),
         }
 
-        config, project_dir = _make_multi_type_project(
-            tmp_path, params, metamodel, CONFIG_MULTI_TYPE, req_files, sys_files
-        )
+        config, project_dir = _make_multi_type_project(tmp_path, params, metamodel, CONFIG_MULTI_TYPE, req_files, sys_files)
         renumber_artifacts(config, dry_run=False)
 
         # REQ gets max(3)+1 = 4

@@ -136,7 +136,7 @@ def generate_tasks(config: Config, artifacts: ArtifactMap, errors: list[str], im
             skipped += 1
             continue
 
-        atype_key = f"{link['parent_atype']}/{link['artifact_atype']}"
+        atype_key = f'{link["parent_atype"]}/{link["artifact_atype"]}'
         task_atype = config.impact.task_atype_map.get(atype_key, 'TASK')
 
         # Resolve template per child's input record (mirrors publish resolution)

@@ -83,5 +83,5 @@ def test_multiple_num_macros_fails(tmp_path):
     with pytest.raises(FatalError) as excinfo:
         load_metamodel(model_file, errors)
 
-    assert "multiple {num} macros (only one allowed)" in str(excinfo.value)
-    assert "REQ" in str(excinfo.value)
+    assert 'multiple {num} macros (only one allowed)' in str(excinfo.value)
+    assert 'REQ' in str(excinfo.value)

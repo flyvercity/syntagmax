@@ -316,8 +316,13 @@ class TestSidecarExtractorBooleanCoercion:
         )
 
         record = InputRecord(
-            name='test', dir='.', record_base=tmp_path,
-            filepaths=[img_path], driver='sidecar', default_atype='REQ', marker='REQ',
+            name='test',
+            dir='.',
+            record_base=tmp_path,
+            filepaths=[img_path],
+            driver='sidecar',
+            default_atype='REQ',
+            marker='REQ',
         )
 
         extractor = SidecarExtractor(config, record, metamodel_custom_boolean)
@@ -350,8 +355,13 @@ class TestSimpleMarkdownExtractorBooleanCoercion:
         )
 
         record = InputRecord(
-            name='test', dir='.', record_base=tmp_path,
-            filepaths=[md_path], driver='simple-markdown', default_atype='REQ', marker='REQ',
+            name='test',
+            dir='.',
+            record_base=tmp_path,
+            filepaths=[md_path],
+            driver='simple-markdown',
+            default_atype='REQ',
+            marker='REQ',
         )
 
         extractor = SimpleMarkdownExtractor(config, record, metamodel_custom_boolean)

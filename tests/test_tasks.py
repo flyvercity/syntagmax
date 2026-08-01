@@ -599,11 +599,16 @@ filename = "project.syntagmax"
     from benedict import benedict
 
     impact_data = benedict()
-    impact_data['suspicious_links'] = [{
-        'artifact_aid': 'REQ-001', 'artifact_atype': 'REQ',
-        'parent_aid': 'SYS-001', 'parent_atype': 'SYS',
-        'nominal_revision': 'old', 'actual_revision': 'new',
-    }]
+    impact_data['suspicious_links'] = [
+        {
+            'artifact_aid': 'REQ-001',
+            'artifact_atype': 'REQ',
+            'parent_aid': 'SYS-001',
+            'parent_atype': 'SYS',
+            'nominal_revision': 'old',
+            'actual_revision': 'new',
+        }
+    ]
 
     result = generate_tasks(config, {}, [], impact_data)
     assert result == {'created': 0, 'skipped': 0}
@@ -682,9 +687,7 @@ def test_generate_tasks_sanitizes_filenames(tmp_path):
     parent.atype = 'SYS'
     parent.revisions = {MockRevision('p001', now)}
     parent.location = LineLocation('SYS/SYS-001.md', (1, 10))
-    parent.record = InputRecord(
-        name='sys', dir='SYS', record_base=Path('.'), filepaths=[], driver='obsidian', default_atype='SYS', marker='SYS'
-    )
+    parent.record = InputRecord(name='sys', dir='SYS', record_base=Path('.'), filepaths=[], driver='obsidian', default_atype='SYS', marker='SYS')
 
     child = Artifact(config)
     child.aid = 'REQ:001'
@@ -692,9 +695,7 @@ def test_generate_tasks_sanitizes_filenames(tmp_path):
     child.revisions = {MockRevision('c001', now - timedelta(hours=1))}
     child.parent_links = [ParentLink(pid='SYS/001', nominal_revision='old1', is_suspicious=True)]
     child.location = LineLocation('REQ/REQ-001.md', (1, 10))
-    child.record = InputRecord(
-        name='reqs', dir='REQ', record_base=Path('.'), filepaths=[], driver='obsidian', default_atype='REQ', marker='REQ'
-    )
+    child.record = InputRecord(name='reqs', dir='REQ', record_base=Path('.'), filepaths=[], driver='obsidian', default_atype='REQ', marker='REQ')
 
     artifacts = {'SYS/001': parent, 'REQ:001': child}
     impact_data = benedict()
@@ -720,7 +721,6 @@ def test_generate_tasks_sanitizes_filenames(tmp_path):
     assert '/' not in task_files[0].name
     assert ':' not in task_files[0].name
     assert task_files[0].name == 'TASK-IMPACT-REQ-001-SYS-001.md'
-
 
 
 # --- CLI --tasks override tests ---
@@ -818,4 +818,4 @@ def test_tasks_cli_flag_accepted():
     # Invoke with --tasks on a nonexistent config; we only care about CLI parsing, not execution
     result = runner.invoke(rms, ['analyze', '--tasks'])
     # Should NOT fail with "No such option: --tasks" (exit_code 2 = usage error)
-    assert result.exit_code != 2, f"CLI rejected --tasks flag: {result.output}"
+    assert result.exit_code != 2, f'CLI rejected --tasks flag: {result.output}'

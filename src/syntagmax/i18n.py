@@ -36,10 +36,7 @@ def setup_i18n(language: str) -> gettext.NullTranslations:
     global _translations
 
     if language not in SUPPORTED_LANGUAGES:
-        raise FatalError(
-            f"Unsupported language '{language}'. "
-            f"Supported languages: {', '.join(SUPPORTED_LANGUAGES)}"
-        )
+        raise FatalError(f"Unsupported language '{language}'. Supported languages: {', '.join(SUPPORTED_LANGUAGES)}")
 
     if language == 'en':
         # English is the source language — use NullTranslations (passthrough)
@@ -52,10 +49,7 @@ def setup_i18n(language: str) -> gettext.NullTranslations:
                 languages=[language],
             )
         except FileNotFoundError:
-            lg.warning(
-                f"Translation catalog for '{language}' not found at "
-                f"'{_LOCALE_DIR / language}'. Falling back to English."
-            )
+            lg.warning(f"Translation catalog for '{language}' not found at '{_LOCALE_DIR / language}'. Falling back to English.")
             _translations = gettext.NullTranslations()
 
     return _translations

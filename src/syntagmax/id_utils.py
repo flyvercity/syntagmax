@@ -33,7 +33,7 @@ def compile_id_schema(schema: str, atype: str) -> re.Pattern:
 
     for match in _NUM_PATTERN.finditer(pattern):
         # Escape the literal segment before this match
-        literal = pattern[last_pos:match.start()]
+        literal = pattern[last_pos : match.start()]
         parts.append(re.escape(literal))
 
         # Build the capture group

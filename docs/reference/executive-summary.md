@@ -11,7 +11,7 @@ Using lightweight text formats (like Markdown) and integrating with popular tool
 - **Traceability Matrix Export:** Exports compliance-ready traceability matrices (CSV/TSV) between artifact types, with configurable direction, flat mode, and plugin-delegated export — directly integrable into audit and certification workflows.
 - **Customizable Metamodels:** Features a domain-specific language (DSL) to define strict rules for artifacts, ensuring consistency, required attributes, and valid links across the project.
 - **Structured Document Publishing:** Generates formatted Markdown documents from requirements with optional DOCX and PDF export via Pandoc. A plugin system enables custom transformations, pre-filters, and export hooks, supporting enterprise documentation workflows without leaving the Git ecosystem.
-- **AI-Powered Collaboration:** Integrates AI at two levels: (1) an analysis step that uses LLMs (Anthropic Claude, AWS Bedrock) to review requirements for quality, completeness, and consistency; and (2) a Model Context Protocol (MCP) server enabling AI agents to query, navigate, and reason over the full requirements set in real time.
+- **AI-Powered Collaboration:** Features a native Model Context Protocol (MCP) server enabling AI agents and LLMs to query, navigate, and reason over the full requirements set in real time.
 - **Bulk Editing & Governance:** Provides batch operations for renumbering artifact IDs (with configurable schemas) and manipulating attributes across entire sections — including CSV-driven imports — ensuring large-scale governance actions remain atomic, auditable, and Git-tracked.
 - **Extensible Plugin Architecture:** A hook-based plugin system (local files or installable packages) allows organisations to inject custom block transforms, markdown post-processing, pre-publishing filters, and trace export formats without forking the core tool.
 - **Frictionless Developer Experience:** Avoids proprietary databases and heavy enterprise software. It integrates seamlessly into existing CI/CD pipelines, IDEs, and local workflows.
@@ -21,7 +21,7 @@ Using lightweight text formats (like Markdown) and integrating with popular tool
 
 **2. Reduced Compliance and Quality Risks:** Automated impact analysis ensures that whenever a core specification changes, every related implementation detail is flagged for review. This structural integrity minimises missed requirements and costly late-stage bugs.
 
-**3. Future-Proofing with AI:** The native MCP server and AI analysis pipeline enable organisations to instantly leverage AI tools to analyse requirements, generate test cases, or review code against specifications, creating a massive multiplier in team productivity.
+**3. Future-Proofing with AI:** The native MCP server enables organisations to instantly leverage AI tools to query requirements, generate test cases, or review code against specifications, creating a massive multiplier in team productivity.
 
 **4. Lower Operational Overhead:** Syntagmax removes the need for expensive, disconnected, and heavy enterprise requirements software by shifting the paradigm to tools that engineers already use and love.
 
