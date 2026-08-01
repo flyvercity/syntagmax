@@ -60,25 +60,6 @@ class SimpleMarkdownExtractor(Extractor):
         body = match.group(2) if match.group(2) is not None else ''
         return (data, body)
 
-    def _rebuild_file(self, frontmatter: dict, body: str, newline: str) -> str:
-        """Rebuild a markdown file from frontmatter dict and body text."""
-        from ruamel.yaml import YAML as RuamelYAML
-        from ruamel.yaml.compat import StringIO
-
-        ryaml = RuamelYAML()
-        ryaml.default_flow_style = False
-        stream = StringIO()
-        ryaml.dump(frontmatter, stream)
-        yaml_text = stream.getvalue().rstrip('\n')
-
-        parts = [f'---{newline}', yaml_text, f'{newline}---{newline}']
-        if body:
-            parts.append(body)
-            if not body.endswith('\n'):
-                parts.append(newline)
-
-        return ''.join(parts)
-
     def _roundtrip_frontmatter(self, text: str) -> tuple:
         """Parse frontmatter using ruamel.yaml for round-trip editing.
 
