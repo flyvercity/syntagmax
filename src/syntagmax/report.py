@@ -17,7 +17,6 @@ class Report:
     tree_text: str | None = None
     metrics: benedict | None = None
     impact: benedict | None = None
-    ai_results: list[dict] | None = None
     tasks_summary: dict | None = None
 
     def render(self) -> str:

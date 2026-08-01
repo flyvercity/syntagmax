@@ -33,24 +33,22 @@ The system uses a custom Domain-Specific Language (DSL) to define the project's 
 - **Analysis Modes:** Supports both `via commit` (precise) and `via timestamp` (heuristic) impact analysis.
 - **Traceability Matrix Export:** Generates forward (child→parent) and reverse (parent→child) traceability matrices as CSV/TSV. Uses left outer join semantics to ensure every lead artefact appears, highlighting coverage gaps. Supports flat mode (semicolon-separated multi-links), additional attribute columns, and plugin-based export for custom formats.
 
-## 5. AI Integration & MCP Server
+## 5. MCP Server
 - **Model Context Protocol (MCP):** Exposes requirements to AI agents and LLMs via a standard protocol (stdio and SSE transports), enabling automated analysis and reasoning.
-- **Multi-Provider Support:** Integrates with Ollama (local), Anthropic (Claude), OpenAI, Google Gemini, and AWS Bedrock. API keys configurable via config file or environment variables. Per-provider timeout control.
-- **AI-Assisted Analysis:** Built-in pipeline step that uses LLMs for requirement verification, consistency checks, and quality analysis.
 
 ## 6. DAG-Based Processing Pipeline
 Internal execution is managed by a Directed Acyclic Graph (DAG) that ensures efficient and correct processing:
 - **Topological Sorting:** Automatically determines the execution order based on task dependencies.
-- **Modular Steps:** Pipeline includes extraction, artefact map building, PID population, tree building, tree analysis, revision population, impact analysis, metrics calculation, and AI processing.
+- **Modular Steps:** Pipeline includes extraction, artefact map building, PID population, tree building, tree analysis, revision population, impact analysis, and metrics calculation.
 - **Target-Driven Execution:** Users request a target step; the engine resolves and executes only the required dependencies.
-- **Public Steps:** Five user-facing targets (`extract`, `tree`, `impact`, `metrics`, `ai`) backed by internal intermediate steps.
+- **Public Steps:** Four user-facing targets (`extract`, `tree`, `impact`, `metrics`) backed by internal intermediate steps.
 
 ## 7. Metrics & Reporting
 - **Polars-Based Analysis:** Metrics are calculated using Polars DataFrames for efficient aggregation across large artefact sets.
 - **Coverage Analysis:** Calculates verification coverage percentage and identifies requirements missing verification methods.
 - **TBD Detection:** Identifies artefacts with incomplete ("TBD") attribute values and reports the percentage.
 - **Status Distribution:** Aggregates requirement counts by lifecycle status (Draft, Active, Retired, etc.).
-- **Structured Report:** Outputs a unified Markdown report combining errors, artefact tree (optional), metrics, impact analysis, and AI results. Supports file output or stdout.
+- **Structured Report:** Outputs a unified Markdown report combining errors, artefact tree (optional), metrics, and impact analysis. Supports file output or stdout.
 
 ## 8. Document Publishing Pipeline
 - **Block Tree Architecture:** The publishing engine builds an intermediate block tree (artefacts, text blocks, error blocks) from extracted content, enabling transformations before rendering.

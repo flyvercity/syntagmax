@@ -408,7 +408,7 @@ The global configuration file is located at:
 - `$SYNTAGMAX_HOME/config.toml` (if the `SYNTAGMAX_HOME` environment variable is set)
 - `~/.config/syntagmax/config.toml` (default)
 
-Set `SYNTAGMAX_HOME` to override the default global configuration directory. This applies to all global settings (log level, language, AI provider, etc.).
+Set `SYNTAGMAX_HOME` to override the default global configuration directory. This applies to all global settings (log level, language, etc.).
 
 ### Example
 
@@ -416,28 +416,6 @@ Set `SYNTAGMAX_HOME` to override the default global configuration directory. Thi
 log_level = "warning"
 warnings_as_errors = true
 ```
-
-## AI Configuration (`[ai]`)
-
-AI analysis configuration. Settings can also be placed in `~/.syntagmax/config` (global configuration) which are overridden by the project configuration.
-
-Environment variables can also be used for API keys (e.g. `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY`). Configuration file values take precedence.
-
-**Note on AWS Bedrock:** Currently, only Anthropic Claude models are supported on Bedrock. `boto3` must be installed manually to use Bedrock.
-
-| Field | Required | Default | Description |
-|-------|----------|---------|-------------|
-| `provider` | No | `ollama` | AI provider: `ollama`, `anthropic`, `openai`, `gemini`, `bedrock` |
-| `model` | No | *Provider Default* | Model name to use (e.g. `gpt-4o`, `claude-3-opus`) |
-| `ollama_host` | No | `http://localhost:11434` | Ollama host URL |
-| `anthropic_api_key` | No | — | Anthropic API Key |
-| `openai_api_key` | No | — | OpenAI API Key |
-| `gemini_api_key` | No | — | Google Gemini API Key |
-| `aws_access_key_id` | No | — | AWS Access Key ID |
-| `aws_secret_access_key` | No | — | AWS Secret Access Key |
-| `aws_region_name` | No | — | AWS Region Name |
-| `aws_api_key` | No | — | AWS Bedrock API Key |
-| `timeout_s` | No | `60.0` | Request timeout in seconds |
 
 ## Trace Export (`[trace]`)
 
@@ -509,10 +487,6 @@ enabled = true
 
 [metamodel]
 filename = "project.syntagmax"
-
-[ai]
-provider = "anthropic"
-model = "claude-sonnet-4-6"
 
 [trace]
 plugins = ["tsv-export"]

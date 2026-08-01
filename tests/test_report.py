@@ -35,16 +35,6 @@ def test_report_render_all_sections():
                 'suspicious_tree': 'ROOT\n\u2514\u2500SYS:SYS-001 [*] UPDATED\n  \u2514\u2500REQ:REQ-002 [!] OUTDATED',
             }
         ),
-        ai_results=[
-            {
-                'aid': 'REQ-001',
-                'atype': 'REQ',
-                'ambiguity': 0.2,
-                'completeness': 0.8,
-                'verifiability': 0.9,
-                'singularity': 0.7,
-            }
-        ],
     )
 
     md = report.render()
@@ -54,8 +44,6 @@ def test_report_render_all_sections():
     assert 'REQ-001' in md
     assert '## Metrics' in md
     assert '## Impact Analysis' in md
-    assert '## AI Analysis' in md
-    assert '| REQ:REQ-001 |' in md
 
 
 def test_report_render_empty():
@@ -83,17 +71,6 @@ def test_report_render_undefined_id():
                 ],
             }
         ),
-        ai_results=[
-            {
-                'aid': '<undefined>',
-                'atype': 'REQ',
-                'ambiguity': 0.2,
-                'completeness': 0.8,
-                'verifiability': 0.9,
-                'singularity': 0.7,
-            }
-        ],
     )
     md = report.render()
     assert '| REQ:`<undefined>` | SYS:`<undefined>` |' in md
-    assert '| REQ:`<undefined>` |' in md

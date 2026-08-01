@@ -69,21 +69,6 @@ msgstr "Actual Revision"
 msgid "Suspicious Tree"
 msgstr "Suspicious Tree"
 
-msgid "AI Analysis"
-msgstr "AI Analysis"
-
-msgid "Ambiguity"
-msgstr "Ambiguity"
-
-msgid "Completeness"
-msgstr "Completeness"
-
-msgid "Verifiability"
-msgstr "Verifiability"
-
-msgid "Singularity"
-msgstr "Singularity"
-
 #. Change report renderer
 msgid "Change Report"
 msgstr "Change Report"

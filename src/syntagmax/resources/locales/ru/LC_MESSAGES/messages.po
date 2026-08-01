@@ -70,21 +70,6 @@ msgstr "Фактическая ревизия"
 msgid "Suspicious Tree"
 msgstr "Дерево подозрительных связей"
 
-msgid "AI Analysis"
-msgstr "Анализ ИИ"
-
-msgid "Ambiguity"
-msgstr "Двусмысленность"
-
-msgid "Completeness"
-msgstr "Полнота"
-
-msgid "Verifiability"
-msgstr "Проверяемость"
-
-msgid "Singularity"
-msgstr "Единичность"
-
 #. Change report renderer
 msgid "Change Report"
 msgstr "Отчет об изменениях"
