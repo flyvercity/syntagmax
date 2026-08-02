@@ -1,0 +1,42 @@
+agents:
+  kiro:
+    command: "kiro-cli"
+    prompt_flag: "--prompt"
+    prompt_mode: "file"
+    description: "Kiro CLI agent"
+
+  claude-code:
+    command: "claude"
+    prompt_flag: "--print"
+    prompt_mode: "stdin"
+    description: "Claude Code CLI"
+
+  codex:
+    command: "codex"
+    prompt_flag: "--prompt"
+    prompt_mode: "arg"
+    description: "OpenAI Codex CLI"
+
+  copilot:
+    command: "copilot"
+    prompt_flag: ""
+    prompt_mode: "arg"
+    description: "GitHub Copilot CLI"
+
+  opencode:
+    command: "opencode"
+    prompt_flag: "--prompt"
+    prompt_mode: "file"
+    description: "OpenCode CLI"
+
+  antigravity:
+    command: "antigravity"
+    prompt_flag: "--prompt"
+    prompt_mode: "file"
+    description: "Antigravity CLI"
+
+  mistral-vibe:
+    command: "vibe"
+    prompt_flag: "--prompt"
+    prompt_mode: "file"
+    description: "Mistral Vibe CLI"

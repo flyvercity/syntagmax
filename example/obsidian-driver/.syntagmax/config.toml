@@ -50,3 +50,7 @@ tasks_enabled = true
 [metamodel]
 filename = "project.syntagmax"
 
+
+
+[ai]
+agent = "kiro"

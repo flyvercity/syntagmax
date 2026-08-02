@@ -673,6 +673,41 @@ The global configuration file is located at:
 
 Set `SYNTAGMAX_HOME` to override the default global configuration directory.
 
+## AI Commands
+
+Syntagmax integrates with local CLI AI coding agents to automate verification tasks. All AI commands are grouped under `syntagmax ai`.
+
+### Verify Impact Task
+
+Use an AI agent to verify whether an impact task has been addressed:
+
+```bash
+syntagmax ai verify .syntagmax/tasks/TASK-IMPACT-REQ-003-SYS-003.md
+```
+
+The agent reads the parent and child artifacts, assesses consistency, and updates the task file with a verification report.
+
+#### Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--agent <name>` | Config default (`kiro`) | Override the default agent |
+| `-f, --config-file` | `.syntagmax/config.toml` | Path to config file |
+
+#### Configuration
+
+```toml
+[ai]
+agent = "kiro"
+persona = "You are a systems engineer reviewing requirements traceability."
+```
+
+#### Supported Agents
+
+Kiro CLI, Claude Code, Codex, Copilot, OpenCode, Antigravity, and Mistral Vibe are supported out of the box. Custom agents can be added via a YAML registry file.
+
+For the full AI commands reference, agent registry format, and prompt customisation, see [docs/reference/ai.md](docs/reference/ai.md).
+
 ## Required Improvements
 
 - Implement automatic change propagation

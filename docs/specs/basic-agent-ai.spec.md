@@ -110,7 +110,7 @@ flowchart TD
 
 ```toml
 [ai]
-default_agent = "kiro"
+agent = "kiro"
 persona = "You are a systems engineer reviewing requirements traceability."
 ```
 

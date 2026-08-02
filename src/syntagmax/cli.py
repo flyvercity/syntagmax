@@ -24,6 +24,7 @@ from syntagmax.cli_publish import publish
 from syntagmax.cli_change import change
 from syntagmax.cli_edit import edit
 from syntagmax.cli_tools import trace, mcp, schema, ci
+from syntagmax.cli_ai import ai
 
 
 @click.group(help='RMS Entry Point')
@@ -142,6 +143,7 @@ rms.add_command(edit)
 rms.add_command(mcp)
 rms.add_command(schema)
 rms.add_command(ci)
+rms.add_command(ai)
 
 
 def main():

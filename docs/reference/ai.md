@@ -1,0 +1,160 @@
+# AI Commands Reference
+
+Syntagmax integrates with local CLI AI coding agents to automate verification and analysis tasks. All AI commands are grouped under `syntagmax ai`.
+
+## Commands
+
+### `syntagmax ai verify`
+
+Verify an impact task using an AI agent. The agent assesses whether a child artifact is still consistent with its updated parent and updates the task file accordingly.
+
+```bash
+syntagmax ai verify <task-file> [OPTIONS]
+```
+
+#### Arguments
+
+| Argument | Required | Description |
+|----------|----------|-------------|
+| `task_file` | Yes | Path to the impact task file to verify |
+
+#### Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--agent <name>` | Config default | Override the default agent |
+| `-f, --config-file` | `.syntagmax/config.toml` | Path to config file |
+
+#### Behaviour
+
+1. Parses the task file and validates it is an impact task (`TASK-IMPACT-*` ID pattern).
+2. Checks that task status is `open`.
+3. Emits a warning if the repository is dirty (proceeds regardless).
+4. Resolves the AI agent from configuration or `--agent` flag.
+5. Renders a prompt with task metadata and invokes the agent interactively.
+6. After agent completes, validates the task file:
+   - ID is unchanged
+   - Status is `open` or `closed`
+   - A `## Verification Report` section was appended
+7. Reports the outcome.
+
+#### Exit Codes
+
+| Code | Meaning |
+|------|---------|
+| 0 | Success (task verified and closed, or requires more work) |
+| 1 | Error (unsupported task type, agent failure, invalid output) |
+
+#### Examples
+
+```bash
+# Verify a task using the default agent
+syntagmax ai verify .syntagmax/tasks/TASK-IMPACT-REQ-003-SYS-003.md
+
+# Verify using a specific agent
+syntagmax ai verify .syntagmax/tasks/TASK-IMPACT-REQ-003-SYS-003.md --agent claude-code
+
+# With a custom config file
+syntagmax ai verify tasks/TASK-IMPACT-REQ-001-SYS-001.md -f my-config.toml
+```
+
+#### Important Notes
+
+- **Phase 1 is audit-only:** The agent evaluates consistency and updates the task file. It MUST NOT modify the parent or child artifact files.
+- **Multi-repo support:** Parent and child artifacts may reside in different repositories. The prompt provides repository paths to the agent.
+- **Recovery:** If the agent corrupts the task file, use `git checkout -- <task-file>` to recover.
+
+## Configuration
+
+AI settings are defined in the `[ai]` section of `config.toml`:
+
+```toml
+[ai]
+agent = "kiro"
+persona = "You are a systems engineer reviewing requirements traceability."
+# agents_file = "custom-agents.yaml"  # Optional: custom agent registry
+```
+
+### Fields
+
+| Field | Default | Description |
+|-------|---------|-------------|
+| `agent` | `kiro` | Name of the default CLI agent to invoke |
+| `persona` | `You are a systems engineer reviewing requirements traceability.` | Persona text injected into AI prompts |
+| `agents_file` | (none) | Path to a custom agent registry YAML file (relative to config file directory) |
+
+## Agent Registry
+
+Agent definitions map names to command-line invocation patterns. The built-in registry supports these agents:
+
+| Name | Executable | Prompt Mode | Description |
+|------|-----------|-------------|-------------|
+| `kiro` | `kiro-cli` | file | Kiro CLI agent |
+| `claude-code` | `claude` | stdin | Claude Code CLI |
+| `codex` | `codex` | arg | OpenAI Codex CLI |
+| `copilot` | `copilot` | arg | GitHub Copilot CLI |
+| `opencode` | `opencode` | file | OpenCode CLI |
+| `antigravity` | `antigravity` | file | Antigravity CLI |
+| `mistral-vibe` | `vibe` | file | Mistral Vibe CLI |
+
+### Custom Agent Registry
+
+To add or override agents, create a YAML file and reference it in config:
+
+```toml
+[ai]
+agents_file = "my-agents.yaml"
+```
+
+The YAML format:
+
+```yaml
+agents:
+  my-agent:
+    command: "my-agent-cli"
+    prompt_flag: "--prompt"
+    prompt_mode: "file"
+    description: "My custom agent"
+```
+
+### Prompt Modes
+
+| Mode | Behaviour |
+|------|-----------|
+| `file` | Writes prompt to a temporary `.md` file, passes its path via `prompt_flag`. Best for interactive agents. |
+| `stdin` | Pipes prompt text to the agent's standard input. Agent operates non-interactively. |
+| `arg` | Passes prompt as a command-line argument value. Subject to OS command-line length limits. |
+
+### Agent Requirements
+
+Agents must:
+1. Be installed and available on `PATH`.
+2. Support one-shot non-interactive mode (receive a task prompt, execute, and exit).
+3. Be able to read and edit files in the working directory.
+4. Understand git operations for inspecting change history.
+
+Authentication is the user's responsibility — Syntagmax does not manage agent credentials.
+
+## Prompt Template
+
+The verification prompt is rendered from a Jinja2 template bundled with Syntagmax (`ai-verify-impact.j2`). It provides the agent with:
+
+- The persona context
+- Task file path
+- Parent artifact metadata (ID, type, file path, repository, revision)
+- Child artifact metadata (ID, type, file path, repository)
+- Instructions for assessment and file editing
+- Format requirements for the verification report
+- Constraints (audit-only, no artifact modification)
+
+### Verification Report Format
+
+The agent must append this section to the task file:
+
+```markdown
+## Verification Report
+- **Verdict:** PASS | FAIL
+- **Parent revision observed:** <short hash> (dirty: yes/no)
+- **Child revision observed:** <short hash> (dirty: yes/no)
+- **Rationale:** <3-10 sentences explaining the assessment>
+```

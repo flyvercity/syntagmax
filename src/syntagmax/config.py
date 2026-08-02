@@ -152,6 +152,16 @@ class ImpactConfig(BaseModel):
 
 
 
+class AiConfig(BaseModel):
+    model_config = ConfigDict(extra='ignore')
+    agent: str = Field(default='kiro', description='Default CLI agent name')
+    persona: str = Field(
+        default='You are a systems engineer reviewing requirements traceability.',
+        description='Persona injected into AI prompts',
+    )
+    agents_file: str | None = Field(default=None, description='Custom agents registry YAML (relative to config file dir)')
+
+
 class TraceConfig(BaseModel):
     """Configuration for trace export."""
 
@@ -192,6 +202,7 @@ class ConfigFile(BaseModel):
     drivers: DriversConfig = Field(default_factory=DriversConfig, description='Driver-specific configuration defaults')
     baseline: BaselineConfig = Field(default_factory=BaselineConfig, description='Configuration for the baseline tagging command')
     trace: TraceConfig = Field(default_factory=TraceConfig, description='Configuration for trace export')
+    ai: AiConfig = Field(default_factory=AiConfig)
 
     @field_validator('log_level')
     @classmethod
@@ -300,6 +311,7 @@ class Config:
 
         self.metrics = config_model.metrics
         self.impact = config_model.impact
+        self.ai = config_model.ai
 
         # CLI --tasks flag overrides config tasks_enabled
         if self.params.get('tasks'):
@@ -516,6 +528,10 @@ class Config:
     @property
     def baseline_config(self) -> 'BaselineConfig':
         return self._baseline_config
+
+    @property
+    def ai_config(self) -> 'AiConfig':
+        return self.ai
 
     def resolve_strict_line_breaks(self) -> bool:
         """Resolve the effective strict_line_breaks setting to a boolean.

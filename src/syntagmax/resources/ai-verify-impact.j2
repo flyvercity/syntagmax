@@ -1,0 +1,53 @@
+{{ persona }}
+
+## Task
+You are verifying impact traceability task `{{ task_file_path }}`.
+
+A parent artifact was updated after the child artifact was last verified.
+Determine whether the child is still consistent with the current parent.
+
+## Artifacts
+
+### Parent (updated)
+- ID: {{ parent_aid }}
+- Type: {{ parent_atype }}
+- File: {{ parent_file_path }}
+- Repository: {{ parent_repo_path }}
+- Revision at task creation: {{ parent_revision }}
+
+### Child (potentially outdated)
+- ID: {{ child_aid }}
+- Type: {{ child_atype }}
+- File: {{ child_file_path }}
+- Repository: {{ child_repo_path }}
+
+**Note:** Parent and child may reside in different repositories. Use the correct repository root when inspecting git history.
+
+## Instructions
+
+1. Read the parent and child artifact files.
+2. Understand what changed in the parent since revision `{{ parent_revision }}`.
+3. Assess whether the child still correctly derives from / implements the parent.
+4. Edit the task file at `{{ task_file_path }}`:
+   - If consistent: set `status: closed` in frontmatter.
+   - If not consistent: leave `status: open`.
+   - Append a `## Verification Report` section (format below).
+
+## Verification Report Format
+
+Append this section at the end of the task file:
+
+```
+## Verification Report
+- **Verdict:** PASS | FAIL
+- **Parent revision observed:** <short hash> (dirty: yes/no)
+- **Child revision observed:** <short hash> (dirty: yes/no)
+- **Rationale:** <3-10 sentences explaining your assessment>
+```
+
+## Constraints
+
+- Do NOT modify `id` or `contents` in the frontmatter.
+- Do NOT alter existing markdown sections above the report.
+- Do NOT modify the parent or child artifact files. This is an audit operation only.
+- Only change `status` from `open` to `closed` if verdict is PASS.
