@@ -1,6 +1,6 @@
 agents:
   kiro:
-    command: "kiro-cli chat --no-interactive {prompt}"
+    command: "kiro-cli chat -a --no-interactive {prompt}"
     prompt_mode: "file"
     description: "Kiro CLI agent"
 
