@@ -218,6 +218,7 @@ def invoke_agent(agent_config: dict, prompt: str, working_dir: Path) -> int:
     with the file path.
     """
     import subprocess
+    import sys
     import tempfile
     import shlex
     import os
@@ -234,6 +235,12 @@ def invoke_agent(agent_config: dict, prompt: str, working_dir: Path) -> int:
 
         command_str = command_pattern.replace('{prompt}', prompt_path)
         cmd_parts = shlex.split(command_str)
+
+        # On Windows, append the windows-suffix to the first command component
+        windows_suffix = agent_config.get('windows-suffix')
+        if windows_suffix and sys.platform == 'win32':
+            cmd_parts[0] = cmd_parts[0] + windows_suffix
+
         lg.debug(f'Agent command: {cmd_parts}')
 
         result = subprocess.run(

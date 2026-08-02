@@ -101,6 +101,20 @@ Agent definitions map names to command-line invocation patterns. The built-in re
 | `antigravity` | `antigravity --prompt {prompt}` | Antigravity CLI |
 | `mistral-vibe` | `vibe --prompt {prompt}` | Mistral Vibe CLI |
 
+### Windows Support
+
+Some agent CLIs are distributed as `.cmd` or `.ps1` wrappers on Windows. The optional `windows-suffix` property appends a suffix to the executable name when running on Windows:
+
+```yaml
+agents:
+  kiro:
+    command: "kiro-cli chat --trust-all-tools --no-interactive {prompt}"
+    description: "Kiro CLI agent"
+    windows-suffix: ".cmd"
+```
+
+On Windows, the invoked executable becomes `kiro-cli.cmd`. On other platforms the suffix is ignored. The built-in registry already sets `windows-suffix: ".cmd"` for `kiro` and `codex`.
+
 ### Custom Agent Registry
 
 To add or override agents, create a YAML file and reference it in config:
@@ -117,6 +131,7 @@ agents:
   my-agent:
     command: "my-agent-cli --task {prompt}"
     description: "My custom agent"
+    windows-suffix: ".cmd"  # Optional: appended to executable on Windows
 ```
 
 ### How It Works

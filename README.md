@@ -706,7 +706,7 @@ persona = "You are a systems engineer reviewing requirements traceability."
 
 #### Supported Agents
 
-Kiro CLI, Claude Code, Codex, Copilot, OpenCode, Antigravity, and Mistral Vibe are supported out of the box. Custom agents can be added via a YAML registry file.
+Kiro CLI, Claude Code, Codex, Copilot, OpenCode, Antigravity, and Mistral Vibe are supported out of the box. Custom agents can be added via a YAML registry file. Agents that require a `.cmd` or `.ps1` wrapper on Windows can declare a `windows-suffix` property (see [docs/reference/ai.md](docs/reference/ai.md#windows-support)).
 
 For the full AI commands reference, agent registry format, and prompt customisation, see [docs/reference/ai.md](docs/reference/ai.md).
 
