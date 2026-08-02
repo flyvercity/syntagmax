@@ -36,7 +36,13 @@ This command creates a `.syntagmax` directory with:
 
 ## Configuration
 
-Syntagmax uses a TOML configuration file (default `.syntagmax/config.toml`). Key sections include:
+Syntagmax uses a TOML configuration file (default `.syntagmax/config.toml`). Override the path with the global `-f` / `--config-file` option:
+
+```bash
+syntagmax -f path/to/config.toml analyze
+```
+
+Key sections include:
 
 - `[[input]]` — input source definitions (driver, artifact type, filters)
 - `publish` — global publish config file path (relative to config file directory)
@@ -88,7 +94,7 @@ Each artifact is attached with a set of revisions. A revision includes:
 If you want to skip git history extraction (e.g., if you are not in a git repository or want to speed up analysis), use the `--no-git` flag:
 
 ```bash
-syntagmax analyze .syntagmax/config.toml --no-git
+syntagmax analyze --no-git
 ```
 
 ## Running Analysis
@@ -96,7 +102,7 @@ syntagmax analyze .syntagmax/config.toml --no-git
 The `analyze` command is the primary way to process your project. It supports a dynamic execution pipeline where you can request a specific target step.
 
 ```bash
-syntagmax analyze [CONFIG_FILE] [STEP]
+syntagmax analyze [STEP]
 ```
 
 ### Target Steps
@@ -113,7 +119,7 @@ Syntagmax will automatically resolve and execute all dependencies required for t
 Example:
 ```bash
 # Run impact analysis only
-syntagmax analyze .syntagmax/config.toml impact
+syntagmax analyze impact
 ```
 
 ## Report Output
@@ -395,7 +401,6 @@ syntagmax trace [OPTIONS]
 | `--flat` | No | — | Combine multiple linked IDs into semicolon-separated values |
 | `--delimiter <char>` | No | `,` | Column delimiter (auto-detects `\t` for `.tsv` output) |
 | `--output <path>` | No | `trace-<child>-<parent>-<date>.csv` | Output path (use `console` for stdout) |
-| `-f, --config-file` | No | `.syntagmax/config.toml` | Path to config file |
 
 ### Plugin-Based Export
 
@@ -489,7 +494,6 @@ syntagmax change report --base release --target develop
 | `--include-non-artifact` | off | Include non-artifact text block changes |
 | `--single` | off | Generate a single consolidated report |
 | `--summary` | off | Generate abbreviated summary report (no content) |
-| `-f, --config-file` | `.syntagmax/config.toml` | Path to config file |
 
 ### Supported Revisions
 
@@ -566,7 +570,6 @@ syntagmax change baseline v1.0.0 --force
 | `-m, --message` | `Baseline created by Syntagmax` | Tag annotation message |
 | `--force` | off | Overwrite existing tags |
 | `--dry-run` | off | Preview actions without creating tags |
-| `-f, --config-file` | `.syntagmax/config.toml` | Path to config file |
 
 #### Behaviour
 
@@ -694,7 +697,6 @@ The agent reads the parent and child artifacts, assesses consistency, and update
 | Option | Default | Description |
 |--------|---------|-------------|
 | `--agent <name>` | Config default (`kiro`) | Override the default agent |
-| `-f, --config-file` | `.syntagmax/config.toml` | Path to config file |
 
 #### Configuration
 
@@ -706,7 +708,7 @@ persona = "You are a systems engineer reviewing requirements traceability."
 
 #### Supported Agents
 
-Kiro CLI, Claude Code, Codex, Copilot, OpenCode, Antigravity, and Mistral Vibe are supported out of the box. Custom agents can be added via a YAML registry file. Agents that require a `.cmd` or `.ps1` wrapper on Windows can declare a `windows-suffix` property (see [docs/reference/ai.md](docs/reference/ai.md#windows-support)).
+Kiro CLI, Claude Code, Codex, Copilot, OpenCode, Antigravity, and Mistral Vibe are supported out of the box. Custom agents can be added via a YAML registry file. Agents that require a `.cmd` or `.ps1` wrapper on Windows are resolved automatically via `shutil.which()` (see [docs/reference/ai.md](docs/reference/ai.md#windows-support)).
 
 For the full AI commands reference, agent registry format, and prompt customisation, see [docs/reference/ai.md](docs/reference/ai.md).
 
@@ -729,7 +731,7 @@ Syntagmax includes a Model Context Protocol (MCP) server that allows LLMs to int
 To start the server using Server-Sent Events (SSE):
 
 ```bash
-syntagmax mcp run .syntagmax/config.toml --transport sse --port 8000
+syntagmax mcp run --transport sse --port 8000
 ```
 
 ### Sample Configuration

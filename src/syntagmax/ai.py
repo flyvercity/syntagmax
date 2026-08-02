@@ -5,7 +5,13 @@
 
 import importlib.resources
 import logging
+import os
 import re
+import shlex
+import shutil
+import subprocess
+import sys
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -96,7 +102,10 @@ def _parse_frontmatter(content: str) -> dict | None:
     match = _FRONTMATTER_RE.match(content)
     if not match:
         return None
-    data = yaml.safe_load(match.group(1))
+    try:
+        data = yaml.safe_load(match.group(1))
+    except yaml.YAMLError:
+        return None
     if not isinstance(data, dict):
         return None
     return data
@@ -217,12 +226,6 @@ def invoke_agent(agent_config: dict, prompt: str, working_dir: Path) -> int:
     The prompt is written to a temporary file and {prompt} is replaced
     with the file path.
     """
-    import subprocess
-    import sys
-    import tempfile
-    import shlex
-    import os
-
     command_pattern = agent_config['command']
 
     lg.debug(f'Invoking agent: {command_pattern}')
@@ -233,13 +236,15 @@ def invoke_agent(agent_config: dict, prompt: str, working_dir: Path) -> int:
             f.write(prompt)
             prompt_path = f.name
 
-        command_str = command_pattern.replace('{prompt}', prompt_path)
-        cmd_parts = shlex.split(command_str)
+        # Use forward slashes to prevent shlex from interpreting backslashes
+        prompt_path_str = Path(prompt_path).as_posix()
+        command_str = command_pattern.replace('{prompt}', prompt_path_str)
+        cmd_parts = shlex.split(command_str, posix=(sys.platform != 'win32'))
 
-        # On Windows, append the windows-suffix to the first command component
-        windows_suffix = agent_config.get('windows-suffix')
-        if windows_suffix and sys.platform == 'win32':
-            cmd_parts[0] = cmd_parts[0] + windows_suffix
+        # Resolve executable via shutil.which (handles .cmd/.ps1/.bat on Windows)
+        resolved = shutil.which(cmd_parts[0])
+        if resolved:
+            cmd_parts[0] = resolved
 
         lg.debug(f'Agent command: {cmd_parts}')
 

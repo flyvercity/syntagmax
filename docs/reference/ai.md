@@ -27,7 +27,6 @@ syntagmax ai verify <task-file> [OPTIONS]
 | Option | Default | Description |
 |--------|---------|-------------|
 | `--agent <name>` | Config default | Override the default agent |
-| `-f, --config-file` | `.syntagmax/config.toml` | Path to config file |
 
 #### Behaviour
 
@@ -59,7 +58,7 @@ syntagmax ai verify .syntagmax/tasks/TASK-IMPACT-REQ-003-SYS-003.md
 syntagmax ai verify .syntagmax/tasks/TASK-IMPACT-REQ-003-SYS-003.md --agent claude-code
 
 # With a custom config file
-syntagmax ai verify tasks/TASK-IMPACT-REQ-001-SYS-001.md -f my-config.toml
+syntagmax -f my-config.toml ai verify tasks/TASK-IMPACT-REQ-001-SYS-001.md
 ```
 
 #### Important Notes
@@ -103,17 +102,9 @@ Agent definitions map names to command-line invocation patterns. The built-in re
 
 ### Windows Support
 
-Some agent CLIs are distributed as `.cmd` or `.ps1` wrappers on Windows. The optional `windows-suffix` property appends a suffix to the executable name when running on Windows:
+On Windows, many agent CLIs are distributed as `.cmd` or `.ps1` wrappers (e.g. `kiro-cli.cmd`). Syntagmax uses `shutil.which()` to resolve the full executable path at runtime, which automatically handles platform-specific extensions. No additional configuration is needed — if the agent executable is on `PATH`, it will be found regardless of wrapper extension.
 
-```yaml
-agents:
-  kiro:
-    command: "kiro-cli chat --trust-all-tools --no-interactive {prompt}"
-    description: "Kiro CLI agent"
-    windows-suffix: ".cmd"
-```
-
-On Windows, the invoked executable becomes `kiro-cli.cmd`. On other platforms the suffix is ignored. The built-in registry already sets `windows-suffix: ".cmd"` for `kiro` and `codex`.
+Custom agent registries may still declare a bare command name (e.g. `kiro-cli`) and rely on this automatic resolution.
 
 ### Custom Agent Registry
 
@@ -131,7 +122,6 @@ agents:
   my-agent:
     command: "my-agent-cli --task {prompt}"
     description: "My custom agent"
-    windows-suffix: ".cmd"  # Optional: appended to executable on Windows
 ```
 
 ### How It Works

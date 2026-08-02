@@ -1,0 +1,320 @@
+# SPDX-License-Identifier: MIT
+# Tests for syntagmax.ai module.
+
+from pathlib import Path
+from unittest.mock import MagicMock, patch
+
+import pytest
+
+from syntagmax.ai import (
+    _parse_frontmatter,
+    invoke_agent,
+    load_agent_registry,
+    parse_impact_task,
+    resolve_agent,
+    validate_task_post_edit,
+)
+from syntagmax.errors import FatalError
+
+
+# --- _parse_frontmatter ---
+
+
+def test_parse_frontmatter_valid():
+    content = "---\nid: TASK-001\nstatus: open\n---\n# Body"
+    result = _parse_frontmatter(content)
+    assert result == {'id': 'TASK-001', 'status': 'open'}
+
+
+def test_parse_frontmatter_no_frontmatter():
+    content = "# Just a heading\nSome body text."
+    assert _parse_frontmatter(content) is None
+
+
+def test_parse_frontmatter_malformed_yaml():
+    content = "---\n: : invalid: [yaml\n---\nBody"
+    assert _parse_frontmatter(content) is None
+
+
+def test_parse_frontmatter_non_dict():
+    content = "---\n- item1\n- item2\n---\nBody"
+    assert _parse_frontmatter(content) is None
+
+
+def test_parse_frontmatter_empty_frontmatter():
+    content = "---\n\n---\nBody"
+    assert _parse_frontmatter(content) is None
+
+
+# --- resolve_agent ---
+
+
+def test_resolve_agent_found():
+    registry = {
+        'kiro': {'command': 'kiro-cli {prompt}', 'description': 'Kiro'},
+        'claude': {'command': 'claude {prompt}', 'description': 'Claude'},
+    }
+    result = resolve_agent(registry, 'kiro')
+    assert result == {'command': 'kiro-cli {prompt}', 'description': 'Kiro'}
+
+
+def test_resolve_agent_not_found():
+    registry = {
+        'kiro': {'command': 'kiro-cli {prompt}', 'description': 'Kiro'},
+    }
+    with pytest.raises(FatalError, match="Unknown agent 'missing'"):
+        resolve_agent(registry, 'missing')
+
+
+# --- load_agent_registry ---
+
+
+def test_load_agent_registry_default():
+    """Load the built-in agent registry from package resources."""
+    config = MagicMock()
+    config.ai.agents_file = None
+
+    registry = load_agent_registry(config)
+    assert 'kiro' in registry
+    assert 'claude' in registry
+    assert 'command' in registry['kiro']
+
+
+def test_load_agent_registry_custom(tmp_path: Path):
+    """Load a custom agent registry from a file."""
+    agents_yaml = tmp_path / 'custom-agents.yaml'
+    agents_yaml.write_text(
+        "agents:\n  my-agent:\n    command: 'my-agent {prompt}'\n    description: 'Custom'\n",
+        encoding='utf-8',
+    )
+
+    config = MagicMock()
+    config.ai.agents_file = 'custom-agents.yaml'
+    config.root_dir.return_value = tmp_path
+
+    registry = load_agent_registry(config)
+    assert 'my-agent' in registry
+    assert registry['my-agent']['command'] == 'my-agent {prompt}'
+
+
+def test_load_agent_registry_custom_missing(tmp_path: Path):
+    """Raise FatalError if custom agents file does not exist."""
+    config = MagicMock()
+    config.ai.agents_file = 'nonexistent.yaml'
+    config.root_dir.return_value = tmp_path
+
+    with pytest.raises(FatalError, match='Custom agents file not found'):
+        load_agent_registry(config)
+
+
+def test_load_agent_registry_invalid_format(tmp_path: Path):
+    """Raise FatalError if YAML has no 'agents' key."""
+    agents_yaml = tmp_path / 'bad.yaml'
+    agents_yaml.write_text("something_else:\n  foo: bar\n", encoding='utf-8')
+
+    config = MagicMock()
+    config.ai.agents_file = 'bad.yaml'
+    config.root_dir.return_value = tmp_path
+
+    with pytest.raises(FatalError, match='missing "agents" key'):
+        load_agent_registry(config)
+
+
+# --- validate_task_post_edit ---
+
+
+def test_validate_task_post_edit_valid(tmp_path: Path):
+    task = tmp_path / 'task.md'
+    task.write_text(
+        "---\nid: TASK-IMPACT-001\nstatus: closed\n---\n\n## Verification Report\n- **Verdict:** PASS\n",
+        encoding='utf-8',
+    )
+    is_valid, msg = validate_task_post_edit(task, 'TASK-IMPACT-001')
+    assert is_valid is True
+    assert msg == 'valid'
+
+
+def test_validate_task_post_edit_id_changed(tmp_path: Path):
+    task = tmp_path / 'task.md'
+    task.write_text(
+        "---\nid: TASK-IMPACT-999\nstatus: closed\n---\n\n## Verification Report\n",
+        encoding='utf-8',
+    )
+    is_valid, msg = validate_task_post_edit(task, 'TASK-IMPACT-001')
+    assert is_valid is False
+    assert 'ID was modified' in msg
+
+
+def test_validate_task_post_edit_invalid_status(tmp_path: Path):
+    task = tmp_path / 'task.md'
+    task.write_text(
+        "---\nid: TASK-IMPACT-001\nstatus: pending\n---\n\n## Verification Report\n",
+        encoding='utf-8',
+    )
+    is_valid, msg = validate_task_post_edit(task, 'TASK-IMPACT-001')
+    assert is_valid is False
+    assert 'Invalid status' in msg
+
+
+def test_validate_task_post_edit_no_report_section(tmp_path: Path):
+    task = tmp_path / 'task.md'
+    task.write_text(
+        "---\nid: TASK-IMPACT-001\nstatus: open\n---\n\nNo report here.\n",
+        encoding='utf-8',
+    )
+    is_valid, msg = validate_task_post_edit(task, 'TASK-IMPACT-001')
+    assert is_valid is False
+    assert 'Verification Report' in msg
+
+
+def test_validate_task_post_edit_no_frontmatter(tmp_path: Path):
+    task = tmp_path / 'task.md'
+    task.write_text("# Just a heading\n", encoding='utf-8')
+    is_valid, msg = validate_task_post_edit(task, 'TASK-IMPACT-001')
+    assert is_valid is False
+    assert 'no valid frontmatter' in msg
+
+
+def test_validate_task_post_edit_file_missing(tmp_path: Path):
+    task = tmp_path / 'nonexistent.md'
+    is_valid, msg = validate_task_post_edit(task, 'TASK-IMPACT-001')
+    assert is_valid is False
+    assert 'Cannot read' in msg
+
+
+# --- parse_impact_task ---
+
+
+VALID_TASK_CONTENT = """\
+---
+id: TASK-IMPACT-REQ-003-SYS-003
+status: open
+parent_revision: abc1234
+---
+
+## Parent (Updated)
+- **ID:** SYS-003
+- **Type:** SYS
+- **File:** system/SYS-003.md
+
+## Child (Outdated)
+- **ID:** REQ-003
+- **Type:** REQ
+- **File:** requirements/REQ-003.md
+"""
+
+
+def test_parse_impact_task_valid(tmp_path: Path):
+    task = tmp_path / 'task.md'
+    task.write_text(VALID_TASK_CONTENT, encoding='utf-8')
+
+    info = parse_impact_task(task)
+    assert info.task_id == 'TASK-IMPACT-REQ-003-SYS-003'
+    assert info.status == 'open'
+    assert info.parent_aid == 'SYS-003'
+    assert info.parent_atype == 'SYS'
+    assert info.parent_file_path == 'system/SYS-003.md'
+    assert info.parent_revision == 'abc1234'
+    assert info.child_aid == 'REQ-003'
+    assert info.child_atype == 'REQ'
+    assert info.child_file_path == 'requirements/REQ-003.md'
+
+
+def test_parse_impact_task_no_frontmatter(tmp_path: Path):
+    task = tmp_path / 'task.md'
+    task.write_text("# No frontmatter\n", encoding='utf-8')
+    with pytest.raises(FatalError, match='no valid frontmatter'):
+        parse_impact_task(task)
+
+
+def test_parse_impact_task_missing_fields(tmp_path: Path):
+    content = """\
+---
+id: TASK-IMPACT-001
+status: open
+parent_revision: abc1234
+---
+
+## Parent (Updated)
+- **ID:** SYS-001
+
+## Child (Outdated)
+- **ID:** REQ-001
+"""
+    task = tmp_path / 'task.md'
+    task.write_text(content, encoding='utf-8')
+    with pytest.raises(FatalError, match='missing required fields'):
+        parse_impact_task(task)
+
+
+# --- invoke_agent ---
+
+
+@patch('syntagmax.ai.subprocess.run')
+@patch('syntagmax.ai.shutil.which', return_value=None)
+def test_invoke_agent_success(mock_which, mock_run, tmp_path: Path):
+    mock_run.return_value = MagicMock(returncode=0)
+    agent_config = {'command': 'my-agent --exec {prompt}'}
+
+    result = invoke_agent(agent_config, 'test prompt', tmp_path)
+
+    assert result == 0
+    mock_run.assert_called_once()
+    call_args = mock_run.call_args
+    cmd_parts = call_args[0][0]
+    assert cmd_parts[0] == 'my-agent'
+    assert '--exec' in cmd_parts
+
+
+@patch('syntagmax.ai.subprocess.run')
+@patch('syntagmax.ai.shutil.which', return_value=None)
+def test_invoke_agent_nonzero_exit(mock_which, mock_run, tmp_path: Path):
+    mock_run.return_value = MagicMock(returncode=1)
+    agent_config = {'command': 'my-agent {prompt}'}
+
+    result = invoke_agent(agent_config, 'prompt', tmp_path)
+    assert result == 1
+
+
+@patch('syntagmax.ai.subprocess.run', side_effect=FileNotFoundError)
+@patch('syntagmax.ai.shutil.which', return_value=None)
+def test_invoke_agent_executable_not_found(mock_which, mock_run, tmp_path: Path):
+    agent_config = {'command': 'nonexistent-agent {prompt}'}
+    with pytest.raises(FatalError, match="not found on PATH"):
+        invoke_agent(agent_config, 'prompt', tmp_path)
+
+
+@patch('syntagmax.ai.subprocess.run')
+@patch('syntagmax.ai.shutil.which', return_value='/usr/local/bin/my-agent')
+def test_invoke_agent_which_resolves(mock_which, mock_run, tmp_path: Path):
+    mock_run.return_value = MagicMock(returncode=0)
+    agent_config = {'command': 'my-agent {prompt}'}
+
+    invoke_agent(agent_config, 'prompt', tmp_path)
+
+    call_args = mock_run.call_args
+    cmd_parts = call_args[0][0]
+    assert cmd_parts[0] == '/usr/local/bin/my-agent'
+
+
+@patch('syntagmax.ai.subprocess.run')
+@patch('syntagmax.ai.shutil.which', return_value=None)
+def test_invoke_agent_cleans_temp_file(mock_which, mock_run, tmp_path: Path):
+    """Temporary prompt file is deleted after invocation."""
+    captured_paths = []
+
+    def capture_run(cmd, **kwargs):
+        # The prompt path is the last argument
+        for part in cmd:
+            if part.endswith('.md'):
+                captured_paths.append(part)
+        return MagicMock(returncode=0)
+
+    mock_run.side_effect = capture_run
+    agent_config = {'command': 'my-agent {prompt}'}
+
+    invoke_agent(agent_config, 'test content', tmp_path)
+
+    assert len(captured_paths) == 1
+    # Temp file should be cleaned up
+    assert not Path(captured_paths[0]).exists()

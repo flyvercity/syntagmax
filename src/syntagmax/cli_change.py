@@ -52,7 +52,6 @@ def change():
 @click.option('--include-non-artifact', is_flag=True, help='Include non-artifact text block changes')
 @click.option('--single', is_flag=True, help='Generate a single consolidated report across all input records')
 @click.option('--summary', is_flag=True, help='Generate abbreviated summary report (no content)')
-@click.option('-f', '--config-file', type=click.Path(), default='.syntagmax/config.toml')
 def change_report(
     obj: Params,
     base: str,
@@ -61,7 +60,6 @@ def change_report(
     include_non_artifact: bool,
     single: bool,
     summary: bool,
-    config_file: Path,
 ):
     from datetime import datetime, timezone
     from syntagmax.change_worktree import (
@@ -88,7 +86,7 @@ def change_report(
     )
     import git
 
-    cfg_path = Path(config_file)
+    cfg_path = Path(obj['config_file'])
     if not cfg_path.exists():
         u.pprint(f'[red]Error: Configuration file "{cfg_path}" does not exist.[/red]')
         sys.exit(1)
@@ -262,8 +260,7 @@ def change_report(
 @click.option('-m', '--message', default='Baseline created by Syntagmax', help='Tag annotation message')
 @click.option('--force', is_flag=True, help='Overwrite existing tags')
 @click.option('--dry-run', is_flag=True, help='Preview actions without creating tags')
-@click.option('-f', '--config-file', type=click.Path(), default='.syntagmax/config.toml')
-def change_baseline(obj: Params, tag_name: str, message: str, force: bool, dry_run: bool, config_file: str):
+def change_baseline(obj: Params, tag_name: str, message: str, force: bool, dry_run: bool):
     from syntagmax.change_baseline import (
         discover_repos,
         check_repos_clean,
@@ -272,7 +269,7 @@ def change_baseline(obj: Params, tag_name: str, message: str, force: bool, dry_r
         create_baseline_tag,
     )
 
-    cfg_path = Path(config_file)
+    cfg_path = Path(obj['config_file'])
     if not cfg_path.exists():
         u.pprint(f'[red]Error: Configuration file "{cfg_path}" does not exist.[/red]')
         sys.exit(1)

@@ -418,7 +418,7 @@ class TestCLIBaseline:
 
         result = runner.invoke(
             rms,
-            ['change', 'baseline', 'v1.0.0', '-f', str(repo_root / '.syntagmax' / 'config.toml')],
+            ['-f', str(repo_root / '.syntagmax' / 'config.toml'), 'change', 'baseline', 'v1.0.0'],
         )
         assert result.exit_code == 0, result.output
         assert 'v1.0.0' in result.output
@@ -430,7 +430,7 @@ class TestCLIBaseline:
 
         result = runner.invoke(
             rms,
-            ['change', 'baseline', 'v2.0.0', '-f', str(workspace / '.syntagmax' / 'config.toml')],
+            ['-f', str(workspace / '.syntagmax' / 'config.toml'), 'change', 'baseline', 'v2.0.0'],
         )
         assert result.exit_code == 0, result.output
         assert 'v2.0.0' in [t.name for t in repo_a.tags]
@@ -444,7 +444,7 @@ class TestCLIBaseline:
         runner = CliRunner()
         result = runner.invoke(
             rms,
-            ['change', 'baseline', 'v1.0.0', '-f', str(repo_root / '.syntagmax' / 'config.toml')],
+            ['-f', str(repo_root / '.syntagmax' / 'config.toml'), 'change', 'baseline', 'v1.0.0'],
         )
         # FatalError is raised; CliRunner catches it as exception
         assert result.exit_code != 0 or result.exception is not None
@@ -464,7 +464,7 @@ class TestCLIBaseline:
         runner = CliRunner()
         result = runner.invoke(
             rms,
-            ['change', 'baseline', 'bad-tag', '-f', str(config_path)],
+            ['-f', str(config_path), 'change', 'baseline', 'bad-tag'],
         )
         assert result.exit_code != 0 or result.exception is not None
         error_msg = str(result.exception) if result.exception else result.output
@@ -477,7 +477,7 @@ class TestCLIBaseline:
         runner = CliRunner()
         result = runner.invoke(
             rms,
-            ['change', 'baseline', 'v1.0.0', '-f', str(repo_root / '.syntagmax' / 'config.toml')],
+            ['-f', str(repo_root / '.syntagmax' / 'config.toml'), 'change', 'baseline', 'v1.0.0'],
         )
         assert result.exit_code != 0 or result.exception is not None
         error_msg = str(result.exception) if result.exception else result.output
@@ -490,7 +490,7 @@ class TestCLIBaseline:
         runner = CliRunner()
         result = runner.invoke(
             rms,
-            ['change', 'baseline', 'v1.0.0', '--force', '-f', str(repo_root / '.syntagmax' / 'config.toml')],
+            ['-f', str(repo_root / '.syntagmax' / 'config.toml'), 'change', 'baseline', 'v1.0.0', '--force'],
         )
         assert result.exit_code == 0, result.output
         tag = repo.tags['v1.0.0']
@@ -502,7 +502,7 @@ class TestCLIBaseline:
         runner = CliRunner()
         result = runner.invoke(
             rms,
-            ['change', 'baseline', 'v1.0.0', '-m', 'Release v1.0.0', '-f', str(repo_root / '.syntagmax' / 'config.toml')],
+            ['-f', str(repo_root / '.syntagmax' / 'config.toml'), 'change', 'baseline', 'v1.0.0', '-m', 'Release v1.0.0'],
         )
         assert result.exit_code == 0, result.output
         tag = repo.tags['v1.0.0']
@@ -514,7 +514,7 @@ class TestCLIBaseline:
         runner = CliRunner()
         result = runner.invoke(
             rms,
-            ['change', 'baseline', 'v1.0.0', '--dry-run', '-f', str(repo_root / '.syntagmax' / 'config.toml')],
+            ['-f', str(repo_root / '.syntagmax' / 'config.toml'), 'change', 'baseline', 'v1.0.0', '--dry-run'],
         )
         assert result.exit_code == 0, result.output
         assert 'Dry run' in result.output
@@ -527,7 +527,7 @@ class TestCLIBaseline:
         runner = CliRunner()
         result = runner.invoke(
             rms,
-            ['change', 'baseline', 'v1.0.0', '-f', str(repo_root / '.syntagmax' / 'config.toml')],
+            ['-f', str(repo_root / '.syntagmax' / 'config.toml'), 'change', 'baseline', 'v1.0.0'],
         )
         assert result.exit_code == 0, result.output
         assert 'push' in result.output
@@ -545,7 +545,7 @@ class TestCLIBaseline:
         # First ensure happy path works
         result = runner.invoke(
             rms,
-            ['change', 'baseline', 'v3.0.0', '-f', str(workspace / '.syntagmax' / 'config.toml')],
+            ['-f', str(workspace / '.syntagmax' / 'config.toml'), 'change', 'baseline', 'v3.0.0'],
         )
         assert result.exit_code == 0, result.output
         assert 'v3.0.0' in [t.name for t in repo_a.tags]
@@ -561,7 +561,7 @@ class TestCLIBaseline:
         runner = CliRunner()
         result = runner.invoke(
             rms,
-            ['change', 'baseline', 'v4.0.0', '-f', str(workspace / '.syntagmax' / 'config.toml')],
+            ['-f', str(workspace / '.syntagmax' / 'config.toml'), 'change', 'baseline', 'v4.0.0'],
         )
         assert result.exit_code != 0
         # Neither repo should have the tag

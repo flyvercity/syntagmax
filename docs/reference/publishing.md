@@ -5,7 +5,7 @@ Syntagmax can combine all project inputs into a single structured markdown docum
 ## Command
 
 ```bash
-syntagmax publish [RECORDS...] [--all] [--single] [--output <path-or-dir>] [-f <config-file>] [--date-suffix]
+syntagmax publish [RECORDS...] [--all] [--single] [--output <path-or-dir>] [--date-suffix]
 ```
 
 ### Parameters
@@ -16,7 +16,6 @@ syntagmax publish [RECORDS...] [--all] [--single] [--output <path-or-dir>] [-f <
 | `--all` | No* | Publish all input records |
 | `--single` | No | Compile all published records sequentially into a single file |
 | `--output <path-or-dir>` | No | Output directory or file path. Defaults to `.syntagmax/outputs/` (separate files) or `.syntagmax/outputs/published.md` (`--single`). |
-| `-f, --config-file` | No | Path to config file (default: `.syntagmax/config.toml`) |
 | `--date-suffix` | No | Append `_<YYYY-MM-DD>` to output filenames (only valid without `--single`) |
 | `--docx` | No | Convert output to DOCX via Pandoc |
 | `--pdf` | No | Convert output to PDF via Pandoc |

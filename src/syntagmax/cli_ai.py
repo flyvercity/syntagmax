@@ -32,11 +32,10 @@ def ai():
 @ai.command(help='Verify an impact task using an AI agent')
 @click.argument('task_file', type=click.Path(exists=True))
 @click.option('--agent', default=None, help='Override the default agent')
-@click.option('-f', '--config-file', type=click.Path(), default='.syntagmax/config.toml')
 @click.pass_obj
-def verify(obj: Params, task_file: str, agent: str | None, config_file: str):
+def verify(obj: Params, task_file: str, agent: str | None):
     """Verify an impact task using an AI agent."""
-    cfg_path = Path(config_file)
+    cfg_path = Path(obj['config_file'])
     if not cfg_path.exists():
         u.pprint(f'[red]Error: Configuration file "{cfg_path}" does not exist.[/red]')
         sys.exit(1)

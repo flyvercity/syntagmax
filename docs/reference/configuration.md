@@ -18,6 +18,7 @@ For a detailed explanation of how Syntagmax handles different directories, relat
 | `metrics` | No | Metrics collection settings |
 | `metamodel` | No | Metamodel configuration |
 | `baseline` | No | Baseline tagging settings (tag name pattern) |
+| `ai` | No | AI CLI agent settings for verification tasks. See [AI Reference](ai.md). |
 
 ## Input Sources (`[[input]]`)
 
@@ -464,6 +465,27 @@ With this pattern, only semver-style tags like `v1.0.0` or `v2.3.14` are accepte
 
 If the `[baseline]` section is omitted or `tag_pattern` is not set, any tag name is accepted.
 
+## AI Settings (`[ai]`)
+
+Configuration for AI-assisted operations such as impact verification (`rms ai verify`).
+
+| Field | Required | Default | Description |
+|-------|----------|---------|-------------|
+| `agent` | No | `kiro` | Name of the default CLI agent to invoke. |
+| `persona` | No | `You are a systems engineer reviewing requirements traceability.` | Persona text injected into AI prompts. |
+| `agents_file` | No | — | Path to a custom agent registry YAML file (relative to config file directory). |
+
+For complete details on agent execution, custom registries, and prompt customization, see the [AI Reference](ai.md).
+
+### Example
+
+```toml
+[ai]
+agent = "kiro"
+persona = "You are a systems engineer reviewing requirements traceability."
+agents_file = "custom-agents.yaml"
+```
+
 ## Full Example
 
 ```toml
@@ -493,4 +515,9 @@ plugins = ["tsv-export"]
 
 [baseline]
 tag_pattern = "^v\\d+\\.\\d+\\.\\d+$"
+
+[ai]
+agent = "kiro"
+persona = "You are a systems engineer reviewing requirements traceability."
+# agents_file = "custom-agents.yaml"
 ```
