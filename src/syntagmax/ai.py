@@ -214,10 +214,8 @@ def invoke_agent(agent_config: dict, prompt: str, working_dir: Path) -> int:
     """Invoke the agent interactively, returning exit code.
 
     The agent command is a pattern string with a {prompt} placeholder.
-    Depending on prompt_mode:
-      - 'file': {prompt} is replaced with a path to a temporary file containing the prompt.
-      - 'arg': {prompt} is replaced with the prompt text itself.
-      - 'stdin': {prompt} is removed from the command; prompt is piped via stdin.
+    The prompt is written to a temporary file and {prompt} is replaced
+    with the file path.
     """
     import subprocess
     import tempfile
@@ -225,36 +223,22 @@ def invoke_agent(agent_config: dict, prompt: str, working_dir: Path) -> int:
     import os
 
     command_pattern = agent_config['command']
-    prompt_mode = agent_config.get('prompt_mode', 'file')
 
-    lg.debug(f'Invoking agent: {command_pattern} (mode={prompt_mode})')
+    lg.debug(f'Invoking agent: {command_pattern}')
 
     prompt_path = None
     try:
-        if prompt_mode == 'file':
-            with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False, encoding='utf-8') as f:
-                f.write(prompt)
-                prompt_path = f.name
-            command_str = command_pattern.replace('{prompt}', prompt_path)
-            stdin_input = None
-        elif prompt_mode == 'stdin':
-            command_str = command_pattern.replace('{prompt}', '').strip()
-            stdin_input = prompt
-        elif prompt_mode == 'arg':
-            command_str = command_pattern.replace('{prompt}', prompt)
-            stdin_input = None
-        else:
-            raise FatalError(f"Unknown prompt_mode '{prompt_mode}' in agent config")
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False, encoding='utf-8') as f:
+            f.write(prompt)
+            prompt_path = f.name
 
+        command_str = command_pattern.replace('{prompt}', prompt_path)
         cmd_parts = shlex.split(command_str)
         lg.debug(f'Agent command: {cmd_parts}')
 
         result = subprocess.run(
             cmd_parts,
             cwd=working_dir,
-            stdin=subprocess.PIPE if stdin_input else None,
-            input=stdin_input,
-            encoding='utf-8' if stdin_input else None,
         )
         return result.returncode
     except FileNotFoundError:

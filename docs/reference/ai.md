@@ -91,15 +91,15 @@ persona = "You are a systems engineer reviewing requirements traceability."
 
 Agent definitions map names to command-line invocation patterns. The built-in registry supports these agents:
 
-| Name | Command Pattern | Prompt Mode | Description |
-|------|----------------|-------------|-------------|
-| `kiro` | `kiro-cli chat --no-interactive {prompt}` | file | Kiro CLI agent |
-| `claude` | `claude --print {prompt}` | stdin | Claude Code CLI |
-| `codex` | `codex --prompt {prompt}` | arg | OpenAI Codex CLI |
-| `copilot` | `copilot {prompt}` | arg | GitHub Copilot CLI |
-| `opencode` | `opencode --prompt {prompt}` | file | OpenCode CLI |
-| `antigravity` | `antigravity --prompt {prompt}` | file | Antigravity CLI |
-| `mistral-vibe` | `vibe --prompt {prompt}` | file | Mistral Vibe CLI |
+| Name | Command Pattern | Description |
+|------|----------------|-------------|
+| `kiro` | `kiro-cli chat --trust-all-tools --no-interactive {prompt}` | Kiro CLI agent |
+| `claude` | `claude --dangerously-skip-permissions --print {prompt}` | Claude Code CLI |
+| `codex` | `codex --prompt {prompt}` | OpenAI Codex CLI |
+| `copilot` | `copilot {prompt}` | GitHub Copilot CLI |
+| `opencode` | `opencode --prompt {prompt}` | OpenCode CLI |
+| `antigravity` | `antigravity --prompt {prompt}` | Antigravity CLI |
+| `mistral-vibe` | `vibe --prompt {prompt}` | Mistral Vibe CLI |
 
 ### Custom Agent Registry
 
@@ -116,19 +116,12 @@ The YAML format:
 agents:
   my-agent:
     command: "my-agent-cli --task {prompt}"
-    prompt_mode: "file"
     description: "My custom agent"
 ```
 
-### Prompt Modes
+### How It Works
 
-The `{prompt}` placeholder in the command pattern is resolved based on `prompt_mode`:
-
-| Mode | Behaviour |
-|------|-----------|
-| `file` | `{prompt}` is replaced with the path to a temporary `.md` file containing the prompt. Best for interactive agents. |
-| `stdin` | `{prompt}` is removed from the command; prompt text is piped to stdin. Agent operates non-interactively. |
-| `arg` | `{prompt}` is replaced with the literal prompt text. Subject to OS command-line length limits. |
+The `{prompt}` placeholder in the command pattern is replaced with the path to a temporary `.md` file containing the rendered prompt. The agent reads the file, performs its work, and exits. The temp file is cleaned up after the agent finishes.
 
 ### Agent Requirements
 

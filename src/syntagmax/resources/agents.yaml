@@ -1,35 +1,28 @@
 agents:
   kiro:
     command: "kiro-cli chat --trust-all-tools --no-interactive {prompt}"
-    prompt_mode: "arg"
     description: "Kiro CLI agent"
 
   claude:
-    command: "claude --dangerously-skip-permissions --print"
-    prompt_mode: "stdin"
+    command: "claude --dangerously-skip-permissions --print {prompt}"
     description: "Claude Code CLI"
 
   codex:
-    command: "codex --dangerously-bypass-approvals-and-sandbox exec {prompt}"
-    prompt_mode: "arg"
+    command: "codex --prompt {prompt}"
     description: "OpenAI Codex CLI"
 
   copilot:
     command: "copilot {prompt}"
-    prompt_mode: "arg"
     description: "GitHub Copilot CLI"
 
   opencode:
     command: "opencode --prompt {prompt}"
-    prompt_mode: "file"
     description: "OpenCode CLI"
 
   antigravity:
     command: "antigravity --prompt {prompt}"
-    prompt_mode: "file"
     description: "Antigravity CLI"
 
   mistral-vibe:
     command: "vibe --prompt {prompt}"
-    prompt_mode: "file"
     description: "Mistral Vibe CLI"
