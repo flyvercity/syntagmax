@@ -95,55 +95,57 @@ The architectural instinct is right — lean on existing agents, keep Syntagmax 
 
 ## Prompt Template Brainstorm: Impact Task Verification
 
-### Draft Prompt Template
+### Revised Prompt Template
 
 ```
-You are verifying an impact traceability task for a requirements management system.
+{{ persona }}
 
-## Task File
-Path: {{ task_file_path }}
+## Task
+You are verifying impact traceability task `{{ task_file_path }}`.
 
-## Context
-A parent artifact was updated after the child artifact was last verified against it.
-Your job is to determine whether the child artifact is still consistent with the
-current parent, or whether it needs further updates.
+A parent artifact was updated after the child artifact was last verified.
+Determine whether the child is still consistent with the current parent.
 
 ## Artifacts
 
 ### Parent (updated)
 - ID: {{ parent_aid }}
+- Type: {{ parent_atype }}
 - File: {{ parent_file_path }}
-- Revision at time of task creation: {{ parent_revision }}
+- Repository: {{ parent_repo_path }}
+- Revision at task creation: {{ parent_revision }}
 
 ### Child (potentially outdated)
 - ID: {{ child_aid }}
+- Type: {{ child_atype }}
 - File: {{ child_file_path }}
+- Repository: {{ child_repo_path }}
+
+**Note:** Parent and child may reside in different repositories.
 
 ## Instructions
 
-1. Read the parent artifact file at `{{ parent_file_path }}`.
-2. Read the child artifact file at `{{ child_file_path }}`.
-3. Optionally, run `git log --oneline {{ parent_revision }}..HEAD -- {{ parent_file_path }}`
-   to understand what changed in the parent since the task was created.
-4. Assess whether the child artifact's content and tracing reference are consistent
-   with the parent's current state. Consider:
-   - Does the child still correctly derive from / implement the parent?
-   - Are there semantic gaps introduced by the parent's changes?
-   - Is the child's scope still aligned with the parent's scope?
-5. Edit the task file at `{{ task_file_path }}`:
-   - If the child IS consistent: set `status: closed` in the frontmatter.
-   - If the child is NOT consistent: leave `status: open`.
-   - In both cases, append a `## Verification Report` section at the end of the file
-     with your assessment rationale.
+1. Read the parent and child artifact files.
+2. Understand what changed in the parent since revision `{{ parent_revision }}`.
+3. Assess whether the child still correctly derives from / implements the parent.
+4. Edit the task file at `{{ task_file_path }}`:
+   - If consistent: set `status: closed` in frontmatter.
+   - If not consistent: leave `status: open`.
+   - Append a `## Verification Report` section (format below).
 
-## Format Requirements for Task File Edit
+## Verification Report Format
 
-- Do NOT modify the `id` field in the frontmatter.
-- Do NOT modify the `contents` field in the frontmatter.
-- Do NOT alter the existing markdown sections (Parent, Child, Action Required).
-- Only change `status` from `open` to `closed` if verification passes.
-- Append your report as a new `## Verification Report` section at the end.
-- Keep the report concise: 3-10 sentences explaining your reasoning.
+## Verification Report
+- **Verdict:** PASS | FAIL
+- **Parent revision observed:** <short hash> (dirty: yes/no)
+- **Child revision observed:** <short hash> (dirty: yes/no)
+- **Rationale:** <3-10 sentences>
+
+## Constraints
+
+- Do NOT modify `id` or `contents` in the frontmatter.
+- Do NOT alter existing markdown sections above the report.
+- Only change `status` from `open` to `closed` if verdict is PASS.
 ```
 
 ### Open Questions
