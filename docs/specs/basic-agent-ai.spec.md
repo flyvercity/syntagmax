@@ -123,7 +123,7 @@ Bundled in `src/syntagmax/resources/agents.yaml`:
 ```yaml
 agents:
   kiro:
-    command: "kiro --chat"
+    command: "kiro-cli"
     prompt_flag: "--prompt"
     prompt_mode: "file"    # pass prompt as a temp file path
     description: "Kiro CLI agent"
@@ -141,7 +141,7 @@ agents:
     description: "OpenAI Codex CLI"
 
   copilot:
-    command: "gh copilot"
+    command: "copilot"
     prompt_flag: ""
     prompt_mode: "arg"
     description: "GitHub Copilot CLI"
@@ -159,7 +159,7 @@ agents:
     description: "Antigravity CLI"
 
   mistral-vibe:
-    command: "mistral-vibe"
+    command: "vibe"
     prompt_flag: "--prompt"
     prompt_mode: "file"
     description: "Mistral Vibe CLI"
