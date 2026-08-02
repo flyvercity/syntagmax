@@ -1,11 +1,11 @@
 agents:
   kiro:
     command: "kiro-cli chat --trust-all-tools --no-interactive {prompt}"
-    prompt_mode: "file"
+    prompt_mode: "arg"
     description: "Kiro CLI agent"
 
-  claude-code:
-    command: "claude --dangerously-skip-permissions --print {prompt}"
+  claude:
+    command: "claude --dangerously-skip-permissions --print"
     prompt_mode: "stdin"
     description: "Claude Code CLI"
 

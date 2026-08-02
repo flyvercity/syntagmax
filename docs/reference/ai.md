@@ -94,7 +94,7 @@ Agent definitions map names to command-line invocation patterns. The built-in re
 | Name | Command Pattern | Prompt Mode | Description |
 |------|----------------|-------------|-------------|
 | `kiro` | `kiro-cli chat --no-interactive {prompt}` | file | Kiro CLI agent |
-| `claude-code` | `claude --print {prompt}` | stdin | Claude Code CLI |
+| `claude` | `claude --print {prompt}` | stdin | Claude Code CLI |
 | `codex` | `codex --prompt {prompt}` | arg | OpenAI Codex CLI |
 | `copilot` | `copilot {prompt}` | arg | GitHub Copilot CLI |
 | `opencode` | `opencode --prompt {prompt}` | file | OpenCode CLI |
