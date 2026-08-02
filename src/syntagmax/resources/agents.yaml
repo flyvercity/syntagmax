@@ -14,8 +14,9 @@ agents:
     windows-suffix: ".cmd"
 
   copilot:
-    command: "copilot {prompt}"
+    command: "copilot --allow-all --prompt {prompt}"
     description: "GitHub Copilot CLI"
+    windows-suffix: ".cmd"
 
   opencode:
     command: "opencode --prompt {prompt}"
