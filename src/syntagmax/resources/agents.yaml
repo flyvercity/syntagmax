@@ -19,8 +19,9 @@ agents:
     windows-suffix: ".cmd"
 
   opencode:
-    command: "opencode --prompt {prompt}"
+    command: "opencode run --auto {prompt}"
     description: "OpenCode CLI"
+    windows-suffix: ".cmd"
 
   antigravity:
     command: "antigravity --prompt {prompt}"
