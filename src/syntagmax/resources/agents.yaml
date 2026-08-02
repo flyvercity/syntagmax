@@ -1,6 +1,6 @@
 agents:
   kiro:
-    command: "kiro-cli chat --trust-all-tools --no-interactive {prompt}"
+    command: "kiro-cli chat --trust-all-tools --no-interactive 'Execute {prompt}'"
     description: "Kiro CLI agent"
 
   claude:
