@@ -91,3 +91,106 @@ Which agent gets invoked? Is there a `--agent` flag? A default in config? What i
 ## Summary
 
 The architectural instinct is right — lean on existing agents, keep Syntagmax as the orchestrator. The main risk is the *interface boundary* between Syntagmax and the agent: the spec needs a tighter contract for what goes in (prompt with injected context) and what comes out (structured verdict), with Syntagmax owning all file mutations. Without that, you're trusting an LLM to be a well-behaved file editor, which is the brittlest part of the system.
+
+
+## Prompt Template Brainstorm: Impact Task Verification
+
+### Draft Prompt Template
+
+```
+You are verifying an impact traceability task for a requirements management system.
+
+## Task File
+Path: {{ task_file_path }}
+
+## Context
+A parent artifact was updated after the child artifact was last verified against it.
+Your job is to determine whether the child artifact is still consistent with the
+current parent, or whether it needs further updates.
+
+## Artifacts
+
+### Parent (updated)
+- ID: {{ parent_aid }}
+- File: {{ parent_file_path }}
+- Revision at time of task creation: {{ parent_revision }}
+
+### Child (potentially outdated)
+- ID: {{ child_aid }}
+- File: {{ child_file_path }}
+
+## Instructions
+
+1. Read the parent artifact file at `{{ parent_file_path }}`.
+2. Read the child artifact file at `{{ child_file_path }}`.
+3. Optionally, run `git log --oneline {{ parent_revision }}..HEAD -- {{ parent_file_path }}`
+   to understand what changed in the parent since the task was created.
+4. Assess whether the child artifact's content and tracing reference are consistent
+   with the parent's current state. Consider:
+   - Does the child still correctly derive from / implement the parent?
+   - Are there semantic gaps introduced by the parent's changes?
+   - Is the child's scope still aligned with the parent's scope?
+5. Edit the task file at `{{ task_file_path }}`:
+   - If the child IS consistent: set `status: closed` in the frontmatter.
+   - If the child is NOT consistent: leave `status: open`.
+   - In both cases, append a `## Verification Report` section at the end of the file
+     with your assessment rationale.
+
+## Format Requirements for Task File Edit
+
+- Do NOT modify the `id` field in the frontmatter.
+- Do NOT modify the `contents` field in the frontmatter.
+- Do NOT alter the existing markdown sections (Parent, Child, Action Required).
+- Only change `status` from `open` to `closed` if verification passes.
+- Append your report as a new `## Verification Report` section at the end.
+- Keep the report concise: 3-10 sentences explaining your reasoning.
+```
+
+### Open Questions
+
+**A. Should the prompt include the actual artifact content inline?**
+
+Agents can fetch it themselves, but including content as reference could reduce hallucination risk at zero cost (the content is small). Trade-off: prompt length vs. reliability.
+
+**Response:**
+
+> No, these agents are OK in such tasks.
+
+**B. Should we instruct the agent to update `parent_revision` / `child_revision` in frontmatter?**
+
+If the child was updated and is now consistent, the task's recorded revisions are stale. Updating them would prevent re-triggering on next impact analysis. But this adds complexity to the format contract.
+
+**Response:**
+
+> No, absolutely not. What agent must do, is to add actual parent and child reference to it's report (marking references as dirty, if a corresponding repo is dirty). Important note: the child and the parent may reside in different repos. The agent shall be warned about it. 
+
+**C. How prescriptive should the report format be?**
+
+Options range from free-form prose to a structured template:
+```markdown
+## Verification Report
+- **Verdict:** PASS / FAIL
+- **Rationale:** ...
+- **Checked at:** <timestamp>
+```
+A structured format makes post-validation easier (grep for `Verdict: PASS` → confirm status=closed).
+
+**Response:**
+
+> Structured with a concise prose section.
+
+**D. Should we provide a "persona" or domain context?**
+
+E.g., "You are a systems engineer reviewing traceability in an aerospace/UAV project." This could improve reasoning quality but couples the prompt to a specific domain.
+
+**Response:**
+
+> I propose to set the default persona as "You are a systems engineer reviewing requirements traceability.", but make it configurable via `[ai.impact_persona]`.
+
+**E. Git history: explicit command or leave to agent?**
+
+The prompt currently *suggests* a git command. Alternative: just say "understand what changed" and let the agent decide how.
+
+**Response:**
+
+> Let agent decide. These agent are used to git.
