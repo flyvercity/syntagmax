@@ -24,7 +24,7 @@ agents:
     windows-suffix: ".cmd"
 
   antigravity:
-    command: "antigravity --prompt {prompt}"
+    command: "agy --dangerously-skip-permissions --prompt {prompt}"
     description: "Antigravity CLI"
 
   mistral-vibe:
