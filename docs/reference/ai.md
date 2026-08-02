@@ -1,5 +1,9 @@
 # AI Commands Reference
 
+> ⚠️ **IMPORTANT: Unrestricted Agent Execution**
+>
+> Syntagmax invokes AI agents with full file system and shell access. The agent runs with the same permissions as the current user and can read, write, or delete any file in the working directory. Syntagmax does NOT sandbox the agent in any way. Review the agent's output and use `git diff` to inspect all changes before committing.
+
 Syntagmax integrates with local CLI AI coding agents to automate verification and analysis tasks. All AI commands are grouped under `syntagmax ai`.
 
 ## Commands

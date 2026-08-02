@@ -677,6 +677,8 @@ Set `SYNTAGMAX_HOME` to override the default global configuration directory.
 
 Syntagmax integrates with local CLI AI coding agents to automate verification tasks. All AI commands are grouped under `syntagmax ai`.
 
+> ⚠️ **Unrestricted Agent Execution:** Syntagmax invokes AI agents with full file system and shell access — the same permissions as the current user. The agent is NOT sandboxed. Always review changes with `git diff` before committing.
+
 ### Verify Impact Task
 
 Use an AI agent to verify whether an impact task has been addressed:
