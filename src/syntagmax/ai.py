@@ -204,17 +204,23 @@ def parse_impact_task(task_path: Path) -> ImpactTaskInfo:
 
 
 def invoke_agent(agent_config: dict, prompt: str, working_dir: Path) -> int:
-    """Invoke the agent interactively, returning exit code."""
+    """Invoke the agent interactively, returning exit code.
+
+    The agent command is a pattern string with a {prompt} placeholder.
+    Depending on prompt_mode:
+      - 'file': {prompt} is replaced with a path to a temporary file containing the prompt.
+      - 'arg': {prompt} is replaced with the prompt text itself.
+      - 'stdin': {prompt} is removed from the command; prompt is piped via stdin.
+    """
     import subprocess
     import tempfile
     import shlex
     import os
 
-    cmd_parts = shlex.split(agent_config['command'])
-    prompt_flag = agent_config.get('prompt_flag', '')
+    command_pattern = agent_config['command']
     prompt_mode = agent_config.get('prompt_mode', 'file')
 
-    lg.debug(f'Invoking agent: {agent_config["command"]} (mode={prompt_mode})')
+    lg.debug(f'Invoking agent: {command_pattern} (mode={prompt_mode})')
 
     prompt_path = None
     try:
@@ -222,24 +228,18 @@ def invoke_agent(agent_config: dict, prompt: str, working_dir: Path) -> int:
             with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False, encoding='utf-8') as f:
                 f.write(prompt)
                 prompt_path = f.name
-            if prompt_flag:
-                cmd_parts += [prompt_flag, prompt_path]
-            else:
-                cmd_parts.append(prompt_path)
+            command_str = command_pattern.replace('{prompt}', prompt_path)
             stdin_input = None
         elif prompt_mode == 'stdin':
-            if prompt_flag:
-                cmd_parts.append(prompt_flag)
+            command_str = command_pattern.replace('{prompt}', '').strip()
             stdin_input = prompt
         elif prompt_mode == 'arg':
-            if prompt_flag:
-                cmd_parts += [prompt_flag, prompt]
-            else:
-                cmd_parts.append(prompt)
+            command_str = command_pattern.replace('{prompt}', prompt)
             stdin_input = None
         else:
             raise FatalError(f"Unknown prompt_mode '{prompt_mode}' in agent config")
 
+        cmd_parts = shlex.split(command_str)
         lg.debug(f'Agent command: {cmd_parts}')
 
         result = subprocess.run(
@@ -251,7 +251,8 @@ def invoke_agent(agent_config: dict, prompt: str, working_dir: Path) -> int:
         )
         return result.returncode
     except FileNotFoundError:
-        raise FatalError(f"Agent executable '{cmd_parts[0]}' not found on PATH.")
+        executable = shlex.split(command_pattern)[0]
+        raise FatalError(f"Agent executable '{executable}' not found on PATH.")
     finally:
         if prompt_path and os.path.exists(prompt_path):
             os.unlink(prompt_path)

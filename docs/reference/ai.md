@@ -87,15 +87,15 @@ persona = "You are a systems engineer reviewing requirements traceability."
 
 Agent definitions map names to command-line invocation patterns. The built-in registry supports these agents:
 
-| Name | Executable | Prompt Mode | Description |
-|------|-----------|-------------|-------------|
-| `kiro` | `kiro-cli` | file | Kiro CLI agent |
-| `claude-code` | `claude` | stdin | Claude Code CLI |
-| `codex` | `codex` | arg | OpenAI Codex CLI |
-| `copilot` | `copilot` | arg | GitHub Copilot CLI |
-| `opencode` | `opencode` | file | OpenCode CLI |
-| `antigravity` | `antigravity` | file | Antigravity CLI |
-| `mistral-vibe` | `vibe` | file | Mistral Vibe CLI |
+| Name | Command Pattern | Prompt Mode | Description |
+|------|----------------|-------------|-------------|
+| `kiro` | `kiro-cli chat --no-interactive {prompt}` | file | Kiro CLI agent |
+| `claude-code` | `claude --print {prompt}` | stdin | Claude Code CLI |
+| `codex` | `codex --prompt {prompt}` | arg | OpenAI Codex CLI |
+| `copilot` | `copilot {prompt}` | arg | GitHub Copilot CLI |
+| `opencode` | `opencode --prompt {prompt}` | file | OpenCode CLI |
+| `antigravity` | `antigravity --prompt {prompt}` | file | Antigravity CLI |
+| `mistral-vibe` | `vibe --prompt {prompt}` | file | Mistral Vibe CLI |
 
 ### Custom Agent Registry
 
@@ -111,19 +111,20 @@ The YAML format:
 ```yaml
 agents:
   my-agent:
-    command: "my-agent-cli"
-    prompt_flag: "--prompt"
+    command: "my-agent-cli --task {prompt}"
     prompt_mode: "file"
     description: "My custom agent"
 ```
 
 ### Prompt Modes
 
+The `{prompt}` placeholder in the command pattern is resolved based on `prompt_mode`:
+
 | Mode | Behaviour |
 |------|-----------|
-| `file` | Writes prompt to a temporary `.md` file, passes its path via `prompt_flag`. Best for interactive agents. |
-| `stdin` | Pipes prompt text to the agent's standard input. Agent operates non-interactively. |
-| `arg` | Passes prompt as a command-line argument value. Subject to OS command-line length limits. |
+| `file` | `{prompt}` is replaced with the path to a temporary `.md` file containing the prompt. Best for interactive agents. |
+| `stdin` | `{prompt}` is removed from the command; prompt text is piped to stdin. Agent operates non-interactively. |
+| `arg` | `{prompt}` is replaced with the literal prompt text. Subject to OS command-line length limits. |
 
 ### Agent Requirements
 
