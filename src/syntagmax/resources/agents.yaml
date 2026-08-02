@@ -1,16 +1,16 @@
 agents:
   kiro:
-    command: "kiro-cli chat -a --no-interactive {prompt}"
+    command: "kiro-cli chat --trust-all-tools --no-interactive {prompt}"
     prompt_mode: "file"
     description: "Kiro CLI agent"
 
   claude-code:
-    command: "claude --print {prompt}"
+    command: "claude --dangerously-skip-permissions --print {prompt}"
     prompt_mode: "stdin"
     description: "Claude Code CLI"
 
   codex:
-    command: "codex --prompt {prompt}"
+    command: "codex --dangerously-bypass-approvals-and-sandbox exec {prompt}"
     prompt_mode: "arg"
     description: "OpenAI Codex CLI"
 

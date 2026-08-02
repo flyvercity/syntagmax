@@ -56,11 +56,16 @@ def render_verify_prompt(
     child_atype: str,
     child_file_path: str,
     child_repo_path: str,
+    agent_name: str,
 ) -> str:
     """Render the impact verification prompt."""
+    from datetime import datetime, timezone
+
     resources_dir = str(importlib.resources.files('syntagmax.resources'))
     env = Environment(loader=FileSystemLoader(resources_dir), keep_trailing_newline=True)
     template = env.get_template('ai-verify-impact.j2')
+
+    timestamp = datetime.now(timezone.utc).strftime('%Y-%m-%d')
 
     return template.render(
         persona=config.ai.persona,
@@ -74,6 +79,8 @@ def render_verify_prompt(
         child_atype=child_atype,
         child_file_path=child_file_path,
         child_repo_path=child_repo_path,
+        agent_name=agent_name,
+        timestamp=timestamp,
     )
 
 

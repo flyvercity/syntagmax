@@ -85,7 +85,10 @@ def verify(obj: Params, task_file: str, agent: str | None, config_file: str):
         child_atype=task_info.child_atype,
         child_file_path=str(config.base_dir() / task_info.child_file_path),
         child_repo_path=child_repo_path,
+        agent_name=agent_name,
     )
+
+    lg.debug(f'Generated prompt:\n{prompt}')
 
     # Invoke agent
     u.pprint(f'[blue]Invoking agent "{agent_name}" to verify task {task_info.task_id}...[/blue]')
