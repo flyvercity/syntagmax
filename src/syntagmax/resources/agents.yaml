@@ -28,5 +28,5 @@ agents:
     description: "Antigravity CLI"
 
   mistral-vibe:
-    command: "vibe --prompt {prompt}"
+    command: "vibe --yolo --prompt {prompt}"
     description: "Mistral Vibe CLI"
