@@ -439,7 +439,9 @@ def render_block(block: Block, pub_config: PublishConfig, context: RenderContext
 
                 rows = []
                 for attr_dict in sec.attributes:
-                    attr_name = list(attr_dict.keys())[0]
+                    # OPTIMIZATION: Using next(iter(...)) avoids constructing a full list of keys
+                    # and indexing it, which speeds up single-key metadata dictionary lookups.
+                    attr_name = next(iter(attr_dict))
                     attr_render = attr_dict[attr_name]
                     val = get_artifact_field_value(a, attr_name)
                     if should_render_attribute(attr_name, val, effective_presence, a.atype, metamodel):
@@ -453,7 +455,9 @@ def render_block(block: Block, pub_config: PublishConfig, context: RenderContext
                     parts.append('\n')
             elif isinstance(sec, TextSection):
                 for attr_dict in sec.attributes:
-                    attr_name = list(attr_dict.keys())[0]
+                    # OPTIMIZATION: Using next(iter(...)) avoids constructing a full list of keys
+                    # and indexing it, which speeds up single-key metadata dictionary lookups.
+                    attr_name = next(iter(attr_dict))
                     attr_render = attr_dict[attr_name]
                     val = get_artifact_field_value(a, attr_name)
                     if val:
