@@ -4,7 +4,6 @@
 # Created: 2025-04-06
 # Description: Builds a tree of artifacts.
 
-import logging as lg
 
 from syntagmax.config import Config
 from syntagmax.artifact import ArtifactMap, Artifact, Location, ParentLink
@@ -122,10 +121,7 @@ def build_tree(config: Config, artifacts: ArtifactMap, errors: list[str]):
 
     for a in artifacts.values():
         for pid in a.pids:
-            if pid not in full_set:
-                if suppress:
-                    lg.warning(f'Missing parent: {pid} at {a} (suppressed)')
-            else:
+            if pid in full_set:
                 artifacts[pid].children.add(a.aid)
 
     top_level = set()
