@@ -125,8 +125,6 @@ def build_tree(config: Config, artifacts: ArtifactMap, errors: list[str]):
             if pid not in full_set:
                 if suppress:
                     lg.warning(f'Missing parent: {pid} at {a} (suppressed)')
-                else:
-                    errors.append(f'Missing parent: {pid} at {a}')
             else:
                 artifacts[pid].children.add(a.aid)
 
