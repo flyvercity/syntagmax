@@ -7,12 +7,14 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from syntagmax.ai import (
+    ArtifactPaths,
     _parse_frontmatter,
     invoke_agent,
     load_agent_registry,
     parse_impact_task,
     render_verify_prompt,
     resolve_agent,
+    resolve_artifact_paths,
     validate_task_post_edit,
 )
 from syntagmax.errors import FatalError
@@ -196,11 +198,13 @@ parent_revision: abc1234
 ## Parent (Updated)
 - **ID:** SYS-003
 - **Type:** SYS
+- **Input Record:** system-requirements
 - **File:** system/SYS-003.md
 
 ## Child (Outdated)
 - **ID:** REQ-003
 - **Type:** REQ
+- **Input Record:** software-requirements
 - **File:** requirements/REQ-003.md
 """
 
@@ -219,6 +223,35 @@ def test_parse_impact_task_valid(tmp_path: Path):
     assert info.child_aid == 'REQ-003'
     assert info.child_atype == 'REQ'
     assert info.child_file_path == 'requirements/REQ-003.md'
+    assert info.parent_record_name == 'system-requirements'
+    assert info.child_record_name == 'software-requirements'
+
+
+def test_parse_impact_task_missing_record_names(tmp_path: Path):
+    """Legacy task files without Input Record fields default to empty string."""
+    content = """\
+---
+id: TASK-IMPACT-REQ-001-SYS-001
+status: open
+parent_revision: def5678
+---
+
+## Parent (Updated)
+- **ID:** SYS-001
+- **Type:** SYS
+- **File:** system/SYS-001.md
+
+## Child (Outdated)
+- **ID:** REQ-001
+- **Type:** REQ
+- **File:** requirements/REQ-001.md
+"""
+    task = tmp_path / 'task.md'
+    task.write_text(content, encoding='utf-8')
+
+    info = parse_impact_task(task)
+    assert info.parent_record_name == ''
+    assert info.child_record_name == ''
 
 
 def test_parse_impact_task_no_frontmatter(tmp_path: Path):
@@ -246,6 +279,107 @@ parent_revision: abc1234
     task.write_text(content, encoding='utf-8')
     with pytest.raises(FatalError, match='missing required fields'):
         parse_impact_task(task)
+
+
+# --- resolve_artifact_paths ---
+
+
+def test_resolve_artifact_paths_via_record(tmp_path: Path):
+    """Resolves paths using input record's record_base to find git repo."""
+    import git
+
+    # Set up a git repo
+    repo = git.Repo.init(str(tmp_path))
+    # Create file structure: base_dir = tmp_path/project, record in tmp_path/project/SYS
+    project_dir = tmp_path / 'project'
+    sys_dir = project_dir / 'SYS'
+    sys_dir.mkdir(parents=True)
+    sys_file = sys_dir / 'SYS-001.md'
+    sys_file.write_text('# SYS-001', encoding='utf-8')
+    repo.index.add([str(sys_file.relative_to(tmp_path))])
+    repo.index.commit('init')
+
+    # Mock config
+    config = MagicMock()
+    config.base_dir.return_value = project_dir
+
+    record = MagicMock()
+    record.name = 'system-requirements'
+    record.record_base = sys_dir
+    config.input_records.return_value = [record]
+
+    result = resolve_artifact_paths(config, 'system-requirements', 'SYS/SYS-001.md')
+
+    assert result.repo_root == str(tmp_path.resolve())
+    assert result.relative_path == 'project/SYS/SYS-001.md'
+    assert '\\' not in result.relative_path  # Forward slashes only
+    assert str(sys_file.resolve()) in result.absolute_path
+
+
+def test_resolve_artifact_paths_fallback_empty_record_name(tmp_path: Path):
+    """Falls back to git-walk when record_name is empty."""
+    import git
+
+    repo = git.Repo.init(str(tmp_path))
+    base_dir = tmp_path / 'base'
+    base_dir.mkdir()
+    req_file = base_dir / 'REQ-001.md'
+    req_file.write_text('# REQ', encoding='utf-8')
+    repo.index.add([str(req_file.relative_to(tmp_path))])
+    repo.index.commit('init')
+
+    config = MagicMock()
+    config.base_dir.return_value = base_dir
+    config.input_records.return_value = []
+
+    result = resolve_artifact_paths(config, '', 'REQ-001.md')
+
+    assert result.repo_root == str(tmp_path.resolve())
+    assert result.relative_path == 'base/REQ-001.md'
+    assert '\\' not in result.relative_path
+
+
+def test_resolve_artifact_paths_fallback_record_not_found(tmp_path: Path):
+    """Falls back to git-walk when record name doesn't match any config record."""
+    import git
+
+    repo = git.Repo.init(str(tmp_path))
+    base_dir = tmp_path / 'base'
+    base_dir.mkdir()
+    req_file = base_dir / 'REQ-001.md'
+    req_file.write_text('# REQ', encoding='utf-8')
+    repo.index.add([str(req_file.relative_to(tmp_path))])
+    repo.index.commit('init')
+
+    config = MagicMock()
+    config.base_dir.return_value = base_dir
+
+    record = MagicMock()
+    record.name = 'other-record'
+    config.input_records.return_value = [record]
+
+    result = resolve_artifact_paths(config, 'nonexistent-record', 'REQ-001.md')
+
+    assert result.repo_root == str(tmp_path.resolve())
+    assert '\\' not in result.relative_path
+
+
+def test_resolve_artifact_paths_no_git_repo(tmp_path: Path):
+    """Falls back to base_dir when no git repo can be found."""
+    base_dir = tmp_path / 'base'
+    base_dir.mkdir()
+    req_file = base_dir / 'REQ-001.md'
+    req_file.write_text('# REQ', encoding='utf-8')
+
+    config = MagicMock()
+    config.base_dir.return_value = base_dir
+    config.input_records.return_value = []
+
+    result = resolve_artifact_paths(config, '', 'REQ-001.md')
+
+    assert result.repo_root == str(base_dir.resolve())
+    assert result.relative_path == 'REQ-001.md'
+    assert '\\' not in result.relative_path
 
 
 # --- invoke_agent ---
@@ -336,11 +470,13 @@ def test_render_verify_prompt_contains_expanded_sections():
         parent_atype='SYS',
         parent_file_path='/repo/SYS-001.md',
         parent_repo_path='/repo',
+        parent_relative_path='SYS-001.md',
         parent_revision='abc1234',
         child_aid='REQ-001',
         child_atype='REQ',
         child_file_path='/repo/REQ-001.md',
         child_repo_path='/repo',
+        child_relative_path='REQ-001.md',
         agent_name='test-agent',
     )
 
@@ -348,6 +484,9 @@ def test_render_verify_prompt_contains_expanded_sections():
     assert '### Parent Changes' in result
     assert '### Child Changes' in result
     assert '### Change Mapping' in result
+    # Assert relative path fields are present
+    assert 'Relative Path (in repo): SYS-001.md' in result
+    assert 'Relative Path (in repo): REQ-001.md' in result
     assert '### Rationale' in result
 
     # Assert metadata fields are present

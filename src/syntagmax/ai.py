@@ -16,6 +16,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import yaml
+import git as gitmodule
 from jinja2 import Environment, FileSystemLoader
 
 from syntagmax.errors import FatalError
@@ -57,11 +58,13 @@ def render_verify_prompt(
     parent_atype: str,
     parent_file_path: str,
     parent_repo_path: str,
+    parent_relative_path: str,
     parent_revision: str,
     child_aid: str,
     child_atype: str,
     child_file_path: str,
     child_repo_path: str,
+    child_relative_path: str,
     agent_name: str,
 ) -> str:
     """Render the impact verification prompt."""
@@ -80,11 +83,13 @@ def render_verify_prompt(
         parent_atype=parent_atype,
         parent_file_path=parent_file_path,
         parent_repo_path=parent_repo_path,
+        parent_relative_path=parent_relative_path,
         parent_revision=parent_revision,
         child_aid=child_aid,
         child_atype=child_atype,
         child_file_path=child_file_path,
         child_repo_path=child_repo_path,
+        child_relative_path=child_relative_path,
         agent_name=agent_name,
         timestamp=timestamp,
     )
@@ -151,6 +156,8 @@ class ImpactTaskInfo:
     child_aid: str
     child_atype: str
     child_file_path: str
+    parent_record_name: str = ''
+    child_record_name: str = ''
 
 
 _FIELD_RE = re.compile(r'^- \*\*(.+?):\*\*\s*(.+)$', re.MULTILINE)
@@ -216,6 +223,62 @@ def parse_impact_task(task_path: Path) -> ImpactTaskInfo:
         child_aid=child_fields['ID'],
         child_atype=child_fields['Type'],
         child_file_path=child_fields['File'],
+        parent_record_name=parent_fields.get('Input Record', ''),
+        child_record_name=child_fields.get('Input Record', ''),
+    )
+
+
+@dataclass
+class ArtifactPaths:
+    """Resolved path information for an artifact."""
+    repo_root: str       # Absolute path to git repo working tree root
+    relative_path: str   # File path relative to repo root (forward slashes)
+    absolute_path: str   # Absolute path to the file
+
+
+def resolve_artifact_paths(config, record_name: str, file_path: str) -> ArtifactPaths:
+    """Resolve artifact paths using input record configuration.
+
+    Looks up the input record by name, resolves the git repo root from
+    record_base, and computes the file's path relative to that repo root.
+
+    Falls back to generic git-walk if record lookup fails.
+    """
+    abs_path = (config.base_dir() / file_path).resolve()
+
+    repo_root = None
+
+    # Try record-based resolution first
+    if record_name:
+        for record in config.input_records():
+            if record.name == record_name:
+                try:
+                    repo = gitmodule.Repo(str(record.record_base.resolve()), search_parent_directories=True)
+                    repo_root = Path(repo.working_tree_dir).resolve()
+                except (gitmodule.InvalidGitRepositoryError, gitmodule.NoSuchPathError):
+                    lg.warning(f'Could not resolve git repo from record "{record_name}", falling back')
+                break
+
+    # Fallback: generic git-walk from file path
+    if repo_root is None:
+        try:
+            repo = gitmodule.Repo(str(abs_path.parent), search_parent_directories=True)
+            repo_root = Path(repo.working_tree_dir).resolve()
+        except (gitmodule.InvalidGitRepositoryError, gitmodule.NoSuchPathError):
+            lg.warning(f'Could not resolve repository for {file_path}, using base_dir')
+            repo_root = config.base_dir().resolve()
+
+    # Compute relative path (forward slashes, with ValueError fallback)
+    try:
+        relative_path = abs_path.relative_to(repo_root).as_posix()
+    except ValueError:
+        lg.warning(f'File {abs_path} is not under repo root {repo_root}, using file_path as relative')
+        relative_path = Path(file_path).as_posix()
+
+    return ArtifactPaths(
+        repo_root=str(repo_root),
+        relative_path=relative_path,
+        absolute_path=str(abs_path),
     )
 
 

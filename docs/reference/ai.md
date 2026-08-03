@@ -150,6 +150,22 @@ The verification prompt is rendered from a Jinja2 template bundled with Syntagma
 - Format requirements for the verification report
 - Constraints (audit-only, no artifact modification)
 
+### Artifact Path Resolution
+
+For each artifact (parent and child), the prompt includes three path fields:
+
+| Field | Example | Description |
+|-------|---------|-------------|
+| File | `/home/user/project/SYS/SYS-003.md` | Absolute path to the artifact file |
+| Relative Path (in repo) | `SYS/SYS-003.md` | File path relative to the git repository root (always forward slashes) |
+| Repository | `/home/user/project` | Absolute path to the git repository working tree root |
+
+Path resolution uses the task file's **Input Record** field to look up the corresponding input record from the project configuration. The record's `record_base` directory is used to identify the owning git repository, providing precise path information without generic filesystem traversal.
+
+If the Input Record field is missing (e.g., legacy task files) or the record name is not found in the current config, resolution falls back to discovering the git repository by walking up from the artifact file path.
+
+This explicit path information allows agents to immediately locate and open artifact files without searching.
+
 ### Verification Report Format
 
 The agent must append this section to the task file:

@@ -20,6 +20,7 @@ from syntagmax.ai import (
     parse_impact_task,
     render_verify_prompt,
     resolve_agent,
+    resolve_artifact_paths,
     validate_task_post_edit,
 )
 
@@ -61,9 +62,12 @@ def verify(obj: Params, task_file: str, agent: str | None):
     # Warn if repo is dirty
     _warn_if_dirty(config)
 
-    # Resolve repo paths for parent and child
-    parent_repo_path = _resolve_repo_path(config, task_info.parent_file_path)
-    child_repo_path = _resolve_repo_path(config, task_info.child_file_path)
+    # Resolve artifact paths for parent and child using input records
+    parent_paths = resolve_artifact_paths(config, task_info.parent_record_name, task_info.parent_file_path)
+    child_paths = resolve_artifact_paths(config, task_info.child_record_name, task_info.child_file_path)
+
+    lg.debug(f'Parent paths: repo_root={parent_paths.repo_root}, relative={parent_paths.relative_path}')
+    lg.debug(f'Child paths: repo_root={child_paths.repo_root}, relative={child_paths.relative_path}')
 
     # Resolve agent
     agent_name = agent or config.ai.agent
@@ -77,13 +81,15 @@ def verify(obj: Params, task_file: str, agent: str | None):
         task_file_path=str(task_path),
         parent_aid=task_info.parent_aid,
         parent_atype=task_info.parent_atype,
-        parent_file_path=str(config.base_dir() / task_info.parent_file_path),
-        parent_repo_path=parent_repo_path,
+        parent_file_path=parent_paths.absolute_path,
+        parent_repo_path=parent_paths.repo_root,
+        parent_relative_path=parent_paths.relative_path,
         parent_revision=task_info.parent_revision,
         child_aid=task_info.child_aid,
         child_atype=task_info.child_atype,
-        child_file_path=str(config.base_dir() / task_info.child_file_path),
-        child_repo_path=child_repo_path,
+        child_file_path=child_paths.absolute_path,
+        child_repo_path=child_paths.repo_root,
+        child_relative_path=child_paths.relative_path,
         agent_name=agent_name,
     )
 
@@ -127,14 +133,3 @@ def _warn_if_dirty(config: Config) -> None:
             lg.warning('Repository has uncommitted changes. Proceeding anyway.')
     except (git.InvalidGitRepositoryError, git.NoSuchPathError):
         pass
-
-
-def _resolve_repo_path(config: Config, file_path: str) -> str:
-    """Resolve the repository root for an artifact file path."""
-    abs_path = (config.base_dir() / file_path).resolve()
-    try:
-        repo = git.Repo(abs_path.parent, search_parent_directories=True)
-        return str(Path(repo.working_tree_dir).resolve())
-    except (git.InvalidGitRepositoryError, git.NoSuchPathError):
-        lg.warning(f'Could not resolve repository for {file_path}, using base_dir')
-        return str(config.base_dir().resolve())

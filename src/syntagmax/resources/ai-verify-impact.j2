@@ -12,6 +12,7 @@ Determine whether the child is still consistent with the current parent.
 - ID: {{ parent_aid }}
 - Type: {{ parent_atype }}
 - File: {{ parent_file_path }}
+- Relative Path (in repo): {{ parent_relative_path }}
 - Repository: {{ parent_repo_path }}
 - Revision at task creation: {{ parent_revision }}
 
@@ -19,6 +20,7 @@ Determine whether the child is still consistent with the current parent.
 - ID: {{ child_aid }}
 - Type: {{ child_atype }}
 - File: {{ child_file_path }}
+- Relative Path (in repo): {{ child_relative_path }}
 - Repository: {{ child_repo_path }}
 
 **Note:** Parent and child may reside in different repositories. Use the correct repository root when inspecting git history.
