@@ -157,7 +157,30 @@ The agent must append this section to the task file:
 ```markdown
 ## Verification Report
 - **Verdict:** PASS | FAIL
+- **Agent:** <agent_name>
+- **Date:** <YYYY-MM-DD>
 - **Parent revision observed:** <short hash> (dirty: yes/no)
 - **Child revision observed:** <short hash> (dirty: yes/no)
-- **Rationale:** <3-10 sentences explaining the assessment>
+
+### Parent Changes
+<Bullet list of distinct parent changes since recorded revision.>
+
+### Child Changes
+<Bullet list of child changes, or "No changes observed.">
+
+### Change Mapping
+<Numbered list mapping each parent change to its child response or explaining why no change is needed.>
+
+### Rationale
+<2-5 sentence summary referencing the change mapping to justify the verdict.>
 ```
+
+#### Subsection Descriptions
+
+- **Verdict:** Final assessment — `PASS` if the child artifact remains consistent with the updated parent, `FAIL` if discrepancies exist that require action.
+- **Agent / Date:** Identifies which agent performed the verification and when, providing an audit trail.
+- **Parent/Child revision observed:** Records the exact commit hashes inspected and whether the working tree was dirty, ensuring reproducibility.
+- **Parent Changes:** Enumerates the distinct semantic changes in the parent artifact since the revision recorded in the task file. This establishes what the child must respond to.
+- **Child Changes:** Lists any changes already made to the child artifact. If the child was updated to reflect the parent changes, those updates appear here.
+- **Change Mapping:** Explicitly maps each parent change to its corresponding child response (or justifies why no child change is needed). This is the core traceability evidence.
+- **Rationale:** A concise summary that references the change mapping to justify the verdict. Keeps the decision auditable without requiring the reader to re-derive the logic.

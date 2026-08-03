@@ -690,7 +690,14 @@ Use an AI agent to verify whether an impact task has been addressed:
 syntagmax ai verify .syntagmax/tasks/TASK-IMPACT-REQ-003-SYS-003.md
 ```
 
-The agent reads the parent and child artifacts, assesses consistency, and updates the task file with a verification report.
+The agent reads the parent and child artifacts, assesses consistency, and updates the task file with a verification report. The report contains the following sections:
+
+- **Parent Changes** — summarises what changed in the parent artifact since the link was established.
+- **Child Changes** — summarises what changed in the child artifact.
+- **Change Mapping** — maps each parent change to the corresponding child update (or notes gaps).
+- **Rationale** — the agent's overall assessment of whether the child still satisfies the parent.
+
+For the full report format, see [docs/reference/ai.md](docs/reference/ai.md).
 
 #### Options
 

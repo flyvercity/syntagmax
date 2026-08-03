@@ -26,9 +26,11 @@ Determine whether the child is still consistent with the current parent.
 ## Instructions
 
 1. Read the parent and child artifact files.
-2. Understand what changed in the parent since revision `{{ parent_revision }}`.
-3. Assess whether the child still correctly derives from / implements the parent.
-4. Edit the task file at `{{ task_file_path }}`:
+2. Inspect the parent artifact's history/diff since revision `{{ parent_revision }}` to identify what changed.
+3. Inspect the child artifact file and its recent history.
+4. For each parent change, determine whether the child addresses it or explain why no change is needed.
+5. Assess overall consistency.
+6. Edit the task file at `{{ task_file_path }}`:
    - If consistent: set `status: closed` in frontmatter.
    - If not consistent: leave `status: open`.
    - Append a `## Verification Report` section (format below).
@@ -44,7 +46,18 @@ Append this section at the end of the task file:
 - **Date:** {{ timestamp }}
 - **Parent revision observed:** <short hash> (dirty: yes/no)
 - **Child revision observed:** <short hash> (dirty: yes/no)
-- **Rationale:** <3-10 sentences explaining your assessment>
+
+### Parent Changes
+<Bullet list describing each distinct change in the parent artifact since the recorded revision. Each bullet should be a concise description of what was added, modified, or removed.>
+
+### Child Changes
+<Bullet list describing each distinct change in the child artifact since the recorded revision, OR a single line: "No changes observed.">
+
+### Change Mapping
+<For each parent change listed above, explain which child change addresses it. If a parent change does NOT require a child update, explain why. Format as a numbered list mapping parent changes to child responses.>
+
+### Rationale
+<2-5 sentence summary of the overall verdict. Reference specific items from the change mapping above to justify PASS or FAIL.>
 ```
 
 ## Constraints
@@ -53,3 +66,7 @@ Append this section at the end of the task file:
 - Do NOT alter existing markdown sections above the report.
 - Do NOT modify the parent or child artifact files. This is an audit operation only.
 - Only change `status` from `open` to `closed` if verdict is PASS.
+- The Change Mapping MUST address every item listed in Parent Changes. Do not omit any.
+- If the parent has no meaningful changes (e.g., only whitespace), state that explicitly.
+- If git history is unresolvable (shallow clone, non-git state), perform direct file comparison instead.
+- For large diffs (>5 distinct changes), group related changes logically into summary bullet points to maintain report conciseness.

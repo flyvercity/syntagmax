@@ -11,6 +11,7 @@ from syntagmax.ai import (
     invoke_agent,
     load_agent_registry,
     parse_impact_task,
+    render_verify_prompt,
     resolve_agent,
     validate_task_post_edit,
 )
@@ -318,3 +319,75 @@ def test_invoke_agent_cleans_temp_file(mock_which, mock_run, tmp_path: Path):
     assert len(captured_paths) == 1
     # Temp file should be cleaned up
     assert not Path(captured_paths[0]).exists()
+
+
+
+# --- render_verify_prompt expanded sections ---
+
+
+def test_render_verify_prompt_contains_expanded_sections():
+    config = MagicMock()
+    config.ai.persona = 'You are a systems engineer reviewing requirements traceability.'
+
+    result = render_verify_prompt(
+        config=config,
+        task_file_path='task.md',
+        parent_aid='SYS-001',
+        parent_atype='SYS',
+        parent_file_path='/repo/SYS-001.md',
+        parent_repo_path='/repo',
+        parent_revision='abc1234',
+        child_aid='REQ-001',
+        child_atype='REQ',
+        child_file_path='/repo/REQ-001.md',
+        child_repo_path='/repo',
+        agent_name='test-agent',
+    )
+
+    # Assert expanded report sections are present
+    assert '### Parent Changes' in result
+    assert '### Child Changes' in result
+    assert '### Change Mapping' in result
+    assert '### Rationale' in result
+
+    # Assert metadata fields are present
+    assert 'Verdict' in result
+    assert 'Agent' in result
+    assert 'Date' in result
+
+
+# --- validate_task_post_edit expanded format ---
+
+
+def test_validate_task_post_edit_expanded_format(tmp_path: Path):
+    task_content = """\
+---
+id: TASK-IMPACT-REQ-001-SYS-001
+status: closed
+---
+
+## Verification Report
+- **Verdict:** PASS
+- **Agent:** test-agent
+- **Date:** 2026-08-03
+- **Parent revision observed:** abc1234 (dirty: no)
+- **Child revision observed:** def5678 (dirty: no)
+
+### Parent Changes
+- Added safety requirement clause
+
+### Child Changes
+- Updated derived requirement to include safety
+
+### Change Mapping
+1. Parent added safety clause → Child updated to include safety requirement
+
+### Rationale
+The child correctly derives from the updated parent. PASS.
+"""
+    task_path = tmp_path / 'task.md'
+    task_path.write_text(task_content, encoding='utf-8')
+
+    is_valid, msg = validate_task_post_edit(task_path, 'TASK-IMPACT-REQ-001-SYS-001')
+    assert is_valid is True
+    assert msg == 'valid'
