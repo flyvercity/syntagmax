@@ -92,7 +92,7 @@ def populate_pids(config: Config, artifacts: ArtifactMap, errors: list):
                                             input_record=a.record.name if a.record else None,
                                             artifact_id=a.aid,
                                             artifact_type=a.atype,
-                                            file_path=str(a.location) if a.location else None,
+                                            file_path=a.location.filepath() if a.location else None,
                                         ))
                                 else:
                                     a.parent_links.append(ParentLink(pid=aid, nominal_revision=nominal_revision))
@@ -106,7 +106,7 @@ def populate_pids(config: Config, artifacts: ArtifactMap, errors: list):
                                     input_record=a.record.name if a.record else None,
                                     artifact_id=a.aid,
                                     artifact_type=a.atype,
-                                    file_path=str(a.location) if a.location else None,
+                                    file_path=a.location.filepath() if a.location else None,
                                 ))
 
                 # If we processed one rule for this attribute that matched,

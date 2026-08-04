@@ -9,6 +9,9 @@ class MockLocation(Location):
     def __init__(self, name):
         self.name = name
 
+    def filepath(self) -> str:
+        return self.name
+
     def __str__(self):
         return self.name
 

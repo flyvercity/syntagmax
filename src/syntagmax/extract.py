@@ -59,7 +59,7 @@ def build_artifact_map(artifacts_list: list[Artifact], errors) -> dict[str, Arti
                 category=CAT_EXTRACTION,
                 input_record=a.record.name if a.record else None,
                 artifact_type=a.atype,
-                file_path=str(a.location) if a.location else None,
+                file_path=a.location.filepath() if a.location else None,
             ))
             continue
         if a.aid in artifacts:
@@ -69,7 +69,7 @@ def build_artifact_map(artifacts_list: list[Artifact], errors) -> dict[str, Arti
                 input_record=a.record.name if a.record else None,
                 artifact_id=a.aid,
                 artifact_type=a.atype,
-                file_path=str(a.location) if a.location else None,
+                file_path=a.location.filepath() if a.location else None,
             ))
             continue
         artifacts[a.aid] = a

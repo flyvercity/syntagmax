@@ -74,14 +74,15 @@ def format_error(error: ReportError, report_config: 'ReportConfig | None' = None
 
     path = error.file_path
     filename = PurePosixPath(path).name
+    line_suffix = f':{error.line_range[0]}-{error.line_range[1]}' if error.line_range else ''
 
     if report_config.wiki_links:
-        # Wiki-link style: [[path/to/file.md]] — no line anchors
-        link = f'[[{path}]]'
+        # Wiki-link style: [[path/to/file.md]]:10-20 — line range after brackets
+        link = f'[[{path}]]{line_suffix}'
     else:
-        # Standard Markdown link with line anchor
+        # Standard Markdown link: [file.md](path#L10):10-20
         anchor = f'#L{error.line_range[0]}' if error.line_range else ''
-        link = f'[{filename}]({path}{anchor})'
+        link = f'[{filename}]({path}{anchor}){line_suffix}'
 
     # Build the formatted string
     parts = [error.message]

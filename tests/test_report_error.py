@@ -121,7 +121,7 @@ class TestFormatError:
             line_range=(10, 20),
         )
         result = format_error(err, cfg)
-        assert '[file.md](reqs/file.md#L10)' in result
+        assert '[file.md](reqs/file.md#L10):10-20' in result
         assert 'REQ:REQ-001' in result
         assert 'test msg' in result
 
@@ -138,7 +138,7 @@ class TestFormatError:
             line_range=(10, 20),
         )
         result = format_error(err, cfg)
-        assert '[[reqs/file.md]]' in result
+        assert '[[reqs/file.md]]:10-20' in result
         assert 'REQ:REQ-001' in result
         assert '#L' not in result
 

@@ -123,7 +123,7 @@ def test_report_render_with_markdown_links():
         report_config=ReportConfig(path_as_links=True, wiki_links=False),
     )
     md = report.render()
-    assert '[file.md](requirements/file.md#L10)' in md
+    assert '[file.md](requirements/file.md#L10):10-20' in md
     assert 'REQ:REQ-001' in md
 
 
@@ -144,7 +144,7 @@ def test_report_render_with_wiki_links():
         report_config=ReportConfig(path_as_links=True, wiki_links=True),
     )
     md = report.render()
-    assert '[[requirements/file.md]]' in md
+    assert '[[requirements/file.md]]:10-20' in md
     assert '#L' not in md
 
 

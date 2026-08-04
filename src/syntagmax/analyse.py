@@ -31,7 +31,7 @@ class ArtifactValidator:
 
     def _make_error(self, artifact: Artifact, message: str, category: str) -> ReportError:
         from syntagmax.artifact import LineLocation
-        file_path = str(artifact.location) if artifact.location else None
+        file_path = artifact.location.filepath() if artifact.location else None
         line_range = None
         if isinstance(artifact.location, LineLocation):
             line_range = artifact.location.loc_lines
