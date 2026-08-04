@@ -159,28 +159,28 @@ syntagmax --report-links --report-wiki-links analyze
 
 ### Q1: Should the `[report]` section live in the project config or be a separate report config file?
 
-**Answer**: _TBD_
+**Answer**: `[report]` config section works just fine.
 
 ### Q2: Should errors without a known input record (e.g. "must have exactly one root") go under a "Global" heading or remain at the top level?
 
-**Answer**: _TBD_
+**Answer**: `Global` seems just right.
 
 ### Q3: For wiki links, should the path be relative to the vault root or to the config file base directory?
 
-**Answer**: _TBD_
+**Answer**: relative to the vault (i.e., input record) root.
 
 ### Q4: Should metrics be grouped by input record, or remain a single flat section (since they currently only target one `requirement_type`)?
 
-**Answer**: _TBD_
+**Answer**: group by input records, if there is more than one.
 
 ### Q5: Should impact analysis results also be grouped by input record, or kept flat since they represent cross-record relationships?
 
-**Answer**: _TBD_
+**Answer**: Impact analysis shall be flat, as the tree is unified.
 
 ### Q6: Is replacing `list[str]` with `list[ReportError]` acceptable as a breaking internal change, or do we need a migration period with dual support?
 
-**Answer**: _TBD_
+**Answer**: Acceptable, not migration needed.
 
 ### Q7: Should the error category names be localised in the report, or kept as English technical identifiers?
 
-**Answer**: _TBD_
+**Answer**: Localized.
