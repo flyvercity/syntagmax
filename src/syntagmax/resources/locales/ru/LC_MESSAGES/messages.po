@@ -267,5 +267,8 @@ msgstr "Глобальные"
 msgid "errors"
 msgstr "ошибок"
 
+msgid "No errors found."
+msgstr "Ошибок не обнаружено."
+
 msgid "Metrics by Input Record"
 msgstr "Метрики по источникам"

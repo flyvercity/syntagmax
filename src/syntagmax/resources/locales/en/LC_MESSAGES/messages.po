@@ -266,5 +266,8 @@ msgstr "Global"
 msgid "errors"
 msgstr "errors"
 
+msgid "No errors found."
+msgstr "No errors found."
+
 msgid "Metrics by Input Record"
 msgstr "Metrics by Input Record"
