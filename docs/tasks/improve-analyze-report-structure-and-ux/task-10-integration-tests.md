@@ -1,4 +1,4 @@
-# [ ] Task 10: Integration Tests
+# [x] Task 10: Integration Tests
 
 **Spec:** `docs/specs/improve-analyze-report-structure-and-ux.spec.md`
 

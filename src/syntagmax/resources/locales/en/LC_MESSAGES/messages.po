@@ -240,3 +240,31 @@ msgstr "Objects"
 
 msgid "Error"
 msgstr "Error"
+
+#. Analysis report - error grouping
+msgid "Schema Errors"
+msgstr "Schema Errors"
+
+msgid "Attribute Errors"
+msgstr "Attribute Errors"
+
+msgid "Reference Errors"
+msgstr "Reference Errors"
+
+msgid "Trace Errors"
+msgstr "Trace Errors"
+
+msgid "Duplicate Errors"
+msgstr "Duplicate Errors"
+
+msgid "Structure Errors"
+msgstr "Structure Errors"
+
+msgid "Global"
+msgstr "Global"
+
+msgid "errors"
+msgstr "errors"
+
+msgid "Metrics by Input Record"
+msgstr "Metrics by Input Record"

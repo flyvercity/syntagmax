@@ -1,12 +1,20 @@
 # SPDX-License-Identifier: MIT
 
 from benedict import benedict
-from syntagmax.report import Report
+from syntagmax.report import (
+    CAT_ATTRIBUTE,
+    CAT_STRUCTURE,
+    Report,
+    ReportError,
+)
 
 
 def test_report_render_all_sections():
     report = Report(
-        errors=['Error 1', 'Error 2'],
+        errors=[
+            ReportError(message='Error 1', category=CAT_STRUCTURE),
+            ReportError(message='Error 2', category=CAT_ATTRIBUTE, input_record='test-input'),
+        ],
         tree_text='ROOT\n\u251c\u2500REQ: REQ-001\n\u2514\u2500REQ: REQ-002',
         metrics=benedict(
             {
@@ -39,7 +47,12 @@ def test_report_render_all_sections():
 
     md = report.render()
     assert '## Errors' in md
+    assert '### Global' in md
+    assert '#### Structure Errors (1)' in md
     assert 'Error 1' in md
+    assert '### test-input' in md
+    assert '#### Attribute Errors (1)' in md
+    assert 'Error 2' in md
     assert '## Artifact Tree' in md
     assert 'REQ-001' in md
     assert '## Metrics' in md

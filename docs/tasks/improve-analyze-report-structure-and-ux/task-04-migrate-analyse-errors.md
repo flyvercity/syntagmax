@@ -1,4 +1,4 @@
-# [ ] Task 4: Migrate Error Sites in `analyse.py` (ArtifactValidator)
+# [x] Task 4: Migrate Error Sites in `analyse.py` (ArtifactValidator)
 
 **Spec:** `docs/specs/improve-analyze-report-structure-and-ux.spec.md`
 

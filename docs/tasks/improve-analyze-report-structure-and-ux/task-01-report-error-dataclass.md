@@ -1,4 +1,4 @@
-# [ ] Task 1: Introduce `ReportError` Dataclass and Error Constants
+# [x] Task 1: Introduce `ReportError` Dataclass and Error Constants
 
 **Spec:** `docs/specs/improve-analyze-report-structure-and-ux.spec.md`
 

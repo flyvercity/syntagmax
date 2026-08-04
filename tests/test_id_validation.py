@@ -67,7 +67,7 @@ artifact SYS:
 
     validator = ArtifactValidator(metamodel, artifacts)
     v_errors = validator.validate(a2)
-    assert any('does not match schema' in e for e in v_errors), f'a2 should have schema error, errors: {v_errors}'
+    assert any('does not match schema' in str(e) for e in v_errors), f'a2 should have schema error, errors: {v_errors}'
 
     validator = ArtifactValidator(metamodel, artifacts)
     v_errors = validator.validate(a3)
@@ -75,7 +75,7 @@ artifact SYS:
 
     validator = ArtifactValidator(metamodel, artifacts)
     v_errors = validator.validate(a4)
-    assert any('does not match schema' in e for e in v_errors), f'a4 should have schema error, errors: {v_errors}'
+    assert any('does not match schema' in str(e) for e in v_errors), f'a4 should have schema error, errors: {v_errors}'
 
 
 def test_id_attribute_forbidden(tmp_path):

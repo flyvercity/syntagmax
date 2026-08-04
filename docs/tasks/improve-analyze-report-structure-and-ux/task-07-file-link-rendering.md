@@ -1,4 +1,4 @@
-# [ ] Task 7: File Link Rendering
+# [x] Task 7: File Link Rendering
 
 **Spec:** `docs/specs/improve-analyze-report-structure-and-ux.spec.md`
 

@@ -13,6 +13,7 @@ from syntagmax.extractors.ipynb import IPynbExtractor
 from syntagmax.extractors.simple_markdown import SimpleMarkdownExtractor
 from syntagmax.artifact import Artifact, UNDEFINED_ID
 from syntagmax.config import Config
+from syntagmax.report import ReportError, CAT_EXTRACTION, CAT_DUPLICATE
 from syntagmax.utils import pprint
 
 
@@ -37,7 +38,7 @@ def extract(config: Config, errors) -> list[Artifact]:
         extractor = EXTRACTORS[record.driver](config, record, config.metamodel)
         record_artifacts, record_errors = extractor.extract()
         artifacts.extend(record_artifacts)
-        errors.extend(record_errors)
+        errors.extend(ReportError(message=err, category=CAT_EXTRACTION, input_record=record.name) for err in record_errors)
 
     if config.params.get('log_level') == 'debug':
         lg.debug('Listing raw artifacts:')
@@ -53,10 +54,23 @@ def build_artifact_map(artifacts_list: list[Artifact], errors) -> dict[str, Arti
 
     for a in artifacts_list:
         if not a.aid or a.aid == UNDEFINED_ID:
-            errors.append(f'Artifact {a.atype} at {a.location} has no ID')
+            errors.append(ReportError(
+                message=f'Artifact {a.atype} at {a.location} has no ID',
+                category=CAT_EXTRACTION,
+                input_record=a.record.name if a.record else None,
+                artifact_type=a.atype,
+                file_path=str(a.location) if a.location else None,
+            ))
             continue
         if a.aid in artifacts:
-            errors.append(f'Duplicate artifact ID: {a.aid} at {a.location} (already defined at {artifacts[a.aid].location})')
+            errors.append(ReportError(
+                message=f'Duplicate artifact ID: {a.aid} at {a.location} (already defined at {artifacts[a.aid].location})',
+                category=CAT_DUPLICATE,
+                input_record=a.record.name if a.record else None,
+                artifact_id=a.aid,
+                artifact_type=a.atype,
+                file_path=str(a.location) if a.location else None,
+            ))
             continue
         artifacts[a.aid] = a
 

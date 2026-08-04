@@ -1,4 +1,4 @@
-# [ ] Task 5: Migrate Error Sites in `main.py` and `metrics.py`
+# [x] Task 5: Migrate Error Sites in `main.py` and `metrics.py`
 
 **Spec:** `docs/specs/improve-analyze-report-structure-and-ux.spec.md`
 

@@ -1,4 +1,4 @@
-# [ ] Task 3: Migrate Error Sites in `tree.py`
+# [x] Task 3: Migrate Error Sites in `tree.py`
 
 **Spec:** `docs/specs/improve-analyze-report-structure-and-ux.spec.md`
 

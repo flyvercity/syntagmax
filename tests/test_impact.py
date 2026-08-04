@@ -133,7 +133,7 @@ def test_trace_mode_validation_errors(tmp_path):
     validator = ArtifactValidator(metamodel, artifacts, errors)
     validator.validate(child)
 
-    assert any("by timestamp', but revision was specified" in e for e in errors)
+    assert any("by timestamp', but revision was specified" in str(e) for e in errors)
 
     # 2. commit trace requires @revision
     metamodel['traces']['REQ'][0]['mode'] = 'commit'
@@ -141,4 +141,4 @@ def test_trace_mode_validation_errors(tmp_path):
     errors = []
     validator = ArtifactValidator(metamodel, artifacts, errors)
     validator.validate(child)
-    assert any("by commit', but no revision was specified" in e for e in errors)
+    assert any("by commit', but no revision was specified" in str(e) for e in errors)

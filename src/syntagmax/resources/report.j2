@@ -4,9 +4,17 @@
 ## {{ _("Errors") }}
 
 {{ _("Total errors:") }} {{ report.errors | length }}
+{% for input_name, categories in report.errors_grouped().items() %}
 
-{% for error in report.errors %}
-{{ loop.index }}. {{ error }}
+### {{ input_name }}
+{% for cat_name, cat_errors in categories %}
+
+#### {{ cat_name }} ({{ cat_errors | length }})
+
+{% for error in cat_errors %}
+{{ loop.index }}. {{ error | format_error }}
+{% endfor %}
+{% endfor %}
 {% endfor %}
 {% endif %}
 {% if report.tree_text %}
@@ -32,6 +40,24 @@
 
 {{ _("Requirements without verification (%)") }}: {{ "%.1f" | format(report.metrics.requirements_without_verify_pct) }}%
 {{ _("Requirements with TBD (%)") }}: {{ "%.1f" | format(report.metrics.requirements_with_tbd_pct) }}%
+{% if report.metrics_by_input %}
+
+### {{ _("Metrics by Input Record") }}
+{% for record_name, m in report.metrics_by_input %}
+
+#### {{ record_name }}
+
+{{ _("Total Requirements") }}: {{ m.total_requirements }}
+
+| {{ _("Status") }} | {{ _("Count") }} |
+|--------|-------|
+{% for row in m.requirements_by_status %}| {{ row.status }} | {{ row.count }} |
+{% endfor %}
+
+{{ _("Requirements without verification (%)") }}: {{ "%.1f" | format(m.requirements_without_verify_pct) }}%
+{{ _("Requirements with TBD (%)") }}: {{ "%.1f" | format(m.requirements_with_tbd_pct) }}%
+{% endfor %}
+{% endif %}
 {% endif %}
 {% if report.impact %}
 
@@ -41,7 +67,7 @@
 {% if report.impact.total_suspicious > 0 %}
 
 | {{ _("Artifact") }} | {{ _("Parent") }} | {{ _("Required Revision") }} | {{ _("Actual Revision") }} |
-|----------|--------|-------------------|-----------------|
+|----------|--------|-------------------|------------------|
 {% for link in report.impact.suspicious_links %}| {{ link.artifact_atype }}:{% if link.artifact_aid == "<undefined>" %}`<undefined>`{% else %}{{ link.artifact_aid }}{% endif %} | {{ link.parent_atype }}:{% if link.parent_aid == "<undefined>" %}`<undefined>`{% else %}{{ link.parent_aid }}{% endif %} | {{ link.nominal_revision }} | {{ link.actual_revision }} |
 {% endfor %}
 {% if report.impact.suspicious_tree %}

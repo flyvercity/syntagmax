@@ -137,7 +137,7 @@ def test_enum_multiple_validation(metamodel):
     a2.aid = 'REQ-2'
     a2.fields = {'id': 'REQ-2', 'contents': 'test', 'allocation': ['HW', 'INVALID']}
     errors = validator.validate(a2)
-    assert any('is invalid. Allowed values' in e for e in errors)
+    assert any('is invalid. Allowed values' in str(e) for e in errors)
 
     # Not a list
     a3 = Artifact(config)
@@ -145,4 +145,4 @@ def test_enum_multiple_validation(metamodel):
     a3.aid = 'REQ-3'
     a3.fields = {'id': 'REQ-3', 'contents': 'test', 'allocation': 'HW'}
     errors = validator.validate(a3)
-    assert any('must be a list' in e for e in errors)
+    assert any('must be a list' in str(e) for e in errors)

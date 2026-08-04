@@ -129,7 +129,7 @@ All analysis outputs (errors, metrics, impact, and optionally the artifact tree)
 - **Default location:** `.syntagmax/outputs/report.md`
 - **Override with:** `--output <path>` or `--output console` to print to stdout
 - **Tree inclusion:** Pass `--render-tree` to include the artifact tree in the report
-- **Section order:** Errors → Artifact Tree → Metrics → Impact Analysis
+- **Section order:** Errors (grouped by input → category) → Artifact Tree → Metrics (aggregate + per-input) → Impact Analysis → AI Analysis
 
 Example:
 ```bash
@@ -139,6 +139,44 @@ syntagmax --render-tree analyze
 # Print report to stdout
 syntagmax --output console --render-tree analyze
 ```
+
+### Report Configuration
+
+Optional report formatting settings in `config.toml`:
+
+```toml
+[report]
+path_as_links = true       # Render file paths as clickable links (default: false)
+wiki_links = false          # Use [[wiki-link]] style for Obsidian (default: false)
+```
+
+- `path_as_links = false` (default): plain text paths in error messages
+- `path_as_links = true, wiki_links = false`: standard Markdown links `[file.md](path/to/file.md#L10)`
+- `path_as_links = true, wiki_links = true`: Obsidian wiki links `[[path/to/file.md]]`
+
+File paths are relative to the project root. Standard Markdown links include line anchors (`#L<line>`) when available; wiki links do not (Obsidian limitation).
+
+### Error Grouping
+
+Errors are grouped by input record name, then by error category:
+
+```markdown
+## Errors
+Total errors: 151
+
+### system-requirements
+#### Attribute Errors (30)
+1. Missing mandatory attribute: 'status'
+...
+#### Reference Errors (15)
+...
+
+### software-requirements
+#### Schema Errors (20)
+...
+```
+
+Errors not attributable to a specific input (e.g., structural issues) appear under a "Global" heading.
 
 ### Task Generation
 

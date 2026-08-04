@@ -1,4 +1,4 @@
-# [ ] Task 2: Migrate Error Sites in `extract.py` and `build_artifact_map`
+# [x] Task 2: Migrate Error Sites in `extract.py` and `build_artifact_map`
 
 **Spec:** `docs/specs/improve-analyze-report-structure-and-ux.spec.md`
 

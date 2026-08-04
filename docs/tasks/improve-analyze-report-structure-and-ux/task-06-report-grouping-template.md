@@ -1,4 +1,4 @@
-# [ ] Task 6: Report Grouping Helper and Updated Template
+# [x] Task 6: Report Grouping Helper and Updated Template
 
 **Spec:** `docs/specs/improve-analyze-report-structure-and-ux.spec.md`
 

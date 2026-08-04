@@ -9,10 +9,15 @@ import polars as pl
 
 from syntagmax.artifact import ArtifactMap
 from syntagmax.config import Config
+from syntagmax.report import ReportError, CAT_STRUCTURE
 
 
-def calculate_metrics(config: Config, artifacts: ArtifactMap, errors: list[str]) -> benedict:
+def calculate_metrics(config: Config, artifacts: ArtifactMap, errors: list, filter_record_name: str | None = None) -> benedict:
     metrics = benedict()
+
+    source_artifacts = artifacts.values()
+    if filter_record_name is not None:
+        source_artifacts = [a for a in source_artifacts if a.record and a.record.name == filter_record_name]
 
     df = pl.DataFrame(
         [
@@ -25,7 +30,7 @@ def calculate_metrics(config: Config, artifacts: ArtifactMap, errors: list[str])
                     config.metrics.tbd_marker in str(item) for field in artifact.fields.values() for item in (field if isinstance(field, list) else [field])
                 ),
             }
-            for artifact in artifacts.values()
+            for artifact in source_artifacts
         ]
     )
 
@@ -36,7 +41,7 @@ def calculate_metrics(config: Config, artifacts: ArtifactMap, errors: list[str])
     req_count = requirements.height
 
     if req_count == 0:
-        errors.append('Metrics: No requirements found')
+        errors.append(ReportError(message='Metrics: No requirements found', category=CAT_STRUCTURE))
         return metrics
 
     metrics['total_requirements'] = req_count

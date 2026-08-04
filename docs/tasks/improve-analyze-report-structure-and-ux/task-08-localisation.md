@@ -1,4 +1,4 @@
-# [ ] Task 8: Localisation Updates
+# [x] Task 8: Localisation Updates
 
 **Spec:** `docs/specs/improve-analyze-report-structure-and-ux.spec.md`
 

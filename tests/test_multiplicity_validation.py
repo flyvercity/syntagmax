@@ -38,7 +38,7 @@ def test_multiple_attribute_invalid_not_list(metamodel):
     art.aid = '1'
     art.fields = {'id': '1', 'contents': 'some content', 'tags': 'not-a-list'}
     errors = validator.validate(art)
-    assert any('must be a list' in e for e in errors)
+    assert any('must be a list' in str(e) for e in errors)
 
 
 def test_single_attribute_invalid_is_list(metamodel):
@@ -48,7 +48,7 @@ def test_single_attribute_invalid_is_list(metamodel):
     art.aid = '1'
     art.fields = {'id': '1', 'contents': 'some content', 'count': ['1', '2']}
     errors = validator.validate(art)
-    assert any('must not be a list' in e for e in errors)
+    assert any('must not be a list' in str(e) for e in errors)
 
 
 def test_multiple_attribute_type_check(metamodel):
@@ -58,7 +58,7 @@ def test_multiple_attribute_type_check(metamodel):
     art.aid = '1'
     art.fields = {'id': '1', 'contents': 'some content', 'flags': ['true', 'invalid-bool']}
     errors = validator.validate(art)
-    assert any('not a valid boolean' in e for e in errors)
+    assert any('not a valid boolean' in str(e) for e in errors)
 
 
 def test_mandatory_missing(metamodel):
@@ -68,8 +68,8 @@ def test_mandatory_missing(metamodel):
     art.aid = '1'
     art.fields = {'tags': ['t1']}
     errors = validator.validate(art)
-    assert any("Missing mandatory attribute: 'id'" in e for e in errors)
-    assert any("Missing mandatory attribute: 'contents'" in e for e in errors)
+    assert any("Missing mandatory attribute: 'id'" in str(e) for e in errors)
+    assert any("Missing mandatory attribute: 'contents'" in str(e) for e in errors)
 
 
 def test_enum_validation(metamodel):
@@ -83,7 +83,7 @@ def test_enum_validation(metamodel):
 
     art.fields['status'] = 'Invalid'
     errors = validator.validate(art)
-    assert any('is invalid. Allowed values' in e for e in errors)
+    assert any('is invalid. Allowed values' in str(e) for e in errors)
 
 
 def test_mandatory_multiple_missing(tmp_path):
@@ -104,4 +104,4 @@ artifact REQ:
     art.aid = '1'
     art.fields = {'id': '1', 'contents': 'some content'}
     errors = validator.validate(art)
-    assert any("Missing mandatory attribute: 'tags'" in e for e in errors)
+    assert any("Missing mandatory attribute: 'tags'" in str(e) for e in errors)
