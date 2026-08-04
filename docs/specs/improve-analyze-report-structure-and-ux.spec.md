@@ -15,10 +15,10 @@ The current `analyze` command produces a flat report where errors are an unnumbe
 5. Add a `[report]` section to `config.toml` with:
    - `path_as_links` (bool, default `false`) — render file paths as clickable links
    - `wiki_links` (bool, default `false`) — use `[[path]]` wiki-link style; when false, use standard `[file](path#L<line>)` Markdown links
-6. File paths in links are **relative to the input record root** (vault root).
+6. File paths in links are **relative to the project root** (working directory).
 7. For standard Markdown links, include `#L<start_line>` line anchors when line information is available. For wiki links, omit line anchors (Obsidian does not support them).
 8. When `path_as_links` is false, maintain current behaviour (plain path text in parentheses).
-9. Metrics section groups by input record when more than one input record contributes requirements. When only one input record exists, render flat (current layout).
+9. Metrics section always presents the top-level aggregate system metrics first. When more than one input record contributes requirements, an additional "Metrics by Input Record" subsection breakdown is rendered underneath.
 10. Impact analysis section remains flat (unified tree).
 11. `ReportError.__str__()` produces the current plain-text format for backward compatibility with logging, MCP, and `--warnings-as-errors` handling.
 12. Update README.md and `docs/reference/configuration.md` with the new `[report]` section documentation.
@@ -65,12 +65,13 @@ The current `analyze` command produces a flat report where errors are an unnumbe
 
 1. **`ReportError` is a dataclass** — lightweight, immutable-friendly, easy to construct at each error site.
 2. **Categories are module-level constants** — not a Python `Enum` (too heavy for simple string matching). Defined in `report.py`.
-3. **Grouping logic lives in `Report` + template** — The `Report` class exposes a helper method `errors_grouped()` that returns a nested structure. The Jinja2 template iterates it.
+3. **Grouping logic lives in `Report` + template** — The `Report` class exposes a helper method `errors_grouped()` that returns a nested structure. The Jinja2 template iterates it. Categories are sorted by a fixed `CANONICAL_CATEGORY_ORDER` for consistent visual hierarchy.
 4. **`[report]` config is optional** — All defaults match current behaviour (no links, plain text paths).
 5. **Link rendering is a Jinja2 custom filter** — `format_error(error, config)` renders the path according to config. Keeps template clean.
 6. **Backward-compatible `__str__`** — External consumers (MCP, logs) get the same string format they always did.
 7. **Error construction at source** — Each error site constructs `ReportError` directly rather than parsing strings. This gives accurate metadata without regex guesswork.
-8. **Metrics per-input uses the same `calculate_metrics` logic** — called once per relevant input record, results stored as a list in `Report`.
+8. **Defensive coercion via `from_any()`** — Legacy code paths, plugins, or AI analysis may still produce plain strings. `ReportError.from_any()` normalises them to prevent `AttributeError` crashes during rendering.
+9. **Metrics per-input uses the same `calculate_metrics` logic** — called once per relevant input record, results stored as a list in `Report`. Aggregate totals are always rendered first.
 
 ## Proposed Solution
 
@@ -116,6 +117,16 @@ CAT_STRUCTURE = 'structure'
 
 GLOBAL_INPUT = '__global__'
 
+CANONICAL_CATEGORY_ORDER = [
+    CAT_EXTRACTION,
+    CAT_STRUCTURE,
+    CAT_SCHEMA,
+    CAT_ATTRIBUTE,
+    CAT_REFERENCE,
+    CAT_TRACE,
+    CAT_DUPLICATE,
+]
+
 
 @dataclass
 class ReportError:
@@ -127,12 +138,21 @@ class ReportError:
     file_path: str | None = None
     line_range: tuple[int, int] | None = None
 
+    @classmethod
+    def from_any(cls, err: 'ReportError | str') -> 'ReportError':
+        """Defensively coerce plain string errors into ReportError."""
+        if isinstance(err, ReportError):
+            return err
+        return cls(message=str(err), category=CAT_STRUCTURE)
+
     def __str__(self) -> str:
         """Backward-compatible plain-text representation."""
         loc = ''
         if self.artifact_type and self.artifact_id and self.file_path:
             lines = f':{self.line_range[0]}-{self.line_range[1]}' if self.line_range else ''
             loc = f' ({self.artifact_type}።{self.artifact_id}።{self.file_path}{lines})'
+        elif self.artifact_type and self.artifact_id:
+            loc = f' ({self.artifact_type}።{self.artifact_id})'
         elif self.file_path:
             loc = f' ({self.file_path})'
         return f'{self.message}{loc}'
@@ -190,7 +210,7 @@ Custom Jinja2 filter `format_error`:
 - If `path_as_links = true, wiki_links = true`: render `{message} ({artifact_type}:{artifact_id} in [[{relative_path}]])`
 - If `path_as_links = true, wiki_links = false`: render `{message} ({artifact_type}:{artifact_id} in [{filename}]({relative_path}#L{start_line}))`
 
-Path is relative to the input record root directory.
+Path is relative to the project root (working directory where report is generated).
 
 ### Metrics Per-Input
 
@@ -206,7 +226,7 @@ class Report:
     report_config: 'ReportConfig | None' = None
 ```
 
-In `main.py`, if multiple input records contribute to the configured `requirement_type`, call `calculate_metrics` per input; otherwise call once (flat).
+In `main.py`, always compute aggregate metrics across all artifacts. If multiple input records contribute to the configured `requirement_type`, additionally compute per-input metrics and store in `report.metrics_by_input`.
 
 ---
 
@@ -220,8 +240,10 @@ In `main.py`, if multiple input records contribute to the configured `requiremen
 - In `src/syntagmax/report.py`:
   - Define category constants: `CAT_SCHEMA`, `CAT_ATTRIBUTE`, `CAT_REFERENCE`, `CAT_TRACE`, `CAT_DUPLICATE`, `CAT_EXTRACTION`, `CAT_STRUCTURE`.
   - Define `GLOBAL_INPUT = '__global__'` sentinel.
+  - Define `CANONICAL_CATEGORY_ORDER` list for consistent rendering order.
   - Create `ReportError` dataclass with fields: `message`, `category`, `input_record`, `artifact_id`, `artifact_type`, `file_path`, `line_range`.
-  - Implement `__str__()` that reproduces the legacy plain-text format.
+  - Implement `from_any(err: ReportError | str)` classmethod for defensive coercion of plain strings.
+  - Implement `__str__()` that reproduces the legacy plain-text format, with graceful fallback for partial metadata (renders `(type።id)` when `file_path` is absent).
 - In `src/syntagmax/config.py`:
   - Add `ReportConfig(BaseModel)` with `path_as_links: bool = False` and `wiki_links: bool = False`.
   - Add `report: ReportConfig = Field(default_factory=ReportConfig)` to `ConfigFile`.
@@ -229,7 +251,10 @@ In `main.py`, if multiple input records contribute to the configured `requiremen
 
 **Test requirements:**
 - `ReportError('msg', 'attribute', 'sw-reqs', 'REQ-001', 'REQ', 'reqs/file.md', (10, 20)).__str__()` produces `"msg (REQ።REQ-001።reqs/file.md:10-20)"`
+- `ReportError('msg', 'attribute', 'sw-reqs', 'REQ-001', 'REQ').__str__()` produces `"msg (REQ።REQ-001)"` (no file_path fallback)
 - `ReportError('root error', 'structure').__str__()` produces `"root error"`
+- `ReportError.from_any('plain string')` returns `ReportError(message='plain string', category=CAT_STRUCTURE)`
+- `ReportError.from_any(existing_error)` returns the same object.
 - `ConfigFile` validates with `[report]` section present and absent.
 - `ReportConfig(path_as_links=True, wiki_links=True)` instantiates correctly.
 
@@ -315,17 +340,17 @@ In `main.py`, if multiple input records contribute to the configured `requiremen
 **Implementation:**
 - In `src/syntagmax/main.py`:
   - The single-root check produces `ReportError(category=CAT_STRUCTURE, input_record=None)`.
-  - Implement per-input metrics:
-    - After `calculate_metrics` step, if >1 input records contribute to `requirement_type`, compute metrics per record by filtering artifacts by `artifact.record.name`.
-    - Store as `report.metrics_by_input = [(record_name, metrics_benedict), ...]`.
-    - If only 1 input record, use the existing flat `report.metrics`.
+  - Implement metrics computation:
+    - Always compute aggregate metrics across all artifacts → `report.metrics`.
+    - If >1 input records contribute to `requirement_type`, additionally compute per-input metrics by filtering artifacts by `artifact.record.name` → `report.metrics_by_input = [(record_name, metrics_benedict), ...]`.
 - In `src/syntagmax/metrics.py`:
   - "No requirements found" error → `ReportError(category=CAT_STRUCTURE, input_record=None, message="Metrics: No requirements found")`.
   - Accept an optional `input_record_name` parameter to `calculate_metrics` for per-input calls.
+  - Accept optional pre-filtered artifact subset for per-input computation.
 
 **Test requirements:**
-- With multiple input records, `report.metrics_by_input` is populated with one entry per input.
-- With single input record, `report.metrics` is populated (flat).
+- With multiple input records, `report.metrics` is populated (aggregate) AND `report.metrics_by_input` has one entry per input.
+- With single input record, `report.metrics` is populated and `report.metrics_by_input` is None.
 - "No requirements found" is a `ReportError`.
 
 **Demo:** Run analysis on multi-input example; report contains per-input metrics sections.
@@ -339,13 +364,14 @@ In `main.py`, if multiple input records contribute to the configured `requiremen
 **Implementation:**
 - In `src/syntagmax/report.py`:
   - Add `errors_grouped() -> dict[str, list[tuple[str, list[ReportError]]]]` method:
+    - Normalises all errors via `ReportError.from_any()` before grouping (defensive against stray strings).
     - Groups errors by `input_record` (using "Global" for `None`).
-    - Within each input, groups by `category`.
-    - Returns `OrderedDict` preserving input record order from config.
+    - Within each input, groups by `category` sorted by `CANONICAL_CATEGORY_ORDER`.
+    - Returns `OrderedDict` with "Global" first (if any), then input records in config order.
   - Add `report_config` field to `Report` dataclass (set in `main.py` from `config.report`).
 - Rewrite `src/syntagmax/resources/report.j2`:
   - Errors section: iterate `report.errors_grouped()`, render `### {input_name} ({count} errors)` then `#### {category_name} ({count})` with numbered items.
-  - Metrics section: if `report.metrics_by_input`, render per-input subsections; otherwise render flat.
+  - Metrics section: always render aggregate metrics first. If `report.metrics_by_input`, render additional per-input subsections underneath.
   - Impact section: unchanged (flat).
   - Category names use `{{ _(...) }}` for localisation.
 
@@ -353,8 +379,10 @@ In `main.py`, if multiple input records contribute to the configured `requiremen
 - `Report` with errors from multiple inputs groups correctly.
 - `Report` with only global errors renders "Global" section.
 - Empty errors still produces no "Errors" section.
-- Per-input metrics render subsections.
-- Flat metrics (single input) renders as before.
+- Categories are sorted by `CANONICAL_CATEGORY_ORDER` (extraction before schema before attribute, etc.).
+- Plain string errors in the list do not crash rendering (coerced via `from_any()`).
+- Aggregate metrics always rendered; per-input metrics render when present.
+- Flat metrics (single input) renders aggregate only without "by input" subsection.
 
 **Demo:** `syntagmax --render-tree --cwd ./example/obsidian-driver analyze` produces a grouped report with input sections.
 
@@ -372,7 +400,7 @@ In `main.py`, if multiple input records contribute to the configured `requiremen
     - Otherwise: render message with `[filename](relative_path#L{start_line})`.
     - Path is relative to input record root (stored in `error.file_path` which is already relative per `config.derive_path()`).
   - Register the filter in `Report.render()` when creating the Jinja2 environment.
-- In error construction sites: ensure `file_path` is set using `config.derive_path()` (already produces posix relative paths from base_dir).
+- In error construction sites: ensure `file_path` is set using `config.derive_path()` (already produces posix relative paths from base_dir — these are relative to project root).
 
 **Test requirements:**
 - With `path_as_links=False`: output matches legacy format.
@@ -393,7 +421,7 @@ In `main.py`, if multiple input records contribute to the configured `requiremen
   - Category names: "Schema Errors", "Attribute Errors", "Reference Errors", "Trace Errors", "Duplicate Errors", "Extraction Errors", "Structure Errors"
   - "Global" heading
   - "errors" (plural form for count suffix)
-- Regenerate `.mo` files.
+- Compile `.mo` files using: `msgfmt src/syntagmax/resources/locales/{lang}/LC_MESSAGES/messages.po -o src/syntagmax/resources/locales/{lang}/LC_MESSAGES/messages.mo` for each language (en, ru).
 - Russian translations for all new strings.
 
 **Test requirements:**
@@ -431,11 +459,14 @@ In `main.py`, if multiple input records contribute to the configured `requiremen
 - Create `tests/test_report_grouping.py`:
   - Test: multiple errors from different inputs group correctly in rendered output.
   - Test: global errors appear under "Global" heading.
-  - Test: single input record produces flat metrics.
-  - Test: multiple input records produce per-input metrics sections.
+  - Test: single input record produces aggregate metrics only.
+  - Test: multiple input records produce aggregate metrics + per-input metrics subsections.
   - Test: `path_as_links=True, wiki_links=False` produces Markdown links in output.
   - Test: `path_as_links=True, wiki_links=True` produces wiki links in output.
   - Test: `path_as_links=False` produces plain text paths (backward compat).
+  - Test: plain string errors mixed with `ReportError` objects do not crash rendering.
+  - Test: categories render in `CANONICAL_CATEGORY_ORDER`.
+  - Test: `--warnings-as-errors` CLI flag correctly triggers `FatalError` when `ReportError` instances are present.
 - Update `tests/test_report.py`:
   - Adapt existing tests to use `ReportError` objects instead of strings.
   - Verify backward compatibility of `__str__`.
