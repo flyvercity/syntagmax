@@ -160,7 +160,7 @@ def validate_child_post_edit(child_path: Path) -> tuple[bool, str]:
     except Exception as e:
         return False, f'Cannot read child artifact: {e}'
     # If frontmatter is present, it must parse cleanly
-    if content.startswith('---'):
+    if content.lstrip().startswith('---'):
         fm = _parse_frontmatter(content)
         if fm is None:
             return False, 'Child artifact frontmatter is invalid after amendment'
@@ -207,13 +207,13 @@ def parse_impact_task(task_path: Path) -> ImpactTaskInfo:
     child_fields = {}
 
     # Find Parent section
-    parent_match = re.search(r'## Parent \(Updated\)\s*\n(.*?)(?=\n## |\Z)', content, re.DOTALL)
+    parent_match = re.search(r'## Parent \(Updated\)\s*\n(.*?)(?=\n## |\Z)', content, re.DOTALL | re.IGNORECASE)
     if parent_match:
         for m in _FIELD_RE.finditer(parent_match.group(1)):
             parent_fields[m.group(1)] = m.group(2).strip()
 
     # Find Child section
-    child_match = re.search(r'## Child \(Outdated\)\s*\n(.*?)(?=\n## |\Z)', content, re.DOTALL)
+    child_match = re.search(r'## Child \(Outdated\)\s*\n(.*?)(?=\n## |\Z)', content, re.DOTALL | re.IGNORECASE)
     if child_match:
         for m in _FIELD_RE.finditer(child_match.group(1)):
             child_fields[m.group(1)] = m.group(2).strip()

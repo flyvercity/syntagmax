@@ -93,5 +93,5 @@ This follow-up code review (Pass 2) evaluates the complete implementation of the
 - [x] Task 1 (Pass 1): Fix Windows path formatting in `invoke_agent` (`ai.py`). *(Completed)*
 - [x] Task 2 (Pass 1): Create unit test suite `tests/test_ai.py` and `tests/test_cli_ai.py`. *(Completed)*
 - [x] Task 3 (Pass 1): Fix TOML template generation for `[ai]` section in `src/syntagmax/init_cmd.py`. *(Completed)*
-- [ ] Task 4 (Pass 2 - Low Priority): Update `validate_child_post_edit` to use `content.lstrip().startswith('---')` to handle leading BOM/whitespace.
-- [ ] Task 5 (Pass 2 - Low Priority): Add `re.IGNORECASE` to task section header regexes in `parse_impact_task`.
+- [x] Task 4 (Pass 2 - Low Priority): Update `validate_child_post_edit` to use `content.lstrip().startswith('---')` to handle leading BOM/whitespace. *(Completed)*
+- [x] Task 5 (Pass 2 - Low Priority): Add `re.IGNORECASE` to task section header regexes in `parse_impact_task`. *(Completed)*
