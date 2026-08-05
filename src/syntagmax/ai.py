@@ -66,6 +66,7 @@ def render_verify_prompt(
     child_repo_path: str,
     child_relative_path: str,
     agent_name: str,
+    amend: bool = False,
 ) -> str:
     """Render the impact verification prompt."""
     from datetime import datetime, timezone
@@ -92,6 +93,7 @@ def render_verify_prompt(
         child_relative_path=child_relative_path,
         agent_name=agent_name,
         timestamp=timestamp,
+        amend=amend,
     )
 
 
@@ -141,6 +143,27 @@ def validate_task_post_edit(task_path: Path, original_id: str) -> tuple[bool, st
     if '## Verification Report' not in content:
         return False, 'No "## Verification Report" section found'
 
+    return True, 'valid'
+
+
+def validate_child_post_edit(child_path: Path) -> tuple[bool, str]:
+    """Validate child artifact integrity after agent amendment.
+
+    Returns (is_valid, message).
+    """
+    if not child_path.exists():
+        return False, f'Child artifact was deleted: {child_path}'
+    if child_path.stat().st_size == 0:
+        return False, f'Child artifact is empty after amendment: {child_path}'
+    try:
+        content = child_path.read_text(encoding='utf-8')
+    except Exception as e:
+        return False, f'Cannot read child artifact: {e}'
+    # If frontmatter is present, it must parse cleanly
+    if content.startswith('---'):
+        fm = _parse_frontmatter(content)
+        if fm is None:
+            return False, 'Child artifact frontmatter is invalid after amendment'
     return True, 'valid'
 
 

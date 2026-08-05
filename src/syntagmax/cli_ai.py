@@ -21,6 +21,7 @@ from syntagmax.ai import (
     render_verify_prompt,
     resolve_agent,
     resolve_artifact_paths,
+    validate_child_post_edit,
     validate_task_post_edit,
 )
 
@@ -33,8 +34,10 @@ def ai():
 @ai.command(help='Verify an impact task using an AI agent')
 @click.argument('task_file', type=click.Path(exists=True))
 @click.option('--agent', default=None, help='Override the default agent')
+@click.option('--amend', is_flag=True, default=False,
+              help='Directly amend the child artifact if verification fails')
 @click.pass_obj
-def verify(obj: Params, task_file: str, agent: str | None):
+def verify(obj: Params, task_file: str, agent: str | None, amend: bool):
     """Verify an impact task using an AI agent."""
     cfg_path = Path(obj['config_file'])
     if not cfg_path.exists():
@@ -91,6 +94,7 @@ def verify(obj: Params, task_file: str, agent: str | None):
         child_repo_path=child_paths.repo_root,
         child_relative_path=child_paths.relative_path,
         agent_name=agent_name,
+        amend=amend,
     )
 
     lg.debug(f'Generated prompt:\n{prompt}')
@@ -112,15 +116,28 @@ def verify(obj: Params, task_file: str, agent: str | None):
         sys.exit(1)
 
     # Report result
-    # Re-read to check final status
+    # Re-read to check final status and whether amendment was applied
     from syntagmax.ai import _parse_frontmatter
 
     final_content = task_path.read_text(encoding='utf-8')
     final_fm = _parse_frontmatter(final_content)
     final_status = final_fm.get('status', 'unknown') if final_fm else 'unknown'
+    amendment_applied = '### Amendment Applied' in final_content
+
+    # Child artifact validation (amend mode + amendment actually applied only)
+    if amend and amendment_applied:
+        child_valid, child_message = validate_child_post_edit(Path(child_paths.absolute_path))
+        if not child_valid:
+            u.pprint(f'[red]Child artifact integrity check failed: {child_message}[/red]')
+            u.pprint('[yellow]Use `git checkout -- <child_file>` to recover if needed.[/yellow]')
+            sys.exit(1)
 
     if final_status == 'closed':
-        u.pprint(f'[green]✓ Task {task_info.task_id} verified and closed.[/green]')
+        if amend and amendment_applied:
+            u.pprint(f'[green]✓ Task {task_info.task_id} verified and child artifact amended.[/green]')
+            u.pprint(f'[dim]Review changes: git diff {child_paths.relative_path}[/dim]')
+        else:
+            u.pprint(f'[green]✓ Task {task_info.task_id} verified and closed.[/green]')
     else:
         u.pprint(f'[yellow]Task {task_info.task_id} requires more work (status: {final_status}).[/yellow]')
 

@@ -259,24 +259,19 @@ def verify(obj: Params, task_file: str, agent: str | None, amend: bool):
         amend=amend,
     )
     ...
-    # Post-edit validation: task file (always)
-    is_valid, message = validate_task_post_edit(task_path, task_info.task_id)
-    if not is_valid:
-        ...  # report error, exit 1
-
-    # Post-edit validation: child artifact (amend mode only)
-    if amend:
-        child_valid, child_message = validate_child_post_edit(Path(child_paths.absolute_path))
-        if not child_valid:
-            u.pprint(f'[red]Child artifact integrity check failed: {child_message}[/red]')
-            u.pprint('[yellow]Use `git checkout -- <child_file>` to recover if needed.[/yellow]')
-            sys.exit(1)
-
     # Re-read to check final status and whether amendment was applied
     final_content = task_path.read_text(encoding='utf-8')
     final_fm = _parse_frontmatter(final_content)
     final_status = final_fm.get('status', 'unknown') if final_fm else 'unknown'
     amendment_applied = '### Amendment Applied' in final_content
+
+    # Post-edit validation: child artifact (amend + amendment actually applied only)
+    if amend and amendment_applied:
+        child_valid, child_message = validate_child_post_edit(Path(child_paths.absolute_path))
+        if not child_valid:
+            u.pprint(f'[red]Child artifact integrity check failed: {child_message}[/red]')
+            u.pprint('[yellow]Use `git checkout -- <child_file>` to recover if needed.[/yellow]')
+            sys.exit(1)
 
     # Post-run messaging
     if final_status == 'closed':

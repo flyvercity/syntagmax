@@ -27,6 +27,7 @@ syntagmax ai verify <task-file> [OPTIONS]
 | Option | Default | Description |
 |--------|---------|-------------|
 | `--agent <name>` | Config default | Override the default agent |
+| `--amend` | off | Directly amend the child artifact if verification fails |
 
 #### Behaviour
 
@@ -39,7 +40,20 @@ syntagmax ai verify <task-file> [OPTIONS]
    - ID is unchanged
    - Status is `open` or `closed`
    - A `## Verification Report` section was appended
-7. Reports the outcome.
+7. When `--amend` is set, additionally validates the child artifact (must exist, be non-empty, and have valid frontmatter if present).
+8. Reports the outcome.
+
+#### Two-Phase Verification
+
+The agent prompt is structured in two explicit phases:
+
+**Phase 1 (Analysis)** — always runs. The agent reads both artifacts, inspects git history since the recorded parent revision, maps each parent change to a child response, and appends a `## Verification Report` section to the task file containing the verdict (PASS or FAIL), revision metadata, Parent Changes, Child Changes, Change Mapping, and Rationale.
+
+**Phase 2 — Recommendation (default, `--amend` absent)** — runs only on FAIL. The agent appends a `### Amendment Recommendation` subsection inside the Verification Report, providing a bulleted list of specific, actionable edits needed to bring the child into consistency. The child artifact is NOT modified.
+
+**Phase 2 — Implementation (`--amend` present)** — runs only on FAIL. The agent edits the child artifact directly to resolve each discrepancy identified in the Change Mapping, then sets `status: closed` in the task frontmatter and appends a `### Amendment Applied` subsection describing what was changed.
+
+**Uncertainty handling** — if the agent is unsure how to perform Phase 2 (the required change is ambiguous or requires design judgment), it MUST leave `status: open`, leave the child artifact untouched, and append a `### Rationale` subsection explaining specifically why it is uncertain and what information would be needed to proceed.
 
 #### Exit Codes
 
@@ -57,15 +71,23 @@ syntagmax ai verify .syntagmax/tasks/TASK-IMPACT-REQ-003-SYS-003.md
 # Verify using a specific agent
 syntagmax ai verify .syntagmax/tasks/TASK-IMPACT-REQ-003-SYS-003.md --agent claude-code
 
+# Verify and receive amendment guidance on fail (default Phase 2)
+syntagmax ai verify .syntagmax/tasks/TASK-IMPACT-REQ-003-SYS-003.md
+
+# Verify and automatically amend the child artifact on fail
+syntagmax ai verify .syntagmax/tasks/TASK-IMPACT-REQ-003-SYS-003.md --amend
+
 # With a custom config file
 syntagmax -f my-config.toml ai verify tasks/TASK-IMPACT-REQ-001-SYS-001.md
 ```
 
 #### Important Notes
 
-- **Phase 1 is audit-only:** The agent evaluates consistency and updates the task file. It MUST NOT modify the parent or child artifact files.
+- **Phase 1 is audit-only (without `--amend`):** The agent evaluates consistency and updates the task file. Without `--amend`, it MUST NOT modify the parent or child artifact files.
+- **`--amend` grants write access to the child artifact:** The agent is explicitly instructed to edit the child artifact to resolve discrepancies. Always review changes with `git diff` before committing.
+- **Working directory cleanliness:** Running `--amend` on a dirty repository may overwrite pending edits in the child artifact. Ensure your working tree is clean before using `--amend`, or stash uncommitted changes first. Syntagmax emits a warning if the repository is dirty.
 - **Multi-repo support:** Parent and child artifacts may reside in different repositories. The prompt provides repository paths to the agent.
-- **Recovery:** If the agent corrupts the task file, use `git checkout -- <task-file>` to recover.
+- **Recovery:** If the agent corrupts the task file, use `git checkout -- <task-file>` to recover. If the child artifact is corrupted during `--amend`, use `git checkout -- <child-file>`.
 
 ## Configuration
 
@@ -200,3 +222,9 @@ The agent must append this section to the task file:
 - **Child Changes:** Lists any changes already made to the child artifact. If the child was updated to reflect the parent changes, those updates appear here.
 - **Change Mapping:** Explicitly maps each parent change to its corresponding child response (or justifies why no child change is needed). This is the core traceability evidence.
 - **Rationale:** A concise summary that references the change mapping to justify the verdict. Keeps the decision auditable without requiring the reader to re-derive the logic.
+
+The following subsections are appended conditionally after the base report:
+
+- **`### Amendment Recommendation`** — appended on FAIL when `--amend` is **not** set. Contains a bulleted list of specific, actionable edits to make to the child artifact to bring it into consistency. The child artifact is not touched.
+- **`### Amendment Applied`** — appended on FAIL when `--amend` **is** set and the agent successfully amended the child. Contains a bulleted list of the changes made, each referencing the discrepancy it resolves.
+- **`### Rationale`** — appended (in place of the amendment subsection) when the agent is **uncertain** how to proceed. The agent leaves `status: open` and the child untouched, and explains specifically what is ambiguous and what information would be needed to proceed.

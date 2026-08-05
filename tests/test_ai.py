@@ -15,6 +15,7 @@ from syntagmax.ai import (
     render_verify_prompt,
     resolve_agent,
     resolve_artifact_paths,
+    validate_child_post_edit,
     validate_task_post_edit,
 )
 from syntagmax.errors import FatalError
@@ -478,6 +479,7 @@ def test_render_verify_prompt_contains_expanded_sections():
         child_repo_path='/repo',
         child_relative_path='REQ-001.md',
         agent_name='test-agent',
+        amend=False,
     )
 
     # Assert expanded report sections are present
@@ -530,3 +532,115 @@ The child correctly derives from the updated parent. PASS.
     is_valid, msg = validate_task_post_edit(task_path, 'TASK-IMPACT-REQ-001-SYS-001')
     assert is_valid is True
     assert msg == 'valid'
+
+
+# --- render_verify_prompt amend modes ---
+
+_RENDER_DEFAULTS = dict(
+    task_file_path='task.md',
+    parent_aid='SYS-001',
+    parent_atype='SYS',
+    parent_file_path='/repo/SYS-001.md',
+    parent_repo_path='/repo',
+    parent_relative_path='SYS-001.md',
+    parent_revision='abc1234',
+    child_aid='REQ-001',
+    child_atype='REQ',
+    child_file_path='/repo/REQ-001.md',
+    child_repo_path='/repo',
+    child_relative_path='REQ-001.md',
+    agent_name='test-agent',
+)
+
+
+def _make_config():
+    config = MagicMock()
+    config.ai.persona = 'You are a systems engineer reviewing requirements traceability.'
+    return config
+
+
+def test_render_verify_prompt_amend_false_contains_recommendation():
+    result = render_verify_prompt(config=_make_config(), amend=False, **_RENDER_DEFAULTS)
+
+    assert '### Amendment Recommendation' in result
+    assert '### Amendment Applied' not in result
+    assert 'Phase 2: Recommendation' in result
+    # Child file path must NOT appear in a modify/edit instruction in amend=False mode
+    assert 'Do NOT modify the child artifact' in result
+
+
+def test_render_verify_prompt_amend_true_contains_implementation():
+    result = render_verify_prompt(config=_make_config(), amend=True, **_RENDER_DEFAULTS)
+
+    assert '### Amendment Applied' in result
+    assert '### Amendment Recommendation' not in result
+    assert 'Phase 2: Implementation' in result
+    # Child file path appears in the edit instruction
+    assert '/repo/REQ-001.md' in result
+    # Parent immutability constraint still present
+    assert 'Do NOT modify the parent artifact' in result
+    # Scope constraint present
+    assert 'Do NOT modify any file other than' in result
+
+
+def test_render_verify_prompt_uncertainty_constraint_amend_false():
+    result = render_verify_prompt(config=_make_config(), amend=False, **_RENDER_DEFAULTS)
+
+    assert 'unsure' in result.lower() or 'uncertain' in result.lower()
+    assert '### Rationale' in result
+    # Must instruct to leave status open and child untouched
+    assert 'status: open' in result
+    assert 'untouched' in result or 'Do NOT modify the child artifact' in result
+
+
+def test_render_verify_prompt_uncertainty_constraint_amend_true():
+    result = render_verify_prompt(config=_make_config(), amend=True, **_RENDER_DEFAULTS)
+
+    assert 'unsure' in result.lower() or 'uncertain' in result.lower()
+    assert '### Rationale' in result
+    assert 'status: open' in result
+
+
+# --- validate_child_post_edit ---
+
+
+def test_validate_child_post_edit_valid_no_frontmatter(tmp_path: Path):
+    child = tmp_path / 'REQ-001.md'
+    child.write_text('# REQ-001\nSome content here.\n', encoding='utf-8')
+    is_valid, msg = validate_child_post_edit(child)
+    assert is_valid is True
+    assert msg == 'valid'
+
+
+def test_validate_child_post_edit_valid_with_frontmatter(tmp_path: Path):
+    child = tmp_path / 'REQ-001.md'
+    child.write_text(
+        '---\nid: REQ-001\nstatus: active\n---\n# REQ-001\nContent.\n',
+        encoding='utf-8',
+    )
+    is_valid, msg = validate_child_post_edit(child)
+    assert is_valid is True
+    assert msg == 'valid'
+
+
+def test_validate_child_post_edit_missing_file(tmp_path: Path):
+    child = tmp_path / 'nonexistent.md'
+    is_valid, msg = validate_child_post_edit(child)
+    assert is_valid is False
+    assert 'deleted' in msg
+
+
+def test_validate_child_post_edit_empty_file(tmp_path: Path):
+    child = tmp_path / 'REQ-001.md'
+    child.write_text('', encoding='utf-8')
+    is_valid, msg = validate_child_post_edit(child)
+    assert is_valid is False
+    assert 'empty' in msg
+
+
+def test_validate_child_post_edit_broken_frontmatter(tmp_path: Path):
+    child = tmp_path / 'REQ-001.md'
+    child.write_text('---\n: : invalid: [yaml\n---\nContent.\n', encoding='utf-8')
+    is_valid, msg = validate_child_post_edit(child)
+    assert is_valid is False
+    assert 'frontmatter' in msg
