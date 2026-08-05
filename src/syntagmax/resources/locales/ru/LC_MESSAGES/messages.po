@@ -241,3 +241,34 @@ msgstr "Объекты"
 
 msgid "Error"
 msgstr "Ошибка"
+
+#. Analysis report - error grouping
+msgid "Schema Errors"
+msgstr "Ошибки схемы"
+
+msgid "Attribute Errors"
+msgstr "Ошибки атрибутов"
+
+msgid "Reference Errors"
+msgstr "Ошибки ссылок"
+
+msgid "Trace Errors"
+msgstr "Ошибки трассировки"
+
+msgid "Duplicate Errors"
+msgstr "Ошибки дублирования"
+
+msgid "Structure Errors"
+msgstr "Ошибки структуры"
+
+msgid "Global"
+msgstr "Глобальные"
+
+msgid "errors"
+msgstr "ошибок"
+
+msgid "No errors found."
+msgstr "Ошибок не обнаружено."
+
+msgid "Metrics by Input Record"
+msgstr "Метрики по источникам"

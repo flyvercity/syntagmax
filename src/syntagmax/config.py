@@ -142,6 +142,12 @@ class MetricsConfig(BaseModel):
     tbd_marker: str = Field(default='TBD', description='String marker used to identify "To Be Defined" items')
 
 
+class ReportConfig(BaseModel):
+    model_config = ConfigDict(extra='ignore')
+    path_as_links: bool = Field(default=False, description='Render file paths as clickable links in report')
+    wiki_links: bool = Field(default=False, description='Use [[wiki-link]] style (Obsidian). When false, use [text](url) Markdown links.')
+
+
 class ImpactConfig(BaseModel):
     model_config = ConfigDict(extra='ignore')
     enabled: bool = Field(default=False, description='Enable impact analysis')
@@ -203,6 +209,7 @@ class ConfigFile(BaseModel):
     baseline: BaselineConfig = Field(default_factory=BaselineConfig, description='Configuration for the baseline tagging command')
     trace: TraceConfig = Field(default_factory=TraceConfig, description='Configuration for trace export')
     ai: AiConfig = Field(default_factory=AiConfig)
+    report: ReportConfig = Field(default_factory=ReportConfig, description='Report formatting options')
 
     @field_validator('log_level')
     @classmethod
@@ -228,12 +235,14 @@ class Config:
     params: Params
     metrics: MetricsConfig
     impact: ImpactConfig
+    report: ReportConfig
 
     def __init__(self, params: Params, config_filename: Path):
         self.params = params
         self._root_dir = Path(config_filename).parent.absolute()
         self.metrics = MetricsConfig()
         self.impact = ImpactConfig()
+        self.report = ReportConfig()
         self._input_records: list[InputRecord] = []
         self._plugins = []
         self._read_config(config_filename)
@@ -312,6 +321,7 @@ class Config:
         self.metrics = config_model.metrics
         self.impact = config_model.impact
         self.ai = config_model.ai
+        self.report = config_model.report
 
         # CLI --tasks flag overrides config tasks_enabled
         if self.params.get('tasks'):

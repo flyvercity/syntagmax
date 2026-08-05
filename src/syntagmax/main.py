@@ -54,7 +54,7 @@ def public_steps():
 
 def process(requested_step, config: Config) -> Report:
     report = Report()
-    errors: list[str] = []
+    errors: list = []
     artifacts_list = None
     artifacts = None
     plan = get_execution_plan(DEPS, requested_step)
@@ -77,6 +77,19 @@ def process(requested_step, config: Config) -> Report:
                 if artifacts is None:
                     raise FatalError(f'Artifacts not initialized for step {step}')
                 report.metrics = calculate_metrics(config, artifacts, errors)
+
+                req_type = config.metrics.requirement_type
+                contributing_records = set()
+                for a in artifacts.values():
+                    if a.atype == req_type and a.record:
+                        contributing_records.add(a.record.name)
+
+                if len(contributing_records) > 1:
+                    report.metrics_by_input = []
+                    for record_name in sorted(contributing_records):
+                        per_input_metrics = calculate_metrics(config, artifacts, errors, filter_record_name=record_name)
+                        if per_input_metrics:  # skip if no reqs in this input
+                            report.metrics_by_input.append((record_name, per_input_metrics))
             case 'impact':
                 if artifacts is None:
                     raise FatalError(f'Artifacts not initialized for step {step}')
@@ -96,4 +109,5 @@ def process(requested_step, config: Config) -> Report:
             report.tree_text = render_tree_markdown(artifacts)
 
     report.errors = errors
+    report.report_config = config.report
     return report

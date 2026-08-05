@@ -7,6 +7,7 @@
 
 from syntagmax.config import Config
 from syntagmax.artifact import ArtifactMap, Artifact, Location, ParentLink
+from syntagmax.report import ReportError, CAT_REFERENCE, CAT_STRUCTURE
 
 MAX_TREE_DEPTH = 20
 
@@ -25,7 +26,7 @@ class RootArtifact(Artifact):
         self.children = set()
 
 
-def populate_pids(config: Config, artifacts: ArtifactMap, errors: list[str]):
+def populate_pids(config: Config, artifacts: ArtifactMap, errors: list):
     if not config.metamodel:
         return
 
@@ -81,18 +82,32 @@ def populate_pids(config: Config, artifacts: ArtifactMap, errors: list[str]):
                                 existing_link = next((pl for pl in a.parent_links if pl.pid == aid), None)
                                 if existing_link:
                                     if existing_link.nominal_revision != nominal_revision:
-                                        errors.append(
-                                            f"Conflicting nominal revisions for parent '{aid}' "
-                                            f"in artifact '{a.aid}': "
-                                            f"'{existing_link.nominal_revision}' vs '{nominal_revision}'"
-                                        )
+                                        errors.append(ReportError(
+                                            message=(
+                                                f"Conflicting nominal revisions for parent '{aid}' "
+                                                f"in artifact '{a.aid}': "
+                                                f"'{existing_link.nominal_revision}' vs '{nominal_revision}'"
+                                            ),
+                                            category=CAT_REFERENCE,
+                                            input_record=a.record.name if a.record else None,
+                                            artifact_id=a.aid,
+                                            artifact_type=a.atype,
+                                            file_path=a.location.filepath() if a.location else None,
+                                        ))
                                 else:
                                     a.parent_links.append(ParentLink(pid=aid, nominal_revision=nominal_revision))
 
                                 if aid not in a.pids:
                                     a.pids.append(aid)
                             except Exception as e:
-                                errors.append(f"Error processing parent link '{actual_ref}' for artifact '{a.aid}': {e}")
+                                errors.append(ReportError(
+                                    message=f"Error processing parent link '{actual_ref}' for artifact '{a.aid}': {e}",
+                                    category=CAT_REFERENCE,
+                                    input_record=a.record.name if a.record else None,
+                                    artifact_id=a.aid,
+                                    artifact_type=a.atype,
+                                    file_path=a.location.filepath() if a.location else None,
+                                ))
 
                 # If we processed one rule for this attribute that matched,
                 # do we need to process others?
@@ -115,7 +130,7 @@ def gather_ancestors(artifacts: ArtifactMap, ref: str, depth: int = 0) -> str | 
     return None
 
 
-def build_tree(config: Config, artifacts: ArtifactMap, errors: list[str]):
+def build_tree(config: Config, artifacts: ArtifactMap, errors: list):
     full_set = set(artifacts.keys())
     suppress = config.params.get('suppress_tracing', False)
 
@@ -142,5 +157,8 @@ def build_tree(config: Config, artifacts: ArtifactMap, errors: list[str]):
         err = gather_ancestors(artifacts, ref)
 
         if err:
-            errors.append(err)
+            errors.append(ReportError(
+                message=err,
+                category=CAT_STRUCTURE,
+            ))
             break

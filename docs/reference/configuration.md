@@ -17,6 +17,7 @@ For a detailed explanation of how Syntagmax handles different directories, relat
 | `drivers` | No | Driver-specific global defaults |
 | `metrics` | No | Metrics collection settings |
 | `metamodel` | No | Metamodel configuration |
+| `report` | No | Report formatting settings (link styles) |
 | `baseline` | No | Baseline tagging settings (tag name pattern) |
 | `ai` | No | AI CLI agent settings for verification tasks. See [AI Reference](ai.md). |
 
@@ -350,6 +351,38 @@ Task generation is revision-aware. Each task file stores `parent_revision` and `
 #### Filename Sanitization
 
 Task filenames are derived from task IDs (`TASK-IMPACT-{child_aid}-{parent_aid}.md`). Characters `/`, `\`, `:`, `*`, `?`, `"`, `<`, `>`, `|` are replaced with hyphens.
+
+## Report (`[report]`)
+
+Optional section controlling analysis report formatting.
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `path_as_links` | bool | `false` | Render file paths in error messages as clickable Markdown links |
+| `wiki_links` | bool | `false` | Use `[[wiki-link]]` style instead of `[text](url)`. Only relevant when `path_as_links = true`. |
+
+### Link Styles
+
+- **Disabled** (`path_as_links = false`): Plain text paths in parentheses (default, backward compatible)
+- **Markdown links** (`path_as_links = true, wiki_links = false`): `[filename.md](path/to/filename.md#L10)` — compatible with VS Code, GitHub, most Markdown viewers
+- **Wiki links** (`path_as_links = true, wiki_links = true`): `[[path/to/filename.md]]` — compatible with Obsidian
+
+### Path Resolution
+
+All file paths in links are relative to the project root (working directory). This ensures links navigate correctly from the report file location.
+
+### Example
+
+```toml
+[report]
+path_as_links = true
+wiki_links = false
+```
+
+With this configuration, an error like:
+```
+Missing mandatory attribute: 'status' (REQ:REQ-001 in [requirements.md](REQ/requirements.md#L42))
+```
 
 ## Metamodel (`[metamodel]`)
 

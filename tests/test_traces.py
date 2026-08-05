@@ -104,7 +104,7 @@ trace from REQ to SYS is mandatory
 
     validator = ArtifactValidator(metamodel, {}, errors=[])
     errors = validator.validate(req2)
-    assert any("Missing mandatory trace from 'REQ' to 'SYS'" in e for e in errors)
+    assert any("Missing mandatory trace from 'REQ' to 'SYS'" in str(e) for e in errors)
 
     # 3. Forbidden undeclared trace
     req3 = Artifact(config)
@@ -121,7 +121,7 @@ trace from REQ to SYS is mandatory
     validator = ArtifactValidator(metamodel, {'999': ts_other}, errors=[])
 
     errors = validator.validate(req3)
-    assert any("Trace from 'REQ' to 'OTHER' is not allowed" in e for e in errors)
+    assert any("Trace from 'REQ' to 'OTHER' is not allowed" in str(e) for e in errors)
 
 
 def test_no_trace_rules_forbidden_parents(config, tmp_path):
@@ -152,7 +152,7 @@ artifact REQ:
     validator = ArtifactValidator(metamodel, {ts.aid: ts})
 
     errors = validator.validate(req)
-    assert any("Trace from 'REQ' to 'SYS' is not allowed" in e for e in errors)
+    assert any("Trace from 'REQ' to 'SYS' is not allowed" in str(e) for e in errors)
 
     # ROOT is allowed
     req_root = Artifact(config)

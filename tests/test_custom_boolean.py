@@ -65,7 +65,7 @@ artifact REQ:
         validator = ArtifactValidator(metamodel, {'R1': art})
         val_errors = validator.validate(art)
         assert val_errors, f'Value {val} should be invalid'
-        assert 'is not a valid boolean (expected yes, on / no, off)' in val_errors[0]
+        assert 'is not a valid boolean (expected yes, on / no, off)' in str(val_errors[0])
 
 
 def test_custom_boolean_condition(tmp_path):
@@ -101,7 +101,7 @@ artifact REQ:
     art2.location = FileLocation('f1.md')
     validator2 = ArtifactValidator(metamodel, {'R2': art2})
     val_errors2 = validator2.validate(art2)
-    assert any("Attribute 'note' is not allowed" in e for e in val_errors2)
+    assert any("Attribute 'note' is not allowed" in str(e) for e in val_errors2)
 
     # Standard boolean should NOT work if custom ones are defined
     art3 = Artifact(None)
@@ -112,5 +112,5 @@ artifact REQ:
     validator3 = ArtifactValidator(metamodel, {'R3': art3})
     val_errors3 = validator3.validate(art3)
     # active=true is invalid boolean -> condition evaluates to False -> note not allowed
-    assert any("active' value 'true' is not a valid boolean" in e for e in val_errors3)
-    assert any("Attribute 'note' is not allowed" in e for e in val_errors3)
+    assert any("active' value 'true' is not a valid boolean" in str(e) for e in val_errors3)
+    assert any("Attribute 'note' is not allowed" in str(e) for e in val_errors3)
