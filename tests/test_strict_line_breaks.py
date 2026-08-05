@@ -16,7 +16,7 @@ from syntagmax.blocks import TextBlock, ArtifactBlock
 
 @pytest.fixture
 def params():
-    return Params(verbose=False, render_tree=False, ai=False, output='console')
+    return Params(verbose=False, render_tree=False, ai=False)
 
 
 # ============================================================

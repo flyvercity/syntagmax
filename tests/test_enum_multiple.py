@@ -11,7 +11,7 @@ from syntagmax.metamodel import load_metamodel
 
 @pytest.fixture
 def params():
-    return Params(verbose=False, render_tree=False, ai=False, output='console')
+    return Params(verbose=False, render_tree=False, ai=False)
 
 
 @pytest.fixture

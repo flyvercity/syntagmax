@@ -19,7 +19,6 @@ The CLI is invoked as `syntagmax`. All commands share a set of global options th
 | `--render-tree` | Flag | off | Include the artifact tree in the analysis report |
 | `--cwd PATH` | Path | current dir | Change the working directory before executing |
 | `--no-git` | Flag | off | Skip git history extraction |
-| `--output PATH` | String | `.syntagmax/outputs/report.md` | Report output file path (use `console` for stdout) |
 | `--lang CODE` | String | from config | Override output language for reports |
 | `--version` | Flag | — | Show version and exit |
 | `--help` | Flag | — | Show help and exit |
@@ -37,7 +36,7 @@ syntagmax --render-tree --cwd ./my-project analyze
 syntagmax --no-git analyze
 
 # Output report to stdout
-syntagmax --output console --render-tree analyze
+syntagmax --render-tree analyze --output console
 
 # Treat warnings as errors
 syntagmax --warnings-as-errors analyze
@@ -97,6 +96,7 @@ Available steps (in dependency order):
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
+| `--output PATH` | String | `<output_path>/report.md` | Report output file path (use `console` for stdout) |
 | `--allow-dirty-worktree` | Flag | off | Allow analysis on a dirty git worktree |
 | `--suppress-tracing` | Flag | off | Suppress tracing model errors |
 | `--tasks` | Flag | off | Enable task generation (overrides `tasks_enabled` in config) |
@@ -120,7 +120,7 @@ syntagmax analyze --suppress-tracing tree
 syntagmax analyze --tasks impact
 
 # Combine with global options
-syntagmax --render-tree --output console analyze
+syntagmax --render-tree analyze --output console
 ```
 
 ---

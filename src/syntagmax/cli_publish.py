@@ -124,9 +124,9 @@ def publish(
 
     if output_path is None:
         if single:
-            output_path = '.syntagmax/outputs/published.md'
+            output_path = str(config.output_dir() / 'published.md')
         else:
-            output_path = '.syntagmax/outputs/'
+            output_path = str(config.output_dir()) + '/'
 
     # Check Pandoc availability once if conversion is requested
     pandoc_available = False

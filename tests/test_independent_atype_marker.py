@@ -35,7 +35,7 @@ def test_independent_atype_marker(tmp_path):
     test_md = docs_dir / 'test.md'
     test_md.write_text('[REQ]\nRequirement content.\n[id] OLD-001\n[/REQ]')
 
-    params = Params(verbose=True, render_tree=False, cwd=str(project_dir), no_git=True, output='console')
+    params = Params(verbose=True, render_tree=False, cwd=str(project_dir), no_git=True)
     config = Config(params, config_file)
 
     # Test extraction

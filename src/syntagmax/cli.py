@@ -37,7 +37,6 @@ from syntagmax.cli_ai import ai
 @click.option('--render-tree', is_flag=True, help='Render the artifact tree')
 @click.option('--cwd', type=click.Path(exists=True), help='Change the working directory')
 @click.option('--no-git', is_flag=True, help='Skip git history extraction')
-@click.option('--output', default='.syntagmax/outputs/report.md', help='Report output file (default: .syntagmax/outputs/report.md)')
 @click.option('--lang', 'language', type=click.Choice(['en', 'ru']), default=None, help='Output language (en, ru)')
 @click.option('-f', '--config-file', type=click.Path(), default='.syntagmax/config.toml', help='Path to config file')
 def rms(ctx: click.Context, **kwargs: dict[str, Any]):
@@ -98,8 +97,9 @@ def init(ctx: click.Context):
 @click.option('--allow-dirty-worktree', is_flag=True, help='Allow analysis on a dirty git worktree')
 @click.option('--suppress-tracing', is_flag=True, help='Suppress tracing model errors')
 @click.option('--tasks', is_flag=True, help='Enable task generation (overrides config)')
+@click.option('--output', default=None, help='Report output file or "console" for stdout (default: <output_path>/report.md)')
 @click.argument('step', type=click.Choice(public_steps()), default='metrics')
-def analyze(obj: Params, allow_dirty_worktree: bool, suppress_tracing: bool, tasks: bool, step: str):
+def analyze(obj: Params, allow_dirty_worktree: bool, suppress_tracing: bool, tasks: bool, output: str | None, step: str):
     import sys
 
     cfg_path = Path(obj['config_file'])
@@ -112,7 +112,9 @@ def analyze(obj: Params, allow_dirty_worktree: bool, suppress_tracing: bool, tas
     config = Config(obj, cfg_path)
     report = process(step, config)
 
-    output = obj['output']
+    if output is None:
+        output = str(config.output_dir() / 'report.md')
+
     markdown = report.render()
 
     if output == 'console':

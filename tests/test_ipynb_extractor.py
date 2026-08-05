@@ -8,7 +8,7 @@ from syntagmax.params import Params
 
 @pytest.fixture
 def params():
-    return Params(verbose=True, render_tree=False, ai=False, output='console')
+    return Params(verbose=True, render_tree=False, ai=False)
 
 
 @pytest.fixture

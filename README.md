@@ -45,6 +45,7 @@ syntagmax -f path/to/config.toml analyze
 Key sections include:
 
 - `[[input]]` — input source definitions (driver, artifact type, filters)
+- `output_path` — base directory for report-like outputs (relative to config file directory)
 - `publish` — global publish config file path (relative to config file directory)
 - `[metrics]` — metrics collection settings
 - `[impact]` — impact analysis settings
@@ -126,7 +127,7 @@ syntagmax analyze impact
 
 All analysis outputs (errors, metrics, impact, and optionally the artifact tree) are combined into a single Markdown report file.
 
-- **Default location:** `.syntagmax/outputs/report.md`
+- **Default location:** `<output_path>/report.md` (default: `.syntagmax/outputs/report.md`)
 - **Override with:** `--output <path>` or `--output console` to print to stdout
 - **Tree inclusion:** Pass `--render-tree` to include the artifact tree in the report
 - **Section order:** Errors (grouped by input → category) → Artifact Tree → Metrics (aggregate + per-input) → Impact Analysis → AI Analysis
@@ -137,7 +138,7 @@ Example:
 syntagmax --render-tree analyze
 
 # Print report to stdout
-syntagmax --output console --render-tree analyze
+syntagmax --render-tree analyze --output console
 ```
 
 ### Report Configuration
@@ -155,6 +156,8 @@ wiki_links = false          # Use [[wiki-link]] style for Obsidian (default: fal
 - `path_as_links = true, wiki_links = true`: Obsidian wiki links `[[path/to/file.md]]`
 
 File paths are relative to the project root. Standard Markdown links include line anchors (`#L<line>`) when available; wiki links do not (Obsidian limitation).
+
+Standard Markdown links are percent-encoded for Obsidian compatibility — spaces become `%20`, Cyrillic and other non-ASCII characters are encoded, and special characters like parentheses are escaped.
 
 ### Error Grouping
 

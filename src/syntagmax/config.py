@@ -200,6 +200,7 @@ class ConfigFile(BaseModel):
     log_level: str = Field(default='info', description='Console log verbosity level')
     warnings_as_errors: bool = Field(default=False, description='Treat warnings as fatal errors')
     publish: str | None = Field(default=None, description='Global publish config file path, relative to config file directory')
+    output_path: str = Field(default='outputs/', description='Base directory for report-like outputs (relative to config file directory)')
     input: list[InputConfig] = Field(..., description='List of input sources to process')
     metrics: MetricsConfig = Field(MetricsConfig(), description='Configuration for metrics collection')
     impact: ImpactConfig = Field(ImpactConfig(), description='Configuration for impact analysis')
@@ -243,6 +244,7 @@ class Config:
         self.metrics = MetricsConfig()
         self.impact = ImpactConfig()
         self.report = ReportConfig()
+        self._output_path = 'outputs/'
         self._input_records: list[InputRecord] = []
         self._plugins = []
         self._read_config(config_filename)
@@ -322,6 +324,7 @@ class Config:
         self.impact = config_model.impact
         self.ai = config_model.ai
         self.report = config_model.report
+        self._output_path = config_model.output_path
 
         # CLI --tasks flag overrides config tasks_enabled
         if self.params.get('tasks'):
@@ -497,6 +500,16 @@ class Config:
 
     def tasks_dir(self) -> Path:
         return Path(self._root_dir, self.impact.tasks_dir)
+
+    def output_dir(self) -> Path:
+        """Resolve the output base directory.
+
+        If output_path is absolute, use as-is. Otherwise resolve relative to config file directory.
+        """
+        p = Path(self._output_path)
+        if p.is_absolute():
+            return p
+        return Path(self._root_dir, self._output_path)
 
     def resolve_task_template(self, record: 'InputRecord | None') -> tuple[Path | None, str]:
         """Resolve task template path following publish-like resolution order.
