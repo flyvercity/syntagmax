@@ -1,0 +1,135 @@
+{{ persona }}
+
+## Task
+You are verifying impact traceability task `{{ task_file_path }}`.
+
+A parent artifact was updated after the child artifact was last verified.
+Determine whether the child is still consistent with the current parent.
+
+## Artifacts
+
+### Parent (updated)
+- ID: {{ parent_aid }}
+- Type: {{ parent_atype }}
+- File: {{ parent_file_path }}
+- Relative Path (in repo): {{ parent_relative_path }}
+- Repository: {{ parent_repo_path }}
+- Revision at task creation: {{ parent_revision }}
+
+### Child (potentially outdated)
+- ID: {{ child_aid }}
+- Type: {{ child_atype }}
+- File: {{ child_file_path }}
+- Relative Path (in repo): {{ child_relative_path }}
+- Repository: {{ child_repo_path }}
+
+**Note:** Parent and child may reside in different repositories. Use the correct repository root when inspecting git history.
+
+---
+
+## Phase 1: Analysis
+
+1. Read the parent and child artifact files.
+2. Inspect the parent artifact's history/diff since revision `{{ parent_revision }}` to identify what changed.
+3. Inspect the child artifact file and its recent history.
+4. For each parent change, determine whether the child addresses it or explain why no change is needed.
+5. Assess overall consistency.
+6. Edit the task file at `{{ task_file_path }}`:
+   - If consistent: set `status: closed` in frontmatter.
+   - If not consistent: leave `status: open`.
+   - Append a `## Verification Report` section (format below).
+
+### Verification Report Format
+
+Append this section at the end of the task file:
+
+```
+## Verification Report
+- **Verdict:** PASS | FAIL
+- **Agent:** {{ agent_name }}
+- **Date:** {{ timestamp }}
+- **Parent revision observed:** <short hash> (dirty: yes/no)
+- **Child revision observed:** <short hash> (dirty: yes/no)
+
+### Parent Changes
+<Bullet list describing each distinct change in the parent artifact since the recorded revision. Each bullet should be a concise description of what was added, modified, or removed.>
+
+### Child Changes
+<Bullet list describing each distinct change in the child artifact since the recorded revision, OR a single line: "No changes observed.">
+
+### Change Mapping
+<For each parent change listed above, explain which child change addresses it. If a parent change does NOT require a child update, explain why. Format as a numbered list mapping parent changes to child responses.>
+
+### Rationale
+<2-5 sentence summary of the overall verdict. Reference specific items from the change mapping above to justify PASS or FAIL.>
+```
+
+---
+
+## Phase 2: {{ "Implementation" if amend else "Recommendation" }}
+
+{% if not amend %}
+**Execute Phase 2 only if the Phase 1 verdict is FAIL.**
+
+Append a `### Amendment Recommendation` subsection at the end of the `## Verification Report` section.
+Do NOT modify the child artifact file.
+
+### Amendment Recommendation Format
+
+```
+### Amendment Recommendation
+<Bulleted list of specific, actionable edits to make to the child artifact to bring it into
+consistency with the parent. Each bullet should reference a specific discrepancy from the
+Change Mapping and state the exact change needed (e.g., attribute to add/update, text to
+revise, reference to add).>
+```
+{% else %}
+**Execute Phase 2 only if the Phase 1 verdict is FAIL.**
+
+Edit the child artifact at `{{ child_file_path }}` to resolve every discrepancy identified in
+the Phase 1 Change Mapping. Preserve the child artifact's existing structure, formatting
+conventions, attribute order, and writing style. Then:
+
+1. Set `status: closed` in the task file frontmatter.
+2. Append a `### Amendment Applied` subsection at the end of the `## Verification Report` section.
+
+### Amendment Applied Format
+
+```
+### Amendment Applied
+<Bulleted list of the specific changes made to the child artifact. Each bullet should reference
+the discrepancy it resolves and briefly describe the edit made.>
+```
+{% endif %}
+
+---
+
+## Uncertainty Handling
+
+If you are **unsure** how to perform Phase 2 — because the required change is ambiguous, requires
+design judgment, or you cannot determine the correct fix with confidence — you MUST:
+
+- Leave `status: open`.
+- Leave the child artifact file untouched.
+- Append a `### Rationale` subsection inside `## Verification Report` explaining specifically
+  why you are uncertain and what information would be needed to proceed.
+
+---
+
+## Constraints
+
+- Do NOT modify `id` or `contents` in the frontmatter.
+- Do NOT alter existing markdown sections above the report.
+- Do NOT modify the parent artifact file.
+{% if not amend %}
+- Do NOT modify the child artifact file. This is an audit operation only.
+- Only change `status` from `open` to `closed` if verdict is PASS.
+{% else %}
+- DO edit the child artifact at `{{ child_file_path }}` to resolve discrepancies; preserve its structure and style.
+- Do NOT modify any file other than the child artifact and the task file.
+- Only change `status` from `open` to `closed` after the amendment has been successfully applied.
+{% endif %}
+- The Change Mapping MUST address every item listed in Parent Changes. Do not omit any.
+- If the parent has no meaningful changes (e.g., only whitespace), state that explicitly.
+- If git history is unresolvable (shallow clone, non-git state), perform direct file comparison instead.
+- For large diffs (>5 distinct changes), group related changes logically into summary bullet points to maintain report conciseness.

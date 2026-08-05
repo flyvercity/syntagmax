@@ -7,7 +7,7 @@
 from pathlib import Path
 from typing import Any
 
-from syntagmax.config import ConfigFile, MetricsConfig, ImpactConfig, AIConfig
+from syntagmax.config import ConfigFile, MetricsConfig, ImpactConfig, AiConfig
 
 
 def get_desc(field: Any) -> str:
@@ -19,7 +19,7 @@ def generate_toml() -> str:
 
     # Global ConfigFile
     for name, field in ConfigFile.model_fields.items():
-        if name in ['input', 'metrics', 'impact', 'ai', 'metamodel', 'baseline']:
+        if name in ['input', 'metrics', 'impact', 'metamodel', 'baseline', 'ai']:
             continue
         desc = get_desc(field)
         default = field.default
@@ -85,27 +85,25 @@ def generate_toml() -> str:
     toml_str.append('# "SYS/REQ" = "TASK"')
     toml_str.append('')
 
-    # AI
-    toml_str.append('# [ai]')
-    for name, field in AIConfig.model_fields.items():
-        desc = get_desc(field)
-        default = field.default
-        if isinstance(default, str):
-            val = f'"{default}"'
-        elif isinstance(default, bool):
-            val = str(default).lower()
-        elif default is None:
-            val = '""'
-        else:
-            val = str(default)
-        toml_str.append(f'# {desc}')
-        toml_str.append(f'# {name} = {val}')
-    toml_str.append('')
-
     # Baseline
     toml_str.append('# [baseline]')
     toml_str.append('# Optional regex pattern that tag names must match')
     toml_str.append('# tag_pattern = "^v\\\\d+\\\\.\\\\d+\\\\.\\\\d+$"')
+    toml_str.append('')
+
+    # AI
+    toml_str.append('# [ai]')
+    for name, field in AiConfig.model_fields.items():
+        desc = get_desc(field)
+        default = field.default
+        if default is None:
+            val = '""'
+        elif isinstance(default, str):
+            val = f'"{default}"'
+        else:
+            val = str(default)
+        toml_str.append(f'# {desc}')
+        toml_str.append(f'# {name} = {val}')
     toml_str.append('')
 
     return '\n'.join(toml_str)

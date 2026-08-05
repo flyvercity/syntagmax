@@ -12,7 +12,10 @@ def test_init_project_with_cwd(tmp_path: Path) -> None:
 
     config_file = syntagmax_dir / 'config.toml'
     assert config_file.exists()
-    assert config_file.is_file()
+    config_content = config_file.read_text(encoding='utf-8')
+    assert '# [ai]' in config_content
+    assert 'agent =' in config_content
+    assert 'agents_file =' in config_content
 
     metamodel_file = syntagmax_dir / 'project.syntagmax'
     assert metamodel_file.exists()

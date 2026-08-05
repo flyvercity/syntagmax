@@ -54,7 +54,6 @@ class TestSetupI18n:
         assert _('Analysis Report') == 'Отчет об анализе'
         assert _('Metrics') == 'Метрики'
         assert _('Impact Analysis') == 'Анализ влияния'
-        assert _('AI Analysis') == 'Анализ ИИ'
         assert _('Total Requirements') == 'Всего требований'
 
     def test_unsupported_language_raises_error(self):

@@ -94,7 +94,6 @@ class WorktreeConfig:
         self.metamodel = original.metamodel
         self.metrics = original.metrics
         self.impact = original.impact
-        self.ai = original.ai
 
         # Compute the equivalent base_dir within the worktree
         # Original base_dir is relative to repo root — same offset in worktree

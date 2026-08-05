@@ -54,12 +54,3 @@
 {% endif %}
 {% endif %}
 {% endif %}
-{% if report.ai_results %}
-
-## {{ _("AI Analysis") }}
-
-| {{ _("Artifact") }} | {{ _("Ambiguity") }} | {{ _("Completeness") }} | {{ _("Verifiability") }} | {{ _("Singularity") }} |
-|----------|-----------|--------------|---------------|-------------|
-{% for r in report.ai_results %}| {{ r.atype }}:{% if r.aid == "<undefined>" %}`<undefined>`{% else %}{{ r.aid }}{% endif %} | {{ r.ambiguity }} | {{ r.completeness }} | {{ r.verifiability }} | {{ r.singularity }} |
-{% endfor %}
-{% endif %}

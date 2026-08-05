@@ -36,14 +36,19 @@ This command creates a `.syntagmax` directory with:
 
 ## Configuration
 
-Syntagmax uses a TOML configuration file (default `.syntagmax/config.toml`). Key sections include:
+Syntagmax uses a TOML configuration file (default `.syntagmax/config.toml`). Override the path with the global `-f` / `--config-file` option:
+
+```bash
+syntagmax -f path/to/config.toml analyze
+```
+
+Key sections include:
 
 - `[[input]]` — input source definitions (driver, artifact type, filters)
 - `publish` — global publish config file path (relative to config file directory)
 - `[metrics]` — metrics collection settings
 - `[impact]` — impact analysis settings
 - `[metamodel]` — metamodel file path
-- `[ai]` — AI provider and model settings
 - `[trace]` — trace export plugin configuration
 
 For details on how all these paths are resolved relative to the project configuration file, see the [Paths Reference](docs/reference/paths.md).
@@ -62,13 +67,9 @@ enabled = true
 
 [metamodel]
 filename = "project.syntagmax"
-
-[ai]
-provider = "anthropic"
-model = "claude-sonnet-4-6"
 ```
 
-For the full schema, input source options, marked fragments, and AI provider settings, see [docs/reference/configuration.md](docs/reference/configuration.md). Detailed path resolution rules are described in [docs/reference/paths.md](docs/reference/paths.md).
+For the full schema, input source options, and marked fragments, see [docs/reference/configuration.md](docs/reference/configuration.md). Detailed path resolution rules are described in [docs/reference/paths.md](docs/reference/paths.md).
 
 For detailed Obsidian driver extraction rules, block termination behavior, and fragment marker processing, see [docs/reference/obsidian.md](docs/reference/obsidian.md).
 
@@ -93,7 +94,7 @@ Each artifact is attached with a set of revisions. A revision includes:
 If you want to skip git history extraction (e.g., if you are not in a git repository or want to speed up analysis), use the `--no-git` flag:
 
 ```bash
-syntagmax analyze .syntagmax/config.toml --no-git
+syntagmax analyze --no-git
 ```
 
 ## Running Analysis
@@ -101,7 +102,7 @@ syntagmax analyze .syntagmax/config.toml --no-git
 The `analyze` command is the primary way to process your project. It supports a dynamic execution pipeline where you can request a specific target step.
 
 ```bash
-syntagmax analyze [CONFIG_FILE] [STEP]
+syntagmax analyze [STEP]
 ```
 
 ### Target Steps
@@ -114,22 +115,21 @@ Syntagmax will automatically resolve and execute all dependencies required for t
 | `tree` | Build and validate the artifact tree. |
 | `impact` | Perform impact analysis (requires git history). |
 | `metrics` | (Default) Calculate project metrics and coverage. |
-| `ai` | Perform AI-assisted analysis. |
 
 Example:
 ```bash
 # Run impact analysis only
-syntagmax analyze .syntagmax/config.toml impact
+syntagmax analyze impact
 ```
 
 ## Report Output
 
-All analysis outputs (errors, metrics, impact, AI analysis, and optionally the artifact tree) are combined into a single Markdown report file.
+All analysis outputs (errors, metrics, impact, and optionally the artifact tree) are combined into a single Markdown report file.
 
 - **Default location:** `.syntagmax/outputs/report.md`
 - **Override with:** `--output <path>` or `--output console` to print to stdout
 - **Tree inclusion:** Pass `--render-tree` to include the artifact tree in the report
-- **Section order:** Errors → Artifact Tree → Metrics → Impact Analysis → AI Analysis
+- **Section order:** Errors → Artifact Tree → Metrics → Impact Analysis
 
 Example:
 ```bash
@@ -401,7 +401,6 @@ syntagmax trace [OPTIONS]
 | `--flat` | No | — | Combine multiple linked IDs into semicolon-separated values |
 | `--delimiter <char>` | No | `,` | Column delimiter (auto-detects `\t` for `.tsv` output) |
 | `--output <path>` | No | `trace-<child>-<parent>-<date>.csv` | Output path (use `console` for stdout) |
-| `-f, --config-file` | No | `.syntagmax/config.toml` | Path to config file |
 
 ### Plugin-Based Export
 
@@ -495,7 +494,6 @@ syntagmax change report --base release --target develop
 | `--include-non-artifact` | off | Include non-artifact text block changes |
 | `--single` | off | Generate a single consolidated report |
 | `--summary` | off | Generate abbreviated summary report (no content) |
-| `-f, --config-file` | `.syntagmax/config.toml` | Path to config file |
 
 ### Supported Revisions
 
@@ -572,7 +570,6 @@ syntagmax change baseline v1.0.0 --force
 | `-m, --message` | `Baseline created by Syntagmax` | Tag annotation message |
 | `--force` | off | Overwrite existing tags |
 | `--dry-run` | off | Preview actions without creating tags |
-| `-f, --config-file` | `.syntagmax/config.toml` | Path to config file |
 
 #### Behaviour
 
@@ -621,7 +618,7 @@ syntagmax --lang ru change report --base HEAD~1 --target HEAD
 ### Scope
 
 Localization applies to:
-- Analysis reports (metrics, impact, AI analysis, errors)
+- Analysis reports (metrics, impact, errors)
 - Change reports (full and summary)
 
 It does **not** apply to:
@@ -679,10 +676,52 @@ The global configuration file is located at:
 
 Set `SYNTAGMAX_HOME` to override the default global configuration directory.
 
+## AI Commands
+
+Syntagmax integrates with local CLI AI coding agents to automate verification tasks. All AI commands are grouped under `syntagmax ai`.
+
+> ⚠️ **Unrestricted Agent Execution:** Syntagmax invokes AI agents with full file system and shell access — the same permissions as the current user. The agent is NOT sandboxed. Always review changes with `git diff` before committing.
+
+### Verify Impact Task
+
+Use an AI agent to verify whether an impact task has been addressed:
+
+```bash
+syntagmax ai verify .syntagmax/tasks/TASK-IMPACT-REQ-003-SYS-003.md
+```
+
+The agent reads the parent and child artifacts, assesses consistency, and updates the task file with a verification report. The prompt includes explicit repository root paths and file paths relative to those roots, enabling the agent to locate artifacts immediately without searching. The report contains the following sections:
+
+- **Parent Changes** — summarises what changed in the parent artifact since the link was established.
+- **Child Changes** — summarises what changed in the child artifact.
+- **Change Mapping** — maps each parent change to the corresponding child update (or notes gaps).
+- **Rationale** — the agent's overall assessment of whether the child still satisfies the parent.
+
+For the full report format, see [docs/reference/ai.md](docs/reference/ai.md).
+
+#### Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--agent <name>` | Config default (`kiro`) | Override the default agent |
+
+#### Configuration
+
+```toml
+[ai]
+agent = "kiro"
+persona = "You are a systems engineer reviewing requirements traceability."
+```
+
+#### Supported Agents
+
+Kiro CLI, Claude Code, Codex, Copilot, OpenCode, Antigravity, and Mistral Vibe are supported out of the box. Custom agents can be added via a YAML registry file. Agents that require a `.cmd` or `.ps1` wrapper on Windows are resolved automatically via `shutil.which()` (see [docs/reference/ai.md](docs/reference/ai.md#windows-support)).
+
+For the full AI commands reference, agent registry format, and prompt customisation, see [docs/reference/ai.md](docs/reference/ai.md).
+
 ## Required Improvements
 
 - Implement automatic change propagation
-- Enhance AI-based analysis and tracing
 
 ## MCP Server
 
@@ -699,7 +738,7 @@ Syntagmax includes a Model Context Protocol (MCP) server that allows LLMs to int
 To start the server using Server-Sent Events (SSE):
 
 ```bash
-syntagmax mcp run .syntagmax/config.toml --transport sse --port 8000
+syntagmax mcp run --transport sse --port 8000
 ```
 
 ### Sample Configuration

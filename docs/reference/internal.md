@@ -51,7 +51,6 @@ flowchart TD
     extract --> build_artifact_map
     build_artifact_map --> populate_pids
     build_artifact_map --> populate_revisions
-    build_artifact_map --> ai
     populate_pids --> build_tree
     build_tree --> tree["tree (analyse_tree)"]
     build_tree --> impact
@@ -92,8 +91,6 @@ flowchart TD
 | [`analyse.py`](../../src/syntagmax/analyse.py) | Metamodel validation, ID schema enforcement, trace validation | `ArtifactValidator` |
 | [`impact.py`](../../src/syntagmax/impact.py) | Revision-based impact detection | `perform_impact_analysis` |
 | [`metrics.py`](../../src/syntagmax/metrics.py) | Polars-based metrics aggregation | `calculate_metrics` |
-| [`ai.py`](../../src/syntagmax/ai.py) | AI analysis orchestration | `ai_analyze` |
-| [`ai_providers.py`](../../src/syntagmax/ai_providers.py) | Provider adapters (Anthropic, OpenAI, Gemini, Ollama, Bedrock) | — |
 | [`publish.py`](../../src/syntagmax/publish.py) | Block tree construction and markdown rendering | `build_block_tree`, `render_block_tree` |
 | [`publish_config.py`](../../src/syntagmax/publish_config.py) | Pydantic model for `publish.yaml` | `PublishConfig`, `TableSection`, `TextSection` |
 | [`publish_context.py`](../../src/syntagmax/publish_context.py) | Image manifest and resolution context | `RenderContext`, `ImageManifest` |
@@ -190,12 +187,10 @@ flowchart TD
     populate_revisions["populate_revisions<br/><i>git blame</i>"]
     impact["impact<br/><i>suspicious link detection</i>"]
     metrics["metrics<br/><i>Polars aggregation</i>"]
-    ai["ai<br/><i>LLM analysis</i>"]
 
     extract --> build_artifact_map
     build_artifact_map --> populate_pids
     build_artifact_map --> populate_revisions
-    build_artifact_map --> ai
     populate_pids --> build_tree
     build_tree --> tree
     build_tree --> impact
@@ -216,7 +211,7 @@ Resolution uses Python's `graphlib.TopologicalSorter`. Given target `T`:
 
 ### Public vs Internal Steps
 
-Five steps are exposed to users: `extract`, `tree`, `impact`, `metrics`, `ai`. The remaining steps (`build_artifact_map`, `populate_pids`, `build_tree`, `populate_revisions`) are internal intermediates resolved automatically.
+Four steps are exposed to users: `extract`, `tree`, `impact`, `metrics`. The remaining steps (`build_artifact_map`, `populate_pids`, `build_tree`, `populate_revisions`) are internal intermediates resolved automatically.
 
 ---
 

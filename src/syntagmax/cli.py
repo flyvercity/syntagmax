@@ -24,6 +24,7 @@ from syntagmax.cli_publish import publish
 from syntagmax.cli_change import change
 from syntagmax.cli_edit import edit
 from syntagmax.cli_tools import trace, mcp, schema, ci
+from syntagmax.cli_ai import ai
 
 
 @click.group(help='RMS Entry Point')
@@ -38,6 +39,7 @@ from syntagmax.cli_tools import trace, mcp, schema, ci
 @click.option('--no-git', is_flag=True, help='Skip git history extraction')
 @click.option('--output', default='.syntagmax/outputs/report.md', help='Report output file (default: .syntagmax/outputs/report.md)')
 @click.option('--lang', 'language', type=click.Choice(['en', 'ru']), default=None, help='Output language (en, ru)')
+@click.option('-f', '--config-file', type=click.Path(), default='.syntagmax/config.toml', help='Path to config file')
 def rms(ctx: click.Context, **kwargs: dict[str, Any]):
     from syntagmax.log_utils import LOG_LEVEL_MAP, WarningsAsErrorsHandler, set_warnings_handler
 
@@ -93,20 +95,14 @@ def init(ctx: click.Context):
 
 @rms.command(help='Run full analysis of the project')
 @click.pass_obj
-@click.option(
-    '-f',
-    '--config-file',
-    type=click.Path(),
-    default='.syntagmax/config.toml',
-)
 @click.option('--allow-dirty-worktree', is_flag=True, help='Allow analysis on a dirty git worktree')
 @click.option('--suppress-tracing', is_flag=True, help='Suppress tracing model errors')
 @click.option('--tasks', is_flag=True, help='Enable task generation (overrides config)')
 @click.argument('step', type=click.Choice(public_steps()), default='metrics')
-def analyze(obj: Params, config_file: Path, allow_dirty_worktree: bool, suppress_tracing: bool, tasks: bool, step: str):
+def analyze(obj: Params, allow_dirty_worktree: bool, suppress_tracing: bool, tasks: bool, step: str):
     import sys
 
-    cfg_path = Path(config_file)
+    cfg_path = Path(obj['config_file'])
     if not cfg_path.exists():
         u.pprint(f'[red]Error: Configuration file "{cfg_path}" does not exist.[/red]')
         sys.exit(1)
@@ -142,6 +138,7 @@ rms.add_command(edit)
 rms.add_command(mcp)
 rms.add_command(schema)
 rms.add_command(ci)
+rms.add_command(ai)
 
 
 def main():

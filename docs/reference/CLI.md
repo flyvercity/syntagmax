@@ -92,13 +92,11 @@ Available steps (in dependency order):
 | `tree` | Build and validate the artifact tree |
 | `impact` | Perform impact analysis (requires git history) |
 | `metrics` | Calculate project metrics and coverage |
-| `ai` | Perform AI-assisted analysis |
 
 #### Options
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `-f, --config-file PATH` | Path | `.syntagmax/config.toml` | Path to the project configuration file |
 | `--allow-dirty-worktree` | Flag | off | Allow analysis on a dirty git worktree |
 | `--suppress-tracing` | Flag | off | Suppress tracing model errors |
 | `--tasks` | Flag | off | Enable task generation (overrides `tasks_enabled` in config) |
@@ -113,10 +111,7 @@ syntagmax analyze
 syntagmax analyze extract
 
 # Run impact analysis with a custom config file
-syntagmax analyze -f custom-config.toml impact
-
-# Run AI analysis, allow dirty worktree
-syntagmax analyze --allow-dirty-worktree ai
+syntagmax -f custom-config.toml analyze impact
 
 # Suppress tracing errors during tree validation
 syntagmax analyze --suppress-tracing tree
@@ -151,7 +146,6 @@ syntagmax publish [OPTIONS] [RECORDS...]
 | `--all` | Flag | off | Publish all input records defined in config |
 | `--single` | Flag | off | Compile all selected records into a single file |
 | `--output PATH` | Path | `.syntagmax/outputs/` (multi) or `.syntagmax/outputs/published.md` (single) | Output directory (multi-file) or file path (single) |
-| `-f, --config-file PATH` | Path | `.syntagmax/config.toml` | Path to the project configuration file |
 | `--date-suffix` | Flag | off | Append date suffix (`YYYY-MM-DD`) to filenames. Cannot be combined with `--single`. |
 | `--docx` | Flag | off | Convert output to DOCX via Pandoc |
 | `--pdf` | Flag | off | Convert output to PDF via Pandoc |
@@ -186,7 +180,7 @@ syntagmax publish --all --single --docx --docx-template none
 syntagmax publish --all --pre-filter my-filter-plugin
 
 # Custom config file
-syntagmax publish --all -f ./custom/config.toml
+syntagmax -f ./custom/config.toml publish --all
 ```
 
 ---
@@ -212,7 +206,6 @@ Uses left outer join semantics — every lead artifact appears even if it has no
 | `--flat` | Flag | off | Combine multiple linked IDs into semicolon-separated values |
 | `--delimiter CHAR` | String | `,` (auto `\t` for `.tsv`) | Column delimiter |
 | `--output PATH` | String | `trace-<child>-<parent>-<date>.csv` | Output file path. Use `console` for stdout. |
-| `-f, --config-file PATH` | Path | `.syntagmax/config.toml` | Path to the project configuration file |
 
 #### Plugin-Based Export
 
@@ -369,7 +362,6 @@ syntagmax change baseline [OPTIONS] TAG_NAME
 | `-m, --message TEXT` | String | `Baseline created by Syntagmax` | Tag annotation message |
 | `--force` | Flag | off | Overwrite existing tags |
 | `--dry-run` | Flag | off | Preview actions without creating tags |
-| `-f, --config-file PATH` | Path | `.syntagmax/config.toml` | Path to the project configuration file |
 
 #### Behaviour
 
@@ -550,7 +542,6 @@ syntagmax edit attrs [OPTIONS]
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `-f, --config-file PATH` | Path | `.syntagmax/config.toml` | Path to the project configuration file |
 | `-o, --operation` | Choice: `add`, `del`, `replace` | `add` | Operation to perform |
 | `-t, --type` | Choice: `attr`, `field` | `attr` | Target: `attr` (YAML frontmatter) or `field` (inline `[FIELD]`) |
 | `-n, --name NAME` | String | — | Attribute name. Omit for `add` to add all mandatory metamodel attributes. |
