@@ -122,6 +122,8 @@ Agent definitions map names to command-line invocation patterns. The built-in re
 | `antigravity` | `antigravity --prompt {prompt}` | Antigravity CLI |
 | `mistral-vibe` | `vibe --prompt {prompt}` | Mistral Vibe CLI |
 
+> ⚠️ **Mistral Vibe caveat:** The `--yolo` flag used internally enables auto-commit behaviour — Mistral Vibe may commit changes to the repository without explicit user request. Always inspect `git log` and `git diff` after invocation and use `git reset HEAD~1` to undo unwanted commits.
+
 ### Windows Support
 
 On Windows, many agent CLIs are distributed as `.cmd` or `.ps1` wrappers (e.g. `kiro-cli.cmd`). Syntagmax uses `shutil.which()` to resolve the full executable path at runtime, which automatically handles platform-specific extensions. No additional configuration is needed — if the agent executable is on `PATH`, it will be found regardless of wrapper extension.
