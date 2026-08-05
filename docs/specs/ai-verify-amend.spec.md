@@ -37,6 +37,11 @@ This spec adds `--amend` mode and restructures the agent prompt into two explici
 8. The `--amend` flag is CLI-only — no config-file equivalent.
 9. Under `amend=True`, the prompt explicitly constrains the agent to modify **only** the child artifact
    and the task file. The parent artifact and all other project files are strictly read-only.
+10. If the agent is **unsure** how to perform Phase 2 (either Recommendation or Implementation) — for
+    example because the required change is ambiguous, requires design judgment, or the agent cannot
+    determine the correct fix with confidence — it MUST: leave `status: open`, leave the child artifact
+    untouched, and append a `### Rationale` subsection (inside `## Verification Report`) explaining
+    specifically why it is uncertain and what information would be needed to proceed.
 
 ## Background
 
@@ -232,6 +237,7 @@ is gated: present unconditionally when amend=False, replaced when amend=True]
 | Do NOT modify the child artifact file | ✓ | — |
 | Do NOT modify any file other than the child artifact and task file | — | ✓ |
 | DO edit the child artifact to resolve discrepancies; preserve structure and style | — | ✓ |
+| If uncertain how to perform Phase 2, leave `status: open`, leave child untouched, append `### Rationale` explaining the uncertainty | ✓ | ✓ |
 | If a discrepancy requires human design judgment, apply only safe partial amendments and leave `status: open`, noting unresolvable items | — | ✓ |
 | Only change `status` to `closed` if verdict is PASS | ✓ | — |
 | Only change `status` to `closed` after amendment is applied | — | ✓ |
@@ -313,6 +319,10 @@ to the Jinja2 template renderer.
   - Assert `'### Amendment Applied'` format block is present.
   - Assert the parent artifact immutability constraint is present (e.g. "Do NOT modify the parent artifact").
   - Assert the scope constraint is present (e.g. "Do NOT modify any file other than").
+- Add `test_render_verify_prompt_uncertainty_constraint_present` (call with both `amend=False` and `amend=True`):
+  - Assert `'unsure'` or `'uncertain'` appears in the rendered output.
+  - Assert `'### Rationale'` appears as an uncertainty fallback instruction.
+  - Assert the instruction to leave `status: open` and leave the child untouched is present.
 
 **Demo:**
 ```python
@@ -343,6 +353,13 @@ using the `amend` variable.
   replace with "DO edit the child artifact…" inside `{% else %}`.
 - Keep all other constraints (do not modify `id`/`contents`, do not modify parent artifact, etc.)
   unconditional.
+- Add the uncertainty constraint unconditionally (applies to both modes):
+  > If you are **unsure** how to perform Phase 2 — because the required change is ambiguous, requires
+  > design judgment, or you cannot determine the correct fix with confidence — you MUST:
+  > - Leave `status: open`.
+  > - Leave the child artifact file untouched.
+  > - Append a `### Rationale` subsection inside `## Verification Report` explaining specifically
+  >   why you are uncertain and what information would be needed to proceed.
 - Preserve all existing Phase 1 content verbatim — the current instruction set, the full
   Verification Report format reference, and all existing constraints that are not amend-dependent.
 
@@ -530,6 +547,10 @@ uv run syntagmax ai verify .syntagmax/tasks/TASK-IMPACT-REQ-003-SYS-003.md --ame
 
    ### Amendment Applied (appended on FAIL, with --amend)
    <Bulleted list of changes made to the child artifact, each referencing the discrepancy resolved.>
+
+   ### Rationale (appended instead of Amendment Recommendation/Applied when agent is uncertain)
+   <Explanation of why the agent is uncertain and what information would be needed to proceed.
+   status remains open; child artifact is untouched.>
    ```
 
 5. **Examples section**: add two examples:
