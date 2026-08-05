@@ -5,7 +5,7 @@ agents:
     windows-suffix: ".cmd"
 
   claude:
-    command: "claude --dangerously-skip-permissions --print {prompt}"
+    command: "claude --dangerously-skip-permissions --verbose --print {prompt}"
     description: "Claude Code CLI"
 
   codex:
