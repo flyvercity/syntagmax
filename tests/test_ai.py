@@ -7,7 +7,6 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from syntagmax.ai import (
-    ArtifactPaths,
     _parse_frontmatter,
     invoke_agent,
     load_agent_registry,

@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project uses [Calendar Versioning](https://calver.org/) with the scheme `YYYY.M.D`.
 
+## [2026.8.6] - 2026-08-06
+
+### Added
+
+- Local CLI AI agent integration (`syntagmax ai`) — verify impact tasks and perform automated child artifact amendments using local agents (Claude, Copilot, Kiro, Mistral Vibe, OpenCode, Antigravity)
+- Added CLI options for agent tools, including `--verbose` for Claude, `--yolo` for Mistral Vibe, and Windows CLI suffix support
+- Configurable analysis output directory (`output_path`) and percent-encoded markdown links in reports
+
+### Changed
+
+- Default report output directory updated to `outputs/`
+- Default trace matrix export filenames now include directionality and trace metadata
+- Improved analysis report formatting, file location UX, and error messages for dirty git worktrees
+
+### Fixed
+
+- Prevent duplicate error records for missing parent trace links
+- Resolved path calculations relative to configured output directories
+
+### Removed
+
+- Cleaned up unused internal methods in simple markdown extractor
+
 ## [2026.7.30] - 2026-07-30
 
 ### Added
