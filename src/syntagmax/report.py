@@ -4,6 +4,7 @@
 # Created: 2026-06-20
 # Description: Unified report for all analysis outputs.
 
+import urllib.parse
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -81,8 +82,11 @@ def format_error(error: ReportError, report_config: 'ReportConfig | None' = None
         link = f'[[{path}]]{line_suffix}'
     else:
         # Standard Markdown link: [file.md](path#L10):10-20
+        posix_path = path.replace('\\', '/')
+        encoded_path = urllib.parse.quote(posix_path, safe='/')
         anchor = f'#L{error.line_range[0]}' if error.line_range else ''
-        link = f'[{filename}]({path}{anchor}){line_suffix}'
+        safe_filename = filename.replace(']', '\\]')
+        link = f'[{safe_filename}]({encoded_path}{anchor}){line_suffix}'
 
     # Build the formatted string
     parts = [error.message]

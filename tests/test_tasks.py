@@ -80,7 +80,7 @@ trace from REQ to SYS is mandatory via commit
     (tmp_path / 'REQ').mkdir(exist_ok=True)
     (tmp_path / 'SYS').mkdir(exist_ok=True)
 
-    params = Params(verbose=False, render_tree=False, ai=False, cwd=str(tmp_path), no_git=True, output='console')
+    params = Params(verbose=False, render_tree=False, ai=False, cwd=str(tmp_path), no_git=True)
     return Config(params, config_path)
 
 
@@ -257,7 +257,7 @@ artifact TASK:
     )
     (tmp_path / 'REQ').mkdir(exist_ok=True)
 
-    params = Params(verbose=False, render_tree=False, ai=False, cwd=str(tmp_path), no_git=True, output='console')
+    params = Params(verbose=False, render_tree=False, ai=False, cwd=str(tmp_path), no_git=True)
     config = Config(params, config_path)
 
     # Should NOT overwrite user-defined TASK
@@ -298,7 +298,7 @@ filename = "project.syntagmax"
     )
     (tmp_path / 'REQ').mkdir(exist_ok=True)
 
-    params = Params(verbose=False, render_tree=False, ai=False, cwd=str(tmp_path), no_git=True, output='console')
+    params = Params(verbose=False, render_tree=False, ai=False, cwd=str(tmp_path), no_git=True)
     config = Config(params, config_path)
 
     # TASK should NOT be injected
@@ -339,7 +339,7 @@ filename = "project.syntagmax"
     )
     (tmp_path / 'REQ').mkdir(exist_ok=True)
 
-    params = Params(verbose=False, render_tree=False, ai=False, cwd=str(tmp_path), no_git=True, output='console')
+    params = Params(verbose=False, render_tree=False, ai=False, cwd=str(tmp_path), no_git=True)
     config = Config(params, config_path)
 
     # Both TASK (default) and REVIEW (from map) should be injected
@@ -381,7 +381,7 @@ filename = "project.syntagmax"
 """,
         encoding='utf-8',
     )
-    params = Params(verbose=False, render_tree=False, ai=False, cwd=str(tmp_path), no_git=True, output='console')
+    params = Params(verbose=False, render_tree=False, ai=False, cwd=str(tmp_path), no_git=True)
     config = Config(params, config_path)
 
     template_dir, template_name = config.resolve_task_template(None)
@@ -593,7 +593,7 @@ filename = "project.syntagmax"
     metamodel_path.write_text('artifact REQ:\n    id is string\n    attribute contents is mandatory string\n', encoding='utf-8')
     (tmp_path / 'REQ').mkdir(exist_ok=True)
 
-    params = Params(verbose=False, render_tree=False, ai=False, cwd=str(tmp_path), no_git=True, output='console')
+    params = Params(verbose=False, render_tree=False, ai=False, cwd=str(tmp_path), no_git=True)
     config = Config(params, config_path)
 
     from benedict import benedict
@@ -658,7 +658,7 @@ trace from REQ to SYS is mandatory via commit
     (tmp_path / 'REQ').mkdir(exist_ok=True)
     (tmp_path / 'SYS').mkdir(exist_ok=True)
 
-    params = Params(verbose=False, render_tree=False, ai=False, cwd=str(tmp_path), no_git=True, output='console')
+    params = Params(verbose=False, render_tree=False, ai=False, cwd=str(tmp_path), no_git=True)
     config = Config(params, config_path)
 
     artifacts, impact_data = _make_artifacts_with_suspicious_link(config)
@@ -758,7 +758,7 @@ filename = "project.syntagmax"
     )
     (tmp_path / 'REQ').mkdir(exist_ok=True)
 
-    params = Params(verbose=False, render_tree=False, ai=False, cwd=str(tmp_path), no_git=True, tasks=True, output='console')
+    params = Params(verbose=False, render_tree=False, ai=False, cwd=str(tmp_path), no_git=True, tasks=True)
     config = Config(params, config_path)
 
     # tasks_enabled should be overridden to True
@@ -800,7 +800,7 @@ filename = "project.syntagmax"
     (tmp_path / 'REQ').mkdir(exist_ok=True)
 
     # No 'tasks' key in params - simulates CLI without --tasks
-    params = Params(verbose=False, render_tree=False, ai=False, cwd=str(tmp_path), no_git=True, output='console')
+    params = Params(verbose=False, render_tree=False, ai=False, cwd=str(tmp_path), no_git=True)
     config = Config(params, config_path)
 
     # tasks_enabled should remain False from config

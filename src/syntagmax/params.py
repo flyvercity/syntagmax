@@ -21,4 +21,3 @@ class Params(TypedDict):
 
     suppress_tracing: bool
     tasks: bool
-    output: str

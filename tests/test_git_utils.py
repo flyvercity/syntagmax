@@ -39,7 +39,7 @@ atype = "requirement"
 """,
         encoding='utf-8',
     )
-    params = Params(verbose=False, render_tree=False, ai=False, output='console')
+    params = Params(verbose=False, render_tree=False, ai=False)
     return Config(params=params, config_filename=cfg_path)
 
 
@@ -108,7 +108,7 @@ atype = "requirement"
 """,
         encoding='utf-8',
     )
-    params = Params(verbose=False, render_tree=False, ai=False, output='console')
+    params = Params(verbose=False, render_tree=False, ai=False)
     config = Config(params=params, config_filename=cfg_path)
 
     import logging as lg
@@ -132,7 +132,7 @@ atype = "requirement"
 """,
         encoding='utf-8',
     )
-    params = Params(verbose=False, render_tree=False, ai=False, output='console')
+    params = Params(verbose=False, render_tree=False, ai=False)
     config = Config(params=params, config_filename=cfg_path)
 
     artifacts = {}

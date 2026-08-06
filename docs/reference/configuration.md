@@ -9,6 +9,7 @@ For a detailed explanation of how Syntagmax handles different directories, relat
 | Option | Required | Description |
 |--------|----------|-------------|
 | `base` | Yes | Base directory path (relative to the config file). |
+| `output_path` | No | Base directory for report-like outputs (relative to config file directory). Default: `outputs/`. |
 | `log_level` | No | Console log verbosity: `debug`, `info`, `warning`, `error`, `silent`. Default: `info`. Can be overridden by `--log` CLI flag. |
 | `warnings_as_errors` | No | Treat warnings as fatal errors. Default: `false`. Can be overridden by `--warnings-as-errors` CLI flag. |
 | `language` | No | Output language for reports (`en` or `ru`). Default: `en`. Can be overridden by `--lang` CLI flag. |
@@ -352,6 +353,32 @@ Task generation is revision-aware. Each task file stores `parent_revision` and `
 
 Task filenames are derived from task IDs (`TASK-IMPACT-{child_aid}-{parent_aid}.md`). Characters `/`, `\`, `:`, `*`, `?`, `"`, `<`, `>`, `|` are replaced with hyphens.
 
+## Output Path (`output_path`)
+
+Controls the base directory for all report-like outputs: analysis reports, change reports, trace exports, and published documents.
+
+| Field | Required | Default | Description |
+|-------|----------|---------|-------------|
+| `output_path` | No | `outputs/` | Base directory for generated outputs. Resolved relative to the config file directory. |
+
+### Resolution
+
+- Relative paths are resolved relative to the config file directory (e.g., `.syntagmax/`).
+- Absolute paths are used as-is.
+- Each command appends its own suffix: `report.md` (analyze), `change/` (change report), `trace-*.csv` (trace), etc.
+- CLI `--output` on each subcommand takes precedence over the configured `output_path`.
+- Does NOT affect `impact.tasks_dir` (tasks directory is configured independently).
+
+### Example
+
+```toml
+# Default: outputs live in .syntagmax/outputs/
+output_path = "outputs/"
+
+# Custom: outputs live in a top-level reports/ directory
+output_path = "../reports"
+```
+
 ## Report (`[report]`)
 
 Optional section controlling analysis report formatting.
@@ -370,6 +397,8 @@ Optional section controlling analysis report formatting.
 ### Path Resolution
 
 All file paths in links are relative to the project root (working directory). This ensures links navigate correctly from the report file location.
+
+Standard Markdown links are percent-encoded for Obsidian compatibility — spaces become `%20`, Cyrillic and other non-ASCII characters are URL-encoded, and special characters like parentheses are escaped. Wiki links are not encoded (Obsidian handles raw paths natively).
 
 ### Example
 

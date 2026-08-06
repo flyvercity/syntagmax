@@ -48,7 +48,12 @@ class RepoCache:
 
             # Check for dirty worktree
             if dirty and not self.config.params.get('allow_dirty_worktree', False):
-                errors.append(f'The repository for the base {art_base} is dirty. Commit your changes or use --allow-dirty-worktree.')
+                # Use path relative to project base for user-facing messages
+                try:
+                    rel_path = art_base.relative_to(Path(base).absolute().resolve())
+                except ValueError:
+                    rel_path = art_base
+                errors.append(f'The repository at `{rel_path}` is dirty. Commit your changes or use --allow-dirty-worktree.')
 
             repo_root = Path(repo.working_tree_dir).absolute()
             self.repos[art_base] = repo

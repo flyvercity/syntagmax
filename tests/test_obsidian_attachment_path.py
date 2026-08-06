@@ -14,7 +14,7 @@ from syntagmax.publish import render_block_tree, build_block_tree
 
 @pytest.fixture
 def params():
-    return Params(verbose=False, render_tree=False, ai=False, output='console')
+    return Params(verbose=False, render_tree=False, ai=False)
 
 
 class TestObsidianDriverConfigFields:

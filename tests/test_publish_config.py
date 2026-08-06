@@ -126,7 +126,7 @@ atype = "SRS"
     default_yaml = tmp_path / 'publish.yaml'
     default_yaml.write_text('start_level: 2', encoding='utf-8')
 
-    params = Params(verbose=False, render_tree=False, ai=False, output='console')
+    params = Params(verbose=False, render_tree=False, ai=False)
     config = Config(params=params, config_filename=cfg_path)
     records = config.input_records()
 
@@ -435,7 +435,7 @@ atype = "SYS"
         # Create publish.toml alongside config (auto-discovered in _root_dir)
         (tmp_path / 'publish.toml').write_text('start_level = 4', encoding='utf-8')
 
-        params = Params(verbose=False, render_tree=False, ai=False, output='console')
+        params = Params(verbose=False, render_tree=False, ai=False)
         config = Config(params=params, config_filename=cfg_path)
         records = config.input_records()
 
@@ -460,7 +460,7 @@ publish = "custom.toml"
 
         (tmp_path / 'custom.toml').write_text('start_level = 6', encoding='utf-8')
 
-        params = Params(verbose=False, render_tree=False, ai=False, output='console')
+        params = Params(verbose=False, render_tree=False, ai=False)
         config = Config(params=params, config_filename=cfg_path)
         records = config.input_records()
 
@@ -486,7 +486,7 @@ atype = "SYS"
         (tmp_path / 'publish.yaml').write_text('start_level: 1', encoding='utf-8')
         (tmp_path / 'publish.toml').write_text('start_level = 2', encoding='utf-8')
 
-        params = Params(verbose=False, render_tree=False, ai=False, output='console')
+        params = Params(verbose=False, render_tree=False, ai=False)
         config = Config(params=params, config_filename=cfg_path)
         records = config.input_records()
 
@@ -514,7 +514,7 @@ atype = "SYS"
         dot_syntagmax.mkdir()
         (dot_syntagmax / 'publish.yaml').write_text('start_level: 2', encoding='utf-8')
 
-        params = Params(verbose=False, render_tree=False, ai=False, output='console')
+        params = Params(verbose=False, render_tree=False, ai=False)
         config = Config(params=params, config_filename=cfg_path)
         records = config.input_records()
 
@@ -558,7 +558,7 @@ publish = "publish.yaml"
         # Create the input dir so Config doesn't error
         (project_root / 'Personal Scheduler App').mkdir()
 
-        params = Params(verbose=False, render_tree=False, ai=False, output='console')
+        params = Params(verbose=False, render_tree=False, ai=False)
         config = Config(params=params, config_filename=cfg_path)
         records = config.input_records()
 
@@ -594,7 +594,7 @@ publish = "publish.yaml"
         (project_root / 'docs').mkdir()
         # Deliberately NOT creating publish.yaml
 
-        params = Params(verbose=False, render_tree=False, ai=False, output='console')
+        params = Params(verbose=False, render_tree=False, ai=False)
         config = Config(params=params, config_filename=cfg_path)
         records = config.input_records()
 
@@ -627,7 +627,7 @@ atype = "SRS"
         (project_root / 'publish.yaml').write_text('start_level: 7', encoding='utf-8')
         (project_root / 'docs').mkdir()
 
-        params = Params(verbose=False, render_tree=False, ai=False, output='console')
+        params = Params(verbose=False, render_tree=False, ai=False)
         config = Config(params=params, config_filename=cfg_path)
         records = config.input_records()
 
@@ -661,7 +661,7 @@ atype = "SRS"
         (dot_syntagmax / 'publish.yaml').write_text('start_level: 3', encoding='utf-8')
         (project_root / 'docs').mkdir()
 
-        params = Params(verbose=False, render_tree=False, ai=False, output='console')
+        params = Params(verbose=False, render_tree=False, ai=False)
         config = Config(params=params, config_filename=cfg_path)
         records = config.input_records()
 
@@ -695,7 +695,7 @@ atype = "SRS"
         (dot_syntagmax / 'publish.yaml').write_text('start_level: 2', encoding='utf-8')
         (project_root / 'docs').mkdir()
 
-        params = Params(verbose=False, render_tree=False, ai=False, output='console')
+        params = Params(verbose=False, render_tree=False, ai=False)
         config = Config(params=params, config_filename=cfg_path)
         records = config.input_records()
 
@@ -743,7 +743,7 @@ atype = "SRS"
         (dot_syntagmax / 'my-publish.yaml').write_text('start_level: 6', encoding='utf-8')
         (project_root / 'docs').mkdir()
 
-        params = Params(verbose=False, render_tree=False, ai=False, output='console')
+        params = Params(verbose=False, render_tree=False, ai=False)
         config = Config(params=params, config_filename=cfg_path)
         records = config.input_records()
 
@@ -780,7 +780,7 @@ publish = "record-publish.yaml"
         (project_root / 'record-publish.yaml').write_text('start_level: 8', encoding='utf-8')
         (project_root / 'docs').mkdir()
 
-        params = Params(verbose=False, render_tree=False, ai=False, output='console')
+        params = Params(verbose=False, render_tree=False, ai=False)
         config = Config(params=params, config_filename=cfg_path)
         records = config.input_records()
 
@@ -816,7 +816,7 @@ atype = "SRS"
         (dot_syntagmax / 'custom-publish.yaml').write_text('start_level: 5', encoding='utf-8')
         (project_root / 'docs').mkdir()
 
-        params = Params(verbose=False, render_tree=False, ai=False, output='console')
+        params = Params(verbose=False, render_tree=False, ai=False)
         config = Config(params=params, config_filename=cfg_path)
         records = config.input_records()
 
@@ -848,7 +848,7 @@ atype = "SRS"
         (project_root / 'docs').mkdir()
         # Deliberately NOT creating nonexistent.yaml in .syntagmax/
 
-        params = Params(verbose=False, render_tree=False, ai=False, output='console')
+        params = Params(verbose=False, render_tree=False, ai=False)
         config = Config(params=params, config_filename=cfg_path)
         records = config.input_records()
 
@@ -881,7 +881,7 @@ atype = "SRS"
         (dot_syntagmax / 'publish.yaml').write_text('start_level: 4', encoding='utf-8')
         (project_root / 'docs').mkdir()
 
-        params = Params(verbose=False, render_tree=False, ai=False, output='console')
+        params = Params(verbose=False, render_tree=False, ai=False)
         config = Config(params=params, config_filename=cfg_path)
         records = config.input_records()
 

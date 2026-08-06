@@ -15,7 +15,7 @@ syntagmax publish [RECORDS...] [--all] [--single] [--output <path-or-dir>] [--da
 | `RECORDS` | No* | One or more input record names to publish |
 | `--all` | No* | Publish all input records |
 | `--single` | No | Compile all published records sequentially into a single file |
-| `--output <path-or-dir>` | No | Output directory or file path. Defaults to `.syntagmax/outputs/` (separate files) or `.syntagmax/outputs/published.md` (`--single`). |
+| `--output <path-or-dir>` | No | Output directory or file path. Defaults to `<output_path>/` (separate files) or `<output_path>/published.md` (`--single`). |
 | `--date-suffix` | No | Append `_<YYYY-MM-DD>` to output filenames (only valid without `--single`) |
 | `--docx` | No | Convert output to DOCX via Pandoc |
 | `--pdf` | No | Convert output to PDF via Pandoc |

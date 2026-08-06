@@ -149,3 +149,55 @@ class TestFormatError:
         err = ReportError(message='test msg', category=CAT_ATTRIBUTE)
         result = format_error(err, cfg)
         assert result == str(err)
+
+    def test_format_error_markdown_links_with_spaces(self):
+        from syntagmax.report import format_error, CAT_ATTRIBUTE
+
+        cfg = ReportConfig(path_as_links=True, wiki_links=False)
+        err = ReportError(
+            message='test msg',
+            category=CAT_ATTRIBUTE,
+            file_path='Описание проекта/4 content.md',
+            artifact_type='REQ',
+            artifact_id='REQ-001',
+            line_range=(10, 20),
+        )
+        result = format_error(err, cfg)
+        assert '%20' in result
+        assert 'Описание' not in result.split('](')[1].split(')')[0]  # Cyrillic is encoded in URL
+        assert '#L10' in result
+        assert 'REQ:REQ-001' in result
+
+    def test_format_error_markdown_links_with_parentheses(self):
+        from syntagmax.report import format_error, CAT_ATTRIBUTE
+
+        cfg = ReportConfig(path_as_links=True, wiki_links=False)
+        err = ReportError(
+            message='test msg',
+            category=CAT_ATTRIBUTE,
+            file_path='dir/file (copy).md',
+            artifact_type='REQ',
+            artifact_id='REQ-001',
+            line_range=(5, 10),
+        )
+        result = format_error(err, cfg)
+        # Parentheses must be encoded
+        assert '%28' in result
+        assert '%29' in result
+
+    def test_format_error_wiki_links_not_encoded(self):
+        from syntagmax.report import format_error, CAT_ATTRIBUTE
+
+        cfg = ReportConfig(path_as_links=True, wiki_links=True)
+        err = ReportError(
+            message='test msg',
+            category=CAT_ATTRIBUTE,
+            file_path='Описание проекта/4 content.md',
+            artifact_type='REQ',
+            artifact_id='REQ-001',
+            line_range=(10, 20),
+        )
+        result = format_error(err, cfg)
+        # Wiki links should NOT be encoded
+        assert '[[Описание проекта/4 content.md]]' in result
+        assert '%20' not in result

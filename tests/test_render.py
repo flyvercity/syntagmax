@@ -8,7 +8,7 @@ from syntagmax.render import render_tree_markdown
 def test_render_tree_markdown_basic(tmp_path):
     config_file = tmp_path / 'config.toml'
     config_file.write_text('input = []', encoding='utf-8')
-    params = Params(verbose=False, render_tree=False, ai=False, cwd=str(tmp_path), no_git=True, output='console')
+    params = Params(verbose=False, render_tree=False, ai=False, cwd=str(tmp_path), no_git=True)
     config = Config(params, config_file)
 
     # 1. Setup artifacts

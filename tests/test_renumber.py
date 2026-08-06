@@ -17,7 +17,6 @@ def params():
         log_level='info',
         render_tree=False,
         ai=False,
-        output='console',
         cwd='.',
         no_git=True,
         allow_dirty_worktree=True,

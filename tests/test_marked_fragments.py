@@ -14,7 +14,6 @@ def params():
         verbose=False,
         render_tree=False,
         ai=False,
-        output='console',
         cwd='.',
         no_git=True,
         allow_dirty_worktree=True,
