@@ -34,7 +34,8 @@ While the i18n infrastructure for report headers and labels is fully functional 
 3. **Driver prefix preserved** — Sidecar/text driver errors use a format like `'{driver} :: {message}'`. The driver name stays untranslated (it's a technical identifier), but the message portion is localized.
 4. **Exception messages stay English** — When an error wraps a Python exception (`{e}`), the exception text is not translated (it comes from libraries). The surrounding template is translated.
 5. **Single catalog** — All new strings go into the existing `messages` domain. No new domains needed.
-6. **babel.cfg expanded** — Add extraction rules for all Python files that now use `_()`.
+6. **babel.cfg wildcard** — Use `[python: src/syntagmax/**.py]` to capture all current and future source files, avoiding per-file maintenance.
+7. **Logger output stays English** — Internal logging (`lg.warning()`, `lg.error()`, `lg.debug()`) remains in English for sysadmin troubleshooting and log aggregation tools. Only user-facing `ReportError.message` and `ErrorBlock.message` strings that appear in rendered reports are localized.
 
 
 ## Proposed Solution
@@ -49,13 +50,14 @@ While the i18n infrastructure for report headers and labels is fully functional 
 | `metrics.py` | 1 | Metrics (no requirements found) |
 | `artifact.py` | 5 | Builder validation (duplicate AID/field, missing required fields) |
 | `extractors/markdown.py` | 7 | Obsidian driver (NBSP, YAML, parse errors) |
-| `extractors/sidecar.py` | 7 | Sidecar driver (orphaned, missing, malformed) |
-| `extractors/text.py` | 1 (template) | Text driver (format_error wrapper) |
+| `extractors/sidecar.py` | 8 | Sidecar driver (orphaned, missing, malformed, validation) |
+| `extractors/text.py` | 1 (template) + 3 (sub-strings) | Text driver (format_error wrapper + literal error types) |
 | `extractors/simple_markdown.py` | 1 | Simple markdown driver (malformed YAML) |
 | `extractors/markdown_markers.py` | 1 | Marker extractor (invalid block ID) |
 | `extractors/ipynb.py` | 1 | IPython notebook driver |
 | `report.j2` | 5 (missing) | AI Analysis section headers |
-| **Total** | **~49** | |
+| `report.py` | 1 | `format_error()` linking text (`" in "`) |
+| **Total** | **~55** | |
 
 ### Pattern
 
@@ -82,18 +84,30 @@ self.errors.append(self._make_error(
 ### babel.cfg Update
 
 ```ini
-[python: src/syntagmax/analyse.py]
-[python: src/syntagmax/tree.py]
-[python: src/syntagmax/extract.py]
-[python: src/syntagmax/metrics.py]
-[python: src/syntagmax/artifact.py]
-[python: src/syntagmax/extractors/*.py]
-[python: src/syntagmax/change_render.py]
-[python: src/syntagmax/report.py]
+[python: src/syntagmax/**.py]
 [jinja2: src/syntagmax/resources/*.j2]
 encoding = utf-8
 silent = false
 ```
+
+### `report.py` `format_error()` Localization
+
+The `format_error()` function in `report.py` hardcodes the English word `" in "` when joining artifact ID and file link parts:
+```python
+parts.append(f' ({" in ".join(loc_parts)})')
+```
+
+This must be localized to avoid English bleed-through in Russian reports. Replace with:
+```python
+from syntagmax.i18n import _
+
+if len(loc_parts) == 2:
+    parts.append(_(" ({loc1} in {loc2})").format(loc1=loc_parts[0], loc2=loc_parts[1]))
+elif len(loc_parts) == 1:
+    parts.append(f' ({loc_parts[0]})')
+```
+
+Russian translation: `" ({loc1} в {loc2})"`.
 
 
 ---
@@ -118,6 +132,17 @@ silent = false
 | `f"Attribute '{attr_name}' must not be a list (multiple=False)"` | `_("Attribute '{attr_name}' must not be a list (multiple=False)").format(attr_name=attr_name)` |
 | `f"Attribute '{attr_name}' value '{val}' cannot be converted to an integer"` | `_("Attribute '{attr_name}' value '{val}' cannot be converted to an integer").format(attr_name=attr_name, val=val)` |
 | `f"Attribute '{attr_name}' value '{val}' is not a valid boolean ({expected_str})"` | `_("Attribute '{attr_name}' value '{val}' is not a valid boolean ({expected})").format(attr_name=attr_name, val=val, expected=expected_str)` |
+
+- **Boolean `expected_str` must also be localized** (it currently contains hardcoded English like `'expected true/false, yes/no, 1/0'`):
+  ```python
+  if 'custom_values' in type_info:
+      expected_str = _("expected {true_vals} / {false_vals}").format(
+          true_vals=", ".join(type_info["custom_values"]["true"]),
+          false_vals=", ".join(type_info["custom_values"]["false"]),
+      )
+  else:
+      expected_str = _("expected true/false, yes/no, 1/0")
+  ```
 | `f"Attribute '{attr_name}' value '{val}' is invalid. Allowed values: {allowed}"` | `_("Attribute '{attr_name}' value '{val}' is invalid. Allowed values: {allowed}").format(attr_name=attr_name, val=val, allowed=allowed)` |
 | `f"Attribute '{attr_name}' value '{val}' is a malformed reference (expected ID string)"` | `_("Attribute '{attr_name}' value '{val}' is a malformed reference (expected ID string)").format(attr_name=attr_name, val=val)` |
 | `f"Attribute '{attr_name}' value '{val}' refers to an unknown artifact ID '{aid}'"` | `_("Attribute '{attr_name}' value '{val}' refers to an unknown artifact ID '{aid}'").format(attr_name=attr_name, val=val, aid=aid)` |
@@ -234,8 +259,9 @@ silent = false
 | `f'{self.driver()} :: Could not read sidecar {path}: {e}'` | `_("{driver} :: Could not read sidecar {path}: {error}").format(driver=self.driver(), path=sidecar_path, error=str(e))` |
 | `f'{self.driver()} :: Sidecar {path} does not contain a valid YAML dictionary'` | `_("{driver} :: Sidecar {path} does not contain a valid YAML dictionary").format(driver=self.driver(), path=sidecar_path)` |
 | `f'{self.driver()} :: Missing required "id" field in sidecar {path}'` | `_("{driver} :: Missing required 'id' field in sidecar {path}").format(driver=self.driver(), path=sidecar_path)` |
+| `f'{self.driver()} :: Validation error in {sidecar_path}: {e}'` | `_("{driver} :: Validation error in {path}: {error}").format(driver=self.driver(), path=sidecar_path, error=str(e))` |
 
-**`extractors/text.py`** (1 template method):
+**`extractors/text.py`** (1 template method + sub-string literals):
 - Convert `_format_error`:
   ```python
   def _format_error(self, error_type: str, location, section_start_string: str, message: str) -> str:
@@ -246,6 +272,13 @@ silent = false
           section=section_start_string, message=message,
       )
   ```
+- **Critical**: The literal strings passed as `error_type` and `message` arguments must also be wrapped in `_()` at call sites:
+  ```python
+  error = self._format_error(_('Missing ID'), location, section_start_string, _('ID is required'))
+  error = self._format_error(_('Parse Error'), location, section_start_string, str(e))
+  error = self._format_error(_('Malformed artifact'), location, section_start_string, str(e))
+  ```
+  Note: `str(e)` (exception text) stays English per Design Decision 4.
 
 **`extractors/simple_markdown.py`** (1 message):
 - `f'{self.driver()} :: Malformed YAML frontmatter in {filepath}: {e}'` → `_("{driver} :: Malformed YAML frontmatter in {file}: {error}").format(driver=self.driver(), file=filepath, error=str(e))`
@@ -326,7 +359,7 @@ silent = false
 **Objective:** Populate the Russian `.po` file with complete translations for all ~35 new error message templates.
 
 **Implementation:**
-- Update `babel.cfg` with expanded extraction rules (see Proposed Solution above)
+- Update `babel.cfg` with wildcard extraction rule (see Proposed Solution above)
 - Run `pybabel extract -F babel.cfg -o messages.pot .` to generate updated POT
 - Run `pybabel update -i messages.pot -d src/syntagmax/resources/locales` to merge
 - Fill in Russian translations. Key entries:
@@ -397,6 +430,14 @@ silent = false
 | `"{driver} :: Malformed YAML frontmatter in {file}: {error}"` | `"{driver} :: Некорректный YAML-заголовок в {file}: {error}"` |
 | `'Invalid block ID "{block_id}" for marker [{marker}] — IDs must match [a-zA-Z0-9_.-]'` | `'Некорректный ID блока "{block_id}" для маркера [{marker}] — ID должен соответствовать [a-zA-Z0-9_.-]'` |
 | `"Error extracting from {file}: {error}"` | `"Ошибка извлечения из {file}: {error}"` |
+| `"{driver} :: Validation error in {path}: {error}"` | `"{driver} :: Ошибка валидации в {path}: {error}"` |
+| `"Missing ID"` | `"Отсутствует ID"` |
+| `"ID is required"` | `"ID обязателен"` |
+| `"Parse Error"` | `"Ошибка разбора"` |
+| `"Malformed artifact"` | `"Некорректный артефакт"` |
+| `"expected {true_vals} / {false_vals}"` | `"ожидается {true_vals} / {false_vals}"` |
+| `"expected true/false, yes/no, 1/0"` | `"ожидается true/false, yes/no, 1/0"` |
+| `" ({loc1} in {loc2})"` | `" ({loc1} в {loc2})"` |
 
 **Test requirements:**
 - No empty `msgstr` for any msgid used in code
@@ -503,6 +544,65 @@ class TestCatalogCompleteness:
         assert empty == [], f"Empty translations found: {[m[0] for m in empty]}"
 ```
 
+- Add an end-to-end integration test verifying `Report.render()` under Russian locale:
+
+```python
+class TestReportRenderingLocalized:
+    """End-to-end report rendering under Russian locale."""
+
+    def test_report_render_with_errors_in_russian(self):
+        """Full Report.render() output should contain Russian error categories and messages."""
+        setup_i18n('ru')
+        from syntagmax.report import Report, ReportError, CAT_ATTRIBUTE, CAT_SCHEMA
+
+        report = Report()
+        report.errors = [
+            ReportError(
+                message=_("Missing mandatory attribute: '{attr_name}'").format(attr_name='status'),
+                category=CAT_ATTRIBUTE,
+                input_record='requirements',
+            ),
+            ReportError(
+                message=_("Unknown artifact type: '{atype}'").format(atype='FOO'),
+                category=CAT_ATTRIBUTE,
+                input_record='requirements',
+            ),
+        ]
+        output = report.render()
+
+        # Russian section headers
+        assert 'Отчет об анализе' in output
+        assert 'Ошибки' in output
+        assert 'Ошибки атрибутов' in output
+
+        # Russian error message bodies
+        assert 'Отсутствует обязательный атрибут' in output
+        assert 'Неизвестный тип артефакта' in output
+
+        # Dynamic values preserved
+        assert 'status' in output
+        assert 'FOO' in output
+
+    def test_report_render_english_unchanged(self):
+        """English Report.render() output must match pre-i18n behavior."""
+        setup_i18n('en')
+        from syntagmax.report import Report, ReportError, CAT_ATTRIBUTE
+
+        report = Report()
+        report.errors = [
+            ReportError(
+                message=_("Missing mandatory attribute: '{attr_name}'").format(attr_name='status'),
+                category=CAT_ATTRIBUTE,
+                input_record='requirements',
+            ),
+        ]
+        output = report.render()
+
+        assert 'Analysis Report' in output
+        assert 'Attribute Errors' in output
+        assert "Missing mandatory attribute: 'status'" in output
+```
+
 **Test requirements:**
 - All existing tests pass unchanged
 - All new `TestErrorMessageTranslation` tests pass
@@ -510,3 +610,45 @@ class TestCatalogCompleteness:
 - `uv run pytest tests/test_i18n.py -v` shows green
 
 **Demo:** `uv run pytest tests/test_i18n.py -v` with all error message translation tests passing.
+
+---
+
+### Task 8: Document Plugin Access to Language Setting
+
+**Objective:** Update `docs/reference/plugins.md` to inform plugin authors that `config.language` is available and how to produce localized output.
+
+**Implementation:**
+- Add a "Localization" section to `docs/reference/plugins.md` after the Hooks section:
+
+```markdown
+## Localization
+
+All hooks receive the `config` object, which includes the resolved output language as `config.language` (`'en'` or `'ru'`). Plugins that produce user-facing text (e.g., custom headers, labels, or report sections) can use this to localize their output.
+
+To use the Syntagmax translation infrastructure directly:
+
+```python
+from syntagmax.i18n import _
+
+def transform_markdown(markdown: str, config, params: dict) -> str:
+    # _() returns the translated string for the active language
+    header = _("Custom Section")
+    return f"## {header}\n\n{markdown}"
+```
+
+Alternatively, plugins can branch on `config.language` for simple cases:
+
+```python
+def transform_markdown(markdown: str, config, params: dict) -> str:
+    title = "Пользовательский раздел" if config.language == 'ru' else "Custom Section"
+    return f"## {title}\n\n{markdown}"
+```
+
+> **Note:** The `publish` command renders user content as-is and is not subject to localization. Plugin hooks in the publish pipeline should only localize their own injected labels, not user artifact content.
+```
+
+**Test requirements:**
+- Documentation renders correctly
+- Example code is syntactically valid
+
+**Demo:** `docs/reference/plugins.md` contains a "Localization" section explaining `config.language` and `_()` usage.
