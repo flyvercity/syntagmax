@@ -13,6 +13,7 @@ from syntagmax.artifact import ArtifactBuilder, Artifact, FileLocation, Validati
 from syntagmax.extractors.extractor import Extractor, ExtractorResult
 from syntagmax.artifact import UNDEFINED_ID
 from syntagmax.blocks import Block, ArtifactBlock, ErrorBlock
+from syntagmax.i18n import _
 
 
 def _pop_case_insensitive(data: dict, key: str, default):
@@ -50,7 +51,7 @@ class SidecarExtractor(Extractor):
                 original_path = sidecar_path.with_name(original_name)
 
                 if not original_path.exists():
-                    errors.append(f'{self.driver()} :: Orphaned sidecar file {sidecar_path} without matching original file')
+                    errors.append(_("{driver} :: Orphaned sidecar file {path} without matching original file").format(driver=self.driver(), path=sidecar_path))
 
         return artifacts, errors
 
@@ -68,11 +69,11 @@ class SidecarExtractor(Extractor):
         syntagmax_exists = syntagmax_path.exists()
 
         if stmx_exists and syntagmax_exists:
-            msg = f'{self.driver()} :: Both .stmx and .syntagmax sidecars are present for {filepath}'
+            msg = _("{driver} :: Both .stmx and .syntagmax sidecars are present for {file}").format(driver=self.driver(), file=filepath)
             return [ErrorBlock(message=msg, raw_text='')]
 
         if not stmx_exists and not syntagmax_exists:
-            msg = f'{self.driver()} :: Missing sidecar file for {filepath}'
+            msg = _("{driver} :: Missing sidecar file for {file}").format(driver=self.driver(), file=filepath)
             return [ErrorBlock(message=msg, raw_text='')]
 
         sidecar_path = stmx_path if stmx_exists else syntagmax_path
@@ -81,18 +82,18 @@ class SidecarExtractor(Extractor):
             with open(sidecar_path, 'r', encoding='utf-8') as f:
                 data = yaml.safe_load(f)
         except yaml.YAMLError as e:
-            msg = f'{self.driver()} :: Malformed YAML in sidecar {sidecar_path}: {e}'
+            msg = _("{driver} :: Malformed YAML in sidecar {path}: {error}").format(driver=self.driver(), path=sidecar_path, error=str(e))
             return [ErrorBlock(message=msg, raw_text='')]
         except Exception as e:
-            msg = f'{self.driver()} :: Could not read sidecar {sidecar_path}: {e}'
+            msg = _("{driver} :: Could not read sidecar {path}: {error}").format(driver=self.driver(), path=sidecar_path, error=str(e))
             return [ErrorBlock(message=msg, raw_text='')]
 
         if not isinstance(data, dict):
-            msg = f'{self.driver()} :: Sidecar {sidecar_path} does not contain a valid YAML dictionary'
+            msg = _("{driver} :: Sidecar {path} does not contain a valid YAML dictionary").format(driver=self.driver(), path=sidecar_path)
             return [ErrorBlock(message=msg, raw_text='')]
 
         if 'id' not in data:
-            msg = f'{self.driver()} :: Missing required "id" field in sidecar {sidecar_path}'
+            msg = _("{driver} :: Missing required 'id' field in sidecar {path}").format(driver=self.driver(), path=sidecar_path)
             return [ErrorBlock(message=msg, raw_text='')]
 
         aid = str(_pop_case_insensitive(data, 'id', UNDEFINED_ID))
@@ -118,5 +119,5 @@ class SidecarExtractor(Extractor):
             return [ArtifactBlock(artifact=artifact, raw_text=raw_text)]
 
         except ValidationError as e:
-            msg = f'{self.driver()} :: Validation error in {sidecar_path}: {e}'
+            msg = _("{driver} :: Validation error in {path}: {error}").format(driver=self.driver(), path=sidecar_path, error=str(e))
             return [ErrorBlock(message=msg, raw_text='')]

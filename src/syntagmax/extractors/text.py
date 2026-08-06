@@ -15,6 +15,7 @@ from syntagmax.artifact import ArtifactBuilder, Artifact, ValidationError, LineL
 from syntagmax.extractors.extractor import Extractor
 from syntagmax.artifact import UNDEFINED_ID
 from syntagmax.blocks import Block, TextBlock, ArtifactBlock, ErrorBlock
+from syntagmax.i18n import _
 
 
 class IdRef:
@@ -127,10 +128,7 @@ class TextExtractor(Extractor):
             self.update_artifacts(artifact.location.loc_file, [(artifact, fields['id'])])
 
     def _format_error(self, error_type: str, location: LineLocation, section_start_string: str, message: str) -> str:
-        return f"""Driver "text": {error_type} in {location}
-        While analyzing {section_start_string}
-        Reason: {message}
-        """
+        return _("Driver 'text': {error_type} in {location}\nWhile analyzing {section}\nReason: {message}").format(error_type=error_type, location=location, section=section_start_string, message=message)
 
     def extract_blocks_from_file(self, filepath: Path) -> list[Block]:
         blocks: list[Block] = []
@@ -186,7 +184,7 @@ class TextExtractor(Extractor):
                         atype = item.value
 
                 if aid is None:
-                    error = self._format_error('Missing ID', location, section_start_string, 'ID is required')
+                    error = self._format_error(_('Missing ID'), location, section_start_string, _('ID is required'))
                     lg.warning(error)
                     aid = UNDEFINED_ID
 
@@ -202,12 +200,12 @@ class TextExtractor(Extractor):
                 blocks.append(ArtifactBlock(artifact=artifact, raw_text=segment))
 
             except (exceptions.ParseError, exceptions.UnexpectedToken) as e:
-                error = self._format_error('Parse Error', location, section_start_string, str(e))
+                error = self._format_error(_('Parse Error'), location, section_start_string, str(e))
                 lg.warning(error)
                 blocks.append(ErrorBlock(message=error, raw_text=segment))
 
             except ValidationError as e:
-                error = self._format_error('Malformed artifact', location, section_start_string, str(e))
+                error = self._format_error(_('Malformed artifact'), location, section_start_string, str(e))
                 lg.warning(error)
                 blocks.append(ErrorBlock(message=error, raw_text=segment))
 

@@ -21,6 +21,7 @@ from syntagmax.extractors.markdown_filters import (
     apply_soft_line_breaks as apply_soft_line_breaks,  # noqa: F401 — re-exported
 )
 from syntagmax.extractors.markdown_markers import MarkerSplitterMixin
+from syntagmax.i18n import _
 
 
 class MarkdownArtifact(Artifact):
@@ -472,7 +473,7 @@ class MarkdownExtractor(MarkerSplitterMixin, ElementFilterMixin, Extractor):
 
             # NBSP detection
             if '\xa0' in segment:
-                error = f'Non-breaking space (NBSP) detected in requirement at line {start_line} in {filepath}'
+                error = _("Non-breaking space (NBSP) detected in requirement at line {line} in {file}").format(line=start_line, file=filepath)
                 lg.error(error)
                 return ErrorBlock(message=error, raw_text=segment)
 
@@ -483,7 +484,7 @@ class MarkdownExtractor(MarkerSplitterMixin, ElementFilterMixin, Extractor):
                 yaml_dict = benedict.from_yaml(yaml_text)
 
                 if 'attrs' not in yaml_dict:
-                    error = f'Invalid metadata in YAML at line {start_line}'
+                    error = _("Invalid metadata in YAML at line {line}").format(line=start_line)
                     lg.error(error)
                     return ErrorBlock(message=error, raw_text=segment)
                 yaml_attrs = yaml_dict.get_dict('attrs')
@@ -497,7 +498,7 @@ class MarkdownExtractor(MarkerSplitterMixin, ElementFilterMixin, Extractor):
             aid = temp_attrs.get('id')
 
             if not aid:
-                error = f'Missing ID in metadata at line {start_line}'
+                error = _("Missing ID in metadata at line {line}").format(line=start_line)
                 lg.warning(error)
                 aid = UNDEFINED_ID
 
@@ -558,12 +559,12 @@ class MarkdownExtractor(MarkerSplitterMixin, ElementFilterMixin, Extractor):
 
         except (exceptions.ParseError, exceptions.UnexpectedToken) as e:
             lg.exception(e)
-            error = f'Parse error in requirement at line {start_line} in {filepath}'
+            error = _("Parse error in requirement at line {line} in {file}").format(line=start_line, file=filepath)
             return ErrorBlock(message=error, raw_text=segment)
 
         except Exception as e:
             lg.exception(e)
-            error = f'Error processing requirement at line {start_line} in {filepath}'
+            error = _("Error processing requirement at line {line} in {file}").format(line=start_line, file=filepath)
             return ErrorBlock(message=error, raw_text=segment)
 
 
@@ -605,9 +606,9 @@ class MarkdownExtractor(MarkerSplitterMixin, ElementFilterMixin, Extractor):
                 # Should not happen given EOF fallback, but guard against it
                 start_line = markdown.count('\n', 0, start_pos) + 1
                 if yaml_start_pos != -1:
-                    error = f'Unclosed YAML block in requirement at line {start_line} in {filepath}'
+                    error = _("Unclosed YAML block in requirement at line {line} in {file}").format(line=start_line, file=filepath)
                 else:
-                    error = f'Unterminated requirement at line {start_line} in {filepath}'
+                    error = _("Unterminated requirement at line {line} in {file}").format(line=start_line, file=filepath)
                 lg.error(error)
                 raw = markdown[start_pos : match.end()]
                 blocks.append(ErrorBlock(message=error, raw_text=raw))

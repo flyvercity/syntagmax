@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 
 from syntagmax.blocks import Block, TextBlock, ErrorBlock
 from syntagmax.extractors.markdown_filters import _validate_block_id
+from syntagmax.i18n import _
 
 if TYPE_CHECKING:
     from syntagmax.config import InputRecord
@@ -90,7 +91,7 @@ class MarkerSplitterMixin:
                 if not _validate_block_id(raw_id):
                     result.append(
                         ErrorBlock(
-                            message=f'Invalid block ID "{raw_id}" for marker [{marker_name}] — IDs must match [a-zA-Z0-9_.-]',
+                            message=_('Invalid block ID "{block_id}" for marker [{marker}] — IDs must match [a-zA-Z0-9_.-]').format(block_id=raw_id, marker=marker_name),
                             raw_text=match.group(0),
                         )
                     )
@@ -132,7 +133,7 @@ class MarkerSplitterMixin:
                 if not _validate_block_id(raw_id):
                     result.append(
                         ErrorBlock(
-                            message=f'Invalid block ID "{raw_id}" for marker [{marker_name}] — IDs must match [a-zA-Z0-9_.-]',
+                            message=_('Invalid block ID "{block_id}" for marker [{marker}] — IDs must match [a-zA-Z0-9_.-]').format(block_id=raw_id, marker=marker_name),
                             raw_text=match.group(0),
                         )
                     )
@@ -190,7 +191,7 @@ class MarkerSplitterMixin:
                 if not _validate_block_id(raw_id):
                     result.append(
                         ErrorBlock(
-                            message=f'Invalid block ID "{raw_id}" for marker [{marker_name}] — IDs must match [a-zA-Z0-9_.-]',
+                            message=_('Invalid block ID "{block_id}" for marker [{marker}] — IDs must match [a-zA-Z0-9_.-]').format(block_id=raw_id, marker=marker_name),
                             raw_text=match.group(0),
                         )
                     )

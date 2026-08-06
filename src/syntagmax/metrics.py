@@ -9,6 +9,7 @@ import polars as pl
 
 from syntagmax.artifact import ArtifactMap
 from syntagmax.config import Config
+from syntagmax.i18n import _
 from syntagmax.report import ReportError, CAT_STRUCTURE
 
 
@@ -41,7 +42,7 @@ def calculate_metrics(config: Config, artifacts: ArtifactMap, errors: list, filt
     req_count = requirements.height
 
     if req_count == 0:
-        errors.append(ReportError(message='Metrics: No requirements found', category=CAT_STRUCTURE))
+        errors.append(ReportError(message=_('Metrics: No requirements found'), category=CAT_STRUCTURE))
         return metrics
 
     metrics['total_requirements'] = req_count

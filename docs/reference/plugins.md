@@ -193,6 +193,31 @@ def export_trace(matrix: TraceMatrix, config, params: dict) -> None:
     print(f'Child type: {matrix.child_type}, Parent type: {matrix.parent_type}')
 ```
 
+## Localization
+
+All hooks receive the `config` object, which includes the resolved output language as `config.language` (`'en'` or `'ru'`). Plugins that produce user-facing text (e.g., custom headers, labels, or report sections) can use this to localize their output.
+
+To use the Syntagmax translation infrastructure directly:
+
+```python
+from syntagmax.i18n import _
+
+def transform_markdown(markdown: str, config, params: dict) -> str:
+    # _() returns the translated string for the active language
+    header = _("Custom Section")
+    return f"## {header}\n\n{markdown}"
+```
+
+Alternatively, plugins can branch on `config.language` for simple cases:
+
+```python
+def transform_markdown(markdown: str, config, params: dict) -> str:
+    title = "Пользовательский раздел" if config.language == 'ru' else "Custom Section"
+    return f"## {title}\n\n{markdown}"
+```
+
+> **Note:** The `publish` command renders user content as-is and is not subject to localization. Plugin hooks in the publish pipeline should only localize their own injected labels, not user artifact content.
+
 ## Hook Execution Order
 
 For `publish`:
