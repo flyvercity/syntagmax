@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from syntagmax.errors import RMSException
+from syntagmax.i18n import _
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -130,7 +131,7 @@ class ArtifactBuilder:
 
     def add_id(self, aid: str, atype: str):
         if self.artifact.aid:
-            raise ValidationError(self._build_error('Duplicate AID'))
+            raise ValidationError(self._build_error(_('Duplicate AID')))
 
         self.artifact.aid = aid
         self.artifact.atype = atype
@@ -191,22 +192,22 @@ class ArtifactBuilder:
                 self.artifact.fields[field].append(value)  # type: ignore
         else:
             if field in self.artifact.fields:
-                raise ValidationError(self._build_error(f'Duplicate field "{field}"'))
+                raise ValidationError(self._build_error(_('Duplicate field "{field}"').format(field=field)))
 
             self.artifact.fields[field] = value
 
     def _build_error(self, message: str) -> str:
-        return f'Driver "{self.artifact.driver}": {self.artifact.location}: {message}'
+        return _('Driver "{driver}": {location}: {message}').format(driver=self.artifact.driver, location=self.artifact.location, message=message)
 
     def build(self) -> Artifact:
         if not self.artifact.location:
-            raise ValidationError(self._build_error('Location is required'))
+            raise ValidationError(self._build_error(_('Location is required')))
 
         if not self.artifact.atype:
-            raise ValidationError(self._build_error('AType is required'))
+            raise ValidationError(self._build_error(_('AType is required')))
 
         if not self.artifact.aid:
-            raise ValidationError(self._build_error('AID is required'))
+            raise ValidationError(self._build_error(_('AID is required')))
 
         # Ensure all multiple fields are present as lists
         if self._metamodel and self.artifact.atype in self._metamodel.get('artifacts', {}):

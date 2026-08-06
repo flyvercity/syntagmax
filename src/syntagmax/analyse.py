@@ -8,6 +8,7 @@ import logging as lg
 
 from syntagmax.artifact import ArtifactMap, Artifact
 from syntagmax.config import Config
+from syntagmax.i18n import _
 from syntagmax.id_utils import compile_id_schema
 from syntagmax.metamodel import evaluate_condition
 from syntagmax.report import ReportError, CAT_SCHEMA, CAT_ATTRIBUTE, CAT_REFERENCE, CAT_TRACE, CAT_STRUCTURE
@@ -50,7 +51,7 @@ class ArtifactValidator:
             return self.errors
 
         if artifact.atype not in self._artifacts:
-            self.errors.append(self._make_error(artifact, f"Unknown artifact type: '{artifact.atype}'", CAT_ATTRIBUTE))
+            self.errors.append(self._make_error(artifact, _("Unknown artifact type: '{atype}'").format(atype=artifact.atype), CAT_ATTRIBUTE))
             return self.errors
 
         self._validate_attributes(artifact)
@@ -96,7 +97,7 @@ class ArtifactValidator:
             if not compiled_pattern.match(artifact.aid):
                 self.errors.append(self._make_error(
                     artifact,
-                    f"Artifact ID '{artifact.aid}' does not match schema '{schema}' for type '{artifact.atype}'",
+                    _("Artifact ID '{aid}' does not match schema '{schema}' for type '{atype}'").format(aid=artifact.aid, schema=schema, atype=artifact.atype),
                     CAT_SCHEMA,
                 ))
 
@@ -129,7 +130,7 @@ class ArtifactValidator:
         for extra in extra_fields:
             self.errors.append(self._make_error(
                 artifact,
-                f"Attribute '{extra}' is not allowed for artifact '{artifact.atype}'",
+                _("Attribute '{attr_name}' is not allowed for artifact '{atype}'").format(attr_name=extra, atype=artifact.atype),
                 CAT_ATTRIBUTE,
             ))
 
@@ -140,7 +141,7 @@ class ArtifactValidator:
             if is_mandatory and attr_name not in actual_names:
                 self.errors.append(self._make_error(
                     artifact,
-                    f"Missing mandatory attribute: '{attr_name}'",
+                    _("Missing mandatory attribute: '{attr_name}'").format(attr_name=attr_name),
                     CAT_ATTRIBUTE,
                 ))
                 continue
@@ -161,7 +162,7 @@ class ArtifactValidator:
             if not isinstance(value, list):
                 self.errors.append(self._make_error(
                     artifact,
-                    f"Attribute '{attr_name}' must be a list (multiple=True)",
+                    _("Attribute '{attr_name}' must be a list (multiple=True)").format(attr_name=attr_name),
                     CAT_ATTRIBUTE,
                 ))
             else:
@@ -171,7 +172,7 @@ class ArtifactValidator:
             if isinstance(value, list):
                 self.errors.append(self._make_error(
                     artifact,
-                    f"Attribute '{attr_name}' must not be a list (multiple=False)",
+                    _("Attribute '{attr_name}' must not be a list (multiple=False)").format(attr_name=attr_name),
                     CAT_ATTRIBUTE,
                 ))
             else:
@@ -186,7 +187,7 @@ class ArtifactValidator:
             except (ValueError, TypeError):
                 self.errors.append(self._make_error(
                     artifact,
-                    f"Attribute '{attr_name}' value '{val}' cannot be converted to an integer",
+                    _("Attribute '{attr_name}' value '{val}' cannot be converted to an integer").format(attr_name=attr_name, val=val),
                     CAT_ATTRIBUTE,
                 ))
 
@@ -194,16 +195,16 @@ class ArtifactValidator:
             if 'custom_values' in type_info:
                 truthy = {v.lower() for v in type_info['custom_values']['true']}
                 falsy = {v.lower() for v in type_info['custom_values']['false']}
-                expected_str = f'expected {", ".join(type_info["custom_values"]["true"])} / {", ".join(type_info["custom_values"]["false"])}'
+                expected_str = _("expected {true_vals} / {false_vals}").format(true_vals=", ".join(type_info["custom_values"]["true"]), false_vals=", ".join(type_info["custom_values"]["false"]))
             else:
                 truthy = {'true', 'yes', '1'}
                 falsy = {'false', 'no', '0'}
-                expected_str = 'expected true/false, yes/no, 1/0'
+                expected_str = _("expected true/false, yes/no, 1/0")
 
             if str(val).lower() not in truthy | falsy:
                 self.errors.append(self._make_error(
                     artifact,
-                    f"Attribute '{attr_name}' value '{val}' is not a valid boolean ({expected_str})",
+                    _("Attribute '{attr_name}' value '{val}' is not a valid boolean ({expected})").format(attr_name=attr_name, val=val, expected=expected_str),
                     CAT_ATTRIBUTE,
                 ))
 
@@ -212,13 +213,13 @@ class ArtifactValidator:
             if val not in allowed:
                 self.errors.append(self._make_error(
                     artifact,
-                    f"Attribute '{attr_name}' value '{val}' is invalid. Allowed values: {allowed}",
+                    _("Attribute '{attr_name}' value '{val}' is invalid. Allowed values: {allowed}").format(attr_name=attr_name, val=val, allowed=allowed),
                     CAT_ATTRIBUTE,
                 ))
 
         elif expected_type == 'reference':
             if not isinstance(val, str):
-                msg = f"Attribute '{attr_name}' value '{val}' is a malformed reference (expected ID string)"
+                msg = _("Attribute '{attr_name}' value '{val}' is a malformed reference (expected ID string)").format(attr_name=attr_name, val=val)
                 if self._suppress_tracing:
                     lg.warning(msg)
                 else:
@@ -227,13 +228,13 @@ class ArtifactValidator:
                 aid = val.split('@')[0] if '@' in val else val
                 ref_artifact = self._artifacts_map.get(aid)
                 if not ref_artifact:
-                    msg = f"Attribute '{attr_name}' value '{val}' refers to an unknown artifact ID '{aid}'"
+                    msg = _("Attribute '{attr_name}' value '{val}' refers to an unknown artifact ID '{aid}'").format(attr_name=attr_name, val=val, aid=aid)
                     if self._suppress_tracing:
                         lg.warning(msg)
                     else:
                         self.errors.append(self._make_error(artifact, msg, CAT_REFERENCE))
                 elif ref_artifact.atype not in self._artifacts:
-                    msg = f"Attribute '{attr_name}' value '{val}' refers to an artifact with unknown type '{ref_artifact.atype}'"
+                    msg = _("Attribute '{attr_name}' value '{val}' refers to an artifact with unknown type '{atype}'").format(attr_name=attr_name, val=val, atype=ref_artifact.atype)
                     if self._suppress_tracing:
                         lg.warning(msg)
                     else:
@@ -263,7 +264,7 @@ class ArtifactValidator:
             if parent.atype not in allowed_target_types:
                 self.errors.append(self._make_error(
                     artifact,
-                    f"Trace from '{artifact.atype}' to '{parent.atype}' is not allowed",
+                    _("Trace from '{from_type}' to '{to_type}' is not allowed").format(from_type=artifact.atype, to_type=parent.atype),
                     CAT_TRACE,
                 ))
 
@@ -282,15 +283,13 @@ class ArtifactValidator:
                         if mode == 'timestamp' and link.nominal_revision != 'older' and link.nominal_revision is not None:
                             self.errors.append(self._make_error(
                                 artifact,
-                                f"Trace from '{artifact.atype}' to '{parent.atype}' is 'by timestamp', "
-                                f"but revision was specified: '{link.pid}@{link.nominal_revision}'",
+                                _("Trace from '{from_type}' to '{to_type}' is 'by timestamp', but revision was specified: '{ref}'").format(from_type=artifact.atype, to_type=parent.atype, ref=f'{link.pid}@{link.nominal_revision}'),
                                 CAT_TRACE,
                             ))
                         if mode == 'commit' and (link.nominal_revision is None or link.nominal_revision == 'older'):
                             self.errors.append(self._make_error(
                                 artifact,
-                                f"Trace from '{artifact.atype}' to '{parent.atype}' is 'by commit', "
-                                f"but no revision was specified for parent '{parent.aid}'",
+                                _("Trace from '{from_type}' to '{to_type}' is 'by commit', but no revision was specified for parent '{parent_aid}'").format(from_type=artifact.atype, to_type=parent.atype, parent_aid=parent.aid),
                                 CAT_TRACE,
                             ))
 
@@ -298,7 +297,7 @@ class ArtifactValidator:
                 target_str = ' or '.join(f"'{t}'" for t in targets)
                 self.errors.append(self._make_error(
                     artifact,
-                    f"Missing mandatory trace from '{artifact.atype}' to {target_str}",
+                    _("Missing mandatory trace from '{from_type}' to {targets}").format(from_type=artifact.atype, targets=target_str),
                     CAT_TRACE,
                 ))
 
@@ -323,4 +322,4 @@ def analyse_tree(config: Config, artifacts: ArtifactMap, errors: list):
             root_count += 1
 
     if root_count != 1:
-        errors.append(ReportError(message='Must have exactly one root artifact', category=CAT_STRUCTURE))
+        errors.append(ReportError(message=_("Must have exactly one root artifact"), category=CAT_STRUCTURE))

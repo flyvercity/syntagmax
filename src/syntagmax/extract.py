@@ -13,6 +13,7 @@ from syntagmax.extractors.ipynb import IPynbExtractor
 from syntagmax.extractors.simple_markdown import SimpleMarkdownExtractor
 from syntagmax.artifact import Artifact, UNDEFINED_ID
 from syntagmax.config import Config
+from syntagmax.i18n import _
 from syntagmax.report import ReportError, CAT_EXTRACTION, CAT_DUPLICATE
 from syntagmax.utils import pprint
 
@@ -55,7 +56,7 @@ def build_artifact_map(artifacts_list: list[Artifact], errors) -> dict[str, Arti
     for a in artifacts_list:
         if not a.aid or a.aid == UNDEFINED_ID:
             errors.append(ReportError(
-                message=f'Artifact {a.atype} at {a.location} has no ID',
+                message=_("Artifact {atype} at {location} has no ID").format(atype=a.atype, location=a.location),
                 category=CAT_EXTRACTION,
                 input_record=a.record.name if a.record else None,
                 artifact_type=a.atype,
@@ -64,7 +65,7 @@ def build_artifact_map(artifacts_list: list[Artifact], errors) -> dict[str, Arti
             continue
         if a.aid in artifacts:
             errors.append(ReportError(
-                message=f'Duplicate artifact ID: {a.aid} at {a.location} (already defined at {artifacts[a.aid].location})',
+                message=_("Duplicate artifact ID: {aid} at {location} (already defined at {other_location})").format(aid=a.aid, location=a.location, other_location=artifacts[a.aid].location),
                 category=CAT_DUPLICATE,
                 input_record=a.record.name if a.record else None,
                 artifact_id=a.aid,

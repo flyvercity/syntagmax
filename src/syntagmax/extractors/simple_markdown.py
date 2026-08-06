@@ -14,6 +14,7 @@ from syntagmax.config import Config, InputRecord
 from syntagmax.artifact import ArtifactBuilder, Artifact, FileLocation, ValidationError
 from syntagmax.extractors.extractor import Extractor
 from syntagmax.blocks import Block, ArtifactBlock, ErrorBlock
+from syntagmax.i18n import _
 
 
 _FRONTMATTER_RE = re.compile(
@@ -218,7 +219,7 @@ class SimpleMarkdownExtractor(Extractor):
         try:
             frontmatter, body = self._parse_frontmatter(text)
         except yaml.YAMLError as e:
-            msg = f'{self.driver()} :: Malformed YAML frontmatter in {filepath}: {e}'
+            msg = _("{driver} :: Malformed YAML frontmatter in {file}: {error}").format(driver=self.driver(), file=filepath, error=str(e))
             return [ErrorBlock(message=msg, raw_text=text)]
 
         if frontmatter is None:

@@ -108,3 +108,122 @@ class TestSupportedLanguages:
 
     def test_is_tuple(self):
         assert isinstance(SUPPORTED_LANGUAGES, tuple)
+
+
+
+class TestErrorMessageTranslation:
+    """Tests for localized error messages."""
+
+    def test_analyse_missing_attribute_ru(self):
+        setup_i18n('ru')
+        msg = _("Missing mandatory attribute: '{attr_name}'").format(attr_name='status')
+        assert 'Отсутствует обязательный атрибут' in msg
+        assert 'status' in msg
+
+    def test_analyse_unknown_type_ru(self):
+        setup_i18n('ru')
+        msg = _("Unknown artifact type: '{atype}'").format(atype='FOO')
+        assert 'Неизвестный тип артефакта' in msg
+        assert 'FOO' in msg
+
+    def test_tree_circular_reference_ru(self):
+        setup_i18n('ru')
+        msg = _("Circular reference detected with {aid}").format(aid='REQ-001')
+        assert 'циклическая ссылка' in msg
+        assert 'REQ-001' in msg
+
+    def test_extract_duplicate_id_ru(self):
+        setup_i18n('ru')
+        msg = _("Duplicate artifact ID: {aid} at {location} (already defined at {other_location})").format(
+            aid='REQ-001', location='file-a.md', other_location='file-b.md'
+        )
+        assert 'Дублирующийся идентификатор' in msg
+        assert 'REQ-001' in msg
+
+    def test_metrics_no_requirements_ru(self):
+        setup_i18n('ru')
+        assert _('Metrics: No requirements found') == 'Метрики: Требования не найдены'
+
+    def test_ai_analysis_strings_ru(self):
+        setup_i18n('ru')
+        assert _('AI Analysis') == 'Анализ ИИ'
+        assert _('Ambiguity') == 'Двусмысленность'
+        assert _('Completeness') == 'Полнота'
+        assert _('Verifiability') == 'Проверяемость'
+        assert _('Singularity') == 'Единичность'
+
+    def test_format_placeholders_survive_translation(self):
+        """All translated messages must produce valid output with .format()."""
+        setup_i18n('ru')
+        # Should not raise KeyError or ValueError
+        _("Attribute '{attr_name}' value '{val}' is invalid. Allowed values: {allowed}").format(
+            attr_name='status', val='foo', allowed=['active', 'draft']
+        )
+        _("Trace from '{from_type}' to '{to_type}' is not allowed").format(
+            from_type='REQ', to_type='SYS'
+        )
+        _("{driver} :: Missing sidecar file for {file}").format(
+            driver='sidecar', file='image.png'
+        )
+
+    def test_english_error_messages_unchanged(self):
+        """English locale must produce identical output to pre-i18n behavior."""
+        setup_i18n('en')
+        msg = _("Missing mandatory attribute: '{attr_name}'").format(attr_name='status')
+        assert msg == "Missing mandatory attribute: 'status'"
+
+
+class TestReportRenderingLocalized:
+    """End-to-end report rendering under Russian locale."""
+
+    def test_report_render_with_errors_in_russian(self):
+        """Full Report.render() output should contain Russian error categories and messages."""
+        setup_i18n('ru')
+        from syntagmax.report import Report, ReportError, CAT_ATTRIBUTE
+
+        report = Report()
+        report.errors = [
+            ReportError(
+                message=_("Missing mandatory attribute: '{attr_name}'").format(attr_name='status'),
+                category=CAT_ATTRIBUTE,
+                input_record='requirements',
+            ),
+            ReportError(
+                message=_("Unknown artifact type: '{atype}'").format(atype='FOO'),
+                category=CAT_ATTRIBUTE,
+                input_record='requirements',
+            ),
+        ]
+        output = report.render()
+
+        # Russian section headers
+        assert 'Отчет об анализе' in output
+        assert 'Ошибки' in output
+        assert 'Ошибки атрибутов' in output
+
+        # Russian error message bodies
+        assert 'Отсутствует обязательный атрибут' in output
+        assert 'Неизвестный тип артефакта' in output
+
+        # Dynamic values preserved
+        assert 'status' in output
+        assert 'FOO' in output
+
+    def test_report_render_english_unchanged(self):
+        """English Report.render() output must match pre-i18n behavior."""
+        setup_i18n('en')
+        from syntagmax.report import Report, ReportError, CAT_ATTRIBUTE
+
+        report = Report()
+        report.errors = [
+            ReportError(
+                message=_("Missing mandatory attribute: '{attr_name}'").format(attr_name='status'),
+                category=CAT_ATTRIBUTE,
+                input_record='requirements',
+            ),
+        ]
+        output = report.render()
+
+        assert 'Analysis Report' in output
+        assert 'Attribute Errors' in output
+        assert "Missing mandatory attribute: 'status'" in output

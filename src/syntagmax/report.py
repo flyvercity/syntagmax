@@ -67,6 +67,8 @@ class ReportError:
 
 def format_error(error: ReportError, report_config: 'ReportConfig | None' = None) -> str:
     """Format a ReportError for Markdown output, optionally rendering file links."""
+    from syntagmax.i18n import _
+
     if not report_config or not report_config.path_as_links or not error.file_path:
         return str(error)
 
@@ -96,7 +98,10 @@ def format_error(error: ReportError, report_config: 'ReportConfig | None' = None
     loc_parts.append(link)
 
     if loc_parts:
-        parts.append(f' ({" in ".join(loc_parts)})')
+        if len(loc_parts) == 2:
+            parts.append(_(' ({loc1} in {loc2})').format(loc1=loc_parts[0], loc2=loc_parts[1]))
+        elif len(loc_parts) == 1:
+            parts.append(f' ({loc_parts[0]})')
 
     return ''.join(parts)
 

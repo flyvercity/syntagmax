@@ -11,6 +11,7 @@ import re
 from syntagmax.extractors.markdown import MarkdownExtractor
 from syntagmax.artifact import NotebookLocation
 from syntagmax.blocks import Block, TextBlock, ErrorBlock
+from syntagmax.i18n import _
 
 
 class IPynbExtractor(MarkdownExtractor):
@@ -21,7 +22,7 @@ class IPynbExtractor(MarkdownExtractor):
         try:
             notebook = json.loads(filepath.read_text(encoding='utf-8'))
         except Exception as e:
-            return [ErrorBlock(message=f'Error extracting from {filepath}: {e}', raw_text='')]
+            return [ErrorBlock(message=_("Error extracting from {file}: {error}").format(file=filepath, error=str(e)), raw_text='')]
 
         loc_file = self._config.derive_path(filepath)
         blocks: list[Block] = []

@@ -263,11 +263,203 @@ msgstr "Structure Errors"
 msgid "Global"
 msgstr "Global"
 
-msgid "errors"
-msgstr "errors"
-
 msgid "No errors found."
 msgstr "No errors found."
 
 msgid "Metrics by Input Record"
 msgstr "Metrics by Input Record"
+
+#. AI Analysis section (report.j2)
+msgid "AI Analysis"
+msgstr "AI Analysis"
+
+msgid "Ambiguity"
+msgstr "Ambiguity"
+
+msgid "Completeness"
+msgstr "Completeness"
+
+msgid "Verifiability"
+msgstr "Verifiability"
+
+msgid "Singularity"
+msgstr "Singularity"
+
+
+#. Error messages - analyse.py (metamodel validation)
+msgid "Unknown artifact type: '{atype}'"
+msgstr "Unknown artifact type: '{atype}'"
+
+msgid "Artifact ID '{aid}' does not match schema '{schema}' for type '{atype}'"
+msgstr "Artifact ID '{aid}' does not match schema '{schema}' for type '{atype}'"
+
+msgid "Attribute '{attr_name}' is not allowed for artifact '{atype}'"
+msgstr "Attribute '{attr_name}' is not allowed for artifact '{atype}'"
+
+msgid "Missing mandatory attribute: '{attr_name}'"
+msgstr "Missing mandatory attribute: '{attr_name}'"
+
+msgid "Attribute '{attr_name}' must be a list (multiple=True)"
+msgstr "Attribute '{attr_name}' must be a list (multiple=True)"
+
+msgid "Attribute '{attr_name}' must not be a list (multiple=False)"
+msgstr "Attribute '{attr_name}' must not be a list (multiple=False)"
+
+msgid "Attribute '{attr_name}' value '{val}' cannot be converted to an integer"
+msgstr "Attribute '{attr_name}' value '{val}' cannot be converted to an integer"
+
+msgid "Attribute '{attr_name}' value '{val}' is not a valid boolean ({expected})"
+msgstr "Attribute '{attr_name}' value '{val}' is not a valid boolean ({expected})"
+
+msgid "Attribute '{attr_name}' value '{val}' is invalid. Allowed values: {allowed}"
+msgstr "Attribute '{attr_name}' value '{val}' is invalid. Allowed values: {allowed}"
+
+msgid "Attribute '{attr_name}' value '{val}' is a malformed reference (expected ID string)"
+msgstr "Attribute '{attr_name}' value '{val}' is a malformed reference (expected ID string)"
+
+msgid "Attribute '{attr_name}' value '{val}' refers to an unknown artifact ID '{aid}'"
+msgstr "Attribute '{attr_name}' value '{val}' refers to an unknown artifact ID '{aid}'"
+
+msgid "Attribute '{attr_name}' value '{val}' refers to an artifact with unknown type '{atype}'"
+msgstr "Attribute '{attr_name}' value '{val}' refers to an artifact with unknown type '{atype}'"
+
+msgid "Trace from '{from_type}' to '{to_type}' is not allowed"
+msgstr "Trace from '{from_type}' to '{to_type}' is not allowed"
+
+msgid "Trace from '{from_type}' to '{to_type}' is 'by timestamp', but revision was specified: '{ref}'"
+msgstr "Trace from '{from_type}' to '{to_type}' is 'by timestamp', but revision was specified: '{ref}'"
+
+msgid "Trace from '{from_type}' to '{to_type}' is 'by commit', but no revision was specified for parent '{parent_aid}'"
+msgstr "Trace from '{from_type}' to '{to_type}' is 'by commit', but no revision was specified for parent '{parent_aid}'"
+
+msgid "Missing mandatory trace from '{from_type}' to {targets}"
+msgstr "Missing mandatory trace from '{from_type}' to {targets}"
+
+msgid "Must have exactly one root artifact"
+msgstr "Must have exactly one root artifact"
+
+msgid "expected {true_vals} / {false_vals}"
+msgstr "expected {true_vals} / {false_vals}"
+
+msgid "expected true/false, yes/no, 1/0"
+msgstr "expected true/false, yes/no, 1/0"
+
+#. Error messages - tree.py
+msgid "Conflicting nominal revisions for parent '{parent_id}' in artifact '{artifact_id}': '{existing}' vs '{nominal}'"
+msgstr "Conflicting nominal revisions for parent '{parent_id}' in artifact '{artifact_id}': '{existing}' vs '{nominal}'"
+
+msgid "Error processing parent link '{ref}' for artifact '{artifact_id}': {error}"
+msgstr "Error processing parent link '{ref}' for artifact '{artifact_id}': {error}"
+
+msgid "Circular reference detected with {aid}"
+msgstr "Circular reference detected with {aid}"
+
+#. Error messages - extract.py
+msgid "Artifact {atype} at {location} has no ID"
+msgstr "Artifact {atype} at {location} has no ID"
+
+msgid "Duplicate artifact ID: {aid} at {location} (already defined at {other_location})"
+msgstr "Duplicate artifact ID: {aid} at {location} (already defined at {other_location})"
+
+#. Error messages - metrics.py
+msgid "Metrics: No requirements found"
+msgstr "Metrics: No requirements found"
+
+#. Error messages - artifact.py
+msgid "Driver \"{driver}\": {location}: {message}"
+msgstr "Driver \"{driver}\": {location}: {message}"
+
+msgid "Duplicate AID"
+msgstr "Duplicate AID"
+
+msgid "Duplicate field \"{field}\""
+msgstr "Duplicate field \"{field}\""
+
+msgid "Location is required"
+msgstr "Location is required"
+
+msgid "AType is required"
+msgstr "AType is required"
+
+msgid "AID is required"
+msgstr "AID is required"
+
+
+#. Error messages - extractors/markdown.py
+msgid "Non-breaking space (NBSP) detected in requirement at line {line} in {file}"
+msgstr "Non-breaking space (NBSP) detected in requirement at line {line} in {file}"
+
+msgid "Invalid metadata in YAML at line {line}"
+msgstr "Invalid metadata in YAML at line {line}"
+
+msgid "Missing ID in metadata at line {line}"
+msgstr "Missing ID in metadata at line {line}"
+
+msgid "Parse error in requirement at line {line} in {file}"
+msgstr "Parse error in requirement at line {line} in {file}"
+
+msgid "Error processing requirement at line {line} in {file}"
+msgstr "Error processing requirement at line {line} in {file}"
+
+msgid "Unclosed YAML block in requirement at line {line} in {file}"
+msgstr "Unclosed YAML block in requirement at line {line} in {file}"
+
+msgid "Unterminated requirement at line {line} in {file}"
+msgstr "Unterminated requirement at line {line} in {file}"
+
+#. Error messages - extractors/sidecar.py
+msgid "{driver} :: Orphaned sidecar file {path} without matching original file"
+msgstr "{driver} :: Orphaned sidecar file {path} without matching original file"
+
+msgid "{driver} :: Both .stmx and .syntagmax sidecars are present for {file}"
+msgstr "{driver} :: Both .stmx and .syntagmax sidecars are present for {file}"
+
+msgid "{driver} :: Missing sidecar file for {file}"
+msgstr "{driver} :: Missing sidecar file for {file}"
+
+msgid "{driver} :: Malformed YAML in sidecar {path}: {error}"
+msgstr "{driver} :: Malformed YAML in sidecar {path}: {error}"
+
+msgid "{driver} :: Could not read sidecar {path}: {error}"
+msgstr "{driver} :: Could not read sidecar {path}: {error}"
+
+msgid "{driver} :: Sidecar {path} does not contain a valid YAML dictionary"
+msgstr "{driver} :: Sidecar {path} does not contain a valid YAML dictionary"
+
+msgid "{driver} :: Missing required 'id' field in sidecar {path}"
+msgstr "{driver} :: Missing required 'id' field in sidecar {path}"
+
+msgid "{driver} :: Validation error in {path}: {error}"
+msgstr "{driver} :: Validation error in {path}: {error}"
+
+#. Error messages - extractors/text.py
+msgid "Driver 'text': {error_type} in {location}\nWhile analyzing {section}\nReason: {message}"
+msgstr "Driver 'text': {error_type} in {location}\nWhile analyzing {section}\nReason: {message}"
+
+msgid "Missing ID"
+msgstr "Missing ID"
+
+msgid "ID is required"
+msgstr "ID is required"
+
+msgid "Parse Error"
+msgstr "Parse Error"
+
+msgid "Malformed artifact"
+msgstr "Malformed artifact"
+
+#. Error messages - extractors/simple_markdown.py
+msgid "{driver} :: Malformed YAML frontmatter in {file}: {error}"
+msgstr "{driver} :: Malformed YAML frontmatter in {file}: {error}"
+
+#. Error messages - extractors/markdown_markers.py
+msgid "Invalid block ID \"{block_id}\" for marker [{marker}] — IDs must match [a-zA-Z0-9_.-]"
+msgstr "Invalid block ID \"{block_id}\" for marker [{marker}] — IDs must match [a-zA-Z0-9_.-]"
+
+#. Error messages - extractors/ipynb.py
+msgid "Error extracting from {file}: {error}"
+msgstr "Error extracting from {file}: {error}"
+
+#. report.py - format_error linking text
+msgid " ({loc1} in {loc2})"
+msgstr " ({loc1} in {loc2})"
