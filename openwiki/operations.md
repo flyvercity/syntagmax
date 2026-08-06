@@ -16,13 +16,14 @@ Main commands in `src/syntagmax/cli.py`:
 - `init` — create a `.syntagmax` project scaffold
 - `analyze` — run the analysis pipeline and write a report
 - `publish` — render records to Markdown, optionally DOCX/PDF
-- `edit renumber` — renumber artifact IDs
+- `edit identification` — renumber artifact IDs (formerly `edit renumber`)
+- `edit attrs` — bulk attribute manipulation
+- `markers renumber` — renumber fragment markers
 - `mcp run` — start the MCP server
 - `ci` — configure GitHub and GitLab pipelines
 - `change baseline` — create baseline tags across repositories
-- `edit attrs` — bulk attribute manipulation
-- `markers renumber` — renumber fragment markers
 - `schema` — generate JSON schemas for configurations
+- `ai verify` — run AI-assisted impact task verification (new)
 
 ## Typical workflows
 ### Initialize a project
@@ -41,6 +42,7 @@ Key options:
 - `--output console` prints markdown to stdout instead of writing a file
 - `--tasks` enables task generation from impact analysis (overrides config)
 - `--locale` sets the locale for localized change reports (e.g., `--locale ru`)
+- `--verbose` enables verbose logging for AI agent commands
 
 The command defaults to writing `.syntagmax/outputs/report.md`.
 
@@ -68,6 +70,7 @@ Important behaviors:
 - Images referenced in source documents are automatically resolved and copied to the output directory.
 - `--attribute-presence` enables filtering artifacts based on attribute conditions.
 - **Configurable table spacing** improves readability in published output.
+- Output files are written to `.syntagmax/outputs/` (formerly `.syntagmax/reports/`).
 
 ### Start the MCP server
 `uv run syntagmax mcp run .syntagmax/config.toml --transport sse --port 8000`
@@ -91,6 +94,10 @@ The code supports per-input publish TOML or YAML files. If a record references o
 - **Summary mode** for change reports provides a high-level overview of changes, complementing detailed reports.
 - Change reports now support localization, but ensure the requested locale is available in `src/syntagmax/resources/locales/`.
 - Binary artifact change reporting requires sidecar metadata to be properly configured.
+- AI agent commands support verbose logging via the `--verbose` flag for debugging.
+- The default output directory is now `.syntagmax/outputs/` instead of `.syntagmax/reports/`.
+- The `edit identification` command replaces the deprecated `edit renumber` command.
+- Task generation can be enabled via the `--tasks` flag or configured in the project TOML.
 
 ## Example assets
 The `example/` directory contains runnable samples that exercise the main workflows:
@@ -98,6 +105,7 @@ The `example/` directory contains runnable samples that exercise the main workfl
 - `example/publishing/` for publish formatting
 - `example/plugin-demo/` for plugin behavior
 - `example/error-handling/` and `example/renumber-demo/` for edge cases
+- `example/simple-markdown-demo/` for the new simple Markdown driver
 
 Those examples are the best place to inspect the expected end-to-end shape of input config, source files, and output artifacts.
  inspect the expected end-to-end shape of input config, source files, and output artifacts.

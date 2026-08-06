@@ -31,11 +31,13 @@ Syntagmax is a git-friendly requirements management system for extracting artifa
 - Extraction layer: `src/syntagmax/extract.py` and `src/syntagmax/extractors/`
 - Edit markers: `src/syntagmax/edit_markers.py`
 - Tree / analysis logic: `src/syntagmax/tree.py`, `src/syntagmax/analyse.py`, `src/syntagmax/impact.py`, `src/syntagmax/metrics.py`, `src/syntagmax/ai.py`
+- AI agents: `src/syntagmax/ai.py`, `src/syntagmax/cli_ai.py`, `src/syntagmax/resources/agents.yaml`
 - Publish pipeline: `src/syntagmax/publish.py`, `src/syntagmax/publish_config.py`, `src/syntagmax/publish_context.py`, `src/syntagmax/pandoc.py`
+- Task generation: `src/syntagmax/tasks.py`, `src/syntagmax/resources/task.j2`
 - Obsidian vault integration: `src/syntagmax/obsidian_settings.py`
 - Plugin system: `src/syntagmax/plugin.py`
 - MCP server: `src/syntagmax/mcp/server.py`
-- Representative tests: `tests/test_init.py`, `tests/test_publish.py`, `tests/test_plugin.py`, `tests/test_mcp.py`, `tests/test_metamodel.py`, `tests/test_marker_renumber.py`, `tests/test_strict_line_breaks.py`
+- Representative tests: `tests/test_init.py`, `tests/test_publish.py`, `tests/test_plugin.py`, `tests/test_mcp.py`, `tests/test_metamodel.py`, `tests/test_marker_renumber.py`, `tests/test_strict_line_breaks.py`, `tests/test_ai.py`, `tests/test_cli_ai.py`, `tests/test_tasks.py`
 
 ## Project layout
 - `src/syntagmax/` contains the runtime package.
@@ -49,6 +51,8 @@ Syntagmax is a git-friendly requirements management system for extracting artifa
 - Changing publish output: start in `src/syntagmax/publish.py`, `src/syntagmax/publish_config.py`, and `tests/test_publish.py`.
 - Changing plugins: start in `src/syntagmax/plugin.py` and `tests/test_plugin.py`.
 - Changing CLI workflows: start in `src/syntagmax/cli.py` and `tests/test_init.py`, `tests/test_publish.py`, `tests/test_mcp.py`.
+- Changing AI agents: start in `src/syntagmax/ai.py`, `src/syntagmax/cli_ai.py`, and `tests/test_ai.py`, `tests/test_cli_ai.py`.
+- Changing task generation: start in `src/syntagmax/tasks.py` and `tests/test_tasks.py`.
 
 ## Before you edit
 - Confirm the input record shape in `src/syntagmax/config.py` before changing any pipeline assumptions.
@@ -69,6 +73,29 @@ Related evidence:
 - `e2c4146 feat: implement configurable publishing system`
 - `d835f71 feat: add pandoc integration for docx and pdf export`
 - `a180058 feat: implement plugin system for transformation pipeline`
+
+## Recent features to know about
+- **AI with agents**: Integrated local CLI AI agents for impact task verification with configurable agent commands (mistral-vibe, antigravity, opencode, copilot, kiro) and automated child artifact amendment for AI verification. AI providers support redacted logging and configurable verbosity.
+- **Improved report structure and UX**: Enhanced analyze report structure with better file location handling, improved whitespace control, "No errors found" messages, and localized file status strings. Change reports now support grouping by file, summary mode, and binary artifact change reporting.
+- **Output directory rename**: Default output directory renamed from `.syntagmax/reports/` to `.syntagmax/outputs/` for consistency with publish outputs.
+- **Renumber command renamed**: The `edit renumber` command has been renamed to `edit identification` to better reflect its purpose of renumbering artifact IDs and identification markers.
+- **Tasks directory standardization**: Default tasks directory standardized to `tasks/` (previously varied by example). Automatic task generation for impact analysis added via `--tasks` CLI flag.
+- **Simple Markdown driver**: New driver for plain Markdown files with ATX heading splitting support, improving extraction from standard Markdown sources.
+- **Log level control**: Unified log level control with warnings-as-errors support and configurable verbosity for AI agent commands.
+- **Plugin-based trace export**: Trace export now supports plugin-based configuration for transforming trace output.
+- **YAML boolean coercion fix**: Fixed handling of YAML boolean coercion with custom metamodel labels to prevent unexpected report errors.
+- **Verbose impact verification**: Enhanced verification report structure with detailed impact analysis and uncertainty handling.
+
+Related evidence:
+- AI with agents: `c8d1dbf feat: integrate local CLI AI agents for impact task verification`
+- Report structure: `7fe5015 feat: improve analyze report structure and UX`
+- Outputs directory: `5202770 refactor: rename default output directory from reports to outputs`
+- Identification command: `d4558f2 refactor: rename edit renumber command to edit identification`
+- Tasks standardization: `28f36c8 refactor: update default tasks directory to tasks/`
+- Simple Markdown driver: `e87d005 feat: add simple-markdown driver`
+- Log level control: `7be74a0 feat: implement unified log level control and warnings-as-errors`
+- Plugin trace export: `2bdada6 feat: implement plugin-based trace export via configuration`
+- YAML coercion: `f077898 fix: handle yaml boolean coercion with custom metamodel labels`
 
 ## Useful docs already in the repo
 - `README.md` remains the user-facing introduction.

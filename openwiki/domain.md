@@ -1,3 +1,11 @@
+---
+type: Reference
+
+title: Domain Model and File Formats
+description: Core domain objects, artifact identity, input sources/drivers, publish block model, and configuration semantics for Syntagmax.
+tags: [domain, artifacts, drivers, configuration]
+---
+
 # Domain Model and File Formats
 
 This repository is centered on artifacts, traces, and renderable blocks. The same conceptual data appears in different stages: parsed artifacts, analysis trees, publish blocks, and final published documents.
@@ -20,11 +28,20 @@ The metamodel loader validates that artifacts define an ID rule and a contents r
 `config.py` supports input records with a `driver` field and a file filter. The codebase already includes drivers for:
 - `obsidian` Markdown-style sources (now with ATX heading splitting support)
 - `markdown` (now with ATX heading splitting support)
+- `simple_markdown` - a new lightweight Markdown driver
 - `ipynb`
 - `text`
 - sidecar-style metadata handling in the extractor layer
 
 Driver defaults matter because they affect what files are even discovered. For example, the config layer supplies default glob filters for some drivers.
+
+## Task generation
+The system can automatically generate impact analysis tasks based on the artifact graph. Tasks are created in the configured tasks directory (default: `.syntagmax/tasks/`) and can be used for:
+- Impact analysis verification
+- Documentation generation
+- Review and approval workflows
+
+Task templates are defined in `src/syntagmax/resources/task.j2`.
 
 ## Publish block model
 Publishing operates on a nested block structure rather than directly on artifacts. This lets the renderer preserve plain text around artifact records, treat marked fragments separately, and handle images referenced in source documents.
@@ -48,6 +65,7 @@ A publish pass usually works like this:
 - `render` maps artifact types or markers to ordered sections, including support for identified text blocks (numbered-text-block).
 - `attribute_presence` enables filtering artifacts based on attribute conditions.
 - `table_spacing` configures spacing for tables in published output.
+- `output_path` controls where published files are written (default: `.syntagmax/outputs/`)
 
 The key behavior is fallback rendering. If a type or marker has no explicit render rule, the publisher emits a heading, contents, and a metadata table.
 
@@ -77,10 +95,11 @@ Recent changes include:
 - Publish renderer: `src/syntagmax/publish.py`
 - Git integration: `src/syntagmax/git_utils.py`
 - MCP server: `src/syntagmax/mcp/server.py`
+- AI agents: `src/syntagmax/ai.py`, `src/syntagmax/cli_ai.py`
+- Task generation: `src/syntagmax/tasks.py`
 - Change rendering: `src/syntagmax/change_render.py`
 - Markdown extraction: `src/syntagmax/extractors/markdown.py`
+- Simple Markdown extraction: `src/syntagmax/extractors/simple_markdown.py`
 - AI providers: `src/syntagmax/ai_providers.py`
 - Binary change reporting: `src/syntagmax/change_binary.py`
-- Sidecar extraction: `src/syntagmax/extractors/sidecar.py`
-integration: `src/syntagmax/git_utils.py`
-- MCP server: `src/syntagmax/mcp/server.py`
+- Sidecar extraction: `src/syntagmax/extractors/sidecar.py

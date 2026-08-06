@@ -1,16 +1,26 @@
+---
+type: Reference
+
+title: Testing Guide
+description: Overview of the test suite structure, test areas, and guidance on what to run when changing major areas of the codebase.
+tags: [testing, test-suite, guidance]
+---
+
 # Testing Guide
 
 The test suite is broad and is one of the best sources of behavioral truth for this repository. Tests are grouped by feature rather than by internal module, which makes them useful as executable documentation.
 
 ## Test areas
 - Config and initialization: `tests/test_init.py`, `tests/test_init_cmd.py`, `tests/test_publish_config.py`
-- Extraction and drivers: `tests/test_extractors.py`, `tests/test_ipynb_extractor.py`, `tests/test_marked_fragments.py`, `tests/test_multiple_records_same_driver.py`
+- Extraction and drivers: `tests/test_extractors.py`, `tests/test_ipynb_extractor.py`, `tests/test_marked_fragments.py`, `tests/test_multiple_records_same_driver.py`, `tests/test_simple_markdown_extractor.py`
 - Metamodel and validation: `tests/test_metamodel.py`, `tests/test_metamodel_schema_validation.py`, `tests/test_reference_validation.py`, `tests/test_multiplicity_validation.py`, `tests/test_id_validation.py`
 - Tree and analysis: `tests/test_dag.py`, `tests/test_impact.py`, `tests/test_report.py`, `tests/test_traces.py`
 - Git behavior: `tests/test_git_utils.py`, `tests/test_git_revisions.py`
 - Publishing: `tests/test_publish.py`, `tests/test_pandoc.py`, `tests/test_multiple_attributes_e2e.py`
 - Plugins: `tests/test_plugin.py`
 - MCP: `tests/test_mcp.py`
+- AI agents: `tests/test_ai.py`, `tests/test_cli_ai.py`
+- Task generation: `tests/test_tasks.py`
 - Artifact validation and edge cases: `tests/test_artifact_validation.py`, `tests/test_enum_multiple.py`, `tests/test_custom_boolean.py`, `tests/test_hyphen_support.py`, `tests/test_suspicious_tree_marks.py`
 
 ## What to run when changing major areas
@@ -30,6 +40,15 @@ The renderer has several interacting defaults: heading levels, plain-text filter
 - **Configurable table spacing** for improved readability.
 - **Attribute presence mode** for filtering artifacts.
 - **Case-insensitive field exclusions** for artifact rendering.
+- Output directory changed from `.syntagmax/reports/` to `.syntagmax/outputs/`.
+
+### AI agents
+Run `tests/test_ai.py` and `tests/test_cli_ai.py` for AI-assisted analysis features.
+These tests cover AI provider integration, agent command execution, and impact analysis with AI verification.
+
+### Task generation
+Run `tests/test_tasks.py` for automatic task generation from impact analysis.
+This feature generates tasks in the configured tasks directory for further verification workflows.
 
 ### Plugin system
 Run `tests/test_plugin.py`.

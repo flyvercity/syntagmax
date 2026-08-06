@@ -1,6 +1,8 @@
 {
-  "updatedAt": "2026-07-20T09:09:59.752Z",
+  "updatedAt": "2026-08-06T07:34:04.264Z",
   "command": "update",
-  "gitHead": "79ac86593896eeaf5991d85f2af9884d439f2780",
-  "model": "mistralai/devstral-2512"
+  "gitHead": "4da4a5e1eb984ee3d347849c2fdf508607b5156b",
+  "model": "mistralai/mistral-small-2603",
+  "status": "complete",
+  "language": "en"
 }
