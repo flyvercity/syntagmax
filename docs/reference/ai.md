@@ -130,9 +130,12 @@ Agent definitions map names to command-line invocation patterns. The built-in re
 | `antigravity` | `agy --dangerously-skip-permissions --prompt {prompt}` | Antigravity CLI |
 | `mistral-vibe` | `vibe --yolo --prompt {prompt}` | Mistral Vibe CLI |
 | `crush` | `crush run {prompt}` | Charm Crush |
-| `pi` | `pi --print` | PI Coding Agent |
-
-> ⚠️ **`pi` agent caveat:** The default `pi` command pattern does **not** include a `{prompt}` placeholder. This means the agent receives no instructions from Syntagmax and must be configured with a custom command pattern (e.g. via `--command "pi --print {prompt}"`) or overridden in a custom agents file. Without a `{prompt}` placeholder, verification will always fail post-edit validation.
+| `pi` | `pi --print {prompt}` | PI Coding Agent |
+| `kimi` | `kimi --prompt {prompt}` | Kimi Code |
+| `aider` | `aider --no-auto-commits --yes-always --message-file {prompt}` | Aider |
+| `cline` | `cline 'Execute {prompt}'` | Cline CLI |
+| `grok` | `grok --always-approve --single {prompt}` | Grok Build |
+| `hermes` | `hermes --yolo --oneshot {prompt}` | Hermes CLI |
 
 > ⚠️ **Mistral Vibe caveat:** The `--yolo` flag used internally enables auto-commit behaviour — Mistral Vibe may commit changes to the repository without explicit user request. Always inspect `git log` and `git diff` after invocation and use `git reset HEAD~1` to undo unwanted commits.
 

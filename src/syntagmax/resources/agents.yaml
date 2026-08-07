@@ -52,7 +52,7 @@ agents:
     description: "Cline CLI"
 
   grok:
-    command: "grok  --always-approve --single {prompt}"
+    command: "grok --always-approve --single {prompt}"
     description: "Grok Build"
   
   hermes:
