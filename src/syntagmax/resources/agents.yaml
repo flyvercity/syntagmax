@@ -34,4 +34,12 @@ agents:
   crush:
     command: "crush run {prompt}"
     description: "Charm Crush"
+
+  pi:
+    command: "pi --print {prompt}"
+    description: "PI Coding Agent"
+
+  kimi:
+    command: "kimi --prompt {prompt}"
+    description: "Kimi Code"
   
