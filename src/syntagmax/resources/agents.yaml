@@ -50,4 +50,8 @@ agents:
   cline:
     command: "cline 'Execute {prompt}'"
     description: "Cline CLI"
+
+  grok:
+    command: "grok  --always-approve --single {prompt}"
+    description: "Grok Build"
   
