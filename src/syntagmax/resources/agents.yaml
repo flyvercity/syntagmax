@@ -46,4 +46,8 @@ agents:
   aider:
     command: "aider --no-auto-commits --yes-always --message-file {prompt}"
     description: "Aider"
+
+  cline:
+    command: "cline 'Execute {prompt}'"
+    description: "Cline CLI"
   
