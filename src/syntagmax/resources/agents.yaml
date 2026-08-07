@@ -30,3 +30,8 @@ agents:
   mistral-vibe:
     command: "vibe --yolo --prompt {prompt}"
     description: "Mistral Vibe CLI"
+
+  crush:
+    command: "crush run {prompt}"
+    description: "Charm Crush"
+  
