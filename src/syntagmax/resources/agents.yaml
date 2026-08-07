@@ -42,4 +42,8 @@ agents:
   kimi:
     command: "kimi --prompt {prompt}"
     description: "Kimi Code"
+
+  aider:
+    command: "aider --no-auto-commits --yes-always --message-file {prompt}"
+    description: "Aider"
   
