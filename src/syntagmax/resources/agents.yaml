@@ -55,3 +55,6 @@ agents:
     command: "grok  --always-approve --single {prompt}"
     description: "Grok Build"
   
+  hermes:
+    command: "hermes --yolo --oneshot {prompt}"
+    description: "Hermes CLI"
