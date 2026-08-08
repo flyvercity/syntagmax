@@ -55,23 +55,29 @@ def build_artifact_map(artifacts_list: list[Artifact], errors) -> dict[str, Arti
 
     for a in artifacts_list:
         if not a.aid or a.aid == UNDEFINED_ID:
-            errors.append(ReportError(
-                message=_("Artifact {atype} at {location} has no ID").format(atype=a.atype, location=a.location),
-                category=CAT_EXTRACTION,
-                input_record=a.record.name if a.record else None,
-                artifact_type=a.atype,
-                file_path=a.location.filepath() if a.location else None,
-            ))
+            errors.append(
+                ReportError(
+                    message=_('Artifact {atype} at {location} has no ID').format(atype=a.atype, location=a.location),
+                    category=CAT_EXTRACTION,
+                    input_record=a.record.name if a.record else None,
+                    artifact_type=a.atype,
+                    file_path=a.location.filepath() if a.location else None,
+                )
+            )
             continue
         if a.aid in artifacts:
-            errors.append(ReportError(
-                message=_("Duplicate artifact ID: {aid} at {location} (already defined at {other_location})").format(aid=a.aid, location=a.location, other_location=artifacts[a.aid].location),
-                category=CAT_DUPLICATE,
-                input_record=a.record.name if a.record else None,
-                artifact_id=a.aid,
-                artifact_type=a.atype,
-                file_path=a.location.filepath() if a.location else None,
-            ))
+            errors.append(
+                ReportError(
+                    message=_('Duplicate artifact ID: {aid} at {location} (already defined at {other_location})').format(
+                        aid=a.aid, location=a.location, other_location=artifacts[a.aid].location
+                    ),
+                    category=CAT_DUPLICATE,
+                    input_record=a.record.name if a.record else None,
+                    artifact_id=a.aid,
+                    artifact_type=a.atype,
+                    file_path=a.location.filepath() if a.location else None,
+                )
+            )
             continue
         artifacts[a.aid] = a
 

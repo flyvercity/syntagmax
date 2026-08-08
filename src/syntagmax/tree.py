@@ -83,28 +83,37 @@ def populate_pids(config: Config, artifacts: ArtifactMap, errors: list):
                                 existing_link = next((pl for pl in a.parent_links if pl.pid == aid), None)
                                 if existing_link:
                                     if existing_link.nominal_revision != nominal_revision:
-                                        errors.append(ReportError(
-                                            message=_("Conflicting nominal revisions for parent '{parent_id}' in artifact '{artifact_id}': '{existing}' vs '{nominal}'").format(parent_id=aid, artifact_id=a.aid, existing=existing_link.nominal_revision, nominal=nominal_revision),
-                                            category=CAT_REFERENCE,
-                                            input_record=a.record.name if a.record else None,
-                                            artifact_id=a.aid,
-                                            artifact_type=a.atype,
-                                            file_path=a.location.filepath() if a.location else None,
-                                        ))
+                                        errors.append(
+                                            ReportError(
+                                                message=_(
+                                                    "Conflicting nominal revisions for parent '{parent_id}'"
+                                                    " in artifact '{artifact_id}': '{existing}' vs '{nominal}'"
+                                                ).format(parent_id=aid, artifact_id=a.aid, existing=existing_link.nominal_revision, nominal=nominal_revision),
+                                                category=CAT_REFERENCE,
+                                                input_record=a.record.name if a.record else None,
+                                                artifact_id=a.aid,
+                                                artifact_type=a.atype,
+                                                file_path=a.location.filepath() if a.location else None,
+                                            )
+                                        )
                                 else:
                                     a.parent_links.append(ParentLink(pid=aid, nominal_revision=nominal_revision))
 
                                 if aid not in a.pids:
                                     a.pids.append(aid)
                             except Exception as e:
-                                errors.append(ReportError(
-                                    message=_("Error processing parent link '{ref}' for artifact '{artifact_id}': {error}").format(ref=actual_ref, artifact_id=a.aid, error=str(e)),
-                                    category=CAT_REFERENCE,
-                                    input_record=a.record.name if a.record else None,
-                                    artifact_id=a.aid,
-                                    artifact_type=a.atype,
-                                    file_path=a.location.filepath() if a.location else None,
-                                ))
+                                errors.append(
+                                    ReportError(
+                                        message=_("Error processing parent link '{ref}' for artifact '{artifact_id}': {error}").format(
+                                            ref=actual_ref, artifact_id=a.aid, error=str(e)
+                                        ),
+                                        category=CAT_REFERENCE,
+                                        input_record=a.record.name if a.record else None,
+                                        artifact_id=a.aid,
+                                        artifact_type=a.atype,
+                                        file_path=a.location.filepath() if a.location else None,
+                                    )
+                                )
 
                 # If we processed one rule for this attribute that matched,
                 # do we need to process others?
@@ -114,7 +123,7 @@ def populate_pids(config: Config, artifacts: ArtifactMap, errors: list):
 
 def gather_ancestors(artifacts: ArtifactMap, ref: str, depth: int = 0) -> str | None:
     if depth > MAX_TREE_DEPTH:
-        return _("Circular reference detected with {aid}").format(aid=artifacts[ref].aid)
+        return _('Circular reference detected with {aid}').format(aid=artifacts[ref].aid)
 
     for child in artifacts[ref].children:
         artifacts[child].ancestors.add(ref)
@@ -154,8 +163,10 @@ def build_tree(config: Config, artifacts: ArtifactMap, errors: list):
         err = gather_ancestors(artifacts, ref)
 
         if err:
-            errors.append(ReportError(
-                message=err,
-                category=CAT_STRUCTURE,
-            ))
+            errors.append(
+                ReportError(
+                    message=err,
+                    category=CAT_STRUCTURE,
+                )
+            )
             break
