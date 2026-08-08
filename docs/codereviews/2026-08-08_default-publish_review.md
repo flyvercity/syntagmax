@@ -77,7 +77,7 @@ Key design changes:
 
 ## 5. Actionable Next Steps
 
-- [ ] **Task 1 (High Priority)**: Fix `metamodel.get('artifact_types', {})` -> `metamodel.get('artifacts', {})` in `src/syntagmax/publish.py`.
-- [ ] **Task 2 (Medium Priority)**: Update `collect_explicit_attributes(sections: list[RenderSection])` signature in `src/syntagmax/publish_config.py`.
-- [ ] **Task 3 (Medium Priority)**: Simplify default key lookups in `render_block()` to `pub_config.render.get(...)`.
-- [ ] **Task 4 (Low Priority)**: Add test case for `_remaining_` candidate expansion with metamodel definitions.
+- [x] **Task 1 (High Priority)**: Fix `metamodel.get('artifact_types', {})` -> `metamodel.get('artifacts', {})` in `src/syntagmax/publish.py`.
+- [x] **Task 2 (Medium Priority)**: Update `collect_explicit_attributes(sections: list[RenderSection])` signature in `src/syntagmax/publish_config.py`.
+- [x] **Task 3 (Medium Priority)**: Simplify default key lookups in `render_block()` to `pub_config.render.get(...)`.
+- [x] **Task 4 (Low Priority)**: Add test case for `_remaining_` candidate expansion with metamodel definitions.
