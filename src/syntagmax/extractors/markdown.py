@@ -381,12 +381,6 @@ class MarkdownExtractor(MarkerSplitterMixin, ElementFilterMixin, Extractor):
         return segment.rstrip() + newline + new_field_line + newline
 
 
-    def _extract_from_markdown(self, filepath: Path, markdown: str, location_builder: Callable[[int, int], Location]) -> ExtractorResult:
-        blocks = self._extract_blocks_from_markdown(filepath, markdown, location_builder)
-        artifacts = [b.artifact for b in blocks if isinstance(b, ArtifactBlock)]
-        errors = [b.message for b in blocks if isinstance(b, ErrorBlock)]
-        return artifacts, errors
-
     def _find_segment_boundary(
         self,
         markdown: str,

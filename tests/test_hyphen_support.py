@@ -158,12 +158,7 @@ def test_markdown_extractor_with_hyphens(tmp_path):
     md_file = tmp_path / 'test.md'
     md_file.write_text(md_content)
 
-    from syntagmax.artifact import LineLocation
-
-    def location_builder(start, end):
-        return LineLocation(loc_file='test.md', loc_lines=(start, end))
-
-    artifacts, errors = extractor._extract_from_markdown(md_file, md_content, location_builder)
+    artifacts, errors = extractor.extract_from_file(md_file)
 
     assert not errors
     assert len(artifacts) == 1
