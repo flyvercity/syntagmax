@@ -972,3 +972,164 @@ class TestTableSpacer:
     def test_table_section_spacer_rejects_non_integer(self):
         with pytest.raises(ValidationError):
             TableSection.model_validate({'type': 'table', 'spacer': 'big', 'attributes': [{'id': {'alias': 'ID'}}]})
+
+
+class TestMisplacedPublishWarning:
+    """Tests for the diagnostic warning when publish field is likely misplaced."""
+
+    def test_warns_when_one_record_has_publish_no_global(self, tmp_path, caplog):
+        """Warns when exactly one record has publish set and no global publish exists."""
+        import logging
+        from syntagmax.config import Config
+        from syntagmax.params import Params
+
+        project_root = tmp_path / 'project'
+        project_root.mkdir()
+        dot_syntagmax = project_root / '.syntagmax'
+        dot_syntagmax.mkdir()
+
+        cfg_path = dot_syntagmax / 'config.toml'
+        # Simulates the TOML scoping mistake: publish ends up in first [[input]]
+        cfg_content = """
+base = ".."
+
+[[input]]
+name = "sys-reqs"
+dir = "SYS"
+driver = "obsidian"
+atype = "SYS"
+publish = "publish.yaml"
+
+[[input]]
+name = "soft-reqs"
+dir = "REQ"
+driver = "obsidian"
+atype = "REQ"
+"""
+        cfg_path.write_text(cfg_content, encoding='utf-8')
+        (project_root / 'SYS').mkdir()
+        (project_root / 'REQ').mkdir()
+        (project_root / 'publish.yaml').write_text('start_level: 2', encoding='utf-8')
+
+        params = Params(verbose=False, render_tree=False, ai=False)
+        with caplog.at_level(logging.WARNING):
+            Config(params=params, config_filename=cfg_path)
+
+        assert any('move' in r.message and 'publish' in r.message for r in caplog.records), (
+            f'Expected misplaced publish warning, got: {[r.message for r in caplog.records]}'
+        )
+
+    def test_no_warning_when_global_publish_set(self, tmp_path, caplog):
+        """No warning when global publish is properly configured."""
+        import logging
+        from syntagmax.config import Config
+        from syntagmax.params import Params
+
+        project_root = tmp_path / 'project'
+        project_root.mkdir()
+        dot_syntagmax = project_root / '.syntagmax'
+        dot_syntagmax.mkdir()
+
+        cfg_path = dot_syntagmax / 'config.toml'
+        cfg_content = """
+base = ".."
+publish = "publish.yaml"
+
+[[input]]
+name = "sys-reqs"
+dir = "SYS"
+driver = "obsidian"
+atype = "SYS"
+
+[[input]]
+name = "soft-reqs"
+dir = "REQ"
+driver = "obsidian"
+atype = "REQ"
+"""
+        cfg_path.write_text(cfg_content, encoding='utf-8')
+        (project_root / 'SYS').mkdir()
+        (project_root / 'REQ').mkdir()
+        (dot_syntagmax / 'publish.yaml').write_text('start_level: 2', encoding='utf-8')
+
+        params = Params(verbose=False, render_tree=False, ai=False)
+        with caplog.at_level(logging.WARNING):
+            Config(params=params, config_filename=cfg_path)
+
+        misplaced_warnings = [r for r in caplog.records if 'move' in r.message and 'publish' in r.message]
+        assert misplaced_warnings == [], f'Unexpected warning: {[r.message for r in misplaced_warnings]}'
+
+    def test_no_warning_when_all_records_have_publish(self, tmp_path, caplog):
+        """No warning when all records have per-record publish (intentional)."""
+        import logging
+        from syntagmax.config import Config
+        from syntagmax.params import Params
+
+        project_root = tmp_path / 'project'
+        project_root.mkdir()
+        dot_syntagmax = project_root / '.syntagmax'
+        dot_syntagmax.mkdir()
+
+        cfg_path = dot_syntagmax / 'config.toml'
+        cfg_content = """
+base = ".."
+
+[[input]]
+name = "sys-reqs"
+dir = "SYS"
+driver = "obsidian"
+atype = "SYS"
+publish = "pub-sys.yaml"
+
+[[input]]
+name = "soft-reqs"
+dir = "REQ"
+driver = "obsidian"
+atype = "REQ"
+publish = "pub-req.yaml"
+"""
+        cfg_path.write_text(cfg_content, encoding='utf-8')
+        (project_root / 'SYS').mkdir()
+        (project_root / 'REQ').mkdir()
+        (project_root / 'pub-sys.yaml').write_text('start_level: 2', encoding='utf-8')
+        (project_root / 'pub-req.yaml').write_text('start_level: 3', encoding='utf-8')
+
+        params = Params(verbose=False, render_tree=False, ai=False)
+        with caplog.at_level(logging.WARNING):
+            Config(params=params, config_filename=cfg_path)
+
+        misplaced_warnings = [r for r in caplog.records if 'move' in r.message and 'publish' in r.message]
+        assert misplaced_warnings == [], f'Unexpected warning: {[r.message for r in misplaced_warnings]}'
+
+    def test_no_warning_with_single_record(self, tmp_path, caplog):
+        """No warning when there's only one input record (no ambiguity)."""
+        import logging
+        from syntagmax.config import Config
+        from syntagmax.params import Params
+
+        project_root = tmp_path / 'project'
+        project_root.mkdir()
+        dot_syntagmax = project_root / '.syntagmax'
+        dot_syntagmax.mkdir()
+
+        cfg_path = dot_syntagmax / 'config.toml'
+        cfg_content = """
+base = ".."
+
+[[input]]
+name = "sys-reqs"
+dir = "SYS"
+driver = "obsidian"
+atype = "SYS"
+publish = "publish.yaml"
+"""
+        cfg_path.write_text(cfg_content, encoding='utf-8')
+        (project_root / 'SYS').mkdir()
+        (project_root / 'publish.yaml').write_text('start_level: 2', encoding='utf-8')
+
+        params = Params(verbose=False, render_tree=False, ai=False)
+        with caplog.at_level(logging.WARNING):
+            Config(params=params, config_filename=cfg_path)
+
+        misplaced_warnings = [r for r in caplog.records if 'move' in r.message and 'publish' in r.message]
+        assert misplaced_warnings == [], f'Unexpected warning: {[r.message for r in misplaced_warnings]}'
