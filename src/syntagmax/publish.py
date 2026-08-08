@@ -343,7 +343,7 @@ def _resolve_remaining_fields(artifact: Artifact, explicit_attrs: set[str], meta
     # Merge metamodel attributes if available
     if metamodel:
         atype_upper = artifact.atype.upper()
-        artifact_types = metamodel.get('artifact_types', {})
+        artifact_types = metamodel.get('artifacts', {})
         for type_name, type_def in artifact_types.items():
             if type_name.upper() == atype_upper:
                 if hasattr(type_def, 'attributes'):
