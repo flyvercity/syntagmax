@@ -84,6 +84,8 @@ Recent changes include:
 - **Localized file status strings** in change reports.
 - **Binary artifact change reporting** for sidecar-managed binary files.
 - **Summary mode** for change reports, providing a high-level overview of changes.
+- **Full localization infrastructure** supporting multiple languages (English and Russian) for error messages and reports.
+- **Ad-hoc AI agent command support** via the `--command` option in `ai verify` for custom AI provider integration.
 
 ## Source references
 - Artifacts: `src/syntagmax/artifact.py`

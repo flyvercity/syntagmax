@@ -18,7 +18,8 @@ Syntagmax is organized around a dependency-driven analysis pipeline with a separ
 - `src/syntagmax/i18n.py` provides localization utilities for change reports and other user-facing messages.
 - `src/syntagmax/tasks.py` handles automatic task generation for impact analysis.
 - `src/syntagmax/ai.py` implements AI-assisted analysis with configurable agent commands.
-- `src/syntagmax/cli_ai.py` provides the CLI interface for AI agent commands.
+- `src/syntagmax/cli_ai.py` provides the CLI interface for AI agent commands, including the `ai verify` command for impact task verification with support for ad-hoc agent commands via `--command`.
+- `src/syntagmax/resources/agents.yaml` defines the registry of available AI agents (kiro, claude, codex, copilot, opencode, antigravity, mistral-vibe, crush, pi, kimi, aider, cline, grok, hermes) and their command patterns.
 
 ## Analysis pipeline
 The analysis path is dependency-ordered rather than hardcoded. `main.py` defines the step graph:
@@ -71,7 +72,7 @@ The publishing system is config-driven and record-specific. Each input record ma
 
 The metamodel loader in `metamodel.py` uses a Lark grammar to parse the `.syntagmax` DSL and validate constraints such as required `id` and `contents` rules, boolean anchors, and trace rule sanity. Recent optimizations include **simplified mandatory attribute logic** and **performance improvements** in validation.
 
-The configuration layer also handles AI agent command definitions from `src/syntagmax/resources/agents.yaml`, which define the available AI providers and their command patterns.
+The configuration layer also handles AI agent command definitions from `src/syntagmax/resources/agents.yaml`, which define the available AI providers and their command patterns. The agent registry includes: kiro, claude, codex, copilot, opencode, antigravity, mistral-vibe, crush, pi, kimi, aider, cline, grok, and hermes.
 
 ## Plugin system
 `plugin.py` implements a two-hook plugin model:
