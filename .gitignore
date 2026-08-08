@@ -1,4 +1,5 @@
 .bug-hunter/
+.crush
 
 # Syntagmax worktrees (used by change report command)
 .syntagmax/worktrees/
