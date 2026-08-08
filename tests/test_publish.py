@@ -1396,6 +1396,53 @@ class TestRemainingAttributeExpansion:
         # Should NOT use fallback rendering
         assert '# UNK-1' not in result
 
+    def test_remaining_with_metamodel_attributes(self):
+        """_remaining_ discovers candidate attributes defined in metamodel['artifacts']."""
+        from syntagmax.publish_config import PublishConfig
+        from syntagmax.publish import render_block
+        from unittest.mock import MagicMock
+
+        artifact = MagicMock()
+        artifact.atype = 'REQ'
+        artifact.aid = 'REQ-1'
+        # Artifact instance only has status and priority, but metamodel defines owner as well
+        artifact.fields = {'id': 'REQ-1', 'contents': 'Desc', 'status': 'draft'}
+        artifact.location = None
+
+        pub_config = PublishConfig.model_validate({
+            'render': {
+                'REQ': [
+                    {
+                        'type': 'table',
+                        'attribute-presence': 'all',
+                        'attributes': [
+                            {'status': {'alias': 'Status'}},
+                            {'_remaining_': {'alias': ''}},
+                        ],
+                    },
+                ]
+            }
+        })
+
+        context = MagicMock()
+        context.config.metamodel = {
+            'artifacts': {
+                'REQ': {
+                    'attributes': {
+                        'status': [{'presence': 'mandatory'}],
+                        'owner': [{'presence': 'optional'}],
+                    }
+                }
+            }
+        }
+
+        block = ArtifactBlock(artifact=artifact, raw_text='')
+        result = render_block(block, pub_config, context=context)
+
+        assert '| Status | draft |' in result
+        # 'owner' is in metamodel with attribute-presence 'all', so it appears as empty cell
+        assert '| Owner |  |' in result
+
 
 class TestPublishConfigDefaultKeys:
     """Tests for parsing _default_ and _default_marker_ in PublishConfig."""
@@ -1476,3 +1523,104 @@ class TestPublishConfigDefaultKeys:
         assert format_field_label('sys_priority') == 'Sys Priority'
         assert format_field_label('priority') == 'Priority'
         assert format_field_label('status') == 'Status'
+
+
+
+class TestRemainingWithMetamodel:
+    """Tests for _remaining_ expansion using metamodel attribute definitions."""
+
+    def test_remaining_includes_metamodel_attributes_not_on_artifact(self):
+        """_remaining_ includes metamodel-defined attributes even if absent from artifact.fields."""
+        from syntagmax.publish_config import PublishConfig
+        from syntagmax.publish import render_block, _resolve_remaining_fields, RenderContext
+        from syntagmax.publish_config import collect_explicit_attributes
+
+        # Artifact only has 'status' beyond id/contents
+        artifact = MagicMock()
+        artifact.atype = 'REQ'
+        artifact.aid = 'REQ-1'
+        artifact.fields = {'id': 'REQ-1', 'contents': 'Body', 'status': 'active'}
+        artifact.location = None
+
+        # Metamodel defines 'priority' and 'owner' in addition to standard fields
+        metamodel = {
+            'artifacts': {
+                'REQ': {
+                    'artifact_name': 'REQ',
+                    'attributes': {
+                        'id': [{'presence': 'mandatory', 'type_info': {'type': 'string'}, 'condition': None}],
+                        'contents': [{'presence': 'mandatory', 'type_info': {'type': 'string'}, 'condition': None}],
+                        'status': [{'presence': 'mandatory', 'type_info': {'type': 'enum', 'allowed': ['draft', 'active']}, 'condition': None}],
+                        'priority': [{'presence': 'optional', 'type_info': {'type': 'integer'}, 'condition': None}],
+                        'owner': [{'presence': 'optional', 'type_info': {'type': 'string'}, 'condition': None}],
+                    },
+                },
+            },
+        }
+
+        # Config with _remaining_ and 'status' explicitly listed
+        pub_config = PublishConfig.model_validate({
+            'attribute-presence': 'all',
+            'render': {
+                'REQ': [
+                    {'type': 'table', 'attributes': [
+                        {'status': {'alias': 'Status'}},
+                        {'_remaining_': {'alias': ''}},
+                    ]},
+                ]
+            }
+        })
+
+        # Verify _resolve_remaining_fields includes metamodel attrs
+        render_sections = pub_config.render['REQ']
+        explicit = collect_explicit_attributes(render_sections)
+        remaining = _resolve_remaining_fields(artifact, explicit, metamodel)
+        # 'owner' and 'priority' from metamodel should be included
+        assert 'owner' in remaining
+        assert 'priority' in remaining
+        # 'status', 'id', 'contents' should be excluded
+        assert 'status' not in remaining
+        assert 'id' not in remaining
+        assert 'contents' not in remaining
+
+    def test_remaining_metamodel_case_insensitive_atype_lookup(self):
+        """_resolve_remaining_fields matches artifact type case-insensitively against metamodel."""
+        from syntagmax.publish import _resolve_remaining_fields
+        from syntagmax.publish_config import collect_explicit_attributes, PublishConfig
+
+        artifact = MagicMock()
+        artifact.atype = 'req'  # lowercase
+        artifact.aid = 'REQ-1'
+        artifact.fields = {'id': 'REQ-1', 'contents': 'Body'}
+        artifact.location = None
+
+        metamodel = {
+            'artifacts': {
+                'REQ': {  # uppercase in metamodel
+                    'artifact_name': 'REQ',
+                    'attributes': {
+                        'id': [{'presence': 'mandatory', 'type_info': {'type': 'string'}, 'condition': None}],
+                        'contents': [{'presence': 'mandatory', 'type_info': {'type': 'string'}, 'condition': None}],
+                        'verify': [{'presence': 'optional', 'type_info': {'type': 'string'}, 'condition': None}],
+                    },
+                },
+            },
+        }
+
+        explicit = {'id', 'contents'}
+        remaining = _resolve_remaining_fields(artifact, explicit, metamodel)
+        assert 'verify' in remaining
+
+    def test_remaining_without_metamodel_only_uses_artifact_fields(self):
+        """Without metamodel, _remaining_ only expands from artifact.fields."""
+        from syntagmax.publish import _resolve_remaining_fields
+
+        artifact = MagicMock()
+        artifact.atype = 'REQ'
+        artifact.aid = 'REQ-1'
+        artifact.fields = {'id': 'REQ-1', 'contents': 'Body', 'status': 'active'}
+        artifact.location = None
+
+        explicit = {'id', 'contents'}
+        remaining = _resolve_remaining_fields(artifact, explicit, None)
+        assert remaining == ['status']

@@ -404,11 +404,7 @@ def render_block(block: Block, pub_config: PublishConfig, context: RenderContext
                 return ''.join(parts)
             else:
                 # Try _default_marker_ before falling back to plain text
-                default_marker_sections = None
-                for k, v in pub_config.render.items():
-                    if k == DEFAULT_MARKER_KEY:
-                        default_marker_sections = v
-                        break
+                default_marker_sections = pub_config.render.get(DEFAULT_MARKER_KEY)
 
                 if default_marker_sections:
                     parts = []
@@ -476,10 +472,7 @@ def render_block(block: Block, pub_config: PublishConfig, context: RenderContext
 
         if not render_sections:
             # Try _default_ before falling back to hardcoded rendering
-            for k, v in pub_config.render.items():
-                if k == DEFAULT_ARTIFACT_KEY:
-                    render_sections = v
-                    break
+            render_sections = pub_config.render.get(DEFAULT_ARTIFACT_KEY)
 
         if not render_sections:
             # When content_level is explicitly provided (from render_block_tree), use it.

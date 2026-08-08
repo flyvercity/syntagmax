@@ -92,7 +92,7 @@ class PublishConfig(BaseModel):
         return v
 
 
-def collect_explicit_attributes(sections: list) -> set[str]:
+def collect_explicit_attributes(sections: list[RenderSection]) -> set[str]:
     """Collect all explicitly-named attributes across all render sections.
 
     Returns a set of lowercased attribute names that are explicitly listed,
