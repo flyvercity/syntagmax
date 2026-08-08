@@ -13,6 +13,11 @@ from pydantic import BaseModel, Field, field_validator, ConfigDict
 
 AttributePresence = Literal['all', 'mandatory', 'values-only']
 
+# Reserved keys for default render configurations
+DEFAULT_ARTIFACT_KEY = '_default_'
+DEFAULT_MARKER_KEY = '_default_marker_'
+REMAINING_SENTINEL = '_remaining_'
+
 
 class DocxTemplate(BaseModel):
     model_config = ConfigDict(extra='forbid', populate_by_name=True)
@@ -85,6 +90,35 @@ class PublishConfig(BaseModel):
         if '/' in v or '\\' in v:
             raise ValueError('contents_marker must not contain directory separators (/ or \\)')
         return v
+
+
+def collect_explicit_attributes(sections: list) -> set[str]:
+    """Collect all explicitly-named attributes across all render sections.
+
+    Returns a set of lowercased attribute names that are explicitly listed,
+    plus 'id' and 'contents' which are always excluded from _remaining_ expansion.
+    The REMAINING_SENTINEL itself is excluded from the result.
+    """
+    explicit: set[str] = set()
+    for sec in sections:
+        if isinstance(sec, (TableSection, TextSection)):
+            for attr_dict in sec.attributes:
+                attr_name = next(iter(attr_dict)).lower()
+                if attr_name != REMAINING_SENTINEL:
+                    explicit.add(attr_name)
+    # Always exclude id and contents
+    explicit.add('id')
+    explicit.add('contents')
+    return explicit
+
+
+def format_field_label(field_name: str) -> str:
+    """Format a raw field name into a title-cased display label.
+
+    Replaces underscores with spaces and applies title-casing.
+    Examples: 'customer_id' → 'Customer Id', 'priority' → 'Priority'
+    """
+    return field_name.replace('_', ' ').title()
 
 
 def load_publish_config(path: Path | None, root_dir: Path, *, explicit: bool = False) -> PublishConfig:

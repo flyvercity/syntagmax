@@ -1009,3 +1009,470 @@ class TestTableSpacerRendering:
         result, _ = render_block_tree(tree, multi_record=False)
         # Default table_spacer=1
         assert '&nbsp;\n\n| Field | Value |' in result
+
+
+class TestDefaultRenderSection:
+    """Tests for _default_ artifact render key."""
+
+    def test_default_used_for_unmapped_artifact_type(self):
+        """Artifact type not in render falls through to _default_."""
+        from syntagmax.publish_config import PublishConfig
+        from syntagmax.publish import render_block
+
+        artifact = MagicMock()
+        artifact.atype = 'FOO'
+        artifact.aid = 'FOO-1'
+        artifact.fields = {'id': 'FOO-1', 'contents': 'Some content', 'status': 'active'}
+        artifact.location = None
+
+        pub_config = PublishConfig.model_validate({
+            'render': {
+                '_default_': [
+                    {'type': 'table', 'attributes': [{'id': {'alias': 'ID'}}, {'status': {'alias': 'Status'}}]},
+                ]
+            }
+        })
+        block = ArtifactBlock(artifact=artifact, raw_text='')
+        result = render_block(block, pub_config)
+
+        assert '| ID | FOO-1 |' in result
+        assert '| Status | active |' in result
+        # Should NOT use fallback heading format
+        assert '# FOO-1' not in result
+
+    def test_explicit_type_takes_priority_over_default(self):
+        """Explicit atype key in render takes priority over _default_."""
+        from syntagmax.publish_config import PublishConfig
+        from syntagmax.publish import render_block
+
+        artifact = MagicMock()
+        artifact.atype = 'REQ'
+        artifact.aid = 'REQ-1'
+        artifact.fields = {'id': 'REQ-1', 'contents': 'Desc', 'status': 'active'}
+        artifact.location = None
+
+        pub_config = PublishConfig.model_validate({
+            'render': {
+                'REQ': [{'type': 'table', 'attributes': [{'id': {'alias': 'Identifier'}}]}],
+                '_default_': [{'type': 'table', 'attributes': [{'id': {'alias': 'Default ID'}}]}],
+            }
+        })
+        block = ArtifactBlock(artifact=artifact, raw_text='')
+        result = render_block(block, pub_config)
+
+        assert '| Identifier | REQ-1 |' in result
+        assert 'Default ID' not in result
+
+    def test_no_default_key_uses_fallback(self):
+        """Without _default_ key, unmapped type uses render_artifact_fallback."""
+        from syntagmax.publish_config import PublishConfig
+        from syntagmax.publish import render_block
+
+        artifact = MagicMock()
+        artifact.atype = 'FOO'
+        artifact.aid = 'FOO-1'
+        artifact.fields = {'id': 'FOO-1', 'contents': 'Body text', 'status': 'active'}
+        artifact.location = None
+
+        pub_config = PublishConfig.model_validate({
+            'render': {
+                'REQ': [{'type': 'table', 'attributes': [{'id': {'alias': 'ID'}}]}],
+            }
+        })
+        block = ArtifactBlock(artifact=artifact, raw_text='')
+        result = render_block(block, pub_config, content_level=3)
+
+        # Fallback format: heading + body + table
+        assert '### FOO-1' in result
+        assert 'Body text' in result
+
+    def test_default_with_text_section(self):
+        """_default_ with text section renders attributes correctly."""
+        from syntagmax.publish_config import PublishConfig
+        from syntagmax.publish import render_block
+
+        artifact = MagicMock()
+        artifact.atype = 'SYS'
+        artifact.aid = 'SYS-1'
+        artifact.fields = {'id': 'SYS-1', 'contents': 'System requirement text'}
+        artifact.location = None
+
+        pub_config = PublishConfig.model_validate({
+            'render': {
+                '_default_': [
+                    {'type': 'text', 'mode': 'block', 'attributes': [{'contents': {'alias': 'Description'}}]},
+                ]
+            }
+        })
+        block = ArtifactBlock(artifact=artifact, raw_text='')
+        result = render_block(block, pub_config)
+
+        assert '**Description**\n\nSystem requirement text\n\n' in result
+
+
+class TestDefaultMarkerRenderSection:
+    """Tests for _default_marker_ key."""
+
+    def test_default_marker_used_for_unmapped_marker(self):
+        """Marker not in render falls through to _default_marker_."""
+        from syntagmax.publish_config import PublishConfig
+        from syntagmax.publish import render_block
+
+        pub_config = PublishConfig.model_validate({
+            'render': {
+                '_default_marker_': [{'type': 'text', 'mode': 'block', 'alias': '{marker}'}],
+            }
+        })
+        block = TextBlock(content='This is a note.', marker='NOTE')
+        result = render_block(block, pub_config)
+
+        assert '**NOTE**\n\nThis is a note.\n\n' == result
+
+    def test_default_marker_placeholder_expansion(self):
+        """The {marker} placeholder expands to the actual marker name."""
+        from syntagmax.publish_config import PublishConfig
+        from syntagmax.publish import render_block
+
+        pub_config = PublishConfig.model_validate({
+            'render': {
+                '_default_marker_': [{'type': 'text', 'mode': 'inline', 'alias': '{marker}'}],
+            }
+        })
+        block = TextBlock(content='Fix this.', marker='TODO')
+        result = render_block(block, pub_config)
+
+        assert '**TODO**: Fix this.\n\n' == result
+
+    def test_default_marker_static_alias(self):
+        """Static alias (no placeholder) used as-is."""
+        from syntagmax.publish_config import PublishConfig
+        from syntagmax.publish import render_block
+
+        pub_config = PublishConfig.model_validate({
+            'render': {
+                '_default_marker_': [{'type': 'text', 'mode': 'block', 'alias': 'Annotation'}],
+            }
+        })
+        block = TextBlock(content='Something.', marker='WARNING')
+        result = render_block(block, pub_config)
+
+        assert '**Annotation**\n\nSomething.\n\n' == result
+
+    def test_explicit_marker_takes_priority_over_default(self):
+        """Explicit marker key takes priority over _default_marker_."""
+        from syntagmax.publish_config import PublishConfig
+        from syntagmax.publish import render_block
+
+        pub_config = PublishConfig.model_validate({
+            'render': {
+                'COM': [{'type': 'text', 'mode': 'inline', 'alias': 'Comment'}],
+                '_default_marker_': [{'type': 'text', 'mode': 'block', 'alias': '{marker}'}],
+            }
+        })
+        block = TextBlock(content='A comment.', marker='COM')
+        result = render_block(block, pub_config)
+
+        assert '**Comment**: A comment.\n\n' == result
+        assert '**COM**' not in result
+
+    def test_no_default_marker_falls_back_to_plain_text(self):
+        """Without _default_marker_, unmapped markers render as plain text."""
+        from syntagmax.publish_config import PublishConfig
+        from syntagmax.publish import render_block
+
+        pub_config = PublishConfig.model_validate({
+            'render': {
+                'COM': [{'type': 'text', 'mode': 'inline', 'alias': 'Comment'}],
+            }
+        })
+        block = TextBlock(content='A note.', marker='NOTE')
+        result = render_block(block, pub_config)
+
+        # Plain text rendering (no bold alias)
+        assert '**' not in result
+        assert 'A note.' in result
+
+
+class TestRemainingAttributeExpansion:
+    """Tests for _remaining_ pseudo-attribute expansion."""
+
+    def test_remaining_in_table_section(self):
+        """_remaining_ in table renders unlisted fields alphabetically with title-case."""
+        from syntagmax.publish_config import PublishConfig
+        from syntagmax.publish import render_block
+
+        artifact = MagicMock()
+        artifact.atype = 'REQ'
+        artifact.aid = 'REQ-1'
+        artifact.fields = {'id': 'REQ-1', 'contents': 'Body', 'status': 'active', 'priority': 'high', 'owner': 'alice'}
+        artifact.location = None
+
+        pub_config = PublishConfig.model_validate({
+            'render': {
+                'REQ': [
+                    {'type': 'table', 'attributes': [
+                        {'status': {'alias': 'Status'}},
+                        {'_remaining_': {'alias': ''}},
+                    ]},
+                ]
+            }
+        })
+        block = ArtifactBlock(artifact=artifact, raw_text='')
+        result = render_block(block, pub_config)
+
+        assert '| Status | active |' in result
+        assert '| Owner | alice |' in result
+        assert '| Priority | high |' in result
+        # owner comes before priority alphabetically
+        owner_pos = result.index('Owner')
+        priority_pos = result.index('Priority')
+        assert owner_pos < priority_pos
+
+    def test_remaining_in_text_section_block_mode(self):
+        """_remaining_ in text section with block mode renders each field with bold label."""
+        from syntagmax.publish_config import PublishConfig
+        from syntagmax.publish import render_block
+
+        artifact = MagicMock()
+        artifact.atype = 'REQ'
+        artifact.aid = 'REQ-1'
+        artifact.fields = {'id': 'REQ-1', 'contents': 'Body', 'owner': 'bob', 'priority': 'low'}
+        artifact.location = None
+
+        pub_config = PublishConfig.model_validate({
+            'render': {
+                'REQ': [
+                    {'type': 'text', 'mode': 'block', 'attributes': [
+                        {'_remaining_': {'alias': ''}},
+                    ]},
+                ]
+            }
+        })
+        block = ArtifactBlock(artifact=artifact, raw_text='')
+        result = render_block(block, pub_config)
+
+        assert '**Owner**\n\nbob\n\n' in result
+        assert '**Priority**\n\nlow\n\n' in result
+
+    def test_remaining_in_text_section_inline_mode(self):
+        """_remaining_ in text section with inline mode renders on single line."""
+        from syntagmax.publish_config import PublishConfig
+        from syntagmax.publish import render_block
+
+        artifact = MagicMock()
+        artifact.atype = 'REQ'
+        artifact.aid = 'REQ-1'
+        artifact.fields = {'id': 'REQ-1', 'contents': 'Body', 'owner': 'carol'}
+        artifact.location = None
+
+        pub_config = PublishConfig.model_validate({
+            'render': {
+                'REQ': [
+                    {'type': 'text', 'mode': 'inline', 'attributes': [
+                        {'_remaining_': {'alias': ''}},
+                    ]},
+                ]
+            }
+        })
+        block = ArtifactBlock(artifact=artifact, raw_text='')
+        result = render_block(block, pub_config)
+
+        assert '**Owner**: carol\n\n' in result
+
+    def test_remaining_cross_section_exclusion(self):
+        """Fields listed in one section are excluded from _remaining_ in another."""
+        from syntagmax.publish_config import PublishConfig
+        from syntagmax.publish import render_block
+
+        artifact = MagicMock()
+        artifact.atype = 'REQ'
+        artifact.aid = 'REQ-1'
+        artifact.fields = {'id': 'REQ-1', 'contents': 'Body', 'status': 'active', 'priority': 'high', 'owner': 'alice'}
+        artifact.location = None
+
+        pub_config = PublishConfig.model_validate({
+            'render': {
+                'REQ': [
+                    {'type': 'table', 'attributes': [
+                        {'status': {'alias': 'Status'}},
+                    ]},
+                    {'type': 'text', 'mode': 'block', 'attributes': [
+                        {'contents': {'alias': 'Body'}},
+                        {'_remaining_': {'alias': ''}},
+                    ]},
+                ]
+            }
+        })
+        block = ArtifactBlock(artifact=artifact, raw_text='')
+        result = render_block(block, pub_config)
+
+        # status is in table section, should not appear in _remaining_ of text section
+        assert '**Status**' not in result.split('**Body**')[1] if '**Body**' in result else True
+        # owner and priority should appear in remaining
+        assert '**Owner**' in result
+        assert '**Priority**' in result
+
+    def test_remaining_empty_when_all_fields_explicit(self):
+        """_remaining_ produces no output when all fields are already listed."""
+        from syntagmax.publish_config import PublishConfig
+        from syntagmax.publish import render_block
+
+        artifact = MagicMock()
+        artifact.atype = 'REQ'
+        artifact.aid = 'REQ-1'
+        artifact.fields = {'id': 'REQ-1', 'contents': 'Body', 'status': 'active'}
+        artifact.location = None
+
+        pub_config = PublishConfig.model_validate({
+            'render': {
+                'REQ': [
+                    {'type': 'table', 'attributes': [
+                        {'status': {'alias': 'Status'}},
+                        {'_remaining_': {'alias': ''}},
+                    ]},
+                ]
+            }
+        })
+        block = ArtifactBlock(artifact=artifact, raw_text='')
+        result = render_block(block, pub_config)
+
+        assert '| Status | active |' in result
+        # Only one data row (status), no remaining fields
+        lines = [l for l in result.split('\n') if l.startswith('| ') and '---' not in l and l.strip() != '|           |       |']
+        assert len(lines) == 1
+
+    def test_remaining_title_case_formatting(self):
+        """_remaining_ field names are title-cased with underscores replaced by spaces."""
+        from syntagmax.publish_config import PublishConfig
+        from syntagmax.publish import render_block
+
+        artifact = MagicMock()
+        artifact.atype = 'REQ'
+        artifact.aid = 'REQ-1'
+        artifact.fields = {'id': 'REQ-1', 'contents': 'Body', 'customer_id': 'C-42', 'sys_priority': 'high'}
+        artifact.location = None
+
+        pub_config = PublishConfig.model_validate({
+            'render': {
+                'REQ': [
+                    {'type': 'table', 'attributes': [
+                        {'_remaining_': {'alias': ''}},
+                    ]},
+                ]
+            }
+        })
+        block = ArtifactBlock(artifact=artifact, raw_text='')
+        result = render_block(block, pub_config)
+
+        assert '| Customer Id | C-42 |' in result
+        assert '| Sys Priority | high |' in result
+
+    def test_remaining_combined_with_default_key(self):
+        """_remaining_ works correctly with _default_ render key."""
+        from syntagmax.publish_config import PublishConfig
+        from syntagmax.publish import render_block
+
+        artifact = MagicMock()
+        artifact.atype = 'UNKNOWN'
+        artifact.aid = 'UNK-1'
+        artifact.fields = {'id': 'UNK-1', 'contents': 'Desc', 'status': 'draft', 'version': '2.0'}
+        artifact.location = None
+
+        pub_config = PublishConfig.model_validate({
+            'render': {
+                '_default_': [
+                    {'type': 'table', 'attributes': [
+                        {'status': {'alias': 'Status'}},
+                        {'_remaining_': {'alias': ''}},
+                    ]},
+                ]
+            }
+        })
+        block = ArtifactBlock(artifact=artifact, raw_text='')
+        result = render_block(block, pub_config)
+
+        assert '| Status | draft |' in result
+        assert '| Version | 2.0 |' in result
+        # Should NOT use fallback rendering
+        assert '# UNK-1' not in result
+
+
+class TestPublishConfigDefaultKeys:
+    """Tests for parsing _default_ and _default_marker_ in PublishConfig."""
+
+    def test_parse_default_artifact_key(self):
+        """PublishConfig accepts _default_ as a render key."""
+        from syntagmax.publish_config import PublishConfig
+
+        config = PublishConfig.model_validate({
+            'render': {
+                '_default_': [
+                    {'type': 'table', 'attributes': [{'id': {'alias': 'ID'}}]},
+                ]
+            }
+        })
+        assert '_default_' in config.render
+        assert len(config.render['_default_']) == 1
+
+    def test_parse_default_marker_key(self):
+        """PublishConfig accepts _default_marker_ as a render key."""
+        from syntagmax.publish_config import PublishConfig
+
+        config = PublishConfig.model_validate({
+            'render': {
+                '_default_marker_': [
+                    {'type': 'text', 'mode': 'block', 'alias': '{marker}'},
+                ]
+            }
+        })
+        assert '_default_marker_' in config.render
+        assert len(config.render['_default_marker_']) == 1
+
+    def test_remaining_accepted_as_attribute_key(self):
+        """_remaining_ is accepted as a valid attribute name in sections."""
+        from syntagmax.publish_config import PublishConfig, TableSection, TextSection
+
+        # In table
+        data = {'type': 'table', 'attributes': [{'_remaining_': {'alias': ''}}]}
+        sec = TableSection.model_validate(data)
+        assert '_remaining_' in sec.attributes[0]
+
+        # In text
+        data = {'type': 'text', 'mode': 'block', 'attributes': [{'_remaining_': {'alias': ''}}]}
+        sec = TextSection.model_validate(data)
+        assert '_remaining_' in sec.attributes[0]
+
+    def test_collect_explicit_attributes(self):
+        """collect_explicit_attributes returns correct set."""
+        from syntagmax.publish_config import (
+            PublishConfig, TableSection, TextSection, AttributeRender,
+            collect_explicit_attributes, REMAINING_SENTINEL,
+        )
+
+        sections = [
+            TableSection(type='table', attributes=[
+                {'id': AttributeRender(alias='ID')},
+                {'status': AttributeRender(alias='Status')},
+                {'_remaining_': AttributeRender(alias='')},
+            ]),
+            TextSection(type='text', mode='block', attributes=[
+                {'contents': AttributeRender(alias='Body')},
+                {'priority': AttributeRender(alias='Priority')},
+            ]),
+        ]
+
+        result = collect_explicit_attributes(sections)
+        assert 'id' in result
+        assert 'contents' in result
+        assert 'status' in result
+        assert 'priority' in result
+        assert REMAINING_SENTINEL not in result
+
+    def test_format_field_label(self):
+        """format_field_label produces title-cased labels."""
+        from syntagmax.publish_config import format_field_label
+
+        assert format_field_label('customer_id') == 'Customer Id'
+        assert format_field_label('sys_priority') == 'Sys Priority'
+        assert format_field_label('priority') == 'Priority'
+        assert format_field_label('status') == 'Status'
