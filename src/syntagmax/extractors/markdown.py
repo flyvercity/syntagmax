@@ -8,8 +8,8 @@ from pathlib import Path
 import logging as lg
 import re
 from typing import Callable
-from lark import Lark, Transformer, exceptions
 from benedict import benedict
+from lark import Lark, Transformer, exceptions
 
 from syntagmax.extractors.extractor import Extractor, ExtractorResult
 from syntagmax.config import Config, InputRecord
