@@ -24,6 +24,8 @@ class Extractor:
         self._config = config
         self._record = record
         self._metamodel = metamodel
+        self._is_multiple_cache: dict[tuple[str, str], bool] = {}
+        self._yaml_bool_cache: dict[tuple[str, str, bool], str] = {}
 
     def driver(self) -> str: ...
 
@@ -63,6 +65,12 @@ class Extractor:
         if not isinstance(value, bool):
             return str(value)
 
+        # OPTIMIZATION: Cache boolean value string representation results
+        cache_key = (atype, attr_name, value)
+        if cache_key in self._yaml_bool_cache:
+            return self._yaml_bool_cache[cache_key]
+
+        res = None
         # Look up custom boolean labels from metamodel
         if self._metamodel:
             rules = (
@@ -78,12 +86,17 @@ class Extractor:
                 if type_info.get('type') == 'boolean' and 'custom_values' in type_info:
                     custom = type_info['custom_values']
                     if value:
-                        return custom['true'][0]
+                        res = custom['true'][0]
                     else:
-                        return custom['false'][0]
+                        res = custom['false'][0]
+                    break
 
-        # Default YAML 1.1 boolean labels
-        return 'yes' if value else 'no'
+        if res is None:
+            # Default YAML 1.1 boolean labels
+            res = 'yes' if value else 'no'
+
+        self._yaml_bool_cache[cache_key] = res
+        return res
 
     def extract_blocks_from_file(self, filepath: Path) -> list['Block']:
         return []
