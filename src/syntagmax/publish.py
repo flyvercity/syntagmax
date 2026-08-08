@@ -13,7 +13,11 @@ from syntagmax.config import Config, InputRecord
 from syntagmax.extract import EXTRACTORS
 from syntagmax.artifact import Artifact, FileLocation
 from syntagmax.metamodel import is_attribute_mandatory
-from syntagmax.publish_config import PublishConfig, TableSection, TextSection, MarkerRenderSection, AttributePresence
+from syntagmax.publish_config import (
+    PublishConfig, TableSection, TextSection, MarkerRenderSection, AttributePresence,
+    DEFAULT_ARTIFACT_KEY, DEFAULT_MARKER_KEY, REMAINING_SENTINEL,
+    collect_explicit_attributes, format_field_label,
+)
 from syntagmax.publish_context import (
     RenderContext,
     ImageManifest,
@@ -327,6 +331,35 @@ def render_artifact_fallback(artifact: Artifact, content_level: int, table_space
     return ''.join(parts)
 
 
+def _resolve_remaining_fields(artifact: Artifact, explicit_attrs: set[str], metamodel: dict | None) -> list[str]:
+    """Resolve the remaining fields for _remaining_ expansion.
+
+    Builds a candidate set from artifact.fields union with metamodel attributes (if available),
+    filters out explicitly-listed attributes (case-insensitive), and returns sorted alphabetically.
+    """
+    # Start with artifact's actual fields
+    candidates: set[str] = set(artifact.fields.keys())
+
+    # Merge metamodel attributes if available
+    if metamodel:
+        atype_upper = artifact.atype.upper()
+        artifact_types = metamodel.get('artifacts', {})
+        for type_name, type_def in artifact_types.items():
+            if type_name.upper() == atype_upper:
+                if hasattr(type_def, 'attributes'):
+                    candidates.update(type_def.attributes.keys())
+                elif isinstance(type_def, dict):
+                    candidates.update(type_def.get('attributes', {}).keys())
+                break
+
+    # Filter: remove any field whose lowercased name is in the explicit set
+    remaining = [k for k in candidates if k.lower() not in explicit_attrs]
+
+    # Sort alphabetically (case-insensitive sort, preserving original key for display)
+    remaining.sort(key=lambda x: x.lower())
+    return remaining
+
+
 def render_block(block: Block, pub_config: PublishConfig, context: RenderContext | None = None, content_level: int | None = None) -> str:
     """Render a single block to Markdown.
 
@@ -366,9 +399,31 @@ def render_block(block: Block, pub_config: PublishConfig, context: RenderContext
                             parts.append(f'**{sec.alias}**\n\n{content}\n\n')
                         elif sec.mode == 'inline':
                             parts.append(f'**{sec.alias}**: {content}\n\n')
+                    else:
+                        lg.warning(f"Incompatible section type '{type(sec).__name__}' under marker render config for '{marker}'; skipping")
                 return ''.join(parts)
             else:
-                # If marker configured but not in render, fall back to plain text
+                # Try _default_marker_ before falling back to plain text
+                default_marker_sections = pub_config.render.get(DEFAULT_MARKER_KEY)
+
+                if default_marker_sections:
+                    parts = []
+                    for sec in default_marker_sections:
+                        if isinstance(sec, MarkerRenderSection):
+                            content = block.content.strip()
+                            if context:
+                                content = rewrite_image_references(content, context)
+                            # Expand {marker} placeholder in alias
+                            alias = sec.alias.replace('{marker}', marker)
+                            if sec.mode == 'block':
+                                parts.append(f'**{alias}**\n\n{content}\n\n')
+                            elif sec.mode == 'inline':
+                                parts.append(f'**{alias}**: {content}\n\n')
+                        else:
+                            lg.warning(f"Incompatible section type '{type(sec).__name__}' under '{DEFAULT_MARKER_KEY}'; skipping")
+                    return ''.join(parts)
+
+                # Fall back to plain text
                 content = adjust_text_headings_and_prefixes(
                     block.content,
                     effective_level,
@@ -416,12 +471,19 @@ def render_block(block: Block, pub_config: PublishConfig, context: RenderContext
                 break
 
         if not render_sections:
+            # Try _default_ before falling back to hardcoded rendering
+            render_sections = pub_config.render.get(DEFAULT_ARTIFACT_KEY)
+
+        if not render_sections:
             # When content_level is explicitly provided (from render_block_tree), use it.
             # When None (direct callers), preserve historical behaviour: start_level + 2.
             fallback_level = effective_level if content_level is not None else pub_config.start_level + 2
             return image_embed + render_artifact_fallback(a, fallback_level, pub_config.table_spacer, context=context)
 
         parts = []
+        # Compute explicit attributes once for _remaining_ expansion
+        explicit_attrs = collect_explicit_attributes(render_sections)
+
         for sec in render_sections:
             if isinstance(sec, TableSection):
                 # Resolve effective presence mode
@@ -443,9 +505,18 @@ def render_block(block: Block, pub_config: PublishConfig, context: RenderContext
                     # and indexing it, which speeds up single-key metadata dictionary lookups.
                     attr_name = next(iter(attr_dict))
                     attr_render = attr_dict[attr_name]
-                    val = get_artifact_field_value(a, attr_name)
-                    if should_render_attribute(attr_name, val, effective_presence, a.atype, metamodel):
-                        rows.append((attr_render.alias, val or ''))
+
+                    if attr_name.lower() == REMAINING_SENTINEL:
+                        # Expand _remaining_: all fields not explicitly listed
+                        remaining_fields = _resolve_remaining_fields(a, explicit_attrs, metamodel)
+                        for field_name in remaining_fields:
+                            val = get_artifact_field_value(a, field_name)
+                            if should_render_attribute(field_name, val, effective_presence, a.atype, metamodel):
+                                rows.append((format_field_label(field_name), val or ''))
+                    else:
+                        val = get_artifact_field_value(a, attr_name)
+                        if should_render_attribute(attr_name, val, effective_presence, a.atype, metamodel):
+                            rows.append((attr_render.alias, val or ''))
                 if rows:
                     effective_spacer = sec.spacer if sec.spacer is not None else pub_config.table_spacer
                     parts.append('&nbsp;\n\n' * effective_spacer)
@@ -459,19 +530,44 @@ def render_block(block: Block, pub_config: PublishConfig, context: RenderContext
                     # and indexing it, which speeds up single-key metadata dictionary lookups.
                     attr_name = next(iter(attr_dict))
                     attr_render = attr_dict[attr_name]
-                    val = get_artifact_field_value(a, attr_name)
-                    if val:
-                        processed_val = adjust_text_headings_and_prefixes(
-                            val,
-                            effective_level,
-                            pub_config.remove_numeric_prefixes_in_headers,
-                        ).strip()
+
+                    if attr_name.lower() == REMAINING_SENTINEL:
+                        # Expand _remaining_: all fields not explicitly listed
+                        metamodel = None
                         if context:
-                            processed_val = rewrite_image_references(processed_val, context)
-                        if sec.mode == 'block':
-                            parts.append(f'**{attr_render.alias}**\n\n{processed_val}\n\n')
-                        elif sec.mode == 'inline':
-                            parts.append(f'**{attr_render.alias}**: {processed_val}\n\n')
+                            metamodel = context.config.metamodel
+                        remaining_fields = _resolve_remaining_fields(a, explicit_attrs, metamodel)
+                        for field_name in remaining_fields:
+                            val = get_artifact_field_value(a, field_name)
+                            if val:
+                                processed_val = adjust_text_headings_and_prefixes(
+                                    val,
+                                    effective_level,
+                                    pub_config.remove_numeric_prefixes_in_headers,
+                                ).strip()
+                                if context:
+                                    processed_val = rewrite_image_references(processed_val, context)
+                                label = format_field_label(field_name)
+                                if sec.mode == 'block':
+                                    parts.append(f'**{label}**\n\n{processed_val}\n\n')
+                                elif sec.mode == 'inline':
+                                    parts.append(f'**{label}**: {processed_val}\n\n')
+                    else:
+                        val = get_artifact_field_value(a, attr_name)
+                        if val:
+                            processed_val = adjust_text_headings_and_prefixes(
+                                val,
+                                effective_level,
+                                pub_config.remove_numeric_prefixes_in_headers,
+                            ).strip()
+                            if context:
+                                processed_val = rewrite_image_references(processed_val, context)
+                            if sec.mode == 'block':
+                                parts.append(f'**{attr_render.alias}**\n\n{processed_val}\n\n')
+                            elif sec.mode == 'inline':
+                                parts.append(f'**{attr_render.alias}**: {processed_val}\n\n')
+            elif isinstance(sec, MarkerRenderSection):
+                lg.warning(f"Incompatible section type 'MarkerRenderSection' under artifact render config for '{a.atype}'; skipping")
 
         return image_embed + ''.join(parts)
 
