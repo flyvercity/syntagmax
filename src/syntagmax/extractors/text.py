@@ -128,7 +128,9 @@ class TextExtractor(Extractor):
             self.update_artifacts(artifact.location.loc_file, [(artifact, fields['id'])])
 
     def _format_error(self, error_type: str, location: LineLocation, section_start_string: str, message: str) -> str:
-        return _("Driver 'text': {error_type} in {location}\nWhile analyzing {section}\nReason: {message}").format(error_type=error_type, location=location, section=section_start_string, message=message)
+        return _("Driver 'text': {error_type} in {location}\nWhile analyzing {section}\nReason: {message}").format(
+            error_type=error_type, location=location, section=section_start_string, message=message
+        )
 
     def extract_blocks_from_file(self, filepath: Path) -> list[Block]:
         blocks: list[Block] = []

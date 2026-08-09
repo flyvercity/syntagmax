@@ -320,6 +320,16 @@ class Config:
         self._global_publish_config = config_model.publish
         self._read_input_records(config_model.input, config_model.drivers)
 
+        # Warn if publish field is likely misplaced (per-record instead of global)
+        if not self._global_publish_config and len(self._input_records) > 1:
+            records_with_publish = [r for r in self._input_records if r.publish_config]
+            if len(records_with_publish) == 1:
+                lg.warning(
+                    f'Only input record "{records_with_publish[0].name}" has a "publish" field set, '
+                    f'and no global "publish" is defined. If you intended this to apply to all records, '
+                    f'move \'publish = "{records_with_publish[0].publish_config}"\' above the first [[input]] section in config.toml.'
+                )
+
         self.metrics = config_model.metrics
         self.impact = config_model.impact
         self.ai = config_model.ai

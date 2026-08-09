@@ -8,8 +8,8 @@ from pathlib import Path
 import logging as lg
 import re
 from typing import Callable
-from lark import Lark, Transformer, exceptions
 from benedict import benedict
+from lark import Lark, Transformer, exceptions
 
 from syntagmax.extractors.extractor import Extractor, ExtractorResult
 from syntagmax.config import Config, InputRecord
@@ -133,12 +133,21 @@ class MarkdownExtractor(MarkerSplitterMixin, ElementFilterMixin, Extractor):
             self._fallback_num_patterns = len(fallback_patterns)
 
     def _is_multiple_attr(self, atype: str, attr_name: str) -> bool:
+        # OPTIMIZATION: Cache whether an attribute is marked as multiple in the metamodel
+        cache_key = (atype, attr_name)
+        if cache_key in self._is_multiple_cache:
+            return self._is_multiple_cache[cache_key]
+
         if not self._metamodel:
-            return False
-        attrs = self._metamodel.get('artifacts', {}).get(atype, {}).get('attributes', {}).get(attr_name, [])
-        if isinstance(attrs, dict):
-            attrs = [attrs]
-        return any(rule.get('multiple', False) for rule in attrs)
+            res = False
+        else:
+            attrs = self._metamodel.get('artifacts', {}).get(atype, {}).get('attributes', {}).get(attr_name, [])
+            if isinstance(attrs, dict):
+                attrs = [attrs]
+            res = any(rule.get('multiple', False) for rule in attrs)
+
+        self._is_multiple_cache[cache_key] = res
+        return res
 
 
     def update_artifacts(self, loc_file: str, updates: list[tuple[Artifact, str]]):

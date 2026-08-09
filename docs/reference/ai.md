@@ -27,6 +27,7 @@ syntagmax ai verify <task-file> [OPTIONS]
 | Option | Default | Description |
 |--------|---------|-------------|
 | `--agent <name>` | Config default | Override the default agent |
+| `--command <pattern>` | (none) | Ad-hoc agent command pattern (must contain `{prompt}`). Mutually exclusive with `--agent`. |
 | `--amend` | off | Directly amend the child artifact if verification fails |
 
 #### Behaviour
@@ -34,7 +35,7 @@ syntagmax ai verify <task-file> [OPTIONS]
 1. Parses the task file and validates it is an impact task (`TASK-IMPACT-*` ID pattern).
 2. Checks that task status is `open`.
 3. Emits a warning if the repository is dirty (proceeds regardless).
-4. Resolves the AI agent from configuration or `--agent` flag.
+4. Resolves the AI agent from configuration, `--agent` flag, or `--command` pattern.
 5. Renders a prompt with task metadata and invokes the agent interactively.
 6. After agent completes, validates the task file:
    - ID is unchanged
@@ -69,7 +70,10 @@ The agent prompt is structured in two explicit phases:
 syntagmax ai verify .syntagmax/tasks/TASK-IMPACT-REQ-003-SYS-003.md
 
 # Verify using a specific agent
-syntagmax ai verify .syntagmax/tasks/TASK-IMPACT-REQ-003-SYS-003.md --agent claude-code
+syntagmax ai verify .syntagmax/tasks/TASK-IMPACT-REQ-003-SYS-003.md --agent claude
+
+# Verify using an ad-hoc command pattern (no registry needed)
+syntagmax ai verify .syntagmax/tasks/TASK-IMPACT-REQ-003-SYS-003.md --command "pi --print {prompt}"
 
 # Verify and receive amendment guidance on fail (default Phase 2)
 syntagmax ai verify .syntagmax/tasks/TASK-IMPACT-REQ-003-SYS-003.md
@@ -77,12 +81,16 @@ syntagmax ai verify .syntagmax/tasks/TASK-IMPACT-REQ-003-SYS-003.md
 # Verify and automatically amend the child artifact on fail
 syntagmax ai verify .syntagmax/tasks/TASK-IMPACT-REQ-003-SYS-003.md --amend
 
+# Combine --command with --amend
+syntagmax ai verify .syntagmax/tasks/TASK-IMPACT-REQ-003-SYS-003.md --command "claude --dangerously-skip-permissions --print {prompt}" --amend
+
 # With a custom config file
 syntagmax -f my-config.toml ai verify tasks/TASK-IMPACT-REQ-001-SYS-001.md
 ```
 
 #### Important Notes
 
+- **`--command` for ad-hoc agents:** Use `--command "<pattern>"` to try a new agent without editing registry files. The pattern must contain `{prompt}`. The agent name in the verification report will be `custom`.
 - **Phase 1 is audit-only (without `--amend`):** The agent evaluates consistency and updates the task file. Without `--amend`, it MUST NOT modify the parent or child artifact files.
 - **`--amend` grants write access to the child artifact:** The agent is explicitly instructed to edit the child artifact to resolve discrepancies. Always review changes with `git diff` before committing.
 - **Working directory cleanliness:** Running `--amend` on a dirty repository may overwrite pending edits in the child artifact. Ensure your working tree is clean before using `--amend`, or stash uncommitted changes first. Syntagmax emits a warning if the repository is dirty.
@@ -114,13 +122,20 @@ Agent definitions map names to command-line invocation patterns. The built-in re
 
 | Name | Command Pattern | Description |
 |------|----------------|-------------|
-| `kiro` | `kiro-cli chat --trust-all-tools --no-interactive {prompt}` | Kiro CLI agent |
-| `claude` | `claude --dangerously-skip-permissions --print {prompt}` | Claude Code CLI |
-| `codex` | `codex --prompt {prompt}` | OpenAI Codex CLI |
-| `copilot` | `copilot {prompt}` | GitHub Copilot CLI |
-| `opencode` | `opencode --prompt {prompt}` | OpenCode CLI |
-| `antigravity` | `antigravity --prompt {prompt}` | Antigravity CLI |
-| `mistral-vibe` | `vibe --prompt {prompt}` | Mistral Vibe CLI |
+| `kiro` | `kiro-cli chat --trust-all-tools --no-interactive 'Execute {prompt}'` | Kiro CLI agent |
+| `claude` | `claude --dangerously-skip-permissions --verbose --print {prompt}` | Claude Code CLI |
+| `codex` | `codex --dangerously-bypass-approvals-and-sandbox exec {prompt}` | OpenAI Codex CLI |
+| `copilot` | `copilot --allow-all --prompt {prompt}` | GitHub Copilot CLI |
+| `opencode` | `opencode run --auto {prompt}` | OpenCode CLI |
+| `antigravity` | `agy --dangerously-skip-permissions --prompt {prompt}` | Antigravity CLI |
+| `mistral-vibe` | `vibe --yolo --prompt {prompt}` | Mistral Vibe CLI |
+| `crush` | `crush run {prompt}` | Charm Crush |
+| `pi` | `pi --print {prompt}` | PI Coding Agent |
+| `kimi` | `kimi --prompt {prompt}` | Kimi Code |
+| `aider` | `aider --no-auto-commits --yes-always --message-file {prompt}` | Aider |
+| `cline` | `cline 'Execute {prompt}'` | Cline CLI |
+| `grok` | `grok --always-approve --single {prompt}` | Grok Build |
+| `hermes` | `hermes --yolo --oneshot {prompt}` | Hermes CLI |
 
 > ⚠️ **Mistral Vibe caveat:** The `--yolo` flag used internally enables auto-commit behaviour — Mistral Vibe may commit changes to the repository without explicit user request. Always inspect `git log` and `git diff` after invocation and use `git reset HEAD~1` to undo unwanted commits.
 

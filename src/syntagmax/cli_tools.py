@@ -20,7 +20,7 @@ from syntagmax.config import Config, Params
 @click.option('--attribute', multiple=True, help='Additional lead artifact attributes to include as columns')
 @click.option('--flat', is_flag=True, help='Combine multiple linked IDs into semicolon-separated values')
 @click.option('--delimiter', default=None, help='Column delimiter (default: "," or "\\t" for .tsv files)')
-@click.option('--output', default=None, help='Output file path (use "console" for stdout). Default: .syntagmax/outputs/trace-<child>-<parent>-<date>.csv')
+@click.option('--output', default=None, help='Output file path (use "console" for stdout). Default: <output_path>/trace-<child>-<parent>-<date>.csv')
 @click.option('-f', '--config-file', type=click.Path(), default='.syntagmax/config.toml')
 def trace(
     obj: Params,

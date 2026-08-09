@@ -77,7 +77,7 @@ class MarkerSplitterMixin:
         result: list[Block] = []
         pos = 0
         for match in matches:
-            before = content[pos:match.start()]
+            before = content[pos : match.start()]
             if before:
                 offset = (base_offset + pos) if base_offset is not None else None
                 result.append(TextBlock(content=before, marker=None, source_offset=offset))
@@ -91,7 +91,9 @@ class MarkerSplitterMixin:
                 if not _validate_block_id(raw_id):
                     result.append(
                         ErrorBlock(
-                            message=_('Invalid block ID "{block_id}" for marker [{marker}] — IDs must match [a-zA-Z0-9_.-]').format(block_id=raw_id, marker=marker_name),
+                            message=_('Invalid block ID "{block_id}" for marker [{marker}] — IDs must match [a-zA-Z0-9_.-]').format(
+                                block_id=raw_id, marker=marker_name
+                            ),
                             raw_text=match.group(0),
                         )
                     )
@@ -119,7 +121,7 @@ class MarkerSplitterMixin:
         result: list[Block] = []
         pos = 0
         for match in matches:
-            before = content[pos:match.start()]
+            before = content[pos : match.start()]
             if before:
                 offset = (base_offset + pos) if base_offset is not None else None
                 result.append(TextBlock(content=before, marker=None, source_offset=offset))
@@ -133,7 +135,9 @@ class MarkerSplitterMixin:
                 if not _validate_block_id(raw_id):
                     result.append(
                         ErrorBlock(
-                            message=_('Invalid block ID "{block_id}" for marker [{marker}] — IDs must match [a-zA-Z0-9_.-]').format(block_id=raw_id, marker=marker_name),
+                            message=_('Invalid block ID "{block_id}" for marker [{marker}] — IDs must match [a-zA-Z0-9_.-]').format(
+                                block_id=raw_id, marker=marker_name
+                            ),
                             raw_text=match.group(0),
                         )
                     )
@@ -177,7 +181,7 @@ class MarkerSplitterMixin:
         result: list[Block] = []
         pos = 0
         for match in matches:
-            before = content[pos:match.start()]
+            before = content[pos : match.start()]
             if before:
                 offset = (base_offset + pos) if base_offset is not None else None
                 result.append(TextBlock(content=before, marker=None, source_offset=offset))
@@ -191,7 +195,9 @@ class MarkerSplitterMixin:
                 if not _validate_block_id(raw_id):
                     result.append(
                         ErrorBlock(
-                            message=_('Invalid block ID "{block_id}" for marker [{marker}] — IDs must match [a-zA-Z0-9_.-]').format(block_id=raw_id, marker=marker_name),
+                            message=_('Invalid block ID "{block_id}" for marker [{marker}] — IDs must match [a-zA-Z0-9_.-]').format(
+                                block_id=raw_id, marker=marker_name
+                            ),
                             raw_text=match.group(0),
                         )
                     )

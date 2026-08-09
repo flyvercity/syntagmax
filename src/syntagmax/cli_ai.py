@@ -34,11 +34,18 @@ def ai():
 @ai.command(help='Verify an impact task using an AI agent')
 @click.argument('task_file', type=click.Path(exists=True))
 @click.option('--agent', default=None, help='Override the default agent')
+@click.option('--command', 'command_pattern', default=None,
+              help='Ad-hoc agent command pattern (must contain {prompt}). Mutually exclusive with --agent.')
 @click.option('--amend', is_flag=True, default=False,
               help='Directly amend the child artifact if verification fails')
 @click.pass_obj
-def verify(obj: Params, task_file: str, agent: str | None, amend: bool):
+def verify(obj: Params, task_file: str, agent: str | None, command_pattern: str | None, amend: bool):
     """Verify an impact task using an AI agent."""
+    # Validate mutual exclusivity
+    if agent and command_pattern:
+        u.pprint('[red]Error: --agent and --command are mutually exclusive.[/red]')
+        sys.exit(1)
+
     cfg_path = Path(obj['config_file'])
     if not cfg_path.exists():
         u.pprint(f'[red]Error: Configuration file "{cfg_path}" does not exist.[/red]')
@@ -72,10 +79,18 @@ def verify(obj: Params, task_file: str, agent: str | None, amend: bool):
     lg.debug(f'Parent paths: repo_root={parent_paths.repo_root}, relative={parent_paths.relative_path}')
     lg.debug(f'Child paths: repo_root={child_paths.repo_root}, relative={child_paths.relative_path}')
 
-    # Resolve agent
-    agent_name = agent or config.ai.agent
-    registry = load_agent_registry(config)
-    agent_config = resolve_agent(registry, agent_name)
+    # Resolve agent: --command bypasses registry lookup
+    if command_pattern:
+        if '{prompt}' not in command_pattern:
+            u.pprint('[red]Error: --command pattern must contain {prompt} placeholder.[/red]')
+            sys.exit(1)
+        agent_name = 'custom'
+        agent_config = {'command': command_pattern, 'description': 'ad-hoc command'}
+    else:
+        agent_name = agent or config.ai.agent
+        registry = load_agent_registry(config)
+        agent_config = resolve_agent(registry, agent_name)
+
     lg.info(f'Using agent: {agent_name} ({agent_config.get("description", "")})')
 
     # Render prompt

@@ -90,14 +90,15 @@ The code supports per-input publish TOML or YAML files. If a record references o
 - Git history extraction can be skipped, but many analysis and MCP behaviors assume revisions are available.
 - **Pre-flight validation** for input record locations ensures all input files exist before processing.
 - **Redacted logging** in AI providers ensures sensitive headers, bodies, and URLs are not exposed in logs.
-- **Localization** is supported in change reports for file status strings and other user-facing messages.
+- **Localization** is supported in change reports for file status strings and other user-facing messages. Ensure the requested locale is available in `src/syntagmax/resources/locales/`.
 - **Summary mode** for change reports provides a high-level overview of changes, complementing detailed reports.
-- Change reports now support localization, but ensure the requested locale is available in `src/syntagmax/resources/locales/`.
 - Binary artifact change reporting requires sidecar metadata to be properly configured.
 - AI agent commands support verbose logging via the `--verbose` flag for debugging.
 - The default output directory is now `.syntagmax/outputs/` instead of `.syntagmax/reports/`.
+- The `ai verify` command now supports ad-hoc agent commands via the `--command` option for custom AI provider integration.
 - The `edit identification` command replaces the deprecated `edit renumber` command.
 - Task generation can be enabled via the `--tasks` flag or configured in the project TOML.
+- A diagnostic warning is emitted when a publish configuration field is placed in an input record when multiple records exist, suggesting to move it to the global level.
 
 ## Example assets
 The `example/` directory contains runnable samples that exercise the main workflows:

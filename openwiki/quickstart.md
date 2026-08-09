@@ -37,6 +37,7 @@ Syntagmax is a git-friendly requirements management system for extracting artifa
 - Obsidian vault integration: `src/syntagmax/obsidian_settings.py`
 - Plugin system: `src/syntagmax/plugin.py`
 - MCP server: `src/syntagmax/mcp/server.py`
+- Localization utilities: `src/syntagmax/i18n.py`
 - Representative tests: `tests/test_init.py`, `tests/test_publish.py`, `tests/test_plugin.py`, `tests/test_mcp.py`, `tests/test_metamodel.py`, `tests/test_marker_renumber.py`, `tests/test_strict_line_breaks.py`, `tests/test_ai.py`, `tests/test_cli_ai.py`, `tests/test_tasks.py`
 
 ## Project layout
@@ -75,7 +76,7 @@ Related evidence:
 - `a180058 feat: implement plugin system for transformation pipeline`
 
 ## Recent features to know about
-- **AI with agents**: Integrated local CLI AI agents for impact task verification with configurable agent commands (mistral-vibe, antigravity, opencode, copilot, kiro) and automated child artifact amendment for AI verification. AI providers support redacted logging and configurable verbosity.
+- **AI with agents**: Integrated local CLI AI agents for impact task verification with configurable agent commands (mistral-vibe, antigravity, opencode, copilot, kiro, crush, pi, kimi, aider, cline, grok, hermes) and automated child artifact amendment for AI verification. AI providers support redacted logging and configurable verbosity. The `ai verify` command now supports ad-hoc agent commands via the `--command` option for custom AI provider integration.
 - **Improved report structure and UX**: Enhanced analyze report structure with better file location handling, improved whitespace control, "No errors found" messages, and localized file status strings. Change reports now support grouping by file, summary mode, and binary artifact change reporting.
 - **Output directory rename**: Default output directory renamed from `.syntagmax/reports/` to `.syntagmax/outputs/` for consistency with publish outputs.
 - **Renumber command renamed**: The `edit renumber` command has been renamed to `edit identification` to better reflect its purpose of renumbering artifact IDs and identification markers.
@@ -85,6 +86,8 @@ Related evidence:
 - **Plugin-based trace export**: Trace export now supports plugin-based configuration for transforming trace output.
 - **YAML boolean coercion fix**: Fixed handling of YAML boolean coercion with custom metamodel labels to prevent unexpected report errors.
 - **Verbose impact verification**: Enhanced verification report structure with detailed impact analysis and uncertainty handling.
+- **Localization infrastructure**: Full localization support implemented for error messages and reports in multiple languages (English and Russian).
+- **Diagnostic warnings**: Added diagnostic warning for misplaced publish configuration to help users correctly place global publish settings in config files.
 
 Related evidence:
 - AI with agents: `c8d1dbf feat: integrate local CLI AI agents for impact task verification`

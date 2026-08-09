@@ -41,6 +41,8 @@ The renderer has several interacting defaults: heading levels, plain-text filter
 - **Attribute presence mode** for filtering artifacts.
 - **Case-insensitive field exclusions** for artifact rendering.
 - Output directory changed from `.syntagmax/reports/` to `.syntagmax/outputs/`.
+- **Localization support** for error messages and reports.
+- **Diagnostic warnings** for misplaced publish configuration.
 
 ### AI agents
 Run `tests/test_ai.py` and `tests/test_cli_ai.py` for AI-assisted analysis features.

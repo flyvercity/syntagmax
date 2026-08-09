@@ -340,3 +340,106 @@ def test_cli_verify_no_amend_flag(
     assert 'verified and closed' in result.output
     assert 'amended' not in result.output
     mock_child_val.assert_not_called()
+
+
+
+# --- Tests for --command option ---
+
+
+@patch('syntagmax.cli_ai.invoke_agent', return_value=0)
+@patch('syntagmax.cli_ai.resolve_artifact_paths')
+@patch('syntagmax.cli_ai.Config')
+def test_cli_verify_command_bypasses_registry(
+    mock_config_cls, mock_resolve_paths, mock_invoke, tmp_path: Path
+):
+    """--command with valid pattern bypasses registry lookup and invokes agent."""
+    config_file = tmp_path / '.syntagmax' / 'config.toml'
+    config_file.parent.mkdir(parents=True)
+    config_file.write_text('[ai]\nagent = "kiro"\n', encoding='utf-8')
+
+    task_file = tmp_path / 'task.md'
+    task_file.write_text(_TASK_CONTENT_BASE, encoding='utf-8')
+
+    def fake_invoke(agent_config, prompt, working_dir):
+        # Verify the ad-hoc agent_config was constructed correctly
+        assert agent_config['command'] == 'echo {prompt}'
+        assert agent_config['description'] == 'ad-hoc command'
+        task_file.write_text(_TASK_CONTENT_CLOSED_NO_AMENDMENT, encoding='utf-8')
+        return 0
+
+    mock_invoke.side_effect = fake_invoke
+
+    child_file = tmp_path / 'REQ-001.md'
+    child_file.write_text('# REQ-001\nContent.\n', encoding='utf-8')
+
+    cfg = MagicMock()
+    cfg.ai.agent = 'kiro'
+    cfg.ai.persona = 'You are an engineer.'
+    cfg.base_dir.return_value = tmp_path
+    cfg.root_dir.return_value = tmp_path
+    mock_config_cls.return_value = cfg
+
+    paths = MagicMock()
+    paths.repo_root = str(tmp_path)
+    paths.relative_path = 'REQ-001.md'
+    paths.absolute_path = str(child_file)
+    mock_resolve_paths.return_value = paths
+
+    runner = CliRunner()
+    result = runner.invoke(
+        rms,
+        ['-f', str(config_file), 'ai', 'verify', str(task_file),
+         '--command', 'echo {prompt}'],
+        catch_exceptions=False,
+    )
+
+    assert result.exit_code == 0, result.output
+    assert 'verified and closed' in result.output
+    # invoke_agent should have been called with the ad-hoc config
+    mock_invoke.assert_called_once()
+
+
+@patch('syntagmax.cli_ai.Config')
+def test_cli_verify_command_missing_prompt_placeholder(mock_config_cls, tmp_path: Path):
+    """--command without {prompt} placeholder → error exit."""
+    config_file = tmp_path / '.syntagmax' / 'config.toml'
+    config_file.parent.mkdir(parents=True)
+    config_file.write_text('[ai]\nagent = "kiro"\n', encoding='utf-8')
+
+    task_file = tmp_path / 'task.md'
+    task_file.write_text(_TASK_CONTENT_BASE, encoding='utf-8')
+
+    cfg = MagicMock()
+    cfg.ai.agent = 'kiro'
+    cfg.base_dir.return_value = tmp_path
+    mock_config_cls.return_value = cfg
+
+    runner = CliRunner()
+    result = runner.invoke(
+        rms,
+        ['-f', str(config_file), 'ai', 'verify', str(task_file),
+         '--command', 'echo hello'],
+    )
+
+    assert result.exit_code == 1
+    assert '{prompt}' in result.output
+
+
+def test_cli_verify_command_and_agent_mutual_exclusivity(tmp_path: Path):
+    """--agent and --command together → mutual exclusivity error."""
+    config_file = tmp_path / '.syntagmax' / 'config.toml'
+    config_file.parent.mkdir(parents=True)
+    config_file.write_text('[ai]\nagent = "kiro"\n', encoding='utf-8')
+
+    task_file = tmp_path / 'task.md'
+    task_file.write_text(_TASK_CONTENT_BASE, encoding='utf-8')
+
+    runner = CliRunner()
+    result = runner.invoke(
+        rms,
+        ['-f', str(config_file), 'ai', 'verify', str(task_file),
+         '--agent', 'claude', '--command', 'echo {prompt}'],
+    )
+
+    assert result.exit_code == 1
+    assert 'mutually exclusive' in result.output
