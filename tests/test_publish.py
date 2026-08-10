@@ -1338,7 +1338,7 @@ class TestRemainingAttributeExpansion:
 
         assert '| Status | active |' in result
         # Only one data row (status), no remaining fields
-        lines = [l for l in result.split('\n') if l.startswith('| ') and '---' not in l and l.strip() != '|           |       |']
+        lines = [line for line in result.split('\n') if line.startswith('| ') and '---' not in line and line.strip() != '|           |       |']
         assert len(lines) == 1
 
     def test_remaining_title_case_formatting(self):
@@ -1477,7 +1477,7 @@ class TestPublishConfigDefaultKeys:
 
     def test_remaining_accepted_as_attribute_key(self):
         """_remaining_ is accepted as a valid attribute name in sections."""
-        from syntagmax.publish_config import PublishConfig, TableSection, TextSection
+        from syntagmax.publish_config import TableSection, TextSection
 
         # In table
         data = {'type': 'table', 'attributes': [{'_remaining_': {'alias': ''}}]}
@@ -1492,7 +1492,7 @@ class TestPublishConfigDefaultKeys:
     def test_collect_explicit_attributes(self):
         """collect_explicit_attributes returns correct set."""
         from syntagmax.publish_config import (
-            PublishConfig, TableSection, TextSection, AttributeRender,
+            TableSection, TextSection, AttributeRender,
             collect_explicit_attributes, REMAINING_SENTINEL,
         )
 
@@ -1532,7 +1532,7 @@ class TestRemainingWithMetamodel:
     def test_remaining_includes_metamodel_attributes_not_on_artifact(self):
         """_remaining_ includes metamodel-defined attributes even if absent from artifact.fields."""
         from syntagmax.publish_config import PublishConfig
-        from syntagmax.publish import render_block, _resolve_remaining_fields, RenderContext
+        from syntagmax.publish import _resolve_remaining_fields
         from syntagmax.publish_config import collect_explicit_attributes
 
         # Artifact only has 'status' beyond id/contents
@@ -1586,7 +1586,6 @@ class TestRemainingWithMetamodel:
     def test_remaining_metamodel_case_insensitive_atype_lookup(self):
         """_resolve_remaining_fields matches artifact type case-insensitively against metamodel."""
         from syntagmax.publish import _resolve_remaining_fields
-        from syntagmax.publish_config import collect_explicit_attributes, PublishConfig
 
         artifact = MagicMock()
         artifact.atype = 'req'  # lowercase

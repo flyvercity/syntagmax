@@ -11,7 +11,7 @@ from typing import Callable
 from benedict import benedict
 from lark import Lark, Transformer, exceptions
 
-from syntagmax.extractors.extractor import Extractor, ExtractorResult
+from syntagmax.extractors.extractor import Extractor
 from syntagmax.config import Config, InputRecord
 from syntagmax.artifact import ArtifactBuilder, Artifact, Location, UNDEFINED_ID
 from syntagmax.blocks import Block, TextBlock, ArtifactBlock, ErrorBlock

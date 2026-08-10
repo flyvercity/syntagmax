@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project uses [Calendar Versioning](https://calver.org/) with the scheme `YYYY.M.D`.
 
+## [2026.8.10] - 2026-08-10
+
+### Added
+
+- Default publish render configuration — use `_default_` and `_remaining_` sections to avoid repetitive per-attribute publish rules
+- Dynamic field expansion via metamodel in publish templates
+- Ad-hoc AI agent execution (`--command` option) for running arbitrary prompts through configured agents
+- Expanded agent registry with Aider, Cline, Grok, Hermes, Kimi, Pi, and Crush agents
+- Full localisation of error messages and analysis reports
+
+### Improved
+
+- Diagnostic warnings for misplaced publish configuration
+- Metadata extraction performance via memoisation caches
+
+### Fixed
+
+- Publish configuration diagnostics now correctly identify misplaced settings
+
 ## [2026.8.6] - 2026-08-06
 
 ### Added
