@@ -205,7 +205,12 @@ class PublishSectionConfig(BaseModel):
     @classmethod
     def coerce_cross_input_duplicates(cls, v):
         if isinstance(v, str):
-            return v.lower() in ('true', '1', 'yes')
+            normalized = v.lower()
+            if normalized in ('true', '1', 'yes'):
+                return True
+            if normalized in ('false', '0', 'no'):
+                return False
+            raise ValueError(f"Invalid value for cross_input_duplicates: '{v}'. Expected true/false, yes/no, or 1/0.")
         return v
 
 
