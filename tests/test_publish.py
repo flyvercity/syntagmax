@@ -1623,3 +1623,106 @@ class TestRemainingWithMetamodel:
         explicit = {'id', 'contents'}
         remaining = _resolve_remaining_fields(artifact, explicit, None)
         assert remaining == ['status']
+
+
+class TestCrossInputDuplicates:
+    """Tests for cross_input_duplicates configuration option."""
+
+    def test_cross_input_duplicates_enabled_flags_error(self, params, tmp_path):
+        """When cross_input_duplicates=true (default), same block ID across inputs is an error."""
+        dir_a = tmp_path / 'A'
+        dir_a.mkdir()
+        (dir_a / 'file.md').write_text(
+            '---\nid: SYS-1\ncontents: x\n---\n\n[COM 1]\nComment in A\n[/COM]\n',
+            encoding='utf-8',
+        )
+
+        dir_b = tmp_path / 'B'
+        dir_b.mkdir()
+        (dir_b / 'file.md').write_text(
+            '---\nid: REQ-1\ncontents: y\n---\n\n[COM 1]\nComment in B\n[/COM]\n',
+            encoding='utf-8',
+        )
+
+        cfg_path = tmp_path / 'config.toml'
+        cfg_path.write_text(
+            'base = "."\n'
+            '[[input]]\nname = "sys"\ndir = "A"\ndriver = "obsidian"\natype = "SYS"\nmarkers = ["COM"]\n'
+            '[[input]]\nname = "req"\ndir = "B"\ndriver = "obsidian"\natype = "REQ"\nmarkers = ["COM"]\n',
+            encoding='utf-8',
+        )
+
+        config = Config(params=params, config_filename=cfg_path)
+        _, errors = build_block_tree(config)
+        assert any('Duplicate block ID "1"' in e for e in errors)
+
+    def test_cross_input_duplicates_disabled_no_error(self, params, tmp_path):
+        """When cross_input_duplicates=false, same block ID across inputs is allowed."""
+        dir_a = tmp_path / 'A'
+        dir_a.mkdir()
+        (dir_a / 'file.md').write_text(
+            '---\nid: SYS-1\ncontents: x\n---\n\n[COM 1]\nComment in A\n[/COM]\n',
+            encoding='utf-8',
+        )
+
+        dir_b = tmp_path / 'B'
+        dir_b.mkdir()
+        (dir_b / 'file.md').write_text(
+            '---\nid: REQ-1\ncontents: y\n---\n\n[COM 1]\nComment in B\n[/COM]\n',
+            encoding='utf-8',
+        )
+
+        cfg_path = tmp_path / 'config.toml'
+        cfg_path.write_text(
+            'base = "."\n'
+            '[publish]\ncross_input_duplicates = false\n'
+            '[[input]]\nname = "sys"\ndir = "A"\ndriver = "obsidian"\natype = "SYS"\nmarkers = ["COM"]\n'
+            '[[input]]\nname = "req"\ndir = "B"\ndriver = "obsidian"\natype = "REQ"\nmarkers = ["COM"]\n',
+            encoding='utf-8',
+        )
+
+        config = Config(params=params, config_filename=cfg_path)
+        _, errors = build_block_tree(config)
+        assert not any('Duplicate block ID' in e for e in errors)
+
+    def test_cross_input_duplicates_disabled_still_flags_within_input(self, params, tmp_path):
+        """Even with cross_input_duplicates=false, duplicates within the same input are still flagged."""
+        dir_a = tmp_path / 'A'
+        dir_a.mkdir()
+        (dir_a / 'file1.md').write_text(
+            '---\nid: SYS-1\ncontents: x\n---\n\n[COM 1]\nComment 1\n[/COM]\n',
+            encoding='utf-8',
+        )
+        (dir_a / 'file2.md').write_text(
+            '---\nid: SYS-2\ncontents: y\n---\n\n[COM 1]\nComment 2\n[/COM]\n',
+            encoding='utf-8',
+        )
+
+        cfg_path = tmp_path / 'config.toml'
+        cfg_path.write_text(
+            'base = "."\n'
+            '[publish]\ncross_input_duplicates = false\n'
+            '[[input]]\nname = "sys"\ndir = "A"\ndriver = "obsidian"\natype = "SYS"\nmarkers = ["COM"]\n',
+            encoding='utf-8',
+        )
+
+        config = Config(params=params, config_filename=cfg_path)
+        _, errors = build_block_tree(config)
+        assert any('Duplicate block ID "1"' in e for e in errors)
+
+    def test_publish_string_backward_compat(self, params, tmp_path):
+        """Legacy publish = 'path.yaml' still works after model conversion."""
+        dir_a = tmp_path / 'A'
+        dir_a.mkdir()
+        (dir_a / 'file.md').write_text('---\nid: SYS-1\ncontents: x\n---\n', encoding='utf-8')
+
+        cfg_path = tmp_path / 'config.toml'
+        cfg_path.write_text(
+            'base = "."\npublish = "publish.yaml"\n'
+            '[[input]]\nname = "sys"\ndir = "A"\ndriver = "obsidian"\natype = "SYS"\n',
+            encoding='utf-8',
+        )
+
+        config = Config(params=params, config_filename=cfg_path)
+        # cross_input_duplicates should default to True
+        assert config.cross_input_duplicates is True

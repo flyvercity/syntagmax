@@ -46,7 +46,7 @@ Key sections include:
 
 - `[[input]]` — input source definitions (driver, artifact type, filters)
 - `output_path` — base directory for report-like outputs (relative to config file directory)
-- `publish` — global publish config file path (relative to config file directory)
+- `[publish]` — publish pipeline settings (config file path, cross-input duplicate validation)
 - `[metrics]` — metrics collection settings
 - `[impact]` — impact analysis settings
 - `[metamodel]` — metamodel file path

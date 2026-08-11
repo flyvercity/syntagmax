@@ -194,12 +194,27 @@ class Metamodel(BaseModel):
     filename: str = Field(default=None, description='Path to the .syntagmax file defining the project metamodel')
 
 
+class PublishSectionConfig(BaseModel):
+    """Configuration for the [publish] section in config.toml."""
+
+    model_config = ConfigDict(extra='ignore')
+    config: str | None = Field(default=None, description='Path to publish config file relative to config file directory')
+    cross_input_duplicates: bool = Field(default=True, description='Validate block ID uniqueness across all inputs (true) or per-input only (false)')
+
+    @field_validator('cross_input_duplicates', mode='before')
+    @classmethod
+    def coerce_cross_input_duplicates(cls, v):
+        if isinstance(v, str):
+            return v.lower() in ('true', '1', 'yes')
+        return v
+
+
 class ConfigFile(BaseModel):
     base: str = Field(default='..', description='Base directory for relative paths, relative to this config file')
     language: str = Field(default='en', description='Output language for reports (en, ru)')
     log_level: str = Field(default='info', description='Console log verbosity level')
     warnings_as_errors: bool = Field(default=False, description='Treat warnings as fatal errors')
-    publish: str | None = Field(default=None, description='Global publish config file path, relative to config file directory')
+    publish: PublishSectionConfig = Field(default_factory=PublishSectionConfig, description='Publish pipeline configuration')
     output_path: str = Field(default='outputs/', description='Base directory for report-like outputs (relative to config file directory)')
     input: list[InputConfig] = Field(..., description='List of input sources to process')
     metrics: MetricsConfig = Field(MetricsConfig(), description='Configuration for metrics collection')
@@ -211,6 +226,16 @@ class ConfigFile(BaseModel):
     trace: TraceConfig = Field(default_factory=TraceConfig, description='Configuration for trace export')
     ai: AiConfig = Field(default_factory=AiConfig)
     report: ReportConfig = Field(default_factory=ReportConfig, description='Report formatting options')
+
+    @field_validator('publish', mode='before')
+    @classmethod
+    def validate_publish(cls, v):
+        """Accept either a string (legacy: path to publish config) or a dict/model."""
+        if v is None:
+            return PublishSectionConfig()
+        if isinstance(v, str):
+            return PublishSectionConfig(config=v)
+        return v
 
     @field_validator('log_level')
     @classmethod
@@ -317,7 +342,8 @@ class Config:
 
         self._base_dir = Path(root_dir, config_model.base)
         lg.debug(f'Base directory: {self._base_dir}')
-        self._global_publish_config = config_model.publish
+        self._global_publish_config = config_model.publish.config
+        self._cross_input_duplicates = config_model.publish.cross_input_duplicates
         self._read_input_records(config_model.input, config_model.drivers)
 
         # Warn if publish field is likely misplaced (per-record instead of global)
@@ -520,6 +546,11 @@ class Config:
         if p.is_absolute():
             return p
         return Path(self._root_dir, self._output_path)
+
+    @property
+    def cross_input_duplicates(self) -> bool:
+        """Whether to validate block ID uniqueness across all inputs (True) or per-input only (False)."""
+        return self._cross_input_duplicates
 
     def resolve_task_template(self, record: 'InputRecord | None') -> tuple[Path | None, str]:
         """Resolve task template path following publish-like resolution order.
