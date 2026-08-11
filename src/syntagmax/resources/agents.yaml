@@ -62,3 +62,9 @@ agents:
   kilo:
     command: "kilo run --auto {prompt}"
     description: "Kilo CLI"
+
+  codebuff:
+    command: "codebuff --free {prompt}"
+    description: "codebuff"
+    windows-suffix: ".cmd"
+
