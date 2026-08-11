@@ -20,7 +20,7 @@ from syntagmax.config import Config, Params
 @click.option('--attribute', multiple=True, help='Additional lead artifact attributes to include as columns')
 @click.option('--flat', is_flag=True, help='Combine multiple linked IDs into semicolon-separated values')
 @click.option('--delimiter', default=None, help='Column delimiter (default: "," or "\\t" for .tsv files)')
-@click.option('--output', default=None, help='Output file path (use "console" for stdout). Default: <output_path>/trace-<child>-<parent>-<date>.csv')
+@click.option('--output', default=None, help='Output file path (use "console" for stdout). Default: <output_path>/trace/trace-<child>-<parent>-<date>.csv')
 @click.option('-f', '--config-file', type=click.Path(), default='.syntagmax/config.toml')
 def trace(
     obj: Params,
@@ -94,7 +94,7 @@ def trace(
                 from_type, to_type = child.lower(), parent.lower()
             else:
                 from_type, to_type = parent.lower(), child.lower()
-            output = str(config.output_dir() / f'trace-{from_type}-{to_type}-{date_suffix}{ext}')
+            output = str(config.output_dir() / 'trace' / f'trace-{from_type}-{to_type}-{date_suffix}{ext}')
 
         # Determine delimiter
         if delimiter is not None:
@@ -282,7 +282,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: syntagmax-publish
-          path: .syntagmax/outputs/published.md
+          path: .syntagmax/outputs/publish/published.md
 """
         workflow_dir = Path('.github/workflows')
         workflow_dir.mkdir(parents=True, exist_ok=True)
@@ -308,7 +308,7 @@ syntagmax-publish:
     - syntagmax publish --all --single
   artifacts:
     paths:
-      - .syntagmax/outputs/published.md
+      - .syntagmax/outputs/publish/published.md
 """
         workflow_file = Path('.gitlab-ci.yml')
         workflow_file.write_text(content, encoding='utf-8')

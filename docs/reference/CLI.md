@@ -145,7 +145,7 @@ syntagmax publish [OPTIONS] [RECORDS...]
 |--------|------|---------|-------------|
 | `--all` | Flag | off | Publish all input records defined in config |
 | `--single` | Flag | off | Compile all selected records into a single file |
-| `--output PATH` | Path | `.syntagmax/outputs/` (multi) or `.syntagmax/outputs/published.md` (single) | Output directory (multi-file) or file path (single) |
+| `--output PATH` | Path | `.syntagmax/outputs/publish/` (multi) or `.syntagmax/outputs/publish/published.md` (single) | Output directory (multi-file) or file path (single) |
 | `--date-suffix` | Flag | off | Append date suffix (`YYYY-MM-DD`) to filenames. Cannot be combined with `--single`. |
 | `--docx` | Flag | off | Convert output to DOCX via Pandoc |
 | `--pdf` | Flag | off | Convert output to PDF via Pandoc |
@@ -205,7 +205,7 @@ Uses left outer join semantics — every lead artifact appears even if it has no
 | `--attribute NAME` | String (repeatable) | — | Additional lead artifact attributes to include as columns |
 | `--flat` | Flag | off | Combine multiple linked IDs into semicolon-separated values |
 | `--delimiter CHAR` | String | `,` (auto `\t` for `.tsv`) | Column delimiter |
-| `--output PATH` | String | `<output_path>/trace-<child>-<parent>-<date>.csv` | Output file path. Use `console` for stdout. |
+| `--output PATH` | String | `<output_path>/trace/trace-<child>-<parent>-<date>.csv` | Output file path. Use `console` for stdout. |
 
 #### Plugin-Based Export
 
