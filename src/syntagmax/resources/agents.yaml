@@ -68,3 +68,7 @@ agents:
     description: "codebuff"
     windows-suffix: ".cmd"
 
+  amp:
+    command: "amp --execute {prompt}"
+    description: "Amp"
+  
