@@ -58,3 +58,7 @@ agents:
   hermes:
     command: "hermes --yolo --oneshot {prompt}"
     description: "Hermes CLI"
+
+  kilo:
+    command: "kilo run --auto {prompt}"
+    description: "Kilo CLI"
