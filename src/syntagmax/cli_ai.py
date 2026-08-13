@@ -46,12 +46,7 @@ def verify(obj: Params, task_file: str, agent: str | None, command_pattern: str 
         u.pprint('[red]Error: --agent and --command are mutually exclusive.[/red]')
         sys.exit(1)
 
-    cfg_path = Path(obj['config_file'])
-    if not cfg_path.exists():
-        u.pprint(f'[red]Error: Configuration file "{cfg_path}" does not exist.[/red]')
-        sys.exit(1)
-
-    config = Config(obj, cfg_path)
+    config = u.load_config_or_exit(obj, obj['config_file'])
 
     # Parse task file
     task_path = Path(task_file).resolve()

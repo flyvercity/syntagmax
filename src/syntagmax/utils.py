@@ -5,13 +5,33 @@
 # Description: Utility functions for the RMS.
 
 from graphlib import TopologicalSorter
+from typing import TYPE_CHECKING
 from rich.console import Console
+
+if TYPE_CHECKING:
+    from syntagmax.config import Config
 
 console = Console()
 
 
 def pprint(what: str):
     console.print(what)  # type: ignore
+
+
+def load_config_or_exit(obj, config_file) -> 'Config':
+    """
+    Safely load project configuration or exit with code 1 if the configuration file is missing.
+    """
+    import sys
+    from pathlib import Path
+    from syntagmax.config import Config
+
+    cfg_path = Path(config_file)
+    if not cfg_path.exists():
+        pprint(f'[red]Error: Configuration file "{cfg_path}" does not exist.[/red]')
+        sys.exit(1)
+
+    return Config(obj, cfg_path)
 
 
 def get_execution_plan(all_dependencies, final_step):
