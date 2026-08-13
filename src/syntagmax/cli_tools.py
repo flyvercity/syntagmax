@@ -38,12 +38,7 @@ def trace(
     from syntagmax.trace import build_trace_matrix, render_trace_csv
     from syntagmax.plugin import find_plugin_by_name, run_trace_export
 
-    cfg_path = Path(config_file)
-    if not cfg_path.exists():
-        u.pprint(f'[red]Error: Configuration file "{cfg_path}" does not exist.[/red]')
-        sys.exit(1)
-
-    config = Config(obj, cfg_path)
+    config = u.load_config_or_exit(obj, config_file)
     errors: list[str] = []
 
     # Run pipeline manually to retain access to ArtifactMap

@@ -102,14 +102,10 @@ def init(ctx: click.Context):
 def analyze(obj: Params, allow_dirty_worktree: bool, suppress_tracing: bool, tasks: bool, output: str | None, step: str):
     import sys
 
-    cfg_path = Path(obj['config_file'])
-    if not cfg_path.exists():
-        u.pprint(f'[red]Error: Configuration file "{cfg_path}" does not exist.[/red]')
-        sys.exit(1)
     obj['allow_dirty_worktree'] = allow_dirty_worktree
     obj['suppress_tracing'] = suppress_tracing
     obj['tasks'] = tasks
-    config = Config(obj, cfg_path)
+    config = u.load_config_or_exit(obj, obj['config_file'])
     report = process(step, config)
 
     if output is None:

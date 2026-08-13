@@ -125,7 +125,7 @@ def _make_runner_invoke(task_path: Path, extra_args: list[str], config_path: Pat
 @patch('syntagmax.cli_ai.invoke_agent', return_value=0)
 @patch('syntagmax.cli_ai.resolve_artifact_paths')
 @patch('syntagmax.cli_ai.load_agent_registry')
-@patch('syntagmax.cli_ai.Config')
+@patch('syntagmax.cli_ai.u.load_config_or_exit')
 def test_cli_verify_amend_pass_no_amendment(
     mock_config_cls, mock_registry, mock_resolve_paths, mock_invoke, tmp_path: Path
 ):
@@ -186,7 +186,7 @@ def test_cli_verify_amend_pass_no_amendment(
 @patch('syntagmax.cli_ai.invoke_agent', return_value=0)
 @patch('syntagmax.cli_ai.resolve_artifact_paths')
 @patch('syntagmax.cli_ai.load_agent_registry')
-@patch('syntagmax.cli_ai.Config')
+@patch('syntagmax.cli_ai.u.load_config_or_exit')
 def test_cli_verify_amend_pass_with_amendment(
     mock_config_cls, mock_registry, mock_resolve_paths, mock_invoke, tmp_path: Path
 ):
@@ -239,7 +239,7 @@ def test_cli_verify_amend_pass_with_amendment(
 @patch('syntagmax.cli_ai.invoke_agent', return_value=0)
 @patch('syntagmax.cli_ai.resolve_artifact_paths')
 @patch('syntagmax.cli_ai.load_agent_registry')
-@patch('syntagmax.cli_ai.Config')
+@patch('syntagmax.cli_ai.u.load_config_or_exit')
 def test_cli_verify_amend_child_validation_failure(
     mock_config_cls, mock_registry, mock_resolve_paths, mock_invoke, tmp_path: Path
 ):
@@ -292,7 +292,7 @@ def test_cli_verify_amend_child_validation_failure(
 @patch('syntagmax.cli_ai.invoke_agent', return_value=0)
 @patch('syntagmax.cli_ai.resolve_artifact_paths')
 @patch('syntagmax.cli_ai.load_agent_registry')
-@patch('syntagmax.cli_ai.Config')
+@patch('syntagmax.cli_ai.u.load_config_or_exit')
 def test_cli_verify_no_amend_flag(
     mock_config_cls, mock_registry, mock_resolve_paths, mock_invoke, tmp_path: Path
 ):
@@ -348,7 +348,7 @@ def test_cli_verify_no_amend_flag(
 
 @patch('syntagmax.cli_ai.invoke_agent', return_value=0)
 @patch('syntagmax.cli_ai.resolve_artifact_paths')
-@patch('syntagmax.cli_ai.Config')
+@patch('syntagmax.cli_ai.u.load_config_or_exit')
 def test_cli_verify_command_bypasses_registry(
     mock_config_cls, mock_resolve_paths, mock_invoke, tmp_path: Path
 ):
@@ -399,7 +399,7 @@ def test_cli_verify_command_bypasses_registry(
     mock_invoke.assert_called_once()
 
 
-@patch('syntagmax.cli_ai.Config')
+@patch('syntagmax.cli_ai.u.load_config_or_exit')
 def test_cli_verify_command_missing_prompt_placeholder(mock_config_cls, tmp_path: Path):
     """--command without {prompt} placeholder → error exit."""
     config_file = tmp_path / '.syntagmax' / 'config.toml'

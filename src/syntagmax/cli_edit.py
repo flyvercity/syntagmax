@@ -35,7 +35,7 @@ def identification(obj: Params, config_path: Path, renumber_all: bool, atype: st
         u.pprint('[red]Either --all or --atype must be specified.[/red]')
         raise SystemExit(1)
 
-    configurator = Config(obj, Path(config_path))
+    configurator = u.load_config_or_exit(obj, config_path)
     success = renumber_artifacts(configurator, atype, dry_run, force)
     if not success:
         raise SystemExit(1)
@@ -87,7 +87,7 @@ def attrs(
         u.pprint('[red]--value or --csv is required for replace operation.[/red]')
         return
 
-    configurator = Config(obj, Path(config_file))
+    configurator = u.load_config_or_exit(obj, config_file)
 
     # Load CSV mapping if provided
     csv_mapping = None
@@ -131,7 +131,7 @@ def markers_renumber(obj: Params, config_path: Path, renumber_all: bool, section
         u.pprint('[red]Cannot specify both --all and --section.[/red]')
         return
 
-    configurator = Config(obj, Path(config_path))
+    configurator = u.load_config_or_exit(obj, config_path)
     renumber_markers(
         config=configurator,
         section=section,
