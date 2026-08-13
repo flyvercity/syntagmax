@@ -92,19 +92,28 @@ class MarkdownTransformer(Transformer):
         }
 
 
+_BASE_GRAMMAR: str | None = None
+_PARSER_CACHE: dict[str, Lark] = {}
+
 
 class MarkdownExtractor(MarkerSplitterMixin, ElementFilterMixin, Extractor):
     def __init__(self, config: Config, record: InputRecord, metamodel: dict | None = None):
         super().__init__(config, record, metamodel)
-        grammar_path = Path(__file__).parent / 'markdown.lark'
-        grammar = grammar_path.read_text(encoding='utf-8')
+        global _BASE_GRAMMAR
+        if _BASE_GRAMMAR is None:
+            grammar_path = Path(__file__).parent / 'markdown.lark'
+            _BASE_GRAMMAR = grammar_path.read_text(encoding='utf-8')
 
-        # Replace placeholders with actual marker
         marker = self._record.marker
-        grammar = grammar.replace('_TOKEN_BEGIN', f'"[{marker}]"i')
-        grammar = grammar.replace('_TOKEN_END', f'"[/{marker}]"i')
+        if marker in _PARSER_CACHE:
+            self._parser = _PARSER_CACHE[marker]
+        else:
+            # Replace placeholders with actual marker
+            grammar = _BASE_GRAMMAR.replace('_TOKEN_BEGIN', f'"[{marker}]"i')
+            grammar = grammar.replace('_TOKEN_END', f'"[/{marker}]"i')
+            self._parser = Lark(grammar, parser='lalr', maybe_placeholders=False)
+            _PARSER_CACHE[marker] = self._parser
 
-        self._parser = Lark(grammar, parser='lalr', maybe_placeholders=False)
         self._transformer = MarkdownTransformer()
 
         # Pre-compile marker-specific and record-specific regexes
@@ -148,7 +157,6 @@ class MarkdownExtractor(MarkerSplitterMixin, ElementFilterMixin, Extractor):
 
         self._is_multiple_cache[cache_key] = res
         return res
-
 
     def update_artifacts(self, loc_file: str, updates: list[tuple[Artifact, str]]):
         """Renumber artifact IDs in a file. Uses round-trip YAML to preserve attr order."""
@@ -216,7 +224,6 @@ class MarkdownExtractor(MarkerSplitterMixin, ElementFilterMixin, Extractor):
 
         if 'id' in fields:
             self.update_artifacts(artifact.location.loc_file, [(artifact, fields['id'])])
-
 
     def update_artifact_attributes(
         self,
@@ -323,7 +330,6 @@ class MarkdownExtractor(MarkerSplitterMixin, ElementFilterMixin, Extractor):
 
         return segment
 
-
     def _update_inline_fields(
         self,
         segment: str,
@@ -389,7 +395,6 @@ class MarkdownExtractor(MarkerSplitterMixin, ElementFilterMixin, Extractor):
         # Fallback: append at end
         return segment.rstrip() + newline + new_field_line + newline
 
-
     def _find_segment_boundary(
         self,
         markdown: str,
@@ -454,7 +459,6 @@ class MarkdownExtractor(MarkerSplitterMixin, ElementFilterMixin, Extractor):
 
         return segment_end, next_pos, fallback_pos_set, yaml_start_pos
 
-
     def _process_segment(
         self,
         segment: str,
@@ -476,7 +480,7 @@ class MarkdownExtractor(MarkerSplitterMixin, ElementFilterMixin, Extractor):
 
             # NBSP detection
             if '\xa0' in segment:
-                error = _("Non-breaking space (NBSP) detected in requirement at line {line} in {file}").format(line=start_line, file=filepath)
+                error = _('Non-breaking space (NBSP) detected in requirement at line {line} in {file}').format(line=start_line, file=filepath)
                 lg.error(error)
                 return ErrorBlock(message=error, raw_text=segment)
 
@@ -487,7 +491,7 @@ class MarkdownExtractor(MarkerSplitterMixin, ElementFilterMixin, Extractor):
                 yaml_dict = benedict.from_yaml(yaml_text)
 
                 if 'attrs' not in yaml_dict:
-                    error = _("Invalid metadata in YAML at line {line}").format(line=start_line)
+                    error = _('Invalid metadata in YAML at line {line}').format(line=start_line)
                     lg.error(error)
                     return ErrorBlock(message=error, raw_text=segment)
                 yaml_attrs = yaml_dict.get_dict('attrs')
@@ -501,7 +505,7 @@ class MarkdownExtractor(MarkerSplitterMixin, ElementFilterMixin, Extractor):
             aid = temp_attrs.get('id')
 
             if not aid:
-                error = _("Missing ID in metadata at line {line}").format(line=start_line)
+                error = _('Missing ID in metadata at line {line}').format(line=start_line)
                 lg.warning(error)
                 aid = UNDEFINED_ID
 
@@ -562,14 +566,13 @@ class MarkdownExtractor(MarkerSplitterMixin, ElementFilterMixin, Extractor):
 
         except (exceptions.ParseError, exceptions.UnexpectedToken) as e:
             lg.exception(e)
-            error = _("Parse error in requirement at line {line} in {file}").format(line=start_line, file=filepath)
+            error = _('Parse error in requirement at line {line} in {file}').format(line=start_line, file=filepath)
             return ErrorBlock(message=error, raw_text=segment)
 
         except Exception as e:
             lg.exception(e)
-            error = _("Error processing requirement at line {line} in {file}").format(line=start_line, file=filepath)
+            error = _('Error processing requirement at line {line} in {file}').format(line=start_line, file=filepath)
             return ErrorBlock(message=error, raw_text=segment)
-
 
     def _extract_blocks_from_markdown(self, filepath: Path, markdown: str, location_builder: Callable[[int, int], Location] | None = None) -> list[Block]:
         from syntagmax.artifact import LineLocation
@@ -609,9 +612,9 @@ class MarkdownExtractor(MarkerSplitterMixin, ElementFilterMixin, Extractor):
                 # Should not happen given EOF fallback, but guard against it
                 start_line = markdown.count('\n', 0, start_pos) + 1
                 if yaml_start_pos != -1:
-                    error = _("Unclosed YAML block in requirement at line {line} in {file}").format(line=start_line, file=filepath)
+                    error = _('Unclosed YAML block in requirement at line {line} in {file}').format(line=start_line, file=filepath)
                 else:
-                    error = _("Unterminated requirement at line {line} in {file}").format(line=start_line, file=filepath)
+                    error = _('Unterminated requirement at line {line} in {file}').format(line=start_line, file=filepath)
                 lg.error(error)
                 raw = markdown[start_pos : match.end()]
                 blocks.append(ErrorBlock(message=error, raw_text=raw))
