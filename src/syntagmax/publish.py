@@ -82,6 +82,8 @@ def build_block_tree(config: Config) -> tuple[BlockTree, list[str]]:
     seen: dict[tuple[str, str], str] = {}  # (marker, id) -> first file path
 
     for input_block in tree.inputs:
+        if not config.cross_input_duplicates:
+            seen = {}  # Reset per-input when cross-input check is disabled
         for file_record in input_block.files:
             for block in file_record.blocks:
                 if isinstance(block, TextBlock) and block.explicit_id and block.id and block.marker:

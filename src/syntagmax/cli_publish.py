@@ -124,9 +124,9 @@ def publish(
 
     if output_path is None:
         if single:
-            output_path = str(config.output_dir() / 'published.md')
+            output_path = str(config.output_dir() / 'publish' / 'published.md')
         else:
-            output_path = str(config.output_dir()) + '/'
+            output_path = str(config.output_dir() / 'publish') + '/'
 
     # Check Pandoc availability once if conversion is requested
     pandoc_available = False

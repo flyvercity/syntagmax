@@ -13,7 +13,7 @@ For a detailed explanation of how Syntagmax handles different directories, relat
 | `log_level` | No | Console log verbosity: `debug`, `info`, `warning`, `error`, `silent`. Default: `info`. Can be overridden by `--log` CLI flag. |
 | `warnings_as_errors` | No | Treat warnings as fatal errors. Default: `false`. Can be overridden by `--warnings-as-errors` CLI flag. |
 | `language` | No | Output language for reports (`en` or `ru`). Default: `en`. Can be overridden by `--lang` CLI flag. |
-| `publish` | No | Global publish config file path (relative to config file directory). See [Publishing Reference](publishing.md). |
+| `publish` | No | Publish pipeline configuration. Accepts a string (path to publish config file) for backward compatibility, or a `[publish]` table with options. See [Publish Section](#publish-publish). |
 | `input` | Yes | List of input source definitions |
 | `drivers` | No | Driver-specific global defaults |
 | `metrics` | No | Metrics collection settings |
@@ -378,6 +378,36 @@ output_path = "outputs/"
 # Custom: outputs live in a top-level reports/ directory
 output_path = "../reports"
 ```
+
+## Publish (`[publish]`)
+
+Controls the publish pipeline configuration.
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `config` | string | — | Path to publish config file (relative to config file directory). See [Publishing Reference](publishing.md). |
+| `cross_input_duplicates` | bool | `true` | When `true`, block ID uniqueness is validated across all inputs globally. When `false`, duplicate block IDs are only flagged within the same input record. |
+
+### Backward Compatibility
+
+For backward compatibility, `publish` can still be specified as a plain string:
+
+```toml
+# Legacy form (equivalent to [publish] config = "publish.yaml")
+publish = "publish.yaml"
+```
+
+### Example
+
+```toml
+[publish]
+config = "publish.yaml"
+cross_input_duplicates = false   # allow same block IDs across different inputs
+```
+
+### Use Case
+
+When multiple input records use independent marker numbering schemes (e.g., `[COM 1]` in both `system-requirements` and `software-requirements`), the cross-input duplicate check produces false-positive errors. Set `cross_input_duplicates = false` to scope the check per-input.
 
 ## Report (`[report]`)
 

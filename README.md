@@ -46,7 +46,7 @@ Key sections include:
 
 - `[[input]]` — input source definitions (driver, artifact type, filters)
 - `output_path` — base directory for report-like outputs (relative to config file directory)
-- `publish` — global publish config file path (relative to config file directory)
+- `[publish]` — publish pipeline settings (config file path, cross-input duplicate validation)
 - `[metrics]` — metrics collection settings
 - `[impact]` — impact analysis settings
 - `[metamodel]` — metamodel file path
@@ -441,7 +441,7 @@ syntagmax trace [OPTIONS]
 | `--attribute <name>` | No | — | Additional lead artifact attributes to include (repeatable) |
 | `--flat` | No | — | Combine multiple linked IDs into semicolon-separated values |
 | `--delimiter <char>` | No | `,` | Column delimiter (auto-detects `\t` for `.tsv` output) |
-| `--output <path>` | No | `<output_path>/trace-<child>-<parent>-<date>.csv` | Output path (use `console` for stdout) |
+| `--output <path>` | No | `<output_path>/trace/trace-<child>-<parent>-<date>.csv` | Output path (use `console` for stdout) |
 
 ### Plugin-Based Export
 
