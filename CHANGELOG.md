@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project uses [Calendar Versioning](https://calver.org/) with the scheme `YYYY.M.D`.
 
+## [2026.8.13] - 2026-08-13
+
+### Added
+
+- Configurable cross-input duplicate block ID validation — disable false positives when independent input records share marker numbering
+- Organised trace and publish outputs into dedicated subdirectories (`trace/`, `publish/`) for cleaner project structure
+- New AI agents: Kilo, Codebuff, Amp, CommandCode
+
+### Fixed
+
+- Improved validation for cross-input duplicate configuration values
+
 ## [2026.8.10] - 2026-08-10
 
 ### Added

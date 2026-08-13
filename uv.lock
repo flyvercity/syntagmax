@@ -1571,7 +1571,7 @@ wheels = [
 
 [[package]]
 name = "syntagmax"
-version = "2026.8.10"
+version = "2026.8.13"
 source = { editable = "." }
 dependencies = [
     { name = "babel" },

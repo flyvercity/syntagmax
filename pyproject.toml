@@ -1,6 +1,6 @@
 [project]
 name = "syntagmax"
-version = "2026.8.10"
+version = "2026.8.13"
 description = "Git-Based Requirements Management System"
 readme = "README.md"
 license = "MIT"
