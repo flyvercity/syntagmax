@@ -129,8 +129,16 @@ Create review artifact at `./docs/codereviews/pr-<NUMBER>-review.md` :
 **Branch**: <head> → <base>
 **Decision**: APPROVE | REQUEST CHANGES | BLOCK
 
-## Summary
-<1-2 sentence overall assessment>
+## Product & User Summary
+- **The "Why" & "What"**: <2–3 sentences describing the user problem solved or business purpose>
+- **Key User-Facing & Behavioral Changes**: <bullet points detailing UX, workflow, config, API, or behavioral changes>
+- **Risk Assessment & Migration Notes**: <breaking changes, feature flags, required env vars, DB migrations, or rollback considerations>
+- **Testing Hints for QA**:
+  1. <Explicit scenario 1 stakeholders/QA should verify>
+  2. <Explicit scenario 2 stakeholders/QA should verify>
+
+## Technical Summary
+<1-2 sentence overall technical assessment>
 
 ## Findings
 
@@ -161,17 +169,29 @@ Create review artifact at `./docs/codereviews/pr-<NUMBER>-review.md` :
 
 ### Phase 7 — PUBLISH
 
-Post the review to GitHub:
+Post the product-focused summary and technical review payload to GitHub. The GitHub review comment MUST include the Product & QA section so Product Managers and QA receive clear, actionable verification guidance:
 
 ```bash
+# Prepare review payload body:
+# ### Product & User Summary
+# - **The "Why" & "What"**: ...
+# - **Key User-Facing & Behavioral Changes**: ...
+# - **Risk Assessment & Migration Notes**: ...
+# - **Testing Hints for QA**:
+#   1. <Scenario 1>
+#   2. <Scenario 2>
+# 
+# ### Technical Review & Decision: <APPROVE | REQUEST CHANGES | BLOCK>
+# <Summary of critical/high findings or confirmation that validation passed>
+
 # If APPROVE
-gh pr review <NUMBER> --approve --body "<summary of review>"
+gh pr review <NUMBER> --approve --body "<product summary + technical review body>"
 
 # If REQUEST CHANGES
-gh pr review <NUMBER> --request-changes --body "<summary with required fixes>"
+gh pr review <NUMBER> --request-changes --body "<product summary + required fixes>"
 
 # If COMMENT only (draft PR or informational)
-gh pr review <NUMBER> --comment --body "<summary>"
+gh pr review <NUMBER> --comment --body "<product summary + review notes>"
 ```
 
 For inline comments on specific lines, use the GitHub review comments API:

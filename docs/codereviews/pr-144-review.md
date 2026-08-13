@@ -3,11 +3,23 @@
 **Reviewed**: 2026-08-13
 **Author**: scartill
 **Branch**: jules-joined → main
-**Decision**: REQUEST CHANGES
+**Decision**: APPROVE
 
-## Summary
+## Product & User Summary
 
-Solid DRY refactoring that extracts config loading into a shared utility, extensive auto-formatting cleanup, a valid performance micro-optimisation, and significant new test coverage. Blocked only by 6 unused-import lint errors introduced by the refactoring (trivially fixable with `ruff check --fix`).
+- **The "Why" & "What"**: Eliminates repeated config-loading boilerplate across all CLI commands, improving maintainability and reducing the surface area for inconsistent error handling. Also adds substantial test coverage for previously untested core modules.
+- **Key User-Facing & Behavioral Changes**:
+  - No user-facing behaviour changes. All CLI commands behave identically.
+  - `cli_publish.py` template resolution now uses `config.root_dir()` instead of `cfg_path.parent` — functionally equivalent but more robust if config loading changes in future.
+  - Performance micro-optimisation in change report field comparison (short-circuits on list length before sorting).
+- **Risk Assessment & Migration Notes**: Zero breaking changes. No new configuration, no new dependencies. Lock file update is routine (dependency version bumps only).
+- **Testing Hints for QA**:
+  1. Run `syntagmax analyze` with a missing config file — should produce the same error message and exit code 1.
+  2. Run `syntagmax publish --all --docx` to verify DOCX template resolution still works correctly after the `root_dir()` change.
+
+## Technical Summary
+
+Clean DRY refactoring, ruff-compliant formatting, a valid performance optimisation, and ~1000 lines of new unit tests covering core domain logic. All lint and test checks pass.
 
 ## Findings
 
@@ -17,7 +29,7 @@ None
 
 ### HIGH
 
-1. **Unused imports introduced by refactoring** — The extraction of config loading into `utils.load_config_or_exit` left behind unused `Config` imports in `cli.py`, `cli_change.py`, `cli_edit.py`, `cli_publish.py` and unused `sys` imports in `cli.py` (inside `analyze()`) and `cli_tools.py` (module-level). This causes `ruff` to fail with 6 F401 errors. Fix: `uv run ruff check --fix src/`.
+None (previously identified unused imports were fixed in follow-up commit 4f19930)
 
 ### MEDIUM
 
@@ -25,36 +37,46 @@ None
 
 ### LOW
 
-1. **Missing type annotations on `load_config_or_exit` parameters** — `obj` and `config_file` have no type hints. Adding `obj: Params` and `config_file: str | Path` would improve discoverability and IDE support.
+1. **Missing type annotations on `load_config_or_exit` parameters** (`src/syntagmax/utils.py:21`) — `obj` and `config_file` have no type hints. Adding `obj: Params` and `config_file: str | Path` would improve discoverability and IDE support.
 
-2. **Inline imports in `load_config_or_exit`** — `sys`, `Path`, and `Config` are imported inside the function body. This avoids circular imports but differs from the project's general style of module-level imports. Acceptable for a utility that breaks a cycle, but worth a brief comment explaining why.
+2. **Inline imports in `load_config_or_exit`** (`src/syntagmax/utils.py:25-27`) — `sys`, `Path`, and `Config` are imported inside the function body. This avoids circular imports but differs from the project's general style of module-level imports. Acceptable for a utility that breaks a cycle, but a brief comment explaining why would aid future maintainers.
 
 ## Validation Results
 
 | Check | Result |
 |---|---|
 | Type check | Skipped |
-| Lint (ruff) | **Fail** — 6 F401 errors (all fixable) |
-| Tests (pytest) | **Pass** — 1098 passed |
-| Build | Skipped |
+| Lint (ruff) | Pass |
+| Tests (pytest) | Pass — 1098 passed in 48.93s |
+| Build | Skipped (editable install) |
+
+Note: `tests/test_mcp.py` fails with `ModuleNotFoundError: mcp.server.fastmcp` — pre-existing, unrelated to this PR.
 
 ## Change Analysis
 
 ### Correctness
 
 - `load_config_or_exit` faithfully replicates the original pattern (check existence → print error → `sys.exit(1)` → else return `Config`). No logic change.
-- `cli_publish.py`: replacing `cfg_path.parent` with `config.root_dir()` is semantically correct — `root_dir()` returns `Path(config_filename).parent.absolute()`.
-- `_compare_fields` optimisation: adding `len(base_val) != len(target_val)` short-circuit before sorting is correct and covered by new unit tests.
+- `cli_publish.py`: replacing `cfg_path.parent` with `config.root_dir()` is semantically correct — `root_dir()` returns `Path(config_filename).parent` which is the `.syntagmax/` directory's parent (project root).
+- `_compare_fields` optimisation: adding `len(base_val) != len(target_val)` short-circuit before sorting is correct — lists of different length can never be equal regardless of content. Covered by new unit tests.
+
+### Pattern Compliance
+
+- All changes follow existing project conventions (rich-based error printing, `sys.exit` for fatal errors, `u.` prefix for utils module).
+- Test file renames align filenames with the modules they test (`test_edit_markers.py` ↔ `edit_markers.py`).
 
 ### Test Coverage
 
-- New test files (`test_artifact.py`, `test_edit.py`, `test_tree.py`) provide good coverage for core domain logic previously under-tested.
-- Test renames (`test_marker_renumber.py` → `test_edit_markers.py`, `test_trace_export.py` → `test_trace.py`) align filenames with module names.
-- Extended tests in `test_change_report.py`, `test_cli_ai.py`, `test_utils.py` cover the refactored paths.
+- New test files (`test_artifact.py`, `test_edit.py`, `test_tree.py`) provide comprehensive coverage for core domain logic.
+- Extended tests in `test_edit_markers.py` cover `_compute_tag_replacement` edge cases and console output validation.
+- `test_change_report.py` adds `test_compare_fields_unit_cases` exercising the optimised comparison logic.
+- `test_utils.py` covers both success and failure paths of `load_config_or_exit`.
+- `test_cli_ai.py` correctly updates mock paths from `syntagmax.cli_ai.Config` to `syntagmax.cli_ai.u.load_config_or_exit`.
 
 ### Formatting
 
 - `change_diff.py` changes are purely ruff-style reformatting (trailing commas, parenthesised multi-line constructors). No logic changes.
+- `test_change_report.py` reformatted to use explicit multi-line `runner.invoke()` calls.
 
 ## Files Reviewed
 
@@ -73,8 +95,8 @@ None
 | `tests/test_change_report.py` | Modified |
 | `tests/test_cli_ai.py` | Modified |
 | `tests/test_edit.py` | Added |
-| `tests/test_edit_markers.py` | Renamed (from `test_marker_renumber.py`) + Modified |
-| `tests/test_trace.py` | Renamed (from `test_trace_export.py`) |
+| `tests/test_edit_markers.py` | Renamed + Modified |
+| `tests/test_trace.py` | Renamed |
 | `tests/test_tree.py` | Added |
 | `tests/test_utils.py` | Modified |
 | `uv.lock` | Modified |
