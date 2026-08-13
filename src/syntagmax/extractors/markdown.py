@@ -5,6 +5,7 @@
 # Description: Base class for extracting artifacts from Markdown content.
 
 from pathlib import Path
+import functools
 import logging as lg
 import re
 from typing import Callable
@@ -22,6 +23,55 @@ from syntagmax.extractors.markdown_filters import (
 )
 from syntagmax.extractors.markdown_markers import MarkerSplitterMixin
 from syntagmax.i18n import _
+
+
+@functools.lru_cache(maxsize=128)
+def _compile_start_marker_re(marker: str) -> re.Pattern[str]:
+    return re.compile(rf'\[{marker}\]', re.IGNORECASE)
+
+
+@functools.lru_cache(maxsize=128)
+def _compile_slash_req_re(marker: str) -> re.Pattern[str]:
+    return re.compile(rf'\[/{marker}\]', re.IGNORECASE)
+
+
+@functools.lru_cache(maxsize=128)
+def _compile_closed_paired_re(escaped: str) -> re.Pattern[str]:
+    return re.compile(rf'\[({escaped})(?:\s+([^\]]+))?\](.*?)\[/\1\]', re.IGNORECASE | re.DOTALL)
+
+
+@functools.lru_cache(maxsize=128)
+def _compile_unclosed_paired_re(escaped: str) -> re.Pattern[str]:
+    return re.compile(rf'\[({escaped})(?:\s+([^\]]+))?\](.*?)(?=\n\s*\n|\n\s*\[(?:{escaped})(?:\s+[^\]]+)?\]|\n\s*#{{1,6}}\s|\Z)', re.IGNORECASE | re.DOTALL)
+
+
+@functools.lru_cache(maxsize=128)
+def _compile_line_prefix_re(escaped: str) -> re.Pattern[str]:
+    return re.compile(rf'^\[({escaped})(?:\s+([^\]]+))?\]\s*(.*?)(?=\n\n|\Z)', re.IGNORECASE | re.DOTALL | re.MULTILINE)
+
+
+@functools.lru_cache(maxsize=128)
+def _compile_fallback_re(escaped: str | None) -> tuple[re.Pattern[str], int]:
+    if escaped:
+        fallback_patterns = [rf'^(?:\[(?:{escaped})(?:\s+[^\]]+)?\])', r'^#{1,6}\s', r'\n[ \t]*\r?\n']
+    else:
+        fallback_patterns = [r'^#{1,6}\s', r'\n[ \t]*\r?\n']
+    pattern = re.compile('|'.join(f'({p})' for p in fallback_patterns), re.MULTILINE | re.IGNORECASE)
+    return pattern, len(fallback_patterns)
+
+
+@functools.lru_cache(maxsize=256)
+def _compile_inline_field_re(escaped_name: str) -> re.Pattern[str]:
+    return re.compile(rf'(?mi)^\[{escaped_name}\][^\r\n]*(?:\r?\n(?!(?:\[|```yaml)).*)*')
+
+
+@functools.lru_cache(maxsize=128)
+def _get_lark_parser(marker: str) -> Lark:
+    grammar_path = Path(__file__).parent / 'markdown.lark'
+    grammar = grammar_path.read_text(encoding='utf-8')
+    grammar = grammar.replace('_TOKEN_BEGIN', f'"[{marker}]"i')
+    grammar = grammar.replace('_TOKEN_END', f'"[/{marker}]"i')
+    return Lark(grammar, parser='lalr', maybe_placeholders=False)
 
 
 class MarkdownArtifact(Artifact):
@@ -92,45 +142,30 @@ class MarkdownTransformer(Transformer):
         }
 
 
-
 class MarkdownExtractor(MarkerSplitterMixin, ElementFilterMixin, Extractor):
     def __init__(self, config: Config, record: InputRecord, metamodel: dict | None = None):
         super().__init__(config, record, metamodel)
-        grammar_path = Path(__file__).parent / 'markdown.lark'
-        grammar = grammar_path.read_text(encoding='utf-8')
-
-        # Replace placeholders with actual marker
+        # Replace placeholders with actual marker and retrieve cached parser
         marker = self._record.marker
-        grammar = grammar.replace('_TOKEN_BEGIN', f'"[{marker}]"i')
-        grammar = grammar.replace('_TOKEN_END', f'"[/{marker}]"i')
-
-        self._parser = Lark(grammar, parser='lalr', maybe_placeholders=False)
+        self._parser = _get_lark_parser(marker)
         self._transformer = MarkdownTransformer()
 
-        # Pre-compile marker-specific and record-specific regexes
-        self._start_marker_re = re.compile(rf'\[{marker}\]', re.IGNORECASE)
-        self._slash_req_re = re.compile(rf'\[/{marker}\]', re.IGNORECASE)
+        # Pre-compile marker-specific and record-specific regexes using cached compile helpers
+        self._start_marker_re = _compile_start_marker_re(marker)
+        self._slash_req_re = _compile_slash_req_re(marker)
 
         markers = self._record.markers
         if markers:
             escaped = '|'.join(re.escape(m) for m in markers)
-            self._closed_paired_re = re.compile(rf'\[({escaped})(?:\s+([^\]]+))?\](.*?)\[/\1\]', re.IGNORECASE | re.DOTALL)
-            self._unclosed_paired_re = re.compile(
-                rf'\[({escaped})(?:\s+([^\]]+))?\](.*?)(?=\n\s*\n|\n\s*\[(?:{escaped})(?:\s+[^\]]+)?\]|\n\s*#{{1,6}}\s|\Z)', re.IGNORECASE | re.DOTALL
-            )
-            self._line_prefix_re = re.compile(rf'^\[({escaped})(?:\s+([^\]]+))?\]\s*(.*?)(?=\n\n|\Z)', re.IGNORECASE | re.DOTALL | re.MULTILINE)
-
-            fallback_patterns = [rf'^(?:\[(?:{escaped})(?:\s+[^\]]+)?\])', r'^#{1,6}\s', r'\n[ \t]*\r?\n']
-            self._fallback_re = re.compile('|'.join(f'({p})' for p in fallback_patterns), re.MULTILINE | re.IGNORECASE)
-            self._fallback_num_patterns = len(fallback_patterns)
+            self._closed_paired_re = _compile_closed_paired_re(escaped)
+            self._unclosed_paired_re = _compile_unclosed_paired_re(escaped)
+            self._line_prefix_re = _compile_line_prefix_re(escaped)
+            self._fallback_re, self._fallback_num_patterns = _compile_fallback_re(escaped)
         else:
             self._closed_paired_re = None
             self._unclosed_paired_re = None
             self._line_prefix_re = None
-
-            fallback_patterns = [r'^#{1,6}\s', r'\n[ \t]*\r?\n']
-            self._fallback_re = re.compile('|'.join(f'({p})' for p in fallback_patterns), re.MULTILINE | re.IGNORECASE)
-            self._fallback_num_patterns = len(fallback_patterns)
+            self._fallback_re, self._fallback_num_patterns = _compile_fallback_re(None)
 
     def _is_multiple_attr(self, atype: str, attr_name: str) -> bool:
         # OPTIMIZATION: Cache whether an attribute is marked as multiple in the metamodel
@@ -148,7 +183,6 @@ class MarkdownExtractor(MarkerSplitterMixin, ElementFilterMixin, Extractor):
 
         self._is_multiple_cache[cache_key] = res
         return res
-
 
     def update_artifacts(self, loc_file: str, updates: list[tuple[Artifact, str]]):
         """Renumber artifact IDs in a file. Uses round-trip YAML to preserve attr order."""
@@ -216,7 +250,6 @@ class MarkdownExtractor(MarkerSplitterMixin, ElementFilterMixin, Extractor):
 
         if 'id' in fields:
             self.update_artifacts(artifact.location.loc_file, [(artifact, fields['id'])])
-
 
     def update_artifact_attributes(
         self,
@@ -323,7 +356,6 @@ class MarkdownExtractor(MarkerSplitterMixin, ElementFilterMixin, Extractor):
 
         return segment
 
-
     def _update_inline_fields(
         self,
         segment: str,
@@ -336,7 +368,7 @@ class MarkdownExtractor(MarkerSplitterMixin, ElementFilterMixin, Extractor):
         for attr_name, attr_value in attrs_delta.items():
             # Multiline-safe regex: matches [name] line and any continuation lines
             escaped_name = re.escape(attr_name)
-            pattern = re.compile(rf'(?mi)^\[{escaped_name}\][^\r\n]*(?:\r?\n(?!(?:\[|```yaml)).*)*')
+            pattern = _compile_inline_field_re(escaped_name)
 
             match = pattern.search(segment)
 
@@ -388,7 +420,6 @@ class MarkdownExtractor(MarkerSplitterMixin, ElementFilterMixin, Extractor):
 
         # Fallback: append at end
         return segment.rstrip() + newline + new_field_line + newline
-
 
     def _find_segment_boundary(
         self,
@@ -454,7 +485,6 @@ class MarkdownExtractor(MarkerSplitterMixin, ElementFilterMixin, Extractor):
 
         return segment_end, next_pos, fallback_pos_set, yaml_start_pos
 
-
     def _process_segment(
         self,
         segment: str,
@@ -476,7 +506,7 @@ class MarkdownExtractor(MarkerSplitterMixin, ElementFilterMixin, Extractor):
 
             # NBSP detection
             if '\xa0' in segment:
-                error = _("Non-breaking space (NBSP) detected in requirement at line {line} in {file}").format(line=start_line, file=filepath)
+                error = _('Non-breaking space (NBSP) detected in requirement at line {line} in {file}').format(line=start_line, file=filepath)
                 lg.error(error)
                 return ErrorBlock(message=error, raw_text=segment)
 
@@ -487,7 +517,7 @@ class MarkdownExtractor(MarkerSplitterMixin, ElementFilterMixin, Extractor):
                 yaml_dict = benedict.from_yaml(yaml_text)
 
                 if 'attrs' not in yaml_dict:
-                    error = _("Invalid metadata in YAML at line {line}").format(line=start_line)
+                    error = _('Invalid metadata in YAML at line {line}').format(line=start_line)
                     lg.error(error)
                     return ErrorBlock(message=error, raw_text=segment)
                 yaml_attrs = yaml_dict.get_dict('attrs')
@@ -501,7 +531,7 @@ class MarkdownExtractor(MarkerSplitterMixin, ElementFilterMixin, Extractor):
             aid = temp_attrs.get('id')
 
             if not aid:
-                error = _("Missing ID in metadata at line {line}").format(line=start_line)
+                error = _('Missing ID in metadata at line {line}').format(line=start_line)
                 lg.warning(error)
                 aid = UNDEFINED_ID
 
@@ -562,14 +592,13 @@ class MarkdownExtractor(MarkerSplitterMixin, ElementFilterMixin, Extractor):
 
         except (exceptions.ParseError, exceptions.UnexpectedToken) as e:
             lg.exception(e)
-            error = _("Parse error in requirement at line {line} in {file}").format(line=start_line, file=filepath)
+            error = _('Parse error in requirement at line {line} in {file}').format(line=start_line, file=filepath)
             return ErrorBlock(message=error, raw_text=segment)
 
         except Exception as e:
             lg.exception(e)
-            error = _("Error processing requirement at line {line} in {file}").format(line=start_line, file=filepath)
+            error = _('Error processing requirement at line {line} in {file}').format(line=start_line, file=filepath)
             return ErrorBlock(message=error, raw_text=segment)
-
 
     def _extract_blocks_from_markdown(self, filepath: Path, markdown: str, location_builder: Callable[[int, int], Location] | None = None) -> list[Block]:
         from syntagmax.artifact import LineLocation
@@ -609,9 +638,9 @@ class MarkdownExtractor(MarkerSplitterMixin, ElementFilterMixin, Extractor):
                 # Should not happen given EOF fallback, but guard against it
                 start_line = markdown.count('\n', 0, start_pos) + 1
                 if yaml_start_pos != -1:
-                    error = _("Unclosed YAML block in requirement at line {line} in {file}").format(line=start_line, file=filepath)
+                    error = _('Unclosed YAML block in requirement at line {line} in {file}').format(line=start_line, file=filepath)
                 else:
-                    error = _("Unterminated requirement at line {line} in {file}").format(line=start_line, file=filepath)
+                    error = _('Unterminated requirement at line {line} in {file}').format(line=start_line, file=filepath)
                 lg.error(error)
                 raw = markdown[start_pos : match.end()]
                 blocks.append(ErrorBlock(message=error, raw_text=raw))
