@@ -1,4 +1,4 @@
-Prepare a new release of the tool.
+# Prepare a new release of the tool.
 
 Preconditions:
 - if not on the `main` branch, abort
@@ -16,3 +16,7 @@ Keep the change log more product-oriented, avoid too much technical detail.
 ## Landing Page Update
 
 Consider updating the landing page to reflect new features, but keep it concise and avoid bloating. Ask if unsure.
+
+## Notes
+
+There is no need to use `uv build` and `uv publish`. The GHA workflow handles these.
