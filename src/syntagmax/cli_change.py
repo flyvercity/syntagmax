@@ -9,7 +9,7 @@ from pathlib import Path
 import click
 
 import syntagmax.utils as u
-from syntagmax.config import Config, Params
+from syntagmax.config import Params
 
 
 def _read_file_safe(base_path: Path, rel_path: str) -> str | None:

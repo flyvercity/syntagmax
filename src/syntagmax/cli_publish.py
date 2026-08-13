@@ -10,7 +10,7 @@ from pathlib import Path
 import click
 
 import syntagmax.utils as u
-from syntagmax.config import Config, Params
+from syntagmax.config import Params
 
 
 def _run_pandoc_conversion(md_path: Path, docx: bool, pdf: bool, reference_doc: Path | None = None) -> bool:

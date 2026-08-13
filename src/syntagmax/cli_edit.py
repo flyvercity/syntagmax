@@ -8,7 +8,7 @@ from pathlib import Path
 import click
 
 import syntagmax.utils as u
-from syntagmax.config import Config, Params
+from syntagmax.config import Params
 from syntagmax.edit import renumber_artifacts
 from syntagmax.edit_attrs import manipulate_attributes, load_csv_mapping
 from syntagmax.edit_markers import renumber_markers

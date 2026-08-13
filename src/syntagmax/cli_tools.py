@@ -3,7 +3,6 @@
 # Author: Boris Resnick
 # Description: Syntagmax CLI - Trace, MCP, Schema, and CI commands.
 
-import sys
 from pathlib import Path
 
 import click
