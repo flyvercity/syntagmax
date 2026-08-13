@@ -7,7 +7,7 @@ import pytest
 
 from syntagmax.blocks import TextBlock
 from syntagmax.config import Config
-from syntagmax.edit_markers import renumber_markers, _parse_numeric_id
+from syntagmax.edit_markers import renumber_markers, _parse_numeric_id, _compute_tag_replacement
 from syntagmax.extract import EXTRACTORS
 from syntagmax.params import Params
 
@@ -763,3 +763,158 @@ class TestLeadingZeros:
         content = (project_dir / 'docs' / 'test.md').read_text(encoding='utf-8')
         assert '[COM 005]padded[/COM]' in content
         assert '[COM 6]new[/COM]' in content  # 005 parsed as 5, next is 6
+
+
+# --- Unit tests for _compute_tag_replacement ---
+
+
+class TestComputeTagReplacement:
+    def test_offset_out_of_bounds(self):
+        assert _compute_tag_replacement('abc', 5, 'COM', 1) is None
+
+    def test_not_starting_with_bracket(self):
+        assert _compute_tag_replacement('abc', 0, 'COM', 1) is None
+
+    def test_marker_name_mismatch(self):
+        assert _compute_tag_replacement('[NOTE]abc', 0, 'COM', 1) is None
+
+    def test_tag_unclosed(self):
+        assert _compute_tag_replacement('[COMabc', 0, 'COM', 1) is None
+
+    def test_tag_closes_with_space_or_tab_before_bracket(self):
+        assert _compute_tag_replacement('[COM abc]', 0, 'COM', 1) is None
+
+    def test_valid_match_and_replacement_returned(self):
+        res = _compute_tag_replacement('[CoM]abc', 0, 'COM', 42)
+        assert res is not None
+        assert res.offset == 0
+        assert res.old_tag_len == 5
+        assert res.new_tag == '[CoM 42]'
+        assert res.marker == 'COM'
+        assert res.new_id == 42
+
+
+# --- Edge cases and warnings in renumber_markers ---
+
+
+class TestRenumberWarningsAndConsoleOutputs:
+    def test_nonexistent_section_error(self, params, tmp_path, capsys):
+        project_dir, config_file = _make_project(
+            tmp_path,
+            """
+            base = "."
+            [[input]]
+            name = "test"
+            dir = "docs"
+            driver = "obsidian"
+            atype = "SYS"
+            marker = "SYS"
+            markers = ["COM"]
+        """,
+            {},
+        )
+        config = Config(params=params, config_filename=config_file)
+        renumber_markers(config, section='nonexistent')
+        captured = capsys.readouterr()
+        assert 'Error: Section "nonexistent" not found or has no markers configured.' in captured.out
+
+    def test_no_input_records_with_markers(self, params, tmp_path, capsys):
+        project_dir, config_file = _make_project(
+            tmp_path,
+            """
+            base = "."
+            [[input]]
+            name = "test"
+            dir = "docs"
+            driver = "obsidian"
+            atype = "SYS"
+            marker = "SYS"
+        """,
+            {},
+        )
+        config = Config(params=params, config_filename=config_file)
+        renumber_markers(config)
+        captured = capsys.readouterr()
+        assert 'No input records with markers found.' in captured.out
+
+    def test_marker_filter_not_configured_anywhere(self, params, tmp_path, capsys):
+        project_dir, config_file = _make_project(
+            tmp_path,
+            """
+            base = "."
+            [[input]]
+            name = "test"
+            dir = "docs"
+            driver = "obsidian"
+            atype = "SYS"
+            marker = "SYS"
+            markers = ["COM"]
+        """,
+            {},
+        )
+        config = Config(params=params, config_filename=config_file)
+        renumber_markers(config, marker_filter='NOTE')
+        captured = capsys.readouterr()
+        assert 'Warning: No input record configures marker "NOTE"' in captured.out
+
+    def test_no_unmarked_blocks_found(self, params, tmp_path, capsys):
+        project_dir, config_file = _make_project(
+            tmp_path,
+            """
+            base = "."
+            [[input]]
+            name = "test"
+            dir = "docs"
+            driver = "obsidian"
+            atype = "SYS"
+            marker = "SYS"
+            markers = ["COM"]
+        """,
+            {},
+        )
+        config = Config(params=params, config_filename=config_file)
+        renumber_markers(config, dry_run=False)
+        captured = capsys.readouterr()
+        assert 'No unmarked blocks found — nothing to renumber.' in captured.out
+
+    def test_dry_run_console_output(self, params, tmp_path, capsys):
+        project_dir, config_file = _make_project(
+            tmp_path,
+            """
+            base = "."
+            [[input]]
+            name = "test"
+            dir = "docs"
+            driver = "obsidian"
+            atype = "SYS"
+            marker = "SYS"
+            markers = ["COM"]
+        """,
+            {'test.md': '[COM]unmarked[/COM]'},
+        )
+        config = Config(params=params, config_filename=config_file)
+        renumber_markers(config, dry_run=True)
+        captured = capsys.readouterr()
+        assert 'DRY-RUN: Would assign [COM 1]' in captured.out
+        assert 'Summary: 1 blocks would be renumbered, 0 already have IDs' in captured.out
+
+    def test_non_dry_run_console_output(self, params, tmp_path, capsys):
+        project_dir, config_file = _make_project(
+            tmp_path,
+            """
+            base = "."
+            [[input]]
+            name = "test"
+            dir = "docs"
+            driver = "obsidian"
+            atype = "SYS"
+            marker = "SYS"
+            markers = ["COM"]
+        """,
+            {'test.md': '[COM]unmarked[/COM]'},
+        )
+        config = Config(params=params, config_filename=config_file)
+        renumber_markers(config, dry_run=False)
+        captured = capsys.readouterr()
+        assert 'Assigned [COM 1]' in captured.out
+        assert 'Summary: 1 blocks renumbered across 1 files' in captured.out
