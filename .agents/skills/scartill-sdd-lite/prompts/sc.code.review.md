@@ -1,40 +1,49 @@
-# TASK: Dual-Perspective Automated Code Review
+# Code Review
 
-You are an expert Principal Software Engineer and Technical Product Manager. Your task is to perform a comprehensive code review of the current Git branch against the target branch (default: `main` or `master`).
+Code Review the current PR. Write the report to a new file here: `docs/codereviews/`.
 
----
+**DO NOT** use absolute paths in code review report. Use paths relative to the repository root.
 
-## STAGE 1: Gather Context & Diff
+## PR Review Mode
 
-1. Identify the current branch name and target branch (`main` or `master`).
-2. Run `git diff <target-branch>...HEAD` to inspect all code changes in the current branch.
-3. Check for open GitHub PR associated with this branch using `gh pr view --json number,title,url` (if GitHub CLI is available).
+Comprehensive GitHub PR review — fetches diff, reads full files, runs validation, posts review.
 
----
+### Phase 1 — FETCH
 
-## STAGE 2: Product & User-Oriented PR Comment
+Parse input to determine PR:
 
-Prepare a product-focused PR summary designed for Product Managers, QA, and stakeholders. 
+| Input | Action |
+|---|---|
+| Number (e.g. `42`) | Use as PR number |
+| URL (`github.com/.../pull/42`) | Extract PR number |
+| Branch name | Find PR via `gh pr list --head <branch>` |
 
-### Format Requirements for PR Comment:
-- **Title**: High-level feature/fix summary.
-- **The "Why" & "What"**: 2–3 sentences describing the user problem being solved or the business purpose of this change.
-- **Key User-Facing & Behavioral Changes**: Bullet points detailing changes to UX, workflow, configuration, API endpoints, or behavior.
-- **Risk Assessment & Migration Notes**: Highlight any breaking changes, feature flags, required env vars, database migrations, or rollback considerations.
-- **Testing Hints for QA**: 2–3 explicit scenarios stakeholders/QA should verify.
+```bash
+gh pr view <NUMBER> --json number,title,body,author,baseRefName,headRefName,changedFiles,additions,deletions
+gh pr diff <NUMBER>
+```
 
-### Action:
-If `gh` CLI is installed and an active PR exists:
-- Post or update this comment directly to the PR using:
-  `gh pr comment <pr-number> --body-file -` (or `gh pr comment` with markdown payload).
-If `gh` is not available or no PR exists:
-- Output the exact Markdown block titled `### [PR Comment Payload]` to stdout so the user can copy/paste it manually.
+If PR not found, stop with error. Store PR metadata for later phases.
 
----
+### Phase 2 — CONTEXT
 
-## STAGE 3: Technical & Actionable Local Review Document
+Build review context:
 
-Conduct a deep technical review focusing on code quality, security, performance, readability, edge cases, and maintainability.
+1. **Project rules** — Read `AGENTS.md` and any contributing guidelines
+2. **Planning artifacts** — Check `docs/specs`.
+3. **PR intent** — Parse PR description for goals, linked issues, test plans
+4. **Changed files** — List all modified files and categorize by type (source, test, config, docs)
+
+### Phase 3 — REVIEW
+
+Read each changed file **in full** (not just the diff hunks — you need surrounding context).
+
+For PR reviews, fetch the full file contents at the PR head revision:
+```bash
+gh pr diff <NUMBER> --name-only | while IFS= read -r file; do
+  gh api "repos/{owner}/{repo}/contents/$file?ref=<head-branch>" --jq '.content' | base64 -d
+done
+```
 
 Apply the review checklist across 7 categories:
 
@@ -48,48 +57,184 @@ Apply the review checklist across 7 categories:
 | **Completeness** | Missing tests, missing error handling, incomplete migrations, missing docs |
 | **Maintainability** | Dead code, magic numbers, deep nesting, unclear naming, missing types |
 
-### File Requirements:
-- **Target File Path**: `./docs/codereviews/YYYY-MM-DD_<branch_name>_review.md` (Replace `YYYY-MM-DD` with today's date and `<branch_name>` with the sanitized branch name).
-- Ensure the `./docs/codereviews/` directory exists (create it if missing).
+Assign severity to each finding:
 
-### Technical Review Markdown Template:
+| Severity | Meaning | Action |
+|---|---|---|
+| **CRITICAL** | Security vulnerability or data loss risk | Must fix before merge |
+| **HIGH** | Bug or logic error likely to cause issues | Should fix before merge |
+| **MEDIUM** | Code quality issue or missing best practice | Fix recommended |
+| **LOW** | Style nit or minor suggestion | Optional |
 
-# Code Review: [<Branch Name>]
-- **Date**: YYYY-MM-DD
-- **Target Branch**: `<target-branch>`
-- **Files Changed**: [Count]
+### Phase 4 — VALIDATE
 
-## 1. Architectural & Design Overview
-[Summary of design choices, patterns used, and structural impact]
+Run available validation commands:
 
-## 2. Security & Performance Audit
-- **Security Concerns**: [Auth, input sanitization, data exposure, secrets]
-- **Performance & Scalability**: [N+1 queries, memory usage, algorithm complexity]
+Detect the project type from config files (`package.json`, `Cargo.toml`, `go.mod`, `pyproject.toml`, etc.), then run the appropriate commands:
 
-## 3. Detailed File-by-File Findings
-For each file with notable suggestions:
-### `path/to/file.ext`
-- **[Severity: High/Medium/Low]** Line X-Y: [Description of issue]
-  - **Context**: Why this matters.
-  - **Suggested Fix**:
-    ```suggestion
-    // Code snippet showing proposed refactor
-    ```
+**Node.js / TypeScript** (has `package.json`):
+```bash
+npm run typecheck 2>/dev/null || npx tsc --noEmit 2>/dev/null  # Type check
+npm run lint                                                    # Lint
+npm test                                                        # Tests
+npm run build                                                   # Build
+```
 
-## 4. Test Coverage & Edge Cases
-- **Missing Tests**: [Scenarios or edge cases lacking unit/integration tests]
-- **Edge Cases to Handle**: [Null checks, race conditions, network failures, bad inputs]
+**Rust** (has `Cargo.toml`):
+```bash
+cargo clippy -- -D warnings  # Lint
+cargo test                   # Tests
+cargo build                  # Build
+```
 
-## 5. Actionable Next Steps
-- [ ] Task 1 (High Priority)
-- [ ] Task 2 (Medium Priority)
-- [ ] Task 3 (Low Priority/Tech Debt)
+**Go** (has `go.mod`):
+```bash
+go vet ./...    # Lint
+go test ./...   # Tests
+go build ./...  # Build
+```
+
+**Python** (has `pyproject.toml` / `setup.py`):
+```bash
+pytest  # Tests
+```
+
+Run only the commands that apply to the detected project type. Record pass/fail for each.
+
+### Phase 5 — DECIDE
+
+Form recommendation based on findings:
+
+| Condition | Decision |
+|---|---|
+| Zero CRITICAL/HIGH issues, validation passes | **APPROVE** |
+| Only MEDIUM/LOW issues, validation passes | **APPROVE** with comments |
+| Any HIGH issues or validation failures | **REQUEST CHANGES** |
+| Any CRITICAL issues | **BLOCK** — must fix before merge |
+
+Special cases:
+- Draft PR → Always use **COMMENT** (not approve/block)
+- Only docs/config changes → Lighter review, focus on correctness
+- Explicit `--approve` or `--request-changes` flag → Override decision (but still report all findings)
+
+### Phase 6 — REPORT
+
+Create review artifact at `./docs/codereviews/pr-<NUMBER>-review.md` :
+
+```markdown
+# PR Review: #<NUMBER> — <TITLE>
+
+**Reviewed**: <date>
+**Author**: <author>
+**Branch**: <head> → <base>
+**Decision**: APPROVE | REQUEST CHANGES | BLOCK
+
+## Product & User Summary
+- **The "Why" & "What"**: <2–3 sentences describing the user problem solved or business purpose>
+- **Key User-Facing & Behavioral Changes**: <bullet points detailing UX, workflow, config, API, or behavioral changes>
+- **Risk Assessment & Migration Notes**: <breaking changes, feature flags, required env vars, DB migrations, or rollback considerations>
+- **Testing Hints for QA**:
+  1. <Explicit scenario 1 stakeholders/QA should verify>
+  2. <Explicit scenario 2 stakeholders/QA should verify>
+
+## Technical Summary
+<1-2 sentence overall technical assessment>
+
+## Findings
+
+### CRITICAL
+<findings or "None">
+
+### HIGH
+<findings or "None">
+
+### MEDIUM
+<findings or "None">
+
+### LOW
+<findings or "None">
+
+## Validation Results
+
+| Check | Result |
+|---|---|
+| Type check | Pass / Fail / Skipped |
+| Lint | Pass / Fail / Skipped |
+| Tests | Pass / Fail / Skipped |
+| Build | Pass / Fail / Skipped |
+
+## Files Reviewed
+<list of files with change type: Added/Modified/Deleted>
+```
+
+### Phase 7 — PUBLISH
+
+Post the product-focused summary and technical review payload to GitHub. The GitHub review comment MUST include the Product & QA section so Product Managers and QA receive clear, actionable verification guidance:
+
+```bash
+# Prepare review payload body:
+# ### Product & User Summary
+# - **The "Why" & "What"**: ...
+# - **Key User-Facing & Behavioral Changes**: ...
+# - **Risk Assessment & Migration Notes**: ...
+# - **Testing Hints for QA**:
+#   1. <Scenario 1>
+#   2. <Scenario 2>
+# 
+# ### Technical Review & Decision: <APPROVE | REQUEST CHANGES | BLOCK>
+# <Summary of critical/high findings or confirmation that validation passed>
+
+# If APPROVE
+gh pr review <NUMBER> --approve --body "<product summary + technical review body>"
+
+# If REQUEST CHANGES
+gh pr review <NUMBER> --request-changes --body "<product summary + required fixes>"
+
+# If COMMENT only (draft PR or informational)
+gh pr review <NUMBER> --comment --body "<product summary + review notes>"
+```
+
+For inline comments on specific lines, use the GitHub review comments API:
+```bash
+gh api "repos/{owner}/{repo}/pulls/<NUMBER>/comments" \
+  -f body="<comment>" \
+  -f path="<file>" \
+  -F line=<line-number> \
+  -f side="RIGHT" \
+  -f commit_id="$(gh pr view <NUMBER> --json headRefOid --jq .headRefOid)"
+```
+
+Alternatively, post a single review with multiple inline comments at once:
+```bash
+gh api "repos/{owner}/{repo}/pulls/<NUMBER>/reviews" \
+  -f event="COMMENT" \
+  -f body="<overall summary>" \
+  --input comments.json  # [{"path": "file", "line": N, "body": "comment"}, ...]
+```
+
+### Phase 8 — OUTPUT
+
+Report to user:
+
+```
+PR #<NUMBER>: <TITLE>
+Decision: <APPROVE|REQUEST_CHANGES|BLOCK>
+
+Issues: <critical_count> critical, <high_count> high, <medium_count> medium, <low_count> low
+Validation: <pass_count>/<total_count> checks passed
+
+Artifacts:
+  Review: ./docs/codereviews/pr-<NUMBER>-review.md
+  GitHub: <PR URL>
+
+Next steps:
+  - <contextual suggestions based on decision>
+```
 
 ---
 
-## STAGE 4: Execution Checklist
+## Edge Cases
 
-1. [ ] Ensure `./docs/codereviews/` directory exists.
-2. [ ] Write the technical markdown document to `./docs/codereviews/YYYY-MM-DD_<branch_name>_review.md`.
-3. [ ] Post the PM/User summary as a PR comment (or output the payload block if offline).
-4. [ ] Confirm completion with a brief final status message listing created/updated assets.
+- **No `gh` CLI**: Fall back to local-only review (read the diff, skip GitHub publish). Warn user.
+- **Diverged branches**: Suggest `git fetch origin && git rebase origin/<base>` before review.
+- **Large PRs (>50 files)**: Warn about review scope. Focus on source changes first, then tests, then config/docs.

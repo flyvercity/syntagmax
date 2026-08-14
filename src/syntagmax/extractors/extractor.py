@@ -101,12 +101,8 @@ class Extractor:
     def extract_blocks_from_file(self, filepath: Path) -> list['Block']:
         return []
 
-    def update_artifact(self, artifact: Artifact, fields: dict[str, str]): ...
-
     def update_artifacts(self, loc_file: str, updates: list[tuple[Artifact, str]]):
-        # Default implementation for bulk updates
-        for artifact, new_id in updates:
-            self.update_artifact(artifact, {'id': new_id})
+        pass
 
     def update_artifact_attributes(
         self,

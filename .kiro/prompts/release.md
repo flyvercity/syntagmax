@@ -7,7 +7,7 @@ Steps:
 - bump up the version
 - amend the CHANGELOG
 - update the landing page contents
-- present to the user command for next manual steps (commit, tag with a comment, push)
+- present to the user command for next steps (commit, tag with a comment, push). Do not execute without user's confirmation.
 
 ## Changelog Generation
 

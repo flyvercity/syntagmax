@@ -116,17 +116,6 @@ class TextExtractor(Extractor):
 
         filepath.write_text(''.join(lines), encoding='utf-8')
 
-    def update_artifact(self, artifact: Artifact, fields: dict[str, str]):
-        # This is now less preferred than update_artifacts for renumbering
-        from syntagmax.artifact import LineLocation
-
-        if not isinstance(artifact.location, LineLocation):
-            return
-
-        # Use update_artifacts with a single update
-        if 'id' in fields:
-            self.update_artifacts(artifact.location.loc_file, [(artifact, fields['id'])])
-
     def _format_error(self, error_type: str, location: LineLocation, section_start_string: str, message: str) -> str:
         return _("Driver 'text': {error_type} in {location}\nWhile analyzing {section}\nReason: {message}").format(
             error_type=error_type, location=location, section=section_start_string, message=message

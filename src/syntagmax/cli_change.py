@@ -9,7 +9,7 @@ from pathlib import Path
 import click
 
 import syntagmax.utils as u
-from syntagmax.config import Config, Params
+from syntagmax.config import Params
 
 
 def _read_file_safe(base_path: Path, rel_path: str) -> str | None:
@@ -86,12 +86,7 @@ def change_report(
     )
     import git
 
-    cfg_path = Path(obj['config_file'])
-    if not cfg_path.exists():
-        u.pprint(f'[red]Error: Configuration file "{cfg_path}" does not exist.[/red]')
-        sys.exit(1)
-
-    config = Config(obj, cfg_path)
+    config = u.load_config_or_exit(obj, obj['config_file'])
 
     # Open repo
     try:
@@ -269,12 +264,7 @@ def change_baseline(obj: Params, tag_name: str, message: str, force: bool, dry_r
         create_baseline_tag,
     )
 
-    cfg_path = Path(obj['config_file'])
-    if not cfg_path.exists():
-        u.pprint(f'[red]Error: Configuration file "{cfg_path}" does not exist.[/red]')
-        sys.exit(1)
-
-    config = Config(obj, cfg_path)
+    config = u.load_config_or_exit(obj, obj['config_file'])
 
     # Discover repos from all input records
     repos = discover_repos(config.input_records(), config.base_dir())

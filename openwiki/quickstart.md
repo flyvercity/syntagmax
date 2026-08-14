@@ -38,7 +38,7 @@ Syntagmax is a git-friendly requirements management system for extracting artifa
 - Plugin system: `src/syntagmax/plugin.py`
 - MCP server: `src/syntagmax/mcp/server.py`
 - Localization utilities: `src/syntagmax/i18n.py`
-- Representative tests: `tests/test_init.py`, `tests/test_publish.py`, `tests/test_plugin.py`, `tests/test_mcp.py`, `tests/test_metamodel.py`, `tests/test_marker_renumber.py`, `tests/test_strict_line_breaks.py`, `tests/test_ai.py`, `tests/test_cli_ai.py`, `tests/test_tasks.py`
+- Representative tests: `tests/test_init.py`, `tests/test_publish.py`, `tests/test_plugin.py`, `tests/test_mcp.py`, `tests/test_metamodel.py`, `tests/test_edit_markers.py`, `tests/test_strict_line_breaks.py`, `tests/test_ai.py`, `tests/test_cli_ai.py`, `tests/test_tasks.py`
 
 ## Project layout
 - `src/syntagmax/` contains the runtime package.

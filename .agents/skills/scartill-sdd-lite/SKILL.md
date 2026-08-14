@@ -5,14 +5,17 @@ description: "Lightweight Kiro-first specification driven development kit"
 
 # Commands
 
-- `Save Spec` - save persistent specification (prompt: `prompts/sc.save.spec.md`)
-- `Split Tasks` - create standalone tasks (prompt: `prompts/sc.split.tasks.md`)
-- `Implement` - run implementation (prompt: `prompts/sc.implement.tasks.md`)
-- `Finalize` - post-implementation actions (prompt: `prompts/sc.finalize.md`)
-- `Critique` - critique specification (prompt: `prompts/sc.critique.spec.md`, critique file as a parameter)
-- `Code Review` - review implementation (prompt: `prompts/sc.code.review.md`)
-- `Archive` - archive older project documentation (prompt: `prompts/sc.archive.md`)
-- `Save Brainstorm`- save persistent brainstorming results (prompt: sc.save.brainstorm.md`)
+- `Save Spec` - save persistent specification (prompt: `sc.save.spec.md`)
+- `Split Tasks` - create standalone tasks (prompt: `sc.split.tasks.md`)
+- `Implement` - run implementation (prompt: `sc.implement.tasks.md`)
+- `Finalize` - post-implementation actions (prompt: `sc.finalize.md`)
+- `Critique` - critique specification (prompt: `sc.critique.spec.md`, critique file as a parameter)
+- `Code Review` - review implementation (prompt: `sc.code.review.md`)
+- `Archive` - archive older project documentation (prompt: `sc.archive.md`)
+- `Save Brainstorm`- save persistent brainstorming results (prompt: `sc.save.brainstorm.md`)
+- `Seed` - convert final brainstorming results to a seed (prompt: `sc.brainstorm.to.seed.md`) 
+
+All prompts reside in `<skill-dir>/prompts/`.
 
 Upon activation, remember these commands, but do not run until an explicit user request.
 
@@ -67,5 +70,4 @@ Full specs are written for an implementer (human or AI) to execute without furth
 3. Implementation follows the full spec's task breakdown.
 
 When asked to implement a feature, look for both the seed (for intent) and the full spec (for implementation details). If only a seed exists, offer to produce a full spec first.
-
 

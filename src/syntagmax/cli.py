@@ -16,7 +16,7 @@ import click
 from rich.logging import RichHandler
 
 import syntagmax.utils as u
-from syntagmax.config import Config, Params
+from syntagmax.config import Params
 from syntagmax.errors import RMSException, FatalError
 from syntagmax.main import process, public_steps
 from syntagmax.init_cmd import init_project
@@ -100,16 +100,11 @@ def init(ctx: click.Context):
 @click.option('--output', default=None, help='Report output file or "console" for stdout (default: <output_path>/report.md)')
 @click.argument('step', type=click.Choice(public_steps()), default='metrics')
 def analyze(obj: Params, allow_dirty_worktree: bool, suppress_tracing: bool, tasks: bool, output: str | None, step: str):
-    import sys
 
-    cfg_path = Path(obj['config_file'])
-    if not cfg_path.exists():
-        u.pprint(f'[red]Error: Configuration file "{cfg_path}" does not exist.[/red]')
-        sys.exit(1)
     obj['allow_dirty_worktree'] = allow_dirty_worktree
     obj['suppress_tracing'] = suppress_tracing
     obj['tasks'] = tasks
-    config = Config(obj, cfg_path)
+    config = u.load_config_or_exit(obj, obj['config_file'])
     report = process(step, config)
 
     if output is None:

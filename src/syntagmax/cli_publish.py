@@ -10,7 +10,7 @@ from pathlib import Path
 import click
 
 import syntagmax.utils as u
-from syntagmax.config import Config, Params
+from syntagmax.config import Params
 
 
 def _run_pandoc_conversion(md_path: Path, docx: bool, pdf: bool, reference_doc: Path | None = None) -> bool:
@@ -103,12 +103,7 @@ def publish(
         u.pprint('[red]Error: --date-suffix cannot be combined with --single.[/red]')
         sys.exit(1)
 
-    cfg_path = Path(config_file)
-    if not cfg_path.exists():
-        u.pprint(f'[red]Error: Configuration file "{cfg_path}" does not exist.[/red]')
-        sys.exit(1)
-
-    config = Config(obj, cfg_path)
+    config = u.load_config_or_exit(obj, config_file)
 
     available_records = {r.name: r for r in config.input_records()}
     selected_records = []
@@ -154,7 +149,7 @@ def publish(
         from syntagmax.pandoc import resolve_docx_template
 
         pub_config = config.load_publish_config(record)
-        return resolve_docx_template(pub_config, record.name, cfg_path.parent)
+        return resolve_docx_template(pub_config, record.name, config.root_dir())
 
     out_p = Path(output_path)
 
