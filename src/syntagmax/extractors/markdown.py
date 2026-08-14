@@ -208,16 +208,6 @@ class MarkdownExtractor(MarkerSplitterMixin, ElementFilterMixin, Extractor):
 
         filepath.write_text(''.join(lines), encoding='utf-8')
 
-    def update_artifact(self, artifact: Artifact, fields: dict[str, str]):
-        from syntagmax.artifact import LineLocation
-
-        if not isinstance(artifact.location, LineLocation):
-            return
-
-        if 'id' in fields:
-            self.update_artifacts(artifact.location.loc_file, [(artifact, fields['id'])])
-
-
     def update_artifact_attributes(
         self,
         loc_file: str,
