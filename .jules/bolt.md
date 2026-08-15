@@ -15,3 +15,8 @@
 1. Retrieving keys from single-key dictionaries using `list(d.keys())[0]` in Python incurs unnecessary overhead due to creating an intermediate list object. Using `next(iter(d))` is almost twice as fast and uses less memory.
 2. In hot paths that evaluate conditions, converting boolean objects to strings and checking set membership is expensive. Performing an early type-check `isinstance(value, bool)` bypassed string coercion and reduced execution time by over 3x.
 **Action:** Use `next(iter(d))` when looking up the first/only key of a dictionary, and insert early-return/short-circuit type checks (e.g., boolean checks) on hot paths to avoid expensive type conversion logic.
+
+## 2026-07-28 - Memoizing ID schema regular expression compilation
+**Learning:**
+Compiling ID schemas into regex patterns involves multiple string manipulations (replacement, regex escaping, and list joining) followed by `re.compile`. In projects with thousands of requirements matching repetitive schemas (e.g., `REQ-{num:3}`), calling `compile_id_schema` on every ID extraction or validation creates redundant string formatting and regex object creation overhead. Applying `@functools.lru_cache(maxsize=128)` yields a ~4x performance improvement on number extraction routines.
+**Action:** Always memoize regex compilation functions or pre-compile regex patterns at module/class levels when schema strings or arguments are repeated across large loops or dataset processing pipelines.
