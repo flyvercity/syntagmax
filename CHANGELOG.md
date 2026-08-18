@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project uses [Calendar Versioning](https://calver.org/) with the scheme `YYYY.M.D`.
 
+## [2026.8.18] - 2026-08-18
+
+### Improved
+
+- Significantly expanded automated test coverage across core modules (analysis, tree, tracing, editing, metrics, publishing, change detection)
+- Improved change report performance for artifacts with list-valued fields
+- Reduced code duplication in CLI configuration loading
+
+### Fixed
+
+- Removed dead code paths and unused internal methods
+
 ## [2026.8.13] - 2026-08-13
 
 ### Added
