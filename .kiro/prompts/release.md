@@ -20,3 +20,5 @@ Consider updating the landing page to reflect new features, but keep it concise 
 ## Notes
 
 There is no need to use `uv build` and `uv publish`. The GHA workflow handles these.
+
+Note that the proper tag format is `YYYY.MM.DD` padded with zeros, e.g. `2026.01.01`, not `vYYYY.MM.DD`.
