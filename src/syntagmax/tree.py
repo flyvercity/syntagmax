@@ -80,7 +80,12 @@ def populate_pids(config: Config, artifacts: ArtifactMap, errors: list):
                                     if trace_mode == 'timestamp' and not nominal_revision:
                                         nominal_revision = 'older'
 
-                                existing_link = next((pl for pl in a.parent_links if pl.pid == aid), None)
+                                # OPTIMIZATION: Avoid generator allocation overhead in hot parent link population loop
+                                existing_link = None
+                                for pl in a.parent_links:
+                                    if pl.pid == aid:
+                                        existing_link = pl
+                                        break
                                 if existing_link:
                                     if existing_link.nominal_revision != nominal_revision:
                                         errors.append(

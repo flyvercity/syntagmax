@@ -305,7 +305,12 @@ class ArtifactValidator:
                 if parent.atype in targets:
                     found = True
                     # Validate mode
-                    link = next((pl for pl in artifact.parent_links if pl.pid == parent.aid), None)
+                    # OPTIMIZATION: Avoid generator allocation overhead in hot trace validation loop
+                    link = None
+                    for pl in artifact.parent_links:
+                        if pl.pid == parent.aid:
+                            link = pl
+                            break
                     if link:
                         if mode == 'timestamp' and link.nominal_revision != 'older' and link.nominal_revision is not None:
                             self.errors.append(
