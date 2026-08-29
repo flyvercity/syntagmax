@@ -122,16 +122,20 @@ def populate_pids(config: Config, artifacts: ArtifactMap, errors: list):
 
 
 def gather_ancestors(artifacts: ArtifactMap, ref: str, depth: int = 0) -> str | None:
-    if depth > MAX_TREE_DEPTH:
+    if depth > MAX_TREE_DEPTH or ref in artifacts[ref].ancestors:
         return _('Circular reference detected with {aid}').format(aid=artifacts[ref].aid)
 
     for child in artifacts[ref].children:
+        # OPTIMIZATION: Track set length before updating. If no new ancestors are added to child,
+        # all descendants of child already possess these ancestors, skipping redundant subtree recursion.
+        old_count = len(artifacts[child].ancestors)
         artifacts[child].ancestors.add(ref)
         artifacts[child].ancestors.update(artifacts[ref].ancestors)
-        err = gather_ancestors(artifacts, child, depth + 1)
+        if len(artifacts[child].ancestors) > old_count:
+            err = gather_ancestors(artifacts, child, depth + 1)
 
-        if err:
-            return err
+            if err:
+                return err
 
     return None
 
