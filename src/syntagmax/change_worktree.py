@@ -47,7 +47,7 @@ def check_worktrees_gitignored(repo: git.Repo, worktree_base: Path) -> None:
         worktree_dir = str(rel_path).replace('\\', '/') + '/'
     except ValueError:
         # worktree_base is outside the repo — cannot check
-        worktree_dir = str(worktree_base) + '/'
+        worktree_dir = str(worktree_base).replace('\\', '/') + '/'
 
     try:
         repo.git.check_ignore(worktree_dir)

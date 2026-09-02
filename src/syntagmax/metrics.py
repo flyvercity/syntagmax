@@ -49,7 +49,7 @@ def calculate_metrics(config: Config, artifacts: ArtifactMap, errors: list, filt
 
     metrics['requirements_by_status'] = (
         requirements.group_by('status')  # type: ignore
-        .agg(pl.count())
+        .agg(pl.len().alias('count'))
         .sort('status')
         .to_dicts()
     )
