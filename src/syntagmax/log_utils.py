@@ -8,8 +8,6 @@ import logging as lg
 
 from rich.logging import RichHandler
 
-from syntagmax.params import VALID_LOG_LEVELS  # noqa: F401
-
 LOG_LEVEL_MAP = {
     'debug': lg.DEBUG,
     'info': lg.INFO,
