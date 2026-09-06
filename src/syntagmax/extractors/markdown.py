@@ -59,9 +59,6 @@ class MarkdownTransformer(Transformer):
         text = '\n'.join(parts)
         return {'field': {'marker': marker, 'contents': {'text': text}}}
 
-    def _NL(self, t):
-        return None
-
     def req(self, t):
         # req: _REQ_BEGIN _NL? [contents] field* [terminator]
         # children: [contents], field*, [terminator]
