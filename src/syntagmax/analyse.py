@@ -114,16 +114,15 @@ class ArtifactValidator:
 
     def _validate_attributes(self, artifact: Artifact):
         artifact_rules = self._artifacts[artifact.atype]['attributes']
-        actual_names = set(artifact.fields.keys())
 
         # 1. Identify active rules for each attribute
         active_rules_by_name = self._get_active_rules(artifact, artifact_rules)
 
         # 2. Check for Additional Attributes (Strict Mode)
-        self._check_extra_attributes(artifact, actual_names, active_rules_by_name)
+        self._check_extra_attributes(artifact, active_rules_by_name)
 
         # 3. Check each attribute's rules
-        self._check_attribute_requirements(artifact, actual_names, active_rules_by_name)
+        self._check_attribute_requirements(artifact, active_rules_by_name)
 
     def _get_active_rules(self, artifact: Artifact, artifact_rules: dict) -> dict[str, list[dict]]:
         active_rules_by_name = {}
@@ -140,7 +139,7 @@ class ArtifactValidator:
                 active_rules_by_name[attr_name] = active
         return active_rules_by_name
 
-    def _check_extra_attributes(self, artifact: Artifact, actual_names: set[str], active_rules_by_name: dict[str, list[dict]]):
+    def _check_extra_attributes(self, artifact: Artifact, active_rules_by_name: dict[str, list[dict]]):
         # OPTIMIZATION: Direct key lookup on active_rules_by_name dict avoids temporary set allocations
         for extra in artifact.fields:
             if extra not in active_rules_by_name:
@@ -152,7 +151,7 @@ class ArtifactValidator:
                     )
                 )
 
-    def _check_attribute_requirements(self, artifact: Artifact, actual_names: set[str], active_rules_by_name: dict[str, list[dict]]):
+    def _check_attribute_requirements(self, artifact: Artifact, active_rules_by_name: dict[str, list[dict]]):
         fields = artifact.fields
         for attr_name, active_rules in active_rules_by_name.items():
             # OPTIMIZATION: Loop replaces generator expression in mandatory check, eliminating generator allocation overhead
@@ -357,7 +356,7 @@ class ArtifactValidator:
                                 )
                             )
 
-            if rule['presence'] == 'mandatory' and not found:
+            if rule.get('presence') == 'mandatory' and not found:
                 target_str = ' or '.join(f"'{t}'" for t in targets)
                 self.errors.append(
                     self._make_error(
