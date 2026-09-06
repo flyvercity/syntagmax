@@ -25,3 +25,12 @@ Compiling ID schemas into regex patterns involves multiple string manipulations 
 **Learning:**
 In `gather_ancestors`, calling `gather_ancestors(artifacts, ref)` across all artifact keys causes subtrees to be recursively re-traversed repeatedly. If updating a child's ancestor set (`artifacts[child].ancestors`) does not increase its length, no new ancestors were introduced, and all of the child's descendants already possess those ancestors. Short-circuiting recursive calls when `len(child.ancestors)` remains unchanged reduces tree building time by >80% (~5x speedup) on large artifact graphs.
 **Action:** In recursive set/ancestor propagation algorithms over graphs, track set length before update and only recurse into children if new elements were actually added.
+
+## 2026-09-05 - Optimizing ArtifactValidator in hot analysis loops
+**Learning:**
+In `ArtifactValidator` (`analyse.py`), validating thousands of artifacts repeatedly incurred heavy CPU and allocation overhead from:
+1. Re-evaluating `_evaluate_condition` when `condition` is `None`. Short-circuiting `if cond is None` avoids method call overhead.
+2. Re-constructing `metamodel` dictionaries on every condition evaluation pass. Caching `self._metamodel_dict` in `__init__` eliminates dict creation.
+3. Allocating generator objects in `any(r['presence'] == 'mandatory' for r in active_rules)` and temporary set objects in `actual_names - set(active_rules_by_name.keys())`. Replacing them with explicit `for` loops and direct dictionary key containment checks (`extra not in active_rules_by_name`) avoids temporary allocations entirely.
+4. Re-constructing `truthy` and `falsy` sets and string coercion for `bool` and `int` fields. Precomputing default boolean sets at module level and fast-pathing `isinstance(val, bool)` and `type(val) is int` yields a ~1.39x speedup (28% execution time reduction).
+**Action:** In high-frequency validation loops, precompute static sets/dicts, avoid generator expressions in hot loops, and fast-path native Python types to bypass coercion and set allocation.

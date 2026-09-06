@@ -13,6 +13,11 @@ from syntagmax.id_utils import compile_id_schema
 from syntagmax.metamodel import evaluate_condition
 from syntagmax.report import ReportError, CAT_SCHEMA, CAT_ATTRIBUTE, CAT_REFERENCE, CAT_TRACE, CAT_STRUCTURE
 
+# OPTIMIZATION: Module-level precomputed constants to avoid set creation and formatting overhead in boolean type checks
+_DEFAULT_BOOL_TRUTHY = {'true', 'yes', '1'}
+_DEFAULT_BOOL_FALSY = {'false', 'no', '0'}
+_DEFAULT_BOOL_ALLOWED = _DEFAULT_BOOL_TRUTHY | _DEFAULT_BOOL_FALSY
+
 
 class ArtifactValidator:
     def __init__(self, metamodel, artifacts: ArtifactMap, errors: list | None = None, suppress_tracing: bool = False):
@@ -24,6 +29,8 @@ class ArtifactValidator:
             # Backward compatibility or empty metamodel
             self._artifacts = metamodel if metamodel else {}
             self._traces = {}
+
+        self._metamodel_dict = {'artifacts': self._artifacts, 'traces': self._traces}
 
         self.errors = errors if errors is not None else []
         self._artifacts_map = artifacts
@@ -66,9 +73,8 @@ class ArtifactValidator:
         if not condition:
             return True
 
-        # Build a metamodel dict in the format expected by the shared helper
-        metamodel = {'artifacts': self._artifacts, 'traces': self._traces}
-        return evaluate_condition(artifact.fields, artifact.atype, condition, metamodel)
+        # OPTIMIZATION: Reuse precomputed metamodel dict reference to avoid dictionary creation on every condition evaluation
+        return evaluate_condition(artifact.fields, artifact.atype, condition, self._metamodel_dict)
 
     def _validate_id_schema(self, artifact: Artifact):
         artifact_rules = self._artifacts[artifact.atype]['attributes']
@@ -108,44 +114,54 @@ class ArtifactValidator:
 
     def _validate_attributes(self, artifact: Artifact):
         artifact_rules = self._artifacts[artifact.atype]['attributes']
-        actual_names = set(artifact.fields.keys())
 
         # 1. Identify active rules for each attribute
         active_rules_by_name = self._get_active_rules(artifact, artifact_rules)
 
         # 2. Check for Additional Attributes (Strict Mode)
-        self._check_extra_attributes(artifact, actual_names, active_rules_by_name)
+        self._check_extra_attributes(artifact, active_rules_by_name)
 
         # 3. Check each attribute's rules
-        self._check_attribute_requirements(artifact, actual_names, active_rules_by_name)
+        self._check_attribute_requirements(artifact, active_rules_by_name)
 
     def _get_active_rules(self, artifact: Artifact, artifact_rules: dict) -> dict[str, list[dict]]:
         active_rules_by_name = {}
         for attr_name, rules in artifact_rules.items():
             if isinstance(rules, dict):
                 rules = [rules]
-            active = [r for r in rules if self._evaluate_condition(artifact, r.get('condition'))]
+            # OPTIMIZATION: Short-circuit rule evaluation when condition is None, avoiding method call overhead
+            active = []
+            for r in rules:
+                cond = r.get('condition')
+                if cond is None or self._evaluate_condition(artifact, cond):
+                    active.append(r)
             if active:
                 active_rules_by_name[attr_name] = active
         return active_rules_by_name
 
-    def _check_extra_attributes(self, artifact: Artifact, actual_names: set[str], active_rules_by_name: dict[str, list[dict]]):
-        all_allowed_names = set(active_rules_by_name.keys())
-        extra_fields = actual_names - all_allowed_names
-        for extra in extra_fields:
-            self.errors.append(
-                self._make_error(
-                    artifact,
-                    _("Attribute '{attr_name}' is not allowed for artifact '{atype}'").format(attr_name=extra, atype=artifact.atype),
-                    CAT_ATTRIBUTE,
+    def _check_extra_attributes(self, artifact: Artifact, active_rules_by_name: dict[str, list[dict]]):
+        # OPTIMIZATION: Direct key lookup on active_rules_by_name dict avoids temporary set allocations
+        for extra in artifact.fields:
+            if extra not in active_rules_by_name:
+                self.errors.append(
+                    self._make_error(
+                        artifact,
+                        _("Attribute '{attr_name}' is not allowed for artifact '{atype}'").format(attr_name=extra, atype=artifact.atype),
+                        CAT_ATTRIBUTE,
+                    )
                 )
-            )
 
-    def _check_attribute_requirements(self, artifact: Artifact, actual_names: set[str], active_rules_by_name: dict[str, list[dict]]):
+    def _check_attribute_requirements(self, artifact: Artifact, active_rules_by_name: dict[str, list[dict]]):
+        fields = artifact.fields
         for attr_name, active_rules in active_rules_by_name.items():
-            # Check if mandatory and missing
-            is_mandatory = any(r['presence'] == 'mandatory' for r in active_rules)
-            if is_mandatory and attr_name not in actual_names:
+            # OPTIMIZATION: Loop replaces generator expression in mandatory check, eliminating generator allocation overhead
+            is_mandatory = False
+            for r in active_rules:
+                if r.get('presence') == 'mandatory':
+                    is_mandatory = True
+                    break
+
+            if is_mandatory and attr_name not in fields:
                 self.errors.append(
                     self._make_error(
                         artifact,
@@ -155,10 +171,10 @@ class ArtifactValidator:
                 )
                 continue
 
-            if attr_name not in actual_names:
+            if attr_name not in fields:
                 continue
 
-            value = artifact.fields[attr_name]
+            value = fields[attr_name]
 
             for rule in active_rules:
                 self._check_rule(artifact, attr_name, value, rule)
@@ -195,6 +211,9 @@ class ArtifactValidator:
         expected_type = type_info['type']
 
         if expected_type == 'integer':
+            # OPTIMIZATION: Direct type check for Python int bypasses try-except block
+            if type(val) is int:
+                return
             try:
                 int(val)
             except (ValueError, TypeError):
@@ -207,18 +226,22 @@ class ArtifactValidator:
                 )
 
         elif expected_type == 'boolean':
+            # OPTIMIZATION: Early return if already a Python boolean avoids set building and string operations
+            if isinstance(val, bool):
+                return
+
             if 'custom_values' in type_info:
                 truthy = {v.lower() for v in type_info['custom_values']['true']}
                 falsy = {v.lower() for v in type_info['custom_values']['false']}
+                allowed = truthy | falsy
                 expected_str = _('expected {true_vals} / {false_vals}').format(
                     true_vals=', '.join(type_info['custom_values']['true']), false_vals=', '.join(type_info['custom_values']['false'])
                 )
             else:
-                truthy = {'true', 'yes', '1'}
-                falsy = {'false', 'no', '0'}
+                allowed = _DEFAULT_BOOL_ALLOWED
                 expected_str = _('expected true/false, yes/no, 1/0')
 
-            if str(val).lower() not in truthy | falsy:
+            if str(val).lower() not in allowed:
                 self.errors.append(
                     self._make_error(
                         artifact,
@@ -333,7 +356,7 @@ class ArtifactValidator:
                                 )
                             )
 
-            if rule['presence'] == 'mandatory' and not found:
+            if rule.get('presence') == 'mandatory' and not found:
                 target_str = ' or '.join(f"'{t}'" for t in targets)
                 self.errors.append(
                     self._make_error(
