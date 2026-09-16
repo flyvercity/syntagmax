@@ -13,3 +13,7 @@
 ### 3. Redundant "Just-In-Case" Singular Update Methods
 - **Insight:** Over-engineering often leads to duplicating singular update methods (`update_artifact`) along with bulk update methods (`update_artifacts`). Keeping both when only one is called adds dead code and raises maintenance overhead.
 - **Rule of Thumb:** Always favor batch/bulk interfaces (`update_artifacts`) and completely purge obsolete single-item wrappers once the system transitions to bulk operations.
+
+### 4. Driver-Specific Artifact Subclasses
+- **Insight:** Driver-specific `Artifact` subclasses (such as `TextArtifact` in `src/syntagmax/extractors/text.py`) are retained intentionally to provide explicit domain typing and clarity across extractor drivers, even when they do not currently override methods or add attributes beyond `Artifact`.
+- **Rule of Thumb:** Keep driver-specific `Artifact` subclasses intact for clarity and future extension across extractors rather than flattening them into base `Artifact`.
