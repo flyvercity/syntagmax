@@ -22,14 +22,22 @@ def compile_id_schema(schema: str, atype: str) -> re.Pattern:
     """Compile an ID schema into an anchored regex with a capture group.
 
     Steps:
-      1. Replace {atype} with re.escape(atype).
+      1. Replace {atype} with the raw literal type name.
       2. Split the remaining string on {num}/{num:N} boundaries.
-      3. Escape each literal segment with re.escape.
+      3. Escape each literal segment with re.escape (this also escapes any
+         regex-special characters in the atype, e.g. hyphens).
       4. Replace {num:N} with (\\d{N,}) and {num} with (\\d+).
       5. Anchor with ^...$.
+
+    Note: {atype} is substituted with the *raw* atype (not pre-escaped) so that
+    the single escaping pass in steps 2-3 escapes it exactly once. Pre-escaping
+    here would cause double escaping (e.g. an atype containing '-' would compile
+    to a pattern requiring a literal backslash, which never matches). Artifact
+    type identifiers cannot contain '{' or '}' (grammar: [a-zA-Z][a-zA-Z0-9_-]*),
+    so raw substitution never collides with the {num} macro.
     """
-    # Step 1: replace {atype} with the escaped literal type name
-    pattern = schema.replace('{atype}', re.escape(atype))
+    # Step 1: replace {atype} with the raw literal type name
+    pattern = schema.replace('{atype}', atype)
 
     # Steps 2-4: split on _NUM_PATTERN boundaries, escape literals, insert groups
     parts: list[str] = []
