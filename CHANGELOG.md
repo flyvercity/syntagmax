@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project uses [Calendar Versioning](https://calver.org/) with the scheme `YYYY.M.D`.
 
+## [2026.9.16] - 2026-09-16
+
+### Improved
+
+- Faster analysis on large projects through optimised parsing, artifact validation, and traceability tree building
+
+### Fixed
+
+- Correct handling of hyphenated artifact type names in ID schemas
+
+### Removed
+
+- Internal code cleanup removing unused and dead code paths
+
 ## [2026.8.18] - 2026-08-18
 
 ### Improved
