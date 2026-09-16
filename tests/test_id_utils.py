@@ -40,6 +40,24 @@ class TestCompileIdSchema:
         assert pat.match('REQ.001')
         assert not pat.match('REQX001')
 
+    def test_hyphenated_atype_matches(self):
+        """Regression: an atype containing hyphens must not be double-escaped.
+
+        Reported case: atype 'ASP1-1203' with schema '{atype}-{num:3}' must match
+        'ASP1-1203-001'. Previously the atype was pre-escaped and then escaped
+        again, producing a pattern requiring a literal backslash that never matched.
+        """
+        pat = compile_id_schema('{atype}-{num:3}', 'ASP1-1203')
+        assert pat.pattern == r'^ASP1\-1203\-(\d{3,})$'
+        assert pat.match('ASP1-1203-001')
+        assert pat.match('ASP1-1203-1234')
+        assert not pat.match('ASP1-1203-01')
+        assert not pat.match('ASP1X1203X001')
+
+    def test_hyphenated_atype_rejects_wrong_type(self):
+        pat = compile_id_schema('{atype}-{num:3}', 'ASP1-1203')
+        assert not pat.match('ASP1-9999-001')
+
 
 class TestExtractNumberFromId:
     """Tests for extract_number_from_id."""
@@ -56,6 +74,11 @@ class TestExtractNumberFromId:
     def test_returns_none_for_zero_macro_schema(self):
         """Schema with no {num} macro has no capture group — should return None, not crash."""
         assert extract_number_from_id('REQ-FIXED', 'REQ-FIXED', 'REQ') is None
+
+    def test_extracts_number_with_hyphenated_atype(self):
+        """Regression: hyphenated atype must not break number extraction."""
+        assert extract_number_from_id('ASP1-1203-001', '{atype}-{num:3}', 'ASP1-1203') == 1
+        assert extract_number_from_id('ASP1-1203-042', '{atype}-{num:3}', 'ASP1-1203') == 42
 
 
 class TestCountNumMacros:
