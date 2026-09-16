@@ -4,6 +4,7 @@
 # Created: 2026-03-22
 # Description: Base class for extracting artifacts from Markdown content.
 
+import functools
 from pathlib import Path
 import logging as lg
 import re
@@ -22,6 +23,17 @@ from syntagmax.extractors.markdown_filters import (
 )
 from syntagmax.extractors.markdown_markers import MarkerSplitterMixin
 from syntagmax.i18n import _
+
+
+# OPTIMIZATION: Module-level caching of Lark base grammar and compiled Lark parser instances by record marker
+_GRAMMAR_PATH = Path(__file__).parent / 'markdown.lark'
+_BASE_GRAMMAR = _GRAMMAR_PATH.read_text(encoding='utf-8')
+
+
+@functools.lru_cache(maxsize=32)
+def _get_lark_parser(marker: str) -> Lark:
+    grammar = _BASE_GRAMMAR.replace('_TOKEN_BEGIN', f'"[{marker}]"i').replace('_TOKEN_END', f'"[/{marker}]"i')
+    return Lark(grammar, parser='lalr', maybe_placeholders=False)
 
 
 class MarkdownArtifact(Artifact):
@@ -93,15 +105,8 @@ class MarkdownTransformer(Transformer):
 class MarkdownExtractor(MarkerSplitterMixin, ElementFilterMixin, Extractor):
     def __init__(self, config: Config, record: InputRecord, metamodel: dict | None = None):
         super().__init__(config, record, metamodel)
-        grammar_path = Path(__file__).parent / 'markdown.lark'
-        grammar = grammar_path.read_text(encoding='utf-8')
-
-        # Replace placeholders with actual marker
         marker = self._record.marker
-        grammar = grammar.replace('_TOKEN_BEGIN', f'"[{marker}]"i')
-        grammar = grammar.replace('_TOKEN_END', f'"[/{marker}]"i')
-
-        self._parser = Lark(grammar, parser='lalr', maybe_placeholders=False)
+        self._parser = _get_lark_parser(marker)
         self._transformer = MarkdownTransformer()
 
         # Pre-compile marker-specific and record-specific regexes
