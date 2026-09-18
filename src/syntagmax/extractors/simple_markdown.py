@@ -34,9 +34,6 @@ def _pop_case_insensitive(data: dict, key: str, default):
 
 
 class SimpleMarkdownExtractor(Extractor):
-    def __init__(self, config: Config, record: InputRecord, metamodel: dict | None = None):
-        super().__init__(config, record, metamodel)
-
     def driver(self) -> str:
         return 'simple-markdown'
 
