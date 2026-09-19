@@ -10,7 +10,6 @@ from pathlib import Path
 
 import yaml
 
-from syntagmax.config import Config, InputRecord
 from syntagmax.artifact import ArtifactBuilder, Artifact, FileLocation, ValidationError
 from syntagmax.extractors.extractor import Extractor
 from syntagmax.blocks import Block, ArtifactBlock, ErrorBlock
