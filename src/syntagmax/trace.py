@@ -123,13 +123,14 @@ def build_trace_matrix(
                     )
                     record_number += 1
                 else:
+                    # OPTIMIZATION: Avoid dict constructor overhead when copying lead attributes for each linked ID
                     for linked_id in linked_ids:
                         matrix.records.append(
                             TraceRecord(
                                 record_number=record_number,
                                 lead_id=lead.aid,
                                 linked_id=linked_id,
-                                attributes=dict(attrs),
+                                attributes=attrs.copy() if attrs else {},
                             )
                         )
                         record_number += 1
@@ -173,13 +174,14 @@ def build_trace_matrix(
                     )
                     record_number += 1
                 else:
+                    # OPTIMIZATION: Avoid dict constructor overhead when copying lead attributes for each linked ID
                     for linked_id in linked_ids:
                         matrix.records.append(
                             TraceRecord(
                                 record_number=record_number,
                                 lead_id=lead.aid,
                                 linked_id=linked_id,
-                                attributes=dict(attrs),
+                                attributes=attrs.copy() if attrs else {},
                             )
                         )
                         record_number += 1
@@ -189,10 +191,13 @@ def build_trace_matrix(
     for rec in matrix.records:
         referenced_ids.add(rec.lead_id)
         if rec.linked_id:
-            # In flat mode, linked_id may contain multiple IDs separated by "; "
-            for lid in rec.linked_id.split('; '):
-                if lid:
-                    referenced_ids.add(lid)
+            # OPTIMIZATION: Check for delimiter before splitting to avoid list allocation on single linked IDs
+            if '; ' in rec.linked_id:
+                for lid in rec.linked_id.split('; '):
+                    if lid:
+                        referenced_ids.add(lid)
+            else:
+                referenced_ids.add(rec.linked_id)
 
     for aid in referenced_ids:
         if aid in artifacts:
