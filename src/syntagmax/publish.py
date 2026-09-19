@@ -344,21 +344,26 @@ def _resolve_remaining_fields(artifact: Artifact, explicit_attrs: set[str], meta
 
     # Merge metamodel attributes if available
     if metamodel:
-        atype_upper = artifact.atype.upper()
         artifact_types = metamodel.get('artifacts', {})
-        for type_name, type_def in artifact_types.items():
-            if type_name.upper() == atype_upper:
-                if hasattr(type_def, 'attributes'):
-                    candidates.update(type_def.attributes.keys())
-                elif isinstance(type_def, dict):
-                    candidates.update(type_def.get('attributes', {}).keys())
-                break
+        # OPTIMIZATION: Try exact dict lookup before falling back to case-insensitive loop scan
+        type_def = artifact_types.get(artifact.atype)
+        if type_def is None:
+            atype_upper = artifact.atype.upper()
+            for type_name, td in artifact_types.items():
+                if type_name.upper() == atype_upper:
+                    type_def = td
+                    break
+        if type_def is not None:
+            if isinstance(type_def, dict):
+                candidates.update(type_def.get('attributes', {}).keys())
+            elif hasattr(type_def, 'attributes'):
+                candidates.update(type_def.attributes.keys())
 
     # Filter: remove any field whose lowercased name is in the explicit set
     remaining = [k for k in candidates if k.lower() not in explicit_attrs]
 
     # Sort alphabetically (case-insensitive sort, preserving original key for display)
-    remaining.sort(key=lambda x: x.lower())
+    remaining.sort(key=str.lower)
     return remaining
 
 
