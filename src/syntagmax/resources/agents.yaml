@@ -76,3 +76,6 @@ agents:
     command: "cmdc -p {prompt}"
     description: CommandCode"
    
+  tau:
+    command: "tau --provider openrouter --na --print {prompt}"
+    description: "Tau Coding Agent"
