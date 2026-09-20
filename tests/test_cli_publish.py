@@ -1,6 +1,4 @@
 # SPDX-License-Identifier: MIT
-import pytest
-import shutil
 import logging
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -8,9 +6,6 @@ from unittest.mock import MagicMock, patch
 from click.testing import CliRunner
 from syntagmax.cli import rms
 from syntagmax.cli_publish import _copy_manifest_images, _run_pandoc_conversion
-from syntagmax.errors import FatalError
-from syntagmax.params import Params
-from syntagmax.config import Config
 
 
 def test_copy_manifest_images_none():
