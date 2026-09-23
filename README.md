@@ -2,6 +2,20 @@
 
 Fully git-friendly lightweight requirements management system with tracing model verification, change detection, and propagation.
 
+**Website:** [syntagmax.flyvercity.com](https://syntagmax.flyvercity.com/)
+
+## Getting Started
+
+To initialize a new Syntagmax project in the current directory:
+
+```bash
+syntagmax init
+```
+
+This command creates a `.syntagmax` directory with:
+- `config.toml`: A template configuration file with common options.
+- `project.syntagmax`: A basic metamodel definition to get you started.
+
 ## Quick Demo (Development Environment)
 
 Run example analysis with:
@@ -21,18 +35,6 @@ Run example tracing export with:
 ```bash
 uv run syntagmax --cwd ./example/obsidian-driver trace --child REQ --parent SYS
 ```
-
-## Getting Started
-
-To initialize a new Syntagmax project in the current directory:
-
-```bash
-syntagmax init
-```
-
-This command creates a `.syntagmax` directory with:
-- `config.toml`: A template configuration file with common options.
-- `project.syntagmax`: A basic metamodel definition to get you started.
 
 ## Configuration
 
