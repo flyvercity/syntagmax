@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project uses [Calendar Versioning](https://calver.org/) with the scheme `YYYY.M.D`.
 
+## [2026.9.23] - 2026-09-23
+
+### Improved
+
+- Faster traceability export and publishing on large projects
+- Clearer package page on PyPI — documentation links now resolve correctly instead of breaking
+
 ## [2026.9.16] - 2026-09-16
 
 ### Improved
