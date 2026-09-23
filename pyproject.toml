@@ -69,6 +69,12 @@ packages = ["src/syntagmax"]
 [tool.hatch.metadata.hooks.custom]
 path = "scripts/hatch_readme_hook.py"
 
+# cx_Freeze's `bdist_msi` uses the setuptools/distutils code path (not hatchling),
+# so it needs an explicit resolver for the dynamic `readme` field. The MSI build
+# does not require the PyPI link transformation, so the plain README is used here.
+[tool.setuptools.dynamic]
+readme = { file = ["README.md"], content-type = "text/markdown" }
+
 [tool.ruff]
 line-length = 160
 target-version = "py313"
