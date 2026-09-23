@@ -2,7 +2,7 @@
 name = "syntagmax"
 version = "2026.9.16"
 description = "Git-Based Requirements Management System"
-readme = "README.md"
+dynamic = ["readme"]
 license = "MIT"
 requires-python = ">=3.13"
 authors = [
@@ -65,6 +65,9 @@ dev = [
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/syntagmax"]
+
+[tool.hatch.metadata.hooks.custom]
+path = "scripts/hatch_readme_hook.py"
 
 [tool.ruff]
 line-length = 160
