@@ -112,7 +112,7 @@ def generate_tasks(config: Config, artifacts: ArtifactMap, errors: list[str], im
     if not config.impact.tasks_enabled:
         return {'created': 0, 'skipped': 0}
 
-    tasks_dir = config.tasks_dir()
+    tasks_dir = config.task_dir()
     tasks_dir.mkdir(parents=True, exist_ok=True)
 
     existing_tasks = scan_existing_tasks(tasks_dir)

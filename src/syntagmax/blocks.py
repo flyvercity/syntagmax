@@ -4,8 +4,6 @@
 # Created: 2026-06-20
 # Description: Block tree data model for publishing.
 
-from __future__ import annotations
-
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
@@ -31,7 +29,7 @@ class TextBlock(Block):
 
 @dataclass
 class ArtifactBlock(Block):
-    artifact: Artifact
+    artifact: 'Artifact'
     raw_text: str
 
 
