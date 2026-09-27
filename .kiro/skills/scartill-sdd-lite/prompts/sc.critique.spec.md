@@ -139,3 +139,5 @@ Challenge the specification and implementation plan through two distinct expert 
 
 Do not use absolute paths for referencing files in the report. Use relative paths only.
 
+After generation the report, durtin the follow-up session, update the critique report only. Do not alter other files without explicit request.
+
