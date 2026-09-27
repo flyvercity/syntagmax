@@ -10,7 +10,7 @@ import logging as lg
 import os
 import re
 import tempfile
-from typing import Callable
+from typing import Any, Callable
 from benedict import benedict
 from lark import Lark, Transformer, exceptions
 
@@ -556,15 +556,22 @@ class MarkdownExtractor(MarkerSplitterMixin, ElementFilterMixin, Extractor):
             existing = ''
             prefix = ''
 
-        # Build the YAML attrs block.
-        attrs_lines = [f'  id: {aid}']
+        # Build the YAML attrs block via the ruamel-based round-trip helper so
+        # keys and values are safely quoted/escaped (a newline or YAML-special
+        # value can no longer inject attributes or corrupt the frontmatter).
+        from syntagmax.yaml_utils import roundtrip_modify_attrs
+
+        attrs_delta: dict[str, Any] = {'id': aid}
         if atype:
-            attrs_lines.append(f'  atype: {atype}')
+            attrs_delta['atype'] = atype
         for key, value in fields.items():
             if key.lower() in ('id', 'atype', 'contents'):
                 continue
-            attrs_lines.append(f'  {key}: {value}')
-        yaml_block = f'```yaml{newline}attrs:{newline}' + newline.join(attrs_lines) + f'{newline}```'
+            attrs_delta[key] = value
+
+        initial_yaml = f'attrs:{newline}'
+        modified_yaml = roundtrip_modify_attrs(initial_yaml, attrs_delta, 'add')
+        yaml_block = f'```yaml{newline}{modified_yaml.rstrip()}{newline}```'
 
         body_text = body or ''
         segment_parts = [f'[{marker}]{newline}']

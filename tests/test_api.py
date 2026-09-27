@@ -111,6 +111,36 @@ def test_get_missing_returns_none():
     assert session.get('DOES-NOT-EXIST') is None
 
 
+def test_view_fields_do_not_alias_cached_artifact():
+    """Mutating a returned view's fields must not corrupt the cached artifact.
+
+    Regression for the aliasing finding: ``_to_view`` previously handed out the
+    artifact's own ``fields`` dict (and its nested list values) by reference, so
+    a host mutating ``session.get(aid).fields`` changed the in-memory cache and
+    later reads reported data absent from the source document.
+    """
+    session = _facade_session()
+
+    view = session.get('REQ-001')
+    assert view is not None
+
+    # Mutate the top-level mapping and any nested list values in place.
+    view.fields['status'] = 'MUTATED-BY-HOST'
+    view.fields['injected'] = 'ghost'
+    for value in view.fields.values():
+        if isinstance(value, list):
+            value.append('MUTATED-LIST-ENTRY')
+
+    # A fresh view (from the same cached artifact) must be untouched.
+    refetched = session.get('REQ-001')
+    assert refetched is not None
+    assert refetched.fields.get('status') == 'active'
+    assert 'injected' not in refetched.fields
+    for value in refetched.fields.values():
+        if isinstance(value, list):
+            assert 'MUTATED-LIST-ENTRY' not in value
+
+
 def test_children_populated():
     session = _facade_session()
     sys1 = session.get('SYS-001')

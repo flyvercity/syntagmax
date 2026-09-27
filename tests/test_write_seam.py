@@ -143,6 +143,50 @@ class TestCreateArtifact:
         assert re_extracted.fields.get('title') == 'Created'
         assert 'New artifact body' in (re_extracted.fields.get('contents') or '')
 
+    def test_create_escapes_yaml_special_and_multiline_values(self, params, tmp_path):
+        """Caller-provided field values must be YAML-safe on create.
+
+        Regression for the unescaped-serialisation finding: values were
+        interpolated raw into the YAML block, so a newline could inject extra
+        attributes and YAML-special strings could change type or make the file
+        unparseable. The created artifact must re-extract with the exact values.
+        """
+        config = _make_config(params, tmp_path)
+        extractor = _make_extractor(config, tmp_path)
+
+        tricky_fields = {
+            # A newline previously injected an unintended 'evil' attribute.
+            'title': 'Line one\nevil: injected',
+            # A leading colon-space / braces would parse as a mapping/type.
+            'note': '{not: a, mapping}',
+            # A bare 'true' would coerce to a boolean without quoting.
+            'flag': 'true',
+            # A leading '*' is a YAML alias marker.
+            'ref': '*alias',
+        }
+
+        created = extractor.create_artifact(
+            target_file='REQ/TRICKY-001.md',
+            atype='REQ',
+            aid='TRICKY-001',
+            fields=tricky_fields,
+            body='Body',
+        )
+        assert created.aid == 'TRICKY-001'
+
+        target = tmp_path / 'REQ' / 'TRICKY-001.md'
+        re_extracted = _get(extractor, target, 'TRICKY-001')
+
+        # No injected attribute leaked from the multiline value.
+        assert 'evil' not in re_extracted.fields
+        # Every value round-trips exactly as provided (as strings).
+        assert re_extracted.fields.get('title') == 'Line one\nevil: injected'
+        assert re_extracted.fields.get('note') == '{not: a, mapping}'
+        assert str(re_extracted.fields.get('flag')) == 'true'
+        assert re_extracted.fields.get('ref') == '*alias'
+        # id/atype still land correctly.
+        assert re_extracted.aid == 'TRICKY-001'
+
     def test_create_requires_non_none_aid(self, params, tmp_path):
         config = _make_config(params, tmp_path)
         extractor = _make_extractor(config, tmp_path)

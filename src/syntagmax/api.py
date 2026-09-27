@@ -201,10 +201,15 @@ class Session:
             }
             for link in artifact.parent_links
         ]
+        # Copy the fields mapping (including nested list values) so a host that
+        # mutates the returned view cannot corrupt the cached artifact.
+        fields: dict[str, str | list[str]] = {
+            key: list(value) if isinstance(value, list) else value for key, value in artifact.fields.items()
+        }
         return ArtifactView(
             aid=artifact.aid,
             atype=artifact.atype,
-            fields=artifact.fields,
+            fields=fields,
             parents=parents,
             children=sorted(artifact.children),
             latest_revision=artifact.latest_revision,
