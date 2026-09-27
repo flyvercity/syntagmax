@@ -12,25 +12,30 @@ This spec derives from the seed `docs/seed/library-embedding-api.seed.md` and th
 1. A new module `src/syntagmax/api.py` exposes `open_project(config_path: str | Path, *, options: Options | None = None) -> Session`.
 2. `Options` is a dataclass carrying library-facing options with defaults matching current CLI defaults: `render_tree: bool = False`, `no_git: bool = False`, `allow_dirty_worktree: bool = False`, `suppress_tracing: bool = False`, `tasks: bool = False`, `language: str = 'en'`, `warnings_as_errors: bool = False`, `log_level: str | None = None`.
 3. The facade builds a `syntagmax.config.Config` internally from `Options` (translating to the `Params` `TypedDict` the `Config` constructor requires) — **the host never constructs `Params`**.
-4. `Session.artifacts() -> ArtifactMap` returns the populated artifact graph, wrapping the canonical sequence `extract → build_artifact_map → populate_pids → build_tree → analyse_tree` exactly once. Results are computed on demand; a `Session` may cache within its own lifetime but must expose a way to force recomputation after a write (`Session.reload()`).
-5. `Session.get(aid: str) -> ArtifactView | None`, `Session.query(*, atype: str | None = None, ...) -> list[ArtifactView]`, and `Session.search(q: str) -> list[ArtifactView]` return **structured dataclasses**, not formatted strings. `ArtifactView` carries at least: `aid`, `atype`, `fields` (dict), `parents` (list of `{pid, nominal_revision, is_suspicious}`), `children` (list of ids), `latest_revision` (or `None`). Serialisation (e.g. JSON) is the host's responsibility.
+4. `Session.artifacts() -> ArtifactMap` returns the populated artifact graph, wrapping the canonical sequence `extract → build_artifact_map → populate_pids → build_tree → analyse_tree` exactly once. Results are computed on demand; a `Session` may cache within its own lifetime but must expose a way to force recomputation after a write (`Session.reload()`). **Thread-safety (E2):** the `Session` holds an internal `threading.Lock` guarding the cached `ArtifactMap`; lazy computation and `reload()` acquire it, so a multi-threaded host (e.g. a FastAPI worker pool sharing a `Session`) cannot race on cache invalidation. **Known trade-off:** `reload()` re-runs the full pipeline; for very large repositories a single-artifact write incurs a full re-parse. This is an accepted Phase-1 limitation (incremental reload is future work).
+5. `Session.get(aid: str) -> ArtifactView | None`, `Session.query(*, atype: str | None = None, ...) -> list[ArtifactView]`, and `Session.search(q: str) -> list[ArtifactView]` return **structured dataclasses**, not formatted strings. `ArtifactView` carries at least: `aid`, `atype`, `fields` (dict), `parents` (list of `{pid, nominal_revision, is_suspicious}`), `children` (list of ids), `latest_revision` (or `None`). Serialisation (e.g. JSON) is the host's responsibility. **Search scope (P2):** `search(q)` matches case-insensitively against `aid`, `atype`, and all `fields` **including the `contents` body text**; a multi-term query matches when **all** whitespace-separated terms are found (AND semantics) across those searchable strings.
 6. `Session.analyse() -> AnalysisResult` returns structured `diagnostics: list[Diagnostic]`, `metrics`, and `impact` (see R2 for `Diagnostic`).
-7. `Session.edit/create/delete` are the write seam (see R3), with per-driver capability introspection (`Session.capabilities(record_or_driver) -> set[str]` or equivalent).
+7. `Session.edit(...)` **returns the updated `ArtifactView`** (P1: so a host can refresh its UI without a second `get()` call); `Session.create(...)` returns the created `ArtifactView`; `Session.delete(...)` returns `None`. These are the write seam (see R3), with per-driver capability introspection `Session.capabilities(driver_or_record: str | InputRecord) -> set[str]`.
 8. `FatalError` / `RMSException` propagate unchanged out of facade methods (the fatal-config contract is preserved); the facade does not swallow them. The facade adds no HTTP/async concepts and remains fully synchronous.
 9. The CLI (`cli.py`, `main.process`) continues to work with no behavioural change. Rebasing the CLI onto the facade is explicitly out of scope.
 
 ### R2 — Structured diagnostics (single source of truth)
 10. A `Diagnostic` model is the single structured representation of an analysis issue. The core **already** has `ReportError` in `report.py` (`message, category, input_record, artifact_id, artifact_type, file_path, line_range`) and `Report.errors: list[ReportError]` with `errors_grouped()`. This work **completes and converges on that model** rather than adding a parallel one.
-11. Add a `severity` field to the structured error model (`error | warning`, default `error`), preserving existing field names and `__str__`/`format_error` output.
+11. Add a `severity` field (`error | warning`, default `error`) **and a `rule: str | None = None` field** to the structured error model (`ReportError`), preserving existing field names and `__str__`/`format_error` output.
 12. Diagnostic producers that currently append **bare strings** to the `errors` list are migrated to append the structured type. `Report.errors` already coerces via `ReportError.from_any`; the goal is that structured data is the source and human strings are **derived** from it — no second parallel channel (per the Q3 decision "no duplication").
 13. Existing CLI and report **text output must remain byte-for-byte identical**, verified by golden-output tests.
-14. `Session.analyse()` exposes the structured diagnostics (mapped to the public `Diagnostic` dataclass) so a host can aggregate by document/folder and bind each entry to its artifact.
+14. `Session.analyse()` exposes the structured diagnostics (mapped to the public `Diagnostic` dataclass) so a host can aggregate by document/folder and bind each entry to its artifact. **The `ReportError → Diagnostic` mapping (X1) is exactly:** `severity = e.severity`; `artifact_id = e.artifact_id`; `rule = e.rule or e.category`; `category = e.category`; `location = f'{e.file_path}:{e.line_range[0]}-{e.line_range[1]}'` when `file_path` and `line_range` are present, else `e.file_path or ''`; `message = e.message`.
 
 ### R3 — Driver-agnostic write seam (Obsidian implementation)
 15. The `Extractor` base class (`src/syntagmax/extractors/extractor.py`) gains three methods with base implementations that raise `NotImplementedError` (or a typed `UnsupportedOperation`): `edit_artifact(...)`, `create_artifact(...)`, `delete_artifact(...)`.
 16. For this phase, only the **obsidian** driver implements them, reusing its existing content path (`update_artifact_attributes` and the markdown writing already present).
-17. `edit_artifact` sets one or more fields and/or the body (`contents`) of an existing artifact identified by id; `create_artifact` adds a new artifact to a target document; `delete_artifact` removes an artifact. All write real files to disk. The core does **not** commit them.
-18. A typed `UnsupportedOperation(RMSException)` is raised for drivers without an implementation, and `Session` advertises per-driver capabilities so a host can present only valid actions.
+17. `edit_artifact` sets one or more fields and/or the body (`contents`) of an existing artifact identified by id; `create_artifact` adds a new artifact to a target document; `delete_artifact` removes an artifact. All write real files to disk. The core does **not** commit them. **Precise contracts (X2):**
+    - `create_artifact` **requires a non-`None` `aid`** in this phase (auto-ID generation is out of scope; a caller wanting one uses the existing renumber path afterwards). It creates any missing parent directories for `target_file`.
+    - `edit_artifact` with a field value of **`None` deletes that attribute key** from the artifact's YAML frontmatter (as opposed to writing an empty string); a non-`None` value sets/replaces it. Setting `body`/`contents` replaces the body text.
+    - `delete_artifact` removes the specific marked fragment for that artifact from a multi-artifact Markdown file; when the removed artifact was the **only** artifact in the file, the underlying file is deleted (rather than left as an empty document).
+18. A typed `UnsupportedOperation(RMSException)` is raised for drivers without an implementation, and `Session` advertises per-driver capabilities so a host can present only valid actions. **Safety (E1):**
+    - **Atomic writes:** every write-seam file mutation writes to a temporary file in the *same directory* (`tempfile.NamedTemporaryFile(dir=...)`) and then `os.replace()`s it over the target, so a mid-write failure never corrupts the source file. Encoding is `utf-8`, `newline=''` (matching `edit_attrs`).
+    - **Path-traversal guard:** `create_artifact` (and any op taking a `target_file`) resolves the path and verifies it lies within `config.root_dir` (via `Path.resolve()` + `relative_to`), raising `ValueError` on any traversal attempt (e.g. `../../etc/passwd`). Hosts may pass user-supplied file names safely.
 
 ### R4 — Redirectable impact tasks (`impact.task_dir`)
 19. `ImpactConfig` (`config.py`) gains a new field `task_dir: str | None = None`, **distinct** from the existing `tasks_dir`.
@@ -147,15 +152,15 @@ classDiagram
 
 ### Task 2: `severity` on the structured error model (R2, part 1)
 
-**Objective:** Add severity without changing existing output.
+**Objective:** Add severity (and the `rule` field) without changing existing output.
 
 **Implementation guidance:**
-- In `report.py`, add `severity: str = 'error'` to `ReportError` (after existing fields; keep field order stable for any positional construction — prefer keyword construction).
-- Ensure `ReportError.from_any(str)` sets `severity='error'`.
-- `__str__` and `format_error` are unchanged (severity is not rendered unless a later doc decision says so).
+- In `report.py`, add `severity: str = 'error'` **and `rule: str | None = None`** to `ReportError` (after existing fields; keep field order stable for any positional construction — prefer keyword construction).
+- Ensure `ReportError.from_any(str)` sets `severity='error'` and leaves `rule=None`.
+- `__str__` and `format_error` are unchanged (severity/rule are not rendered unless a later doc decision says so).
 
 **Test requirements (`tests/test_report.py`, `tests/test_report_error.py`):**
-- `ReportError('msg', category=CAT_STRUCTURE).severity == 'error'`.
+- `ReportError('msg', category=CAT_STRUCTURE).severity == 'error'` and `.rule is None`.
 - `format_error` output unchanged for a representative error (golden assertion).
 
 **Demo:** existing report tests remain green.
@@ -182,19 +187,23 @@ classDiagram
 **Implementation guidance:**
 - In `errors.py`, add `class UnsupportedOperation(RMSException)`.
 - In `extractors/extractor.py`, add base methods raising `UnsupportedOperation(f'Driver "{self._record.driver}" does not support <op>')`:
-  - `edit_artifact(self, artifact: Artifact, *, fields: dict[str, str | None] | None = None, body: str | None = None) -> None`
-  - `create_artifact(self, *, target_file: str, atype: str, aid: str | None, fields: dict, body: str) -> Artifact`
-  - `delete_artifact(self, artifact: Artifact) -> None`
-- Implement all three in the obsidian extractor (the class in `extractors/markdown.py` / obsidian driver). Reuse `update_artifact_attributes` for field edits and the existing marker/YAML writing for body/create/delete. Write files with `encoding='utf-8', newline=''` (matching `edit_attrs`).
+  - `edit_artifact(self, artifact: Artifact, *, fields: dict[str, str | None] | None = None, body: str | None = None) -> None` — a `None` field value **deletes** that YAML attribute key; a non-`None` value sets/replaces it; `body` (when given) replaces `contents`.
+  - `create_artifact(self, *, target_file: str, atype: str, aid: str, fields: dict, body: str) -> Artifact` — `aid` is **required (non-`None`)** this phase; create missing parent dirs; **validate `target_file` resolves within `config.root_dir`** (`Path.resolve()` + `relative_to`), raising `ValueError` on traversal.
+  - `delete_artifact(self, artifact: Artifact) -> None` — remove the artifact's marked fragment; if it was the file's only artifact, delete the file.
+- Implement all three in the obsidian extractor (the class in `extractors/markdown.py` / obsidian driver). Reuse `update_artifact_attributes` for field edits and the existing marker/YAML writing for body/create/delete.
+- **Atomic writes (E1):** all file mutations write to `tempfile.NamedTemporaryFile(dir=<target dir>, delete=False)` with `encoding='utf-8', newline=''`, then `os.replace(tmp, target)` — never an in-place partial write.
 - Add a driver capability declaration (e.g. a class attribute `WRITE_CAPABILITIES = {'edit', 'create', 'delete'}`, empty on the base).
 
 **Test requirements (`tests/test_edit_attrs.py` neighbour, new `tests/test_write_seam.py`):**
 - Obsidian: edit a field on an existing artifact → re-extract shows new value.
+- Obsidian: edit a field to `None` → the YAML key is removed on re-extract.
 - Obsidian: edit body/contents → re-extract shows new contents.
-- Obsidian: create a new artifact in a file → re-extract finds it.
-- Obsidian: delete an artifact → re-extract no longer finds it.
+- Obsidian: create a new artifact (explicit `aid`) in a file → re-extract finds it; parent dirs created.
+- Obsidian: `create_artifact` with a traversing `target_file` (e.g. `../../evil.md`) raises `ValueError`.
+- Obsidian: delete one of several artifacts → only that fragment gone; delete the sole artifact → file removed.
 - A non-obsidian driver (e.g. `simple-markdown` or `sidecar`) raises `UnsupportedOperation`.
-- Windows: the round-trip test runs on Windows (path/newline correctness).
+- Atomicity: no leftover temp files after a successful write; target intact.
+- Windows: the round-trip test runs on Windows (path/newline correctness; `os.replace` over an existing file).
 
 **Demo:** a short script constructs the obsidian extractor, edits an artifact in `example/`, and prints the re-extracted value.
 
@@ -208,13 +217,14 @@ classDiagram
 - Internal `_options_to_params(options, cwd) -> Params` filling every required `Params` key (`render_tree, ai=False, cwd, no_git, allow_dirty_worktree, language, suppress_tracing, tasks`, plus optional `log_level`, `warnings_as_errors`).
 - `open_project(config_path, *, options=None) -> Session`: resolves the path, builds `Config(_options_to_params(...), Path(config_path))`.
 - `class Session`:
-  - lazily runs `extract → build_artifact_map → populate_pids → build_tree → analyse_tree` to produce and cache an `ArtifactMap`; `reload()` clears the cache.
-  - `artifacts()`, `get(aid)`, `query(atype=None, ...)`, `search(q)` build `ArtifactView` dataclasses from `Artifact`s (map `parent_links`, `children`, `latest_revision`, `fields`). Move the *semantics* of search/typed-view here (case-insensitive match over id/atype/fields, mirroring what a consumer would otherwise re-implement).
+  - holds a `threading.Lock`; lazily runs `extract → build_artifact_map → populate_pids → build_tree → analyse_tree` **under the lock** to produce and cache an `ArtifactMap`; `reload()` acquires the same lock and clears the cache (E2 — safe for a shared `Session` across web-worker threads).
+  - `artifacts()`, `get(aid)`, `query(atype=None, ...)`, `search(q)` build `ArtifactView` dataclasses from `Artifact`s (map `parent_links`, `children`, `latest_revision`, `fields`). Move the *semantics* of search/typed-view here: `search(q)` matches **case-insensitively over `aid`, `atype`, and all `fields` including `contents`**, with **AND** semantics across whitespace-separated terms (P2).
 - `@dataclass class ArtifactView` per R1.5.
 
 **Test requirements (`tests/test_api.py`):**
 - `Config` parity: a facade-built `Config` matches a CLI-style `Config` on `root_dir`, `output_dir`, `input_records` for the `example/` project.
-- `get`/`query`/`search` over `example/` return expected ids/atypes; `query(atype=...)` filters; `search` matches fields.
+- `get`/`query`/`search` over `example/` return expected ids/atypes; `query(atype=...)` filters; `search` matches fields **and body `contents`**; a multi-term query requires all terms.
+- Concurrency: two threads calling `artifacts()`/`reload()` on one `Session` do not corrupt the cache (smoke test).
 - `FatalError` propagates for a broken config path.
 
 **Demo:** `python -c "from syntagmax import api; s=api.open_project('example/.../config.toml'); print(len(s.artifacts()))"`.
@@ -224,15 +234,15 @@ classDiagram
 **Objective:** Structured analysis result and the write methods with capability introspection.
 
 **Implementation guidance:**
-- `@dataclass class Diagnostic` (`severity, artifact_id, rule, category, location, message`); map from `ReportError` (rule may be derived from category or a rule id if available).
+- `@dataclass class Diagnostic` (`severity, artifact_id, rule, category, location, message`); map from `ReportError` using the exact rule in R2.14: `rule = e.rule or e.category`; `location = f'{e.file_path}:{e.line_range[0]}-{e.line_range[1]}'` when both present, else `e.file_path or ''`.
 - `@dataclass class AnalysisResult` (`diagnostics: list[Diagnostic]`, `metrics`, `impact`).
 - `Session.analyse() -> AnalysisResult`: run the analysis path (reuse `main.process('metrics', config)` or the internal steps), convert `Report.errors` → `Diagnostic`s, pass through `metrics`/`impact`.
-- `Session.edit(aid, *, fields=None, body=None)`, `Session.create(...)`, `Session.delete(aid)`: resolve the artifact's record/driver, obtain the extractor, call the R3 seam, then `reload()`.
-- `Session.capabilities(driver_or_record) -> set[str]`: read the extractor's `WRITE_CAPABILITIES`.
+- `Session.edit(aid, *, fields=None, body=None) -> ArtifactView`, `Session.create(...) -> ArtifactView`, `Session.delete(aid) -> None`: resolve the artifact's record/driver, obtain the extractor, call the R3 seam, `reload()`, then (for edit/create) return the fresh `get(aid)` view (P1).
+- `Session.capabilities(driver_or_record: str | InputRecord) -> set[str]`: read the extractor's `WRITE_CAPABILITIES` (E3 — name matches R1.7).
 
 **Test requirements (`tests/test_api.py`):**
-- `analyse()` on a fixture with a known issue returns a `Diagnostic` with the expected `artifact_id`/`category`/`severity`.
-- `edit()` on an obsidian fixture changes a field; a follow-up `get()` (after implicit reload) reflects it.
+- `analyse()` on a fixture with a known issue returns a `Diagnostic` with the expected `artifact_id`/`category`/`severity`, and `rule`/`location` populated per the mapping.
+- `edit()` on an obsidian fixture changes a field and **returns the updated `ArtifactView`** reflecting the change (no separate `get()` needed).
 - `edit()` on a non-obsidian driver raises `UnsupportedOperation`; `capabilities()` reports empty for it.
 
 **Demo:** script: `open_project` → `analyse()` prints diagnostics → `edit()` an obsidian artifact → `get()` shows the change.

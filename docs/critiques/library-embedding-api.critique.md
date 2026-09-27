@@ -136,3 +136,17 @@ The following specific amendments are proposed for `docs/specs/library-embedding
 ---
 
 Would you like me to apply these changes? (all / select / none)
+
+---
+
+## Resolution (Pass 1 applied)
+
+**Selection: all.** All 3 must-address (X1, X2, E1) and 3 recommendations (P1, E2, E3), plus the P2 clarification, were applied to `docs/specs/library-embedding-api.spec.md`:
+
+- **X1** — `ReportError` gains `rule: str | None` (R2.11, Task 2); explicit `ReportError → Diagnostic` mapping added (R2.14, Task 6).
+- **X2** — `create_artifact` requires non-`None` `aid` + creates parent dirs; `edit_artifact` `None` value deletes the YAML key; `delete_artifact` removes the fragment and deletes the file when it was the sole artifact (R3.17, Task 4).
+- **E1** — atomic writes (`tempfile` + `os.replace`) and `target_file` path-traversal validation against `root_dir` (R3.18, Task 4).
+- **E2** — `Session` holds a `threading.Lock` guarding lazy load + `reload()`; large-repo full-reparse noted as a Phase-1 trade-off (R1.4, Task 5).
+- **P1** — `Session.edit()`/`create()` now return the updated `ArtifactView` (R1.7, Task 6).
+- **E3** — `capabilities(driver_or_record: str | InputRecord)` standardised across R1.7 and Task 6.
+- **P2** — `search(q)` scope defined: case-insensitive over `aid`/`atype`/all `fields` incl. `contents`, AND semantics across terms (R1.5, Task 5).
