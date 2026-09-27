@@ -153,6 +153,10 @@ class ImpactConfig(BaseModel):
     enabled: bool = Field(default=False, description='Enable impact analysis')
     tasks_enabled: bool = Field(default=False, description='Enable task generation from impact analysis')
     tasks_dir: str = Field(default='tasks/', description='Directory for generated task files (relative to config file directory)')
+    task_dir: str | None = Field(
+        default=None,
+        description='Override directory for generated task files; absolute honoured as-is, else relative to config dir. When unset, uses tasks_dir.',
+    )
     tasks_template: str | None = Field(default=None, description='Path to custom Jinja2 task template (relative to config file directory)')
     task_atype_map: dict[str, str] = Field(default_factory=dict, description='Mapping of parent_atype/child_atype to task atype. Fallback: TASK')
 
@@ -540,6 +544,18 @@ class Config:
         return self._root_dir
 
     def tasks_dir(self) -> Path:
+        return Path(self._root_dir, self.impact.tasks_dir)
+
+    def task_dir(self) -> Path:
+        """Resolve the directory for generated impact task files.
+
+        If impact.task_dir is set, an absolute path is honoured as-is and a
+        relative path is resolved against root_dir. When unset, this returns
+        exactly today's behaviour (Path(root_dir, impact.tasks_dir)).
+        """
+        if self.impact.task_dir:
+            p = Path(self.impact.task_dir)
+            return p if p.is_absolute() else Path(self._root_dir, p)
         return Path(self._root_dir, self.impact.tasks_dir)
 
     def output_dir(self) -> Path:

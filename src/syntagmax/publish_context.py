@@ -4,8 +4,6 @@
 # Created: 2026-07-09
 # Description: Publishing context and image manifest for image-aware publishing.
 
-from __future__ import annotations
-
 import logging as lg
 import urllib.parse
 from dataclasses import dataclass, field
@@ -81,7 +79,7 @@ class ImageManifest:
 class RenderContext:
     """Context passed through the rendering pipeline for image resolution."""
 
-    config: Config
+    config: 'Config'
     manifest: ImageManifest = field(default_factory=ImageManifest)
     source_file_path: str | None = None
     _obsidian_attachment_path: str | None = field(default=None, init=False, repr=False)

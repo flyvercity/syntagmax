@@ -1,4 +1,4 @@
-# [ ] Task 1: `impact.task_dir` redirectable task output
+# [x] Task 1: `impact.task_dir` redirectable task output
 
 **Spec:** `docs/specs/library-embedding-api.spec.md` (R4)
 

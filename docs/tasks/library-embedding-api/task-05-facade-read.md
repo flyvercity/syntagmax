@@ -1,4 +1,4 @@
-# [ ] Task 5: `syntagmax.api` facade — read side
+# [x] Task 5: `syntagmax.api` facade — read side
 
 **Spec:** `docs/specs/library-embedding-api.spec.md` (R1, part 1; critique E2, P2)
 

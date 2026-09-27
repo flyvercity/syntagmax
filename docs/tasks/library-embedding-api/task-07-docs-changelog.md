@@ -1,4 +1,4 @@
-# [ ] Task 7: Documentation & changelog
+# [x] Task 7: Documentation & changelog
 
 **Spec:** `docs/specs/library-embedding-api.spec.md` (R5)
 

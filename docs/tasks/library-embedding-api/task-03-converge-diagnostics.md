@@ -1,4 +1,4 @@
-# [ ] Task 3: Converge diagnostic producers on structured `ReportError`
+# [x] Task 3: Converge diagnostic producers on structured `ReportError`
 
 **Spec:** `docs/specs/library-embedding-api.spec.md` (R2, part 2; critique X1)
 

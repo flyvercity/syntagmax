@@ -65,6 +65,60 @@ class TestReportErrorFromAny:
         assert result is original
 
 
+class TestReportErrorSeverityRule:
+    def test_defaults(self):
+        err = ReportError('msg', category=CAT_STRUCTURE)
+        assert err.severity == 'error'
+        assert err.rule is None
+
+    def test_from_string_defaults(self):
+        err = ReportError.from_any('plain error message')
+        assert err.severity == 'error'
+        assert err.rule is None
+
+    def test_keyword_construction(self):
+        err = ReportError(
+            message='warn msg',
+            category=CAT_STRUCTURE,
+            severity='warning',
+            rule='R-42',
+        )
+        assert err.severity == 'warning'
+        assert err.rule == 'R-42'
+
+    def test_str_unchanged_by_severity_rule(self):
+        err = ReportError(
+            message='Missing attribute',
+            category=CAT_SCHEMA,
+            input_record='requirements',
+            artifact_id='REQ-001',
+            artifact_type='REQ',
+            file_path='reqs/file.md',
+            line_range=(10, 15),
+            severity='warning',
+            rule='R-99',
+        )
+        # Golden assertion: severity/rule are not rendered.
+        assert str(err) == 'Missing attribute (REQ\u1362REQ-001\u1362reqs/file.md:10-15)'
+
+    def test_format_error_golden_unchanged(self):
+        from syntagmax.report import format_error, CAT_ATTRIBUTE
+
+        cfg = ReportConfig(path_as_links=True, wiki_links=False)
+        err = ReportError(
+            message='test msg',
+            category=CAT_ATTRIBUTE,
+            file_path='reqs/file.md',
+            artifact_type='REQ',
+            artifact_id='REQ-001',
+            line_range=(10, 20),
+            severity='warning',
+            rule='R-1',
+        )
+        # format_error output must be identical to an error without severity/rule.
+        assert format_error(err, cfg) == 'test msg (REQ:REQ-001 in [file.md](reqs/file.md#L10):10-20)'
+
+
 class TestReportConfig:
     def test_default_instantiation(self):
         cfg = ReportConfig()

@@ -1,4 +1,4 @@
-# [ ] Task 2: Add `severity` and `rule` to `ReportError`
+# [x] Task 2: Add `severity` and `rule` to `ReportError`
 
 **Spec:** `docs/specs/library-embedding-api.spec.md` (R2, part 1; critique X1)
 

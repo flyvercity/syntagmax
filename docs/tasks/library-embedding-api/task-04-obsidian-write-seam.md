@@ -1,4 +1,4 @@
-# [ ] Task 4: Obsidian driver write seam (`edit`/`create`/`delete`)
+# [x] Task 4: Obsidian driver write seam (`edit`/`create`/`delete`)
 
 **Spec:** `docs/specs/library-embedding-api.spec.md` (R3; critique X2, E1)
 

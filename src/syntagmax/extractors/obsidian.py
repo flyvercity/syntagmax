@@ -11,6 +11,8 @@ from syntagmax.extractors.markdown import MarkdownExtractor, apply_soft_line_bre
 
 
 class ObsidianExtractor(MarkdownExtractor):
+    WRITE_CAPABILITIES = {'edit', 'create', 'delete'}
+
     def driver(self) -> str:
         return 'obsidian'
 
