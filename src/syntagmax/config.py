@@ -593,7 +593,11 @@ class Config:
         return self._base_dir
 
     def derive_path(self, path: Path) -> str:
-        rel_path = path.absolute().relative_to(self._base_dir.absolute())
+        # ``resolve()`` (not ``absolute()``) so a ``base_dir`` containing a
+        # ``..`` segment (e.g. config under ``.syntagmax`` with ``base = ".."``)
+        # normalises before the ``relative_to`` comparison; otherwise a freshly
+        # created ``base_dir / target_file`` path fails to relativise.
+        rel_path = path.resolve().relative_to(self._base_dir.resolve())
         return rel_path.as_posix()
 
     def input_records(self) -> list[InputRecord]:
