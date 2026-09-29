@@ -53,6 +53,11 @@ class ArtifactView:
     parents: list[dict[str, object]]
     children: list[str]
     latest_revision: Revision | None
+    #: The artifact's Markdown body (``contents``), exposed for host rendering
+    #: and editing. Optional and defaulted so the public contract stays
+    #: backwards-compatible for callers that construct an ``ArtifactView``
+    #: without a body.
+    body: str | None = None
 
 
 @dataclass
@@ -213,6 +218,7 @@ class Session:
             parents=parents,
             children=sorted(artifact.children),
             latest_revision=artifact.latest_revision,
+            body=artifact.contents(),
         )
 
     def get(self, aid: str) -> ArtifactView | None:
