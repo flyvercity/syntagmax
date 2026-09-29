@@ -91,6 +91,76 @@ class AnalysisResult:
     impact: Any
 
 
+@dataclass
+class TraceResult:
+    """Structured, public result of :meth:`Session.trace` (R1).
+
+    A stable public projection of the core :class:`~syntagmax.trace.TraceMatrix`
+    so hosts never touch core internals: ``header`` is the column labels (with
+    ``ChildID``/``ParentID`` ordered per ``direction``), ``rows`` are the cell
+    values in header order, and ``record_names`` maps each referenced artifact
+    id to its input-record name. Render a delimited string via
+    :func:`render_trace`.
+    """
+
+    direction: str
+    child_type: str
+    parent_type: str
+    header: list[str]
+    rows: list[list[str]]
+    record_names: dict[str, str]
+
+
+@dataclass
+class PublishResult:
+    """Structured, public result of :meth:`Session.publish` (R2).
+
+    ``markdown`` is the consolidated, all-records single-file publication;
+    ``artifact_count``/``text_block_count`` summarise what was compiled. Phase A
+    is Markdown-only (no Pandoc/DOCX/PDF, no image-manifest side effects).
+    """
+
+    markdown: str
+    artifact_count: int
+    text_block_count: int
+
+
+def render_trace(result: TraceResult, *, delimiter: str = ',') -> str:
+    """Render a :class:`TraceResult` as a delimited string (CSV or TSV) (R1).
+
+    Reuses :func:`syntagmax.trace.render_trace_csv` by reconstructing a minimal
+    :class:`~syntagmax.trace.TraceMatrix` from the public result, so the host
+    obtains an identical rendering to the ``trace`` CLI without re-running the
+    pipeline. ``delimiter`` is ``','`` for CSV or ``'\\t'`` for TSV.
+    """
+    from syntagmax.trace import TraceMatrix, TraceRecord, render_trace_csv
+
+    # The first three header columns are fixed (RecordNumber + the two ID
+    # columns); any trailing columns are attribute names.
+    attribute_names = list(result.header[3:])
+    matrix = TraceMatrix(
+        direction=result.direction,
+        child_type=result.child_type,
+        parent_type=result.parent_type,
+        attribute_names=attribute_names,
+        record_names=dict(result.record_names),
+    )
+    for row in result.rows:
+        record_number = int(row[0]) if row and str(row[0]).isdigit() else len(matrix.records) + 1
+        lead_id = row[1] if len(row) > 1 else ''
+        linked_id = row[2] if len(row) > 2 else ''
+        attributes = {name: (row[3 + i] if 3 + i < len(row) else '') for i, name in enumerate(attribute_names)}
+        matrix.records.append(
+            TraceRecord(
+                record_number=record_number,
+                lead_id=lead_id,
+                linked_id=linked_id,
+                attributes=attributes,
+            )
+        )
+    return render_trace_csv(matrix, delimiter=delimiter)
+
+
 def _options_to_params(options: Options, cwd: str) -> Params:
     """Translate library-facing :class:`Options` into a CLI-shaped ``Params``.
 
@@ -288,6 +358,98 @@ class Session:
         report = main.process('metrics', self._config)
         diagnostics = [_diagnostic_from_error(ReportError.from_any(e)) for e in report.errors]
         return AnalysisResult(diagnostics=diagnostics, metrics=report.metrics, impact=report.impact)
+
+    # --- Traceability (R1) -------------------------------------------------
+
+    def trace(
+        self,
+        child_type: str,
+        parent_type: str,
+        *,
+        direction: str = 'forward',
+        attributes: list[str] | None = None,
+        flat: bool = False,
+    ) -> TraceResult:
+        """Build a traceability matrix and return a public result (R1).
+
+        Orchestrates the same computation the ``trace`` CLI runs, but reuses the
+        cached, already-populated :class:`ArtifactMap` obtained via
+        :meth:`_load` (which acquires ``self._lock``) rather than re-running
+        ``extract`` from scratch (E1): ``build_trace_matrix`` operates on that
+        shared map, so a multi-threaded host never races the read cache nor
+        duplicates disk I/O. ``FatalError``/``RMSException`` propagate (R1.8).
+        """
+        from syntagmax.trace import build_trace_matrix, render_trace_csv
+
+        artifacts = self._load()
+        matrix = build_trace_matrix(
+            artifacts=artifacts,
+            child_type=child_type,
+            parent_type=parent_type,
+            direction=direction,
+            attributes=list(attributes) if attributes else [],
+            flat=flat,
+        )
+
+        # Derive the header identically to render_trace_csv so header/rows stay
+        # in lock-step with the CSV rendering.
+        rendered = render_trace_csv(matrix, delimiter='\x00')
+        header_line = rendered.split('\n', 1)[0]
+        header = header_line.split('\x00') if header_line else []
+
+        rows: list[list[str]] = []
+        for record in matrix.records:
+            row = [str(record.record_number), record.lead_id, record.linked_id]
+            row.extend(record.attributes.get(name, '') for name in matrix.attribute_names)
+            rows.append(row)
+
+        return TraceResult(
+            direction=matrix.direction,
+            child_type=matrix.child_type,
+            parent_type=matrix.parent_type,
+            header=header,
+            rows=rows,
+            record_names=dict(matrix.record_names),
+        )
+
+    # --- Publication (R2) --------------------------------------------------
+
+    def publish(self, *, single: bool = True) -> PublishResult:
+        """Compile a consolidated Markdown publication and return it (R2).
+
+        Orchestrates ``build_block_tree -> render_block_tree`` for the
+        all-records single-file case (mirrors ``publish --all --single``),
+        reusing the shared config under ``self._lock`` (E1) — the read cache is
+        touched via :meth:`_load` for consistency with the other facade methods.
+        Returns the Markdown plus counts of the artifact and text blocks that
+        were compiled. Phase A is Markdown-only: no Pandoc/DOCX/PDF and no
+        image-manifest side effects. ``FatalError``/``RMSException`` propagate.
+        """
+        from syntagmax.blocks import ArtifactBlock, TextBlock
+        from syntagmax.publish import build_block_tree, render_block_tree
+
+        # Touch the read cache under the lock so publish honours the same
+        # single-flight discipline as the other methods (E1).
+        self._load()
+
+        tree, _errors = build_block_tree(self._config)
+        markdown, _manifest = render_block_tree(tree, self._config, multi_record=not single)
+
+        artifact_count = 0
+        text_block_count = 0
+        for input_block in tree.inputs:
+            for file_record in input_block.files:
+                for block in file_record.blocks:
+                    if isinstance(block, ArtifactBlock):
+                        artifact_count += 1
+                    elif isinstance(block, TextBlock):
+                        text_block_count += 1
+
+        return PublishResult(
+            markdown=markdown,
+            artifact_count=artifact_count,
+            text_block_count=text_block_count,
+        )
 
     # --- Write seam (R1.7 / R3) -------------------------------------------
 
