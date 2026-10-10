@@ -156,7 +156,8 @@ def manipulate_attributes(
         artifacts_meta = config.metamodel.get('artifacts', {})
         atype_meta = artifacts_meta.get(target_record.default_atype, {})
         known_attrs = atype_meta.get('attributes', {})
-        if name.lower() not in {k.lower() for k in known_attrs}:
+        known_attrs_lower = {k.lower() for k in known_attrs}
+        if name.lower() not in known_attrs_lower:
             lg.warning(f'Attribute "{name}" is not defined in the metamodel for type "{target_record.default_atype}". It will still be added.')
 
     # --- Extract artifacts ---
