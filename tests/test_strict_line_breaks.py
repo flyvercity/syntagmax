@@ -2,6 +2,7 @@
 # Tests for strict_line_breaks setting in Obsidian driver
 
 import json
+from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
@@ -171,6 +172,28 @@ class TestReadObsidianStrictLineBreaks:
         result = read_obsidian_strict_line_breaks(tmp_path)
         assert result is None
         assert 'malformed JSON' in caplog.text
+
+    def test_permission_error_returns_none(self, tmp_path, caplog, monkeypatch):
+        obsidian_dir = tmp_path / '.obsidian'
+        obsidian_dir.mkdir()
+        (obsidian_dir / 'app.json').write_text(json.dumps({'strictLineBreaks': True}), encoding='utf-8')
+
+        def mock_read_text(*args, **kwargs):
+            raise PermissionError('Permission denied')
+
+        monkeypatch.setattr(Path, 'read_text', mock_read_text)
+
+        result = read_obsidian_strict_line_breaks(tmp_path)
+        assert result is None
+        assert 'not readable' in caplog.text
+
+    def test_non_dict_json_returns_none(self, tmp_path, caplog):
+        obsidian_dir = tmp_path / '.obsidian'
+        obsidian_dir.mkdir()
+        (obsidian_dir / 'app.json').write_text('[1, 2, 3]', encoding='utf-8')
+        result = read_obsidian_strict_line_breaks(tmp_path)
+        assert result is None
+        assert 'not a JSON object' in caplog.text
 
     def test_root_override(self, tmp_path):
         custom_dir = tmp_path / 'custom-obsidian'
