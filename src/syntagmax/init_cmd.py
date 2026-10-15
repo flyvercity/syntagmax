@@ -110,7 +110,7 @@ def generate_toml() -> str:
 
 
 METAMODEL_CONTENT = """artifact SYS:
-    attribute id is mandatory string
+    id is string
     attribute contents is mandatory string
 """
 

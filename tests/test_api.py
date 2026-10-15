@@ -403,3 +403,64 @@ def test_capabilities_accepts_input_record(tmp_path):
     records = {r.driver: r for r in session._config.input_records()}
     assert session.capabilities(records['obsidian']) == {'edit', 'create', 'delete'}
     assert session.capabilities(records['text']) == set()
+
+
+
+# --- create_project (project bootstrap) ---
+
+
+def test_create_project_scaffolds_and_opens(tmp_path):
+    target = tmp_path / 'demo'
+    config_path = api.create_project(target)
+
+    assert config_path == (target / '.syntagmax' / 'config.toml').resolve()
+    assert (target / '.syntagmax' / 'config.toml').is_file()
+    assert (target / '.syntagmax' / 'project.syntagmax').is_file()
+    assert (target / '.syntagmax' / '.gitignore').is_file()
+    assert (target / 'REQ').is_dir()
+
+    # The scaffold must be a real, openable, cleanly analysable project.
+    session = api.open_project(config_path, options=api.Options(no_git=True))
+    session.analyse()
+
+
+def test_create_project_refuses_existing_syntagmax_config(tmp_path):
+    target = tmp_path / 'demo'
+    api.create_project(target)
+    with pytest.raises(FatalError):
+        api.create_project(target)
+
+
+def test_create_project_refuses_flat_config(tmp_path):
+    target = tmp_path / 'flat'
+    target.mkdir()
+    (target / 'config.toml').write_text('# flat project\n', encoding='utf-8')
+    with pytest.raises(FatalError):
+        api.create_project(target)
+
+
+def test_create_project_refuses_filesystem_root(tmp_path):
+    root = Path(tmp_path.anchor or tmp_path.resolve().anchor)
+    with pytest.raises(FatalError):
+        api.create_project(root)
+
+
+
+def test_create_project_rolls_back_on_write_failure(tmp_path, monkeypatch):
+    # C5: if a write fails after .syntagmax/ is created, create_project must
+    # remove the directory it created so no broken, unopenable project remains.
+    import syntagmax.init_cmd as init_cmd
+
+    target = tmp_path / 'demo'
+
+    def boom(cwd=None):
+        # Simulate a partial scaffold: create .syntagmax/, then fail.
+        (Path(cwd) / '.syntagmax').mkdir(parents=True, exist_ok=True)
+        raise OSError('disk full')
+
+    monkeypatch.setattr(init_cmd, 'init_project', boom)
+
+    with pytest.raises(OSError):
+        api.create_project(target)
+
+    assert not (target / '.syntagmax').exists()

@@ -414,18 +414,24 @@ class MarkdownExtractor(MarkerSplitterMixin, ElementFilterMixin, Extractor):
 
     def _resolve_within_root(self, target_file: str) -> Path:
         """Resolve ``target_file`` (relative to base dir) and verify it lies
-        within ``config.root_dir`` (path-traversal guard, E1).
+        within the artifact base directory (path-traversal guard, E1).
+
+        Anchored on ``config.base_dir()`` — the directory input artifacts are
+        actually resolved against (``root_dir`` joined with the configured
+        ``base``) — so a project whose ``config.toml`` lives in a subdirectory
+        (e.g. ``.syntagmax`` with ``base = ".."``) can still create/delete
+        files in its input tree. Traversal outside the base (``../..``) is
+        still rejected.
 
         Raises ``ValueError`` on any traversal attempt.
         """
-        base = self._config.base_dir()
+        base = self._config.base_dir().resolve()
         candidate = Path(target_file)
         resolved = (base / candidate).resolve()
-        root = self._config.root_dir().resolve()
         try:
-            resolved.relative_to(root)
+            resolved.relative_to(base)
         except ValueError:
-            raise ValueError(f'target_file "{target_file}" resolves outside the project root ({root})')
+            raise ValueError(f'target_file "{target_file}" resolves outside the project base ({base})')
         return resolved
 
     def edit_artifact(
