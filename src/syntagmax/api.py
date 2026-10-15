@@ -210,6 +210,49 @@ def _diagnostic_from_error(e: ReportError) -> Diagnostic:
     )
 
 
+def create_project(path: str | Path) -> Path:
+    """Scaffold a new Syntagmax project at ``path`` and return its config path.
+
+    Writes ``.syntagmax/config.toml``, ``.syntagmax/project.syntagmax``, and
+    ``.syntagmax/.gitignore`` identically to the ``init`` CLI command by
+    delegating to :func:`syntagmax.init_cmd.init_project`, and creates the
+    default ``REQ/`` input directory so the scaffolded structure matches the
+    generated ``[[input]] dir = "REQ"`` block immediately (C7).
+
+    Refuses to overwrite an existing project: a :class:`FatalError` is raised
+    when either ``<path>/.syntagmax/config.toml`` or a flat ``<path>/config.toml``
+    already exists (C3, dual-config), and when ``path`` resolves to a filesystem
+    root (C6). The target directory is created when absent (C4). If any write
+    fails after this call created ``.syntagmax/``, that directory is removed
+    before the exception propagates so a failed attempt leaves no broken,
+    unopenable project behind (C5).
+    """
+    import shutil
+
+    from syntagmax.errors import FatalError
+    from syntagmax.init_cmd import init_project
+
+    target = Path(path).resolve()
+    if target == target.parent:
+        raise FatalError('Cannot scaffold a Syntagmax project at a filesystem root')
+    if (target / '.syntagmax' / 'config.toml').exists() or (target / 'config.toml').exists():
+        raise FatalError(f'A Syntagmax project already exists at {target}')
+
+    syntagmax_dir = target / '.syntagmax'
+    syntagmax_preexisting = syntagmax_dir.exists()
+    target.mkdir(parents=True, exist_ok=True)
+    try:
+        init_project(str(target))
+        (target / 'REQ').mkdir(exist_ok=True)
+    except Exception:
+        # Roll back only the scaffold directory this call created (C5).
+        if not syntagmax_preexisting and syntagmax_dir.is_dir():
+            shutil.rmtree(syntagmax_dir, ignore_errors=True)
+        raise
+
+    return syntagmax_dir / 'config.toml'
+
+
 def open_project(config_path: str | Path, *, options: Options | None = None) -> 'Session':
     """Open a Syntagmax project and return a :class:`Session` (R1.1).
 

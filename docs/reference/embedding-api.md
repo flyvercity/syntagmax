@@ -52,6 +52,32 @@ A broken or missing config path raises `FatalError`.
 
 ---
 
+## `create_project`
+
+```python
+def create_project(path: str | Path) -> Path
+```
+
+Scaffolds a brand-new Syntagmax project at `path` and returns the resolved path to the written `.syntagmax/config.toml`. It delegates to the same routine that backs the `init` CLI command, so the on-disk result is identical: `.syntagmax/config.toml`, `.syntagmax/project.syntagmax`, and `.syntagmax/.gitignore`. In addition it creates the default `REQ/` input directory, matching the generated `[[input]] dir = "REQ"` block, so the scaffolded layout is complete and immediately openable.
+
+This is the one write entry point intended for a host that bootstraps projects (for example a desktop "New Project" action). It never commits, pushes, or initialises Git — writing files is its only effect, consistent with the rule that the core never performs Git writes.
+
+Safety:
+
+- It refuses to overwrite an existing project. If either `<path>/.syntagmax/config.toml` or a flat `<path>/config.toml` already exists, it raises `FatalError` rather than clobbering or creating a conflicting dual-configuration layout.
+- It refuses to scaffold at a filesystem root, raising `FatalError`.
+- The target directory (and any missing parents) is created when absent.
+- Scaffolding is atomic for the directory it creates: if any write fails after `.syntagmax/` has been created by this call, that directory is removed before the exception propagates, so a failed attempt never leaves a half-written, unopenable project behind.
+
+```python
+from syntagmax import api
+
+config_path = api.create_project('C:/work/demo')
+session = api.open_project(config_path)
+```
+
+---
+
 ## `Options`
 
 A dataclass carrying library-facing options with defaults matching the current CLI defaults. The host constructs an `Options` and the facade owns the translation to the internal `Params`.
