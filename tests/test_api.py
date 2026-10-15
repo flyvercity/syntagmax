@@ -443,3 +443,24 @@ def test_create_project_refuses_filesystem_root(tmp_path):
     root = Path(tmp_path.anchor or tmp_path.resolve().anchor)
     with pytest.raises(FatalError):
         api.create_project(root)
+
+
+
+def test_create_project_rolls_back_on_write_failure(tmp_path, monkeypatch):
+    # C5: if a write fails after .syntagmax/ is created, create_project must
+    # remove the directory it created so no broken, unopenable project remains.
+    import syntagmax.init_cmd as init_cmd
+
+    target = tmp_path / 'demo'
+
+    def boom(cwd=None):
+        # Simulate a partial scaffold: create .syntagmax/, then fail.
+        (Path(cwd) / '.syntagmax').mkdir(parents=True, exist_ok=True)
+        raise OSError('disk full')
+
+    monkeypatch.setattr(init_cmd, 'init_project', boom)
+
+    with pytest.raises(OSError):
+        api.create_project(target)
+
+    assert not (target / '.syntagmax').exists()
