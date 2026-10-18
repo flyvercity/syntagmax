@@ -43,6 +43,10 @@ def read_obsidian_attachment_path(base_dir: Path, root_override: str | None = No
         lg.warning(f'Obsidian integration enabled but app.json contains malformed JSON: {e}')
         return None
 
+    if not isinstance(data, dict):
+        lg.warning(f'Obsidian integration enabled but app.json is not a JSON object: {app_json_path}')
+        return None
+
     attachment_path = data.get('attachmentFolderPath')
     if not attachment_path:
         lg.warning('Obsidian integration enabled but attachmentFolderPath not set in app.json')
@@ -81,6 +85,10 @@ def read_obsidian_strict_line_breaks(base_dir: Path, root_override: str | None =
         data = json.loads(content)
     except json.JSONDecodeError as e:
         lg.warning(f'Obsidian integration enabled but app.json contains malformed JSON: {e}')
+        return None
+
+    if not isinstance(data, dict):
+        lg.warning(f'Obsidian integration enabled but app.json is not a JSON object: {app_json_path}')
         return None
 
     if 'strictLineBreaks' not in data:

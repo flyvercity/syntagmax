@@ -76,6 +76,31 @@ class TestObsidianSettingsReader:
         assert result is None
         assert 'malformed JSON' in caplog.text
 
+    def test_permission_error(self, tmp_path, caplog, monkeypatch):
+        obsidian_dir = tmp_path / '.obsidian'
+        obsidian_dir.mkdir()
+        app_json = obsidian_dir / 'app.json'
+        app_json.write_text(json.dumps({'attachmentFolderPath': 'attachments'}), encoding='utf-8')
+
+        def mock_read_text(*args, **kwargs):
+            raise PermissionError('Permission denied')
+
+        monkeypatch.setattr(Path, 'read_text', mock_read_text)
+
+        result = read_obsidian_attachment_path(tmp_path)
+        assert result is None
+        assert 'not readable' in caplog.text
+
+    def test_non_dict_json(self, tmp_path, caplog):
+        obsidian_dir = tmp_path / '.obsidian'
+        obsidian_dir.mkdir()
+        app_json = obsidian_dir / 'app.json'
+        app_json.write_text('[1, 2, 3]', encoding='utf-8')
+
+        result = read_obsidian_attachment_path(tmp_path)
+        assert result is None
+        assert 'not a JSON object' in caplog.text
+
     def test_missing_key(self, tmp_path, caplog):
         obsidian_dir = tmp_path / '.obsidian'
         obsidian_dir.mkdir()
