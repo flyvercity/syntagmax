@@ -775,6 +775,9 @@ Syntagmax includes a Model Context Protocol (MCP) server that allows LLMs to int
 - `list_artifacts`: Returns a list of all artifacts in the system.
 - `search_artifacts`: Search for requirements by keyword.
 - `get_artifact_content`: Fetch full details of a specific requirement (including traceability).
+- `create_requirement`: Add a requirement to a configured Obsidian or simple-markdown input record.
+
+`create_requirement` takes an input record name, title, contents, and optional string attributes. It assigns the next ID using the record's artifact ID schema, writes a new Markdown file, and validates the project before keeping the file. The tool is available to connected MCP clients, including desktop applications.
 
 ### Running the Server
 

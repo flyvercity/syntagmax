@@ -1,14 +1,21 @@
+import ipaddress
 import logging as lg
+import re
+
+import yaml
 from mcp.server.fastmcp import FastMCP
 from syntagmax.extract import extract, build_artifact_map
 from syntagmax.tree import build_tree, populate_pids
 from syntagmax.analyse import analyse_tree
 from syntagmax.errors import FatalError
+from syntagmax.edit import _generate_id, _resolve_schema
+from syntagmax.id_utils import count_num_macros, extract_number_from_id
 
 
 class SyntagmaxMCPServer:
     def __init__(self, config, host='127.0.0.1', port=8000, sse_path='/'):
         self.config = config
+        self.host = host
         self.mcp = FastMCP('Syntagmax RMS', host=host, port=port, sse_path=sse_path)
         self.artifacts = {}
         self._setup_tools()
@@ -23,7 +30,7 @@ class SyntagmaxMCPServer:
         analyse_tree(self.config, artifacts, errors)
 
         if errors:
-            raise FatalError(errors)
+            raise FatalError([str(error) for error in errors])
 
         self.artifacts = artifacts
         lg.info(f'Loaded {len(self.artifacts)} artifacts.')
@@ -140,6 +147,92 @@ class SyntagmaxMCPServer:
 
         return '\n'.join(lines)
 
+    def _create_requirement(self, record_name: str, title: str, contents: str, attributes: dict[str, str] | None = None) -> str:
+        try:
+            loopback_host = ipaddress.ip_address(self.host).is_loopback
+        except ValueError:
+            loopback_host = self.host.lower() == 'localhost'
+        if not loopback_host:
+            return 'Requirement creation is only available when the MCP server is bound to localhost.'
+
+        record = next((record for record in self.config.input_records() if record.name == record_name), None)
+        if record is None:
+            return f'Input record "{record_name}" not found.'
+        if record.driver not in ('obsidian', 'simple-markdown'):
+            return f'Input record "{record_name}" uses unsupported driver "{record.driver}".'
+        if not title.strip() or not contents.strip():
+            return 'Title and contents must not be empty.'
+
+        attributes = attributes or {}
+        reserved = {'id', 'atype', 'contents', 'title'}
+        if any(key.lower() in reserved for key in attributes):
+            return 'Attributes must not include id, atype, contents, or title.'
+
+        atype = record.default_atype
+        schema = _resolve_schema('', atype, self.config)
+        if count_num_macros(schema) != 1:
+            return f'Artifact type "{atype}" must have an ID schema with exactly one {{num}} field.'
+
+        max_number = max(
+            (
+                number
+                for artifact in self.artifacts.values()
+                if artifact.atype == atype
+                if (number := extract_number_from_id(artifact.aid, schema, atype)) is not None
+            ),
+            default=0,
+        )
+        artifact_id = _generate_id(schema, atype, max_number + 1)
+        if re.search(r'[<>:"/\\|?*\x00-\x1f]', artifact_id) or artifact_id in ('.', '..'):
+            return f'Generated artifact ID "{artifact_id}" cannot be used as a file name.'
+
+        record_dir = record.record_base.resolve()
+        filepath = record_dir / f'{artifact_id}.md'
+        if filepath.parent != record_dir:
+            return f'Generated artifact ID "{artifact_id}" cannot be used as a file name.'
+
+        contents = contents.rstrip('\r\n')
+        if record.driver == 'simple-markdown':
+            frontmatter = {'id': artifact_id, 'title': title, **attributes}
+            document = f'---\n{yaml.safe_dump(frontmatter, sort_keys=False, allow_unicode=True)}---\n{contents}\n'
+        else:
+            if not re.fullmatch(r'[a-zA-Z0-9_-]+', record.marker):
+                return f'Input record "{record_name}" has an invalid Obsidian artifact marker.'
+            if any(line.lstrip().startswith('[') or line.lstrip().lower().startswith('```yaml') for line in contents.splitlines()):
+                return 'Obsidian requirement contents cannot contain lines starting with "[" or a YAML code fence.'
+            fields = {'title': title, **attributes}
+            yaml_block = yaml.safe_dump({'attrs': fields}, sort_keys=False, allow_unicode=True)
+            document = f'[{record.marker}]\n{contents}\n[id] {artifact_id}\n```yaml\n{yaml_block}```\n'
+
+        record_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            with filepath.open('x', encoding='utf-8') as file:
+                file.write(document)
+        except FileExistsError:
+            return f'File already exists for artifact ID "{artifact_id}".'
+        except Exception:
+            filepath.unlink(missing_ok=True)
+            raise
+
+        existing_artifacts = self.artifacts
+        record.filepaths.append(filepath)
+        try:
+            self.initialize()
+        except Exception as error:
+            record.filepaths.remove(filepath)
+            filepath.unlink(missing_ok=True)
+            if not isinstance(error, FatalError):
+                raise
+            return f'Could not create requirement: {error}'
+
+        if artifact_id not in self.artifacts:
+            record.filepaths.remove(filepath)
+            filepath.unlink(missing_ok=True)
+            self.artifacts = existing_artifacts
+            return f'Could not create requirement: artifact "{artifact_id}" was not extracted.'
+
+        return f'Created {atype} requirement "{artifact_id}" at {filepath}.'
+
     def _setup_tools(self):
         @self.mcp.tool(
             name='get_artifact_content',
@@ -161,6 +254,13 @@ class SyntagmaxMCPServer:
         )
         def search_artifacts(query: str) -> str:
             return self._search_artifacts(query)
+
+        @self.mcp.tool(
+            name='create_requirement',
+            description='Create a requirement in a configured Obsidian or simple-markdown input record.',
+        )
+        def create_requirement(record_name: str, title: str, contents: str, attributes: dict[str, str] | None = None) -> str:
+            return self._create_requirement(record_name, title, contents, attributes)
 
     def run(self, transport):
         self.mcp.run(transport=transport)
