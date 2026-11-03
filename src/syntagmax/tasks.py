@@ -10,8 +10,8 @@ from pathlib import Path
 
 from benedict import benedict
 from jinja2 import Environment, FileSystemLoader, ChoiceLoader
-from ruamel.yaml import YAML
 
+from syntagmax.ai import _parse_frontmatter
 from syntagmax.artifact import Artifact, ArtifactMap
 from syntagmax.config import Config, InputRecord
 
@@ -195,16 +195,3 @@ def _build_task_data(task_id: str, task_atype: str, child: Artifact, parent: Art
     )
 
 
-def _parse_frontmatter(content: str) -> dict | None:
-    """Extract YAML frontmatter from markdown content."""
-    if not content.startswith('---'):
-        return None
-    end = content.find('---', 3)
-    if end == -1:
-        return None
-    yaml_str = content[3:end].strip()
-    yaml = YAML(typ='safe')
-    try:
-        return yaml.load(yaml_str)
-    except Exception:
-        return None
