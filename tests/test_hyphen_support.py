@@ -16,6 +16,7 @@ def test_hyphenated_and_underscored_names(tmp_path):
         artifact sub_component:
             id is string
             attribute contents is mandatory string
+            attribute secret_flag is optional boolean
             attribute parent-link is mandatory reference to parent if secret_flag
 
         trace from system-req to sub_component is optional via commit if secret_flag
@@ -24,29 +25,6 @@ def test_hyphenated_and_underscored_names(tmp_path):
     model_file.write_text(model_content)
 
     errors = []
-    # Note: secret_flag is defined in system-req but used in sub_component.
-    # The anchor must exist in the artifact where it is used.
-    # Actually, in the trace rule, it's checked in the source_atype.
-    # But in sub_component's parent-link rule, it's checked in sub_component.
-    # Let me fix the test metamodel.
-    model_content_fixed = textwrap.dedent("""
-        artifact system-req:
-            id is string as {atype}-{num:3}
-            attribute contents is mandatory string
-            attribute doors-id is optional string
-            attribute secret_flag is optional boolean
-            attribute status-value is optional enum [draft, in-review, approved_final]
-
-        artifact sub_component:
-            id is string
-            attribute contents is mandatory string
-            attribute secret_flag is optional boolean
-            attribute parent-link is mandatory reference to parent if secret_flag
-
-        trace from system-req to sub_component is optional via commit if secret_flag
-        """)
-    model_file.write_text(model_content_fixed)
-
     model = load_metamodel(model_file, errors, validate=True)
 
     assert not errors

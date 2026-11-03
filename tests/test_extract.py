@@ -1,5 +1,4 @@
 # SPDX-License-Identifier: MIT
-import logging as lg
 from unittest.mock import MagicMock, patch
 
 import pytest

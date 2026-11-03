@@ -75,7 +75,7 @@ class SimpleMarkdownExtractor(Extractor):
         raw_yaml = match.group(1)
         body = match.group(2) if match.group(2) is not None else ''
 
-        ryaml = RuamelYAML(typ='rt')
+        ryaml = RuamelYAML(typ=['rt', 'safe'], pure=True)
         ryaml.preserve_quotes = True
         data = ryaml.load(raw_yaml)
 
@@ -91,7 +91,7 @@ class SimpleMarkdownExtractor(Extractor):
         from ruamel.yaml import YAML as RuamelYAML
         from ruamel.yaml.compat import StringIO
 
-        ryaml = RuamelYAML(typ='rt')
+        ryaml = RuamelYAML(typ=['rt', 'safe'], pure=True)
         ryaml.preserve_quotes = True
         stream = StringIO()
         ryaml.dump(data, stream)

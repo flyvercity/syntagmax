@@ -43,7 +43,7 @@ def roundtrip_modify_attrs(
     Raises:
         YAMLParsingError: If the YAML cannot be parsed.
     """
-    yaml = YAML(typ='rt')
+    yaml = YAML(typ=['rt', 'safe'], pure=True)
     yaml.preserve_quotes = True
 
     try:

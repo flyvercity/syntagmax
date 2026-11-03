@@ -3,7 +3,6 @@
 # Created: 2026-06-20
 # Description: Tests for block tree data model for publishing.
 
-import pytest
 from unittest.mock import MagicMock
 from syntagmax.blocks import (
     Block,

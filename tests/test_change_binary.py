@@ -5,10 +5,7 @@ import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from syntagmax.change_binary import (
-    ImageProperties,
     compute_file_hash,
     extract_image_properties,
     format_file_size,
@@ -71,7 +68,7 @@ def test_extract_image_properties_stat_error(tmp_path):
     file_path.write_bytes(b"data")
 
     # Mock path.stat to raise OSError (rather than patching the whole class Path.stat, which breaks exists())
-    with patch.object(Path, "stat", side_effect=OSError("Failed to stat")) as mock_stat:
+    with patch.object(Path, "stat", side_effect=OSError("Failed to stat")):
         # Since path.exists() will call stat internally and we want exists() to return True,
         # we can mock exists() and is_file() on a mock or just mock stat to succeed for exists,
         # or mock path.stat specifically on the instance. Let's patch 'exists' and 'is_file' to return True,

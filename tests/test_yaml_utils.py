@@ -240,3 +240,13 @@ class TestRoundtripModifyAttrsOperationSemantics:
         raw_yaml = 'attrs:\n  id: REQ-001\n  derived: false\n'
         result = roundtrip_modify_attrs(raw_yaml, {'derived': True}, 'replace')
         assert 'derived: true' in result
+
+
+class TestRoundtripModifyAttrsSecurity:
+    """Tests verifying safe deserialization and tag handling in YAML parsing."""
+
+    def test_python_object_tag_does_not_instantiate_objects(self):
+        raw_yaml = 'attrs:\n  id: REQ-001\n  payload: !!python/object/apply:os.system [echo hi]\n'
+        result = roundtrip_modify_attrs(raw_yaml, {'status': 'active'}, 'add')
+        assert 'status: active' in result
+        assert 'REQ-001' in result

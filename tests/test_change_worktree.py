@@ -4,7 +4,6 @@
 # Description: Unit and integration tests for change_worktree.py utilities.
 
 import logging
-import os
 import stat
 from pathlib import Path
 from unittest.mock import MagicMock, patch

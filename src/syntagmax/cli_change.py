@@ -194,6 +194,13 @@ def change_report(
                 text_diff = compare_text_blocks(base_recs, target_recs)
 
             # Build report data
+            file_diff_paths = {f.path for f in file_diffs} if file_diffs else None
+            record_extraction_errors = (
+                extraction_errors
+                if not file_diffs
+                else [e for e in extraction_errors if e.file_path in file_diff_paths]
+            )
+
             report_data = ChangeReportData(
                 base_revision=base,
                 target_revision=target,
@@ -203,7 +210,7 @@ def change_report(
                 artifact_diff=artifact_diff,
                 text_diff=text_diff,
                 binary_diff=binary_diff,
-                extraction_errors=[e for e in extraction_errors if e.file_path in {f.path for f in file_diffs} or not file_diffs],
+                extraction_errors=record_extraction_errors,
             )
 
             if summary:

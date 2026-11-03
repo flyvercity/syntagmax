@@ -124,7 +124,7 @@ def check_tag_exists(tag_name: str, repos: dict[Path, git.Repo], force: bool) ->
     existing: list[str] = []
 
     for repo_root, repo in repos.items():
-        if tag_name in [t.name for t in repo.tags]:
+        if any(t.name == tag_name for t in repo.tags):
             existing.append(str(repo_root))
 
     if existing:
@@ -165,7 +165,7 @@ def create_baseline_tag(
     for repo_root, repo in repos.items():
         try:
             # If force and tag exists, delete it first
-            if force and tag_name in [t.name for t in repo.tags]:
+            if force and any(t.name == tag_name for t in repo.tags):
                 old_tag = repo.tags[tag_name]
                 old_commit = old_tag.commit.hexsha[:7]
                 repo.delete_tag(old_tag)
@@ -188,7 +188,7 @@ def _rollback_tags(tag_name: str, tagged: list[tuple[Path, git.Repo]]) -> None:
     """Delete the tag from repos that were already tagged in this run."""
     for repo_root, repo in tagged:
         try:
-            if tag_name in [t.name for t in repo.tags]:
+            if any(t.name == tag_name for t in repo.tags):
                 tag_ref = repo.tags[tag_name]
                 repo.delete_tag(tag_ref)
                 lg.warning(f'Rolled back tag "{tag_name}" from {repo_root}')
