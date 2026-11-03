@@ -7,8 +7,10 @@
 import functools
 from pathlib import Path
 import logging as lg
+import os
 import re
-from typing import Callable
+import tempfile
+from typing import Any, Callable
 from benedict import benedict
 from lark import Lark, Transformer, exceptions
 
@@ -380,6 +382,251 @@ class MarkdownExtractor(MarkerSplitterMixin, ElementFilterMixin, Extractor):
 
         # Fallback: append at end
         return segment.rstrip() + newline + new_field_line + newline
+
+
+    # --- Write seam (R3) ---------------------------------------------------
+
+    def _atomic_write(self, target: Path, content: str) -> None:
+        """Write ``content`` to ``target`` atomically (E1).
+
+        Writes to a temporary file in the *same directory* and then
+        ``os.replace()``s it over the target, so a mid-write failure never
+        corrupts the source file. Uses ``encoding='utf-8', newline=''`` to
+        preserve line endings exactly, matching ``edit_attrs``.
+        """
+        target = Path(target)
+        tmp_dir = target.parent
+        fd = tempfile.NamedTemporaryFile(
+            mode='w', dir=tmp_dir, delete=False, encoding='utf-8', newline='', suffix='.tmp'
+        )
+        tmp_name = fd.name
+        try:
+            with fd:
+                fd.write(content)
+            os.replace(tmp_name, target)
+        except BaseException:
+            # Clean up the temp file on any failure; never leave it behind.
+            try:
+                os.remove(tmp_name)
+            except OSError:
+                pass
+            raise
+
+    def _resolve_within_root(self, target_file: str) -> Path:
+        """Resolve ``target_file`` (relative to base dir) and verify it lies
+        within ``config.root_dir`` (path-traversal guard, E1).
+
+        Raises ``ValueError`` on any traversal attempt.
+        """
+        base = self._config.base_dir()
+        candidate = Path(target_file)
+        resolved = (base / candidate).resolve()
+        root = self._config.root_dir().resolve()
+        try:
+            resolved.relative_to(root)
+        except ValueError:
+            raise ValueError(f'target_file "{target_file}" resolves outside the project root ({root})')
+        return resolved
+
+    def edit_artifact(
+        self,
+        artifact: Artifact,
+        *,
+        fields: dict[str, str | None] | None = None,
+        body: str | None = None,
+    ) -> None:
+        """Edit an existing artifact's YAML fields and/or body.
+
+        A ``None`` field value deletes that YAML attribute key; a non-``None``
+        value sets/replaces it. When ``body`` is given, it replaces the
+        artifact's ``contents``.
+        """
+        from syntagmax.artifact import LineLocation
+
+        if not isinstance(artifact.location, LineLocation):
+            raise ValueError('edit_artifact requires an artifact with a line-based location')
+
+        loc_file = artifact.location.filepath()
+        target = self._config.base_dir() / loc_file
+
+        content: str | None = None
+
+        if fields:
+            # Split into replace (non-None) and delete (None) deltas, since
+            # update_artifact_attributes applies a single operation per call.
+            replace_delta = {k: v for k, v in fields.items() if v is not None}
+            delete_delta = {k: None for k, v in fields.items() if v is None}
+
+            if replace_delta:
+                content = self.update_artifact_attributes(loc_file, [(artifact, replace_delta, 'replace')], 'attr')
+            if delete_delta:
+                if content is not None:
+                    # Persist the replace pass first so the delete pass reads it.
+                    self._atomic_write(target, content)
+                content = self.update_artifact_attributes(loc_file, [(artifact, delete_delta, 'del')], 'attr')
+
+        if body is not None:
+            content = self._set_artifact_body(artifact, content, target, body)
+
+        if content is not None:
+            self._atomic_write(target, content)
+
+    def _read_text(self, target: Path) -> str:
+        with open(target, 'r', encoding='utf-8', newline='') as f:
+            return f.read()
+
+    def _set_artifact_body(self, artifact: 'Artifact', content: str | None, target: Path, body: str) -> str:
+        """Replace the body/contents text of the artifact's segment."""
+        from syntagmax.artifact import LineLocation
+
+        assert isinstance(artifact.location, LineLocation)
+        text = content if content is not None else self._read_text(target)
+        newline = '\r\n' if '\r\n' in text else '\n'
+        lines = text.splitlines(keepends=True)
+        start_line, end_line = artifact.location.loc_lines
+        segment_lines = lines[start_line - 1 : end_line]
+        segment = ''.join(segment_lines)
+        marker = self._record.marker
+
+        # The body is the text between the opening [MARKER] line and the first
+        # field marker / YAML block / closing marker.
+        open_re = re.compile(rf'\[{re.escape(marker)}\][^\r\n]*\r?\n', re.IGNORECASE)
+        m = open_re.search(segment)
+        if not m:
+            # No opening marker found in the segment; leave unchanged.
+            return text
+        body_start = m.end()
+
+        # Find where the body ends: first field marker, ```yaml, or closing marker.
+        rest = segment[body_start:]
+        end_candidates = []
+        field_m = re.search(r'(?mi)^\[[^\]/][^\]]*\]', rest)
+        if field_m:
+            end_candidates.append(field_m.start())
+        yaml_pos = rest.find('```yaml')
+        if yaml_pos != -1:
+            end_candidates.append(yaml_pos)
+        slash_pos = rest.lower().find(f'[/{marker.lower()}]')
+        if slash_pos != -1:
+            end_candidates.append(slash_pos)
+        body_end_rel = min(end_candidates) if end_candidates else len(rest)
+        body_end = body_start + body_end_rel
+
+        new_body_text = body
+        if not new_body_text.endswith(('\n', '\r\n')):
+            new_body_text += newline
+        new_segment = segment[:body_start] + new_body_text + segment[body_end:]
+
+        lines[start_line - 1 : end_line] = [new_segment]
+        return ''.join(lines)
+
+    def create_artifact(
+        self,
+        *,
+        target_file: str,
+        atype: str,
+        aid: str,
+        fields: dict,
+        body: str,
+    ) -> Artifact:
+        """Create a new artifact in ``target_file``.
+
+        ``aid`` is required (non-``None``). Missing parent directories are
+        created, and ``target_file`` is validated to resolve within
+        ``config.root_dir`` (traversal raises ``ValueError``).
+        """
+        if aid is None:
+            raise ValueError('create_artifact requires a non-None aid in this phase')
+
+        target = self._resolve_within_root(target_file)
+        target.parent.mkdir(parents=True, exist_ok=True)
+
+        marker = self._record.marker
+
+        # Determine newline: preserve an existing file's style, else default LF.
+        if target.exists():
+            existing = self._read_text(target)
+            newline = '\r\n' if '\r\n' in existing else '\n'
+            prefix = existing
+            if prefix and not prefix.endswith(('\n', '\r\n')):
+                prefix += newline
+            prefix += newline
+        else:
+            newline = '\n'
+            existing = ''
+            prefix = ''
+
+        # Build the YAML attrs block via the ruamel-based round-trip helper so
+        # keys and values are safely quoted/escaped (a newline or YAML-special
+        # value can no longer inject attributes or corrupt the frontmatter).
+        from syntagmax.yaml_utils import roundtrip_modify_attrs
+
+        attrs_delta: dict[str, Any] = {'id': aid}
+        if atype:
+            attrs_delta['atype'] = atype
+        for key, value in fields.items():
+            if key.lower() in ('id', 'atype', 'contents'):
+                continue
+            attrs_delta[key] = value
+
+        initial_yaml = f'attrs:{newline}'
+        modified_yaml = roundtrip_modify_attrs(initial_yaml, attrs_delta, 'add')
+        yaml_block = f'```yaml{newline}{modified_yaml.rstrip()}{newline}```'
+
+        body_text = body or ''
+        segment_parts = [f'[{marker}]{newline}']
+        if body_text:
+            segment_parts.append(body_text)
+            if not body_text.endswith(('\n', '\r\n')):
+                segment_parts.append(newline)
+        # The YAML attrs block terminates the requirement (no [/MARKER] needed;
+        # a closing marker would end the requirement before the YAML terminator).
+        segment_parts.append(yaml_block)
+        segment_parts.append(newline)
+        segment = ''.join(segment_parts)
+
+        content = prefix + segment
+        self._atomic_write(target, content)
+
+        # Re-extract the created artifact from the fresh file.
+        artifacts, _errors = self.extract_from_file(target)
+        for a in artifacts:
+            if a.aid == aid:
+                return a
+        # Should not happen; return the last-parsed artifact if present.
+        if artifacts:
+            return artifacts[-1]
+        raise ValueError(f'Failed to re-extract created artifact "{aid}" from {target_file}')
+
+    def delete_artifact(self, artifact: Artifact) -> None:
+        """Delete an artifact.
+
+        Removes the artifact's marked fragment; when it was the file's only
+        artifact, the underlying file is deleted.
+        """
+        from syntagmax.artifact import LineLocation
+
+        if not isinstance(artifact.location, LineLocation):
+            raise ValueError('delete_artifact requires an artifact with a line-based location')
+
+        loc_file = artifact.location.filepath()
+        target = self._config.base_dir() / loc_file
+
+        # Count artifacts currently in the file.
+        artifacts, _errors = self.extract_from_file(target)
+        if len(artifacts) <= 1:
+            # Sole artifact: remove the whole file.
+            if target.exists():
+                os.remove(target)
+            return
+
+        text = self._read_text(target)
+        lines = text.splitlines(keepends=True)
+        start_line, end_line = artifact.location.loc_lines
+        # Remove the fragment lines.
+        del lines[start_line - 1 : end_line]
+        new_content = ''.join(lines)
+        self._atomic_write(target, new_content)
 
 
     def _find_segment_boundary(

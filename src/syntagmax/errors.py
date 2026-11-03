@@ -13,6 +13,10 @@ class InvalidArtifactIdentifier(RMSException):
     pass
 
 
+class UnsupportedOperation(RMSException):
+    pass
+
+
 class FatalError(RMSException):
     def __init__(self, errors: list[str] | str):
         if isinstance(errors, str):

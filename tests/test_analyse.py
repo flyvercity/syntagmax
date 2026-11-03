@@ -6,7 +6,7 @@ import pytest
 from syntagmax.analyse import ArtifactValidator, analyse_tree
 from syntagmax.artifact import Artifact, Location, LineLocation, ParentLink
 from syntagmax.config import Config
-from syntagmax.report import CAT_SCHEMA, CAT_ATTRIBUTE, CAT_STRUCTURE
+from syntagmax.report import CAT_SCHEMA, CAT_ATTRIBUTE, CAT_STRUCTURE, ReportError
 
 
 class DummyLocation(Location):
@@ -598,3 +598,122 @@ def test_analyse_tree(dummy_config):
     assert len(errors_c) == 1
     assert errors_c[0].category == CAT_STRUCTURE
     assert 'Must have exactly one root artifact' in errors_c[0].message
+
+
+
+# ---------------------------------------------------------------------------
+# Task 3 (R2): producer-level structured-metadata assertions.
+#
+# Verify that the migrated producer (ArtifactValidator / analyse_tree) emits
+# structured ReportError objects — not bare strings — carrying artifact_id,
+# artifact_type, category and severity. This is the "single source of truth"
+# guarantee: the human string is derived from the structured object.
+# ---------------------------------------------------------------------------
+
+
+def test_schema_error_exposes_populated_artifact_id(dummy_config):
+    """Demo spot-check: a schema error now carries a populated artifact_id
+    (and artifact_type / category / severity), not just a flat string."""
+    mm = {
+        'artifacts': {
+            'REQ': {
+                'attributes': {
+                    'id': {
+                        'name': 'id',
+                        'presence': 'mandatory',
+                        'multiple': False,
+                        'type_info': {'type': 'string'},
+                        'schema': 'REQ-{num:3}',
+                        'condition': None,
+                    }
+                }
+            }
+        }
+    }
+    validator = ArtifactValidator(mm, {})
+
+    art = Artifact(dummy_config)
+    art.atype = 'REQ'
+    art.aid = 'REQ-5'
+    art.fields = {'id': 'REQ-5'}
+    art.location = LineLocation('reqs/sw.md', (10, 12))
+    art.record = MagicMock()
+    art.record.name = 'sw-reqs'
+
+    errors = validator.validate(art)
+    schema_errors = [e for e in errors if e.category == CAT_SCHEMA]
+    assert len(schema_errors) == 1
+    err = schema_errors[0]
+
+    # Structured type — not a bare string.
+    assert isinstance(err, ReportError)
+    # Populated metadata.
+    assert err.artifact_id == 'REQ-5'
+    assert err.artifact_type == 'REQ'
+    assert err.category == CAT_SCHEMA
+    assert err.input_record == 'sw-reqs'
+    assert err.file_path == 'reqs/sw.md'
+    assert err.line_range == (10, 12)
+    # Task 2 fields carried through with defaults.
+    assert err.severity == 'error'
+    assert err.rule is None
+
+
+def test_all_validator_errors_are_structured_with_metadata(dummy_config):
+    """Every error the validator appends for a typed artifact is a structured
+    ReportError carrying artifact_id/artifact_type/category/severity."""
+    mm = {
+        'artifacts': {
+            'REQ': {
+                'attributes': {
+                    'id': {'name': 'id', 'presence': 'mandatory', 'multiple': False, 'type_info': {'type': 'string'}, 'schema': 'REQ-{num:3}', 'condition': None},
+                    'owner': {'name': 'owner', 'presence': 'mandatory', 'multiple': False, 'type_info': {'type': 'string'}},
+                }
+            }
+        }
+    }
+    validator = ArtifactValidator(mm, {})
+
+    art = Artifact(dummy_config)
+    art.atype = 'REQ'
+    art.aid = 'REQ-9'  # bad schema (num not 3 digits) -> schema error
+    art.fields = {'id': 'REQ-9', 'extra': 'x'}  # missing 'owner' + extra attr
+    art.location = LineLocation('reqs/sw.md', (1, 4))
+    art.record = MagicMock()
+    art.record.name = 'sw-reqs'
+
+    errors = validator.validate(art)
+    assert len(errors) >= 1
+    for err in errors:
+        assert isinstance(err, ReportError)
+        assert err.artifact_id == 'REQ-9'
+        assert err.artifact_type == 'REQ'
+        assert err.input_record == 'sw-reqs'
+        assert err.file_path == 'reqs/sw.md'
+        assert err.severity == 'error'
+        assert err.category in {CAT_SCHEMA, CAT_ATTRIBUTE}
+
+
+def test_analyse_tree_structure_error_is_structured(dummy_config):
+    """The lone bare-context structure error (no artifact) is still a structured
+    ReportError with the STRUCTURE category and default severity."""
+    mm = {
+        'artifacts': {
+            'REQ': {'attributes': {'id': {'name': 'id', 'presence': 'mandatory', 'multiple': False, 'type_info': {'type': 'string'}, 'schema': None, 'condition': None}}},
+        }
+    }
+    dummy_config.metamodel = mm
+
+    req1 = Artifact(dummy_config)
+    req1.aid = 'REQ-1'
+    req1.atype = 'REQ'
+    req1.fields = {'id': 'REQ-1'}
+
+    errors = []
+    analyse_tree(dummy_config, {'REQ-1': req1}, errors)  # zero ROOT -> structure error
+    assert len(errors) == 1
+    err = errors[0]
+    assert isinstance(err, ReportError)
+    assert err.category == CAT_STRUCTURE
+    assert err.severity == 'error'
+    assert 'Must have exactly one root artifact' in err.message

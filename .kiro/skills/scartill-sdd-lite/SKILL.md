@@ -9,21 +9,16 @@ description: "Lightweight Kiro-first specification driven development kit"
 - `Split Tasks` - create standalone tasks (prompt: `sc.split.tasks.md`)
 - `Implement` - run implementation (prompt: `sc.implement.tasks.md`)
 - `Finalize` - post-implementation actions (prompt: `sc.finalize.md`)
-- `Critique` - critique specification (prompt: `sc.critique.spec.md`, critique file as a parameter)
+- `Critique` - critique specification (prompt: `sc.critique.spec.md`, to file to critique as a parameter)
 - `Code Review` - review implementation (prompt: `sc.code.review.md`)
 - `Archive` - archive older project documentation (prompt: `sc.archive.md`)
-- `Save Brainstorm`- save persistent brainstorming results (prompt: `sc.save.brainstorm.md`)
+- `Brainstorm` - Extended brainstorming (prompt: `sc.brainstorm.md`, the problem to consider is a parameter)
 - `Seed` - convert final brainstorming results to a seed (prompt: `sc.brainstorm.to.seed.md`) 
+- `Gate Input` - sanitize raw input, extract clean seed specs, and generate a PM feedback report (prompt: `sc.gate.input.md`, input document path as parameter)
 
 All prompts reside in `<skill-dir>/prompts/`.
 
 Upon activation, remember these commands, but do not run until an explicit user request.
-
-# Polymorphic Save
-
-If the user just say "Save", act depending on the previous action:
-- if the last action was to create a specification, execute "Save Spec";
-- if the last action was brainstorming, execute "Save Brainstorm".
 
 # Guidance
 
@@ -70,4 +65,3 @@ Full specs are written for an implementer (human or AI) to execute without furth
 3. Implementation follows the full spec's task breakdown.
 
 When asked to implement a feature, look for both the seed (for intent) and the full spec (for implementation details). If only a seed exists, offer to produce a full spec first.
-

@@ -4,7 +4,7 @@ from benedict import benedict
 from syntagmax.report import (
     Report, ReportError,
     CAT_SCHEMA, CAT_ATTRIBUTE, CAT_REFERENCE, CAT_TRACE,
-    CAT_EXTRACTION, CAT_STRUCTURE,
+    CAT_EXTRACTION, CAT_STRUCTURE, CAT_DUPLICATE,
 )
 from syntagmax.config import ReportConfig
 
@@ -216,3 +216,174 @@ def test_metrics_single_input_no_breakdown():
     md = report.render()
     assert '## Metrics' in md
     assert 'Metrics by Input Record' not in md
+
+
+
+# ---------------------------------------------------------------------------
+# Task 3 (R2): golden-output regression guard.
+#
+# These tests capture the exact byte-for-byte `report.render()` output for a
+# representative, fully-structured diagnostic fixture that mirrors what the
+# migrated producers (analyse.py, tree.py, metrics.py, extract.py) now emit:
+# structured `ReportError`s carrying artifact_id/artifact_type/file_path/
+# line_range/category. Converging producers on the structured type must NOT
+# change any rendered text (R2.13). If a producer migration ever alters the
+# derived human string, this assertion fails loudly.
+# ---------------------------------------------------------------------------
+
+# ETHIOPIC WORDSPACE (U+1362) is the location separator used by ReportError.__str__.
+_SEP = '\u1362'
+
+# The representative structured-diagnostics fixture reused across the golden tests.
+_GOLDEN_STRUCTURED_ERRORS = [
+    ReportError(
+        message="Artifact ID 'REQ-5' does not match schema 'REQ-{num:3}' for type 'REQ'",
+        category=CAT_SCHEMA,
+        input_record='sw-reqs',
+        artifact_id='REQ-5',
+        artifact_type='REQ',
+        file_path='reqs/sw.md',
+        line_range=(10, 12),
+    ),
+    ReportError(
+        message="Missing mandatory attribute: 'owner'",
+        category=CAT_ATTRIBUTE,
+        input_record='sw-reqs',
+        artifact_id='REQ-6',
+        artifact_type='REQ',
+        file_path='reqs/sw.md',
+        line_range=(14, 16),
+    ),
+    ReportError(
+        message="Attribute 'ref' value 'SYS-999' refers to an unknown artifact ID 'SYS-999'",
+        category=CAT_REFERENCE,
+        input_record='sw-reqs',
+        artifact_id='REQ-7',
+        artifact_type='REQ',
+        file_path='reqs/sw.md',
+    ),
+    ReportError(
+        message="Missing mandatory trace from 'REQ' to 'SYS'",
+        category=CAT_TRACE,
+        input_record='sw-reqs',
+        artifact_id='REQ-8',
+        artifact_type='REQ',
+    ),
+    ReportError(message='Must have exactly one root artifact', category=CAT_STRUCTURE),
+    ReportError(
+        message='Duplicate artifact ID: REQ-1 at reqs/sys.md',
+        category=CAT_DUPLICATE,
+        input_record='sys-reqs',
+        artifact_id='REQ-1',
+        artifact_type='REQ',
+        file_path='reqs/sys.md',
+    ),
+    ReportError(
+        message='Artifact REQ at reqs/sys.md has no ID',
+        category=CAT_EXTRACTION,
+        input_record='sys-reqs',
+        artifact_type='REQ',
+        file_path='reqs/sys.md',
+    ),
+]
+
+_GOLDEN_STRUCTURED_RENDER = (
+    '# Analysis Report\n'
+    '\n'
+    '## Errors\n'
+    '\n'
+    'Total errors: 7\n'
+    '\n'
+    '### Global\n'
+    '\n'
+    '#### Structure Errors (1)\n'
+    '\n'
+    '1. Must have exactly one root artifact\n'
+    '\n'
+    '\n'
+    '### sw-reqs\n'
+    '\n'
+    '#### Schema Errors (1)\n'
+    '\n'
+    f"1. Artifact ID 'REQ-5' does not match schema 'REQ-{{num:3}}' for type 'REQ' (REQ{_SEP}REQ-5{_SEP}reqs/sw.md:10-12)\n"
+    '\n'
+    '\n'
+    '#### Attribute Errors (1)\n'
+    '\n'
+    f"1. Missing mandatory attribute: 'owner' (REQ{_SEP}REQ-6{_SEP}reqs/sw.md:14-16)\n"
+    '\n'
+    '\n'
+    '#### Reference Errors (1)\n'
+    '\n'
+    f"1. Attribute 'ref' value 'SYS-999' refers to an unknown artifact ID 'SYS-999' (REQ{_SEP}REQ-7{_SEP}reqs/sw.md)\n"
+    '\n'
+    '\n'
+    '#### Trace Errors (1)\n'
+    '\n'
+    f"1. Missing mandatory trace from 'REQ' to 'SYS' (REQ{_SEP}REQ-8)\n"
+    '\n'
+    '\n'
+    '### sys-reqs\n'
+    '\n'
+    '#### Extraction Errors (1)\n'
+    '\n'
+    '1. Artifact REQ at reqs/sys.md has no ID (reqs/sys.md)\n'
+    '\n'
+    '\n'
+    '#### Duplicate Errors (1)\n'
+    '\n'
+    f'1. Duplicate artifact ID: REQ-1 at reqs/sys.md (REQ{_SEP}REQ-1{_SEP}reqs/sys.md)\n'
+)
+
+
+def test_golden_render_structured_diagnostics_byte_identical():
+    """R2.13: rendered output for structured diagnostics is byte-for-byte stable.
+
+    This is the regression guard for the producer convergence: migrating any
+    diagnostic producer onto structured ReportError must not change the derived
+    text. Compared with `==` (not `in`) so any drift — spacing, ordering,
+    separators, location formatting — fails.
+    """
+    report = Report(errors=list(_GOLDEN_STRUCTURED_ERRORS))
+    assert report.render() == _GOLDEN_STRUCTURED_RENDER
+
+
+def test_golden_render_stable_across_repeated_renders():
+    """render() is deterministic: two renders of the same fixture are identical."""
+    report = Report(errors=list(_GOLDEN_STRUCTURED_ERRORS))
+    assert report.render() == report.render()
+
+
+def test_golden_render_string_coercion_matches_structured():
+    """A bare string coerced via from_any renders identically to a structured
+    STRUCTURE error with the same message — proving partial migration is safe
+    (one channel, no duplication)."""
+    structured = Report(errors=[ReportError(message='legacy diagnostic', category=CAT_STRUCTURE)])
+    coerced = Report(errors=['legacy diagnostic'])  # type: ignore[list-item]
+    assert coerced.render() == structured.render()
+
+
+def test_migrated_errors_carry_structured_metadata():
+    """New assertion (Task 3): migrated errors carry artifact_id/category/severity
+    where applicable, and severity defaults to 'error'."""
+    by_id = {e.artifact_id: e for e in _GOLDEN_STRUCTURED_ERRORS if e.artifact_id}
+
+    # Schema error carries a populated artifact_id, category, file_path and severity.
+    schema_err = by_id['REQ-5']
+    assert schema_err.artifact_id == 'REQ-5'
+    assert schema_err.artifact_type == 'REQ'
+    assert schema_err.category == CAT_SCHEMA
+    assert schema_err.file_path == 'reqs/sw.md'
+    assert schema_err.line_range == (10, 12)
+    assert schema_err.severity == 'error'  # default from Task 2
+    assert schema_err.rule is None
+
+    # Every structured error defaults to severity 'error' and rule None (no rule ids
+    # exist in the current producers).
+    for err in _GOLDEN_STRUCTURED_ERRORS:
+        assert err.severity == 'error'
+        assert err.rule is None
+        assert err.category in {
+            CAT_SCHEMA, CAT_ATTRIBUTE, CAT_REFERENCE, CAT_TRACE,
+            CAT_EXTRACTION, CAT_STRUCTURE, CAT_DUPLICATE,
+        }

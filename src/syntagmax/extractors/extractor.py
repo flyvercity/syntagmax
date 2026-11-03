@@ -4,14 +4,13 @@
 # Created: 2025-03-29
 # Description: Base class for all extractors.
 
-from __future__ import annotations
-
 from pathlib import Path
 from typing import TYPE_CHECKING, Sequence
 import logging as lg
 
 from syntagmax.config import InputRecord, Config
 from syntagmax.artifact import Artifact
+from syntagmax.errors import UnsupportedOperation
 
 if TYPE_CHECKING:
     from syntagmax.blocks import Block
@@ -20,6 +19,10 @@ type ExtractorResult = tuple[Sequence[Artifact], list[str]]
 
 
 class Extractor:
+    #: Write operations supported by this driver ('edit', 'create', 'delete').
+    #: The base class declares no capabilities; drivers opt in by overriding.
+    WRITE_CAPABILITIES: set[str] = set()
+
     def __init__(self, config: Config, record: InputRecord, metamodel: dict | None = None):
         self._config = config
         self._record = record
@@ -121,3 +124,50 @@ class Extractor:
         target_type is 'attr' (YAML) or 'field' (inline [FIELD] markers).
         """
         raise NotImplementedError(f'Driver "{self._record.driver}" does not support attribute manipulation')
+
+    # --- Write seam (R3) ---------------------------------------------------
+    #
+    # Driver-agnostic write interface. The base implementations raise a typed
+    # ``UnsupportedOperation`` so callers can advertise per-driver capabilities
+    # via ``WRITE_CAPABILITIES`` and present only valid actions. Only drivers
+    # that opt in (currently obsidian) override these.
+
+    def edit_artifact(
+        self,
+        artifact: Artifact,
+        *,
+        fields: dict[str, str | None] | None = None,
+        body: str | None = None,
+    ) -> None:
+        """Edit an existing artifact's fields and/or body.
+
+        A ``None`` field value deletes that YAML attribute key; a non-``None``
+        value sets/replaces it. When ``body`` is given, it replaces the
+        artifact's ``contents``.
+        """
+        raise UnsupportedOperation(f'Driver "{self._record.driver}" does not support editing artifacts')
+
+    def create_artifact(
+        self,
+        *,
+        target_file: str,
+        atype: str,
+        aid: str,
+        fields: dict,
+        body: str,
+    ) -> Artifact:
+        """Create a new artifact in ``target_file``.
+
+        ``aid`` is required (non-``None``) in this phase. Missing parent
+        directories are created, and ``target_file`` is validated to resolve
+        within ``config.root_dir`` (a traversal raises ``ValueError``).
+        """
+        raise UnsupportedOperation(f'Driver "{self._record.driver}" does not support creating artifacts')
+
+    def delete_artifact(self, artifact: Artifact) -> None:
+        """Delete an artifact.
+
+        Removes the artifact's marked fragment; when it was the file's only
+        artifact, the underlying file is deleted.
+        """
+        raise UnsupportedOperation(f'Driver "{self._record.driver}" does not support deleting artifacts')

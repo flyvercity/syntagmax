@@ -799,3 +799,43 @@ To use Syntagmax with an MCP client that supports SSE, point it to the server's 
 ```
 
 Note: When running via SSE, the server must be started manually or managed by a process manager before the client connects.
+
+
+## Embedding Syntagmax as a library
+
+Beyond the CLI, Syntagmax can be embedded directly as a Python library through the `syntagmax.api` facade. A host application (for example, a web GUI running the core in-process) opens a project, reads structured artifact views, runs analysis, and performs writes — while delegating all domain logic back to the core. The CLI continues to work unchanged.
+
+```python
+from syntagmax import api
+
+# Open a project by pointing at its config.toml. Options mirror the CLI defaults.
+session = api.open_project(
+    'example/obsidian-driver/.syntagmax/config.toml',
+    options=api.Options(no_git=True),
+)
+
+# Read structured views (not formatted strings).
+for view in session.query(atype='REQ'):
+    print(view.aid, view.fields.get('title'))
+
+req = session.get('REQ-001')
+if req is not None:
+    print(req.aid, req.atype, req.parents, req.children)
+
+# Search: case-insensitive, AND semantics across aid, atype, and all fields
+# (including the body contents).
+hits = session.search('non-blocking serializes')
+
+# Analyse: structured diagnostics plus pass-through metrics and impact.
+result = session.analyse()
+for diag in result.diagnostics:
+    print(diag.severity, diag.category, diag.location, diag.message)
+
+# Write (obsidian driver only in this phase): edit returns the updated view.
+updated = session.edit('REQ-001', fields={'status': 'retired'})
+print(updated.fields.get('status'))
+```
+
+`open_project` returns a synchronous, thread-safe `Session`. Reads return structured `ArtifactView` dataclasses, `analyse()` returns structured `Diagnostic` objects, and the write seam (`edit`/`create`/`delete`) currently supports only the obsidian driver — call `session.capabilities(driver)` to discover what a driver supports. Writes mutate files on disk but never commit; Git remains the host's responsibility.
+
+For the full facade reference — `Options`, every `Session` method, `ArtifactView`, `Diagnostic`, `AnalysisResult`, the per-driver capability model, thread-safety, the `reload()` trade-off, and the `ReportError → Diagnostic` mapping — see [docs/reference/embedding-api.md](docs/reference/embedding-api.md).

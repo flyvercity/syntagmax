@@ -46,12 +46,14 @@ class ReportError:
     artifact_type: str | None = None
     file_path: str | None = None
     line_range: tuple[int, int] | None = None
+    severity: str = 'error'
+    rule: str | None = None
 
     @classmethod
     def from_any(cls, err: 'ReportError | str') -> 'ReportError':
         if isinstance(err, ReportError):
             return err
-        return cls(message=str(err), category=CAT_STRUCTURE)
+        return cls(message=str(err), category=CAT_STRUCTURE, severity='error', rule=None)
 
     def __str__(self) -> str:
         loc = ''

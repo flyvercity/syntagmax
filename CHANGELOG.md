@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project uses [Calendar Versioning](https://calver.org/) with the scheme `YYYY.M.D`.
 
+## [2026.9.28] - 2026-09-28
+
+### Added
+
+- Library-first embedding facade (`syntagmax.api`): `open_project()` returns a synchronous, thread-safe `Session` exposing structured reads (`get`, `query`, `search`), analysis (`analyse`), and writes (`edit`, `create`, `delete`) over a populated project — hosts consume Syntagmax as a library without re-implementing the core pipeline or constructing CLI-shaped params
+- Structured diagnostics: `Session.analyse()` returns a public `Diagnostic` model (severity, artifact ID, rule, category, location, message) mapped from the core's `ReportError`, so hosts aggregate and bind issues without parsing flat strings
+- Driver-agnostic write seam with an obsidian implementation: programmatic edit, create, and delete of artifacts on disk (never committed), with per-driver capability introspection via `Session.capabilities()`
+- New `impact.task_dir` configuration setting to redirect generated impact tasks — absolute paths honoured as-is, relative paths resolved against the config directory, and unset preserving the current `tasks_dir` behaviour
+
 ## [2026.9.23] - 2026-09-23
 
 ### Improved

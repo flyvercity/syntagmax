@@ -311,8 +311,19 @@ When impact analysis identifies outdated artifacts (suspicious links), Syntagmax
 |--------|---------|-------------|
 | `tasks_enabled` | `false` | Enable automatic task file generation from impact analysis |
 | `tasks_dir` | `tasks/` | Directory for generated task files (relative to config file directory) |
+| `task_dir` | — | Override directory for generated task files. Absolute paths are honoured as-is; relative paths resolve against the config file directory. When unset, `tasks_dir` behaviour applies. |
 | `tasks_template` | — | Path to custom Jinja2 task template (relative to config file directory) |
 | `task_atype_map` | `{}` | Mapping of `"parent_atype/child_atype"` to task artifact type. Fallback: `TASK` |
+
+#### Task Directory Resolution (`task_dir`)
+
+`task_dir` lets an embedding host redirect generated impact tasks out of the versioned worktree without changing default behaviour. It is resolved as follows:
+
+- When `task_dir` is **set** and **absolute**, it is honoured as-is (tasks are written at that absolute path, which may lie outside the project root).
+- When `task_dir` is **set** and **relative**, it resolves against the config file directory (the root directory).
+- When `task_dir` is **unset** (the default), generation falls back to exactly the current `tasks_dir` behaviour: `<root>/<tasks_dir>`.
+
+This mirrors the absolute-vs-relative handling of `output_path`. Default CLI behaviour is unchanged.
 
 > **CLI override:** The `--tasks` flag on the `analyze` command forces `tasks_enabled = true` regardless of the config file setting. See [CLI Reference](CLI.md#analyze).
 
