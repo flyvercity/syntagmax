@@ -1,0 +1,16 @@
+# Syntagmax — Git-Based Requirements Management System
+
+> Lightweight traceability, change detection, and impact analysis — fully native to your Git workflow.
+> Git-native artifacts with no external database, a declarative metamodel DSL, automatic impact analysis, CSV/TSV traceability matrices, generated verification tasks, and local AI-agent integration.
+> Syntagmax is a product by Flyvercity.
+
+## Docs
+
+- [Syntagmax (full page, Markdown)](/syntagmax.md): complete product overview — what it is, features, how it works, and install instructions.
+
+## Links
+
+- [PyPI package](https://pypi.org/project/syntagmax/)
+- [GitHub repository](https://github.com/flyvercity/syntagmax)
+- [VS Code extension](https://github.com/flyvercity/syntagmax-vscode)
+- [Flyvercity (company)](https://flyvercity.com)
